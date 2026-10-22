@@ -43,6 +43,9 @@ jobs:
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs
 
+      - name: Lint Markdown
+        run: pnpm lint:md
+
       - run: pnpm exec nx affected -t check test build
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.

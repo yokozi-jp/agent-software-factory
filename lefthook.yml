@@ -11,22 +11,30 @@ commit-msg:
 
 pre-commit:
   parallel: true
-  commands:
-    secrets:
+  jobs:
+    - name: secrets
       run: scripts/betterleaks.sh git --staged --redact --no-banner --config .betterleaks.toml .
-    check:
-      glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
-      exclude:
-        - ".kiro/**"
-        - "**/routeTree.gen.ts"
-      run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
-      stage_fixed: true
-    skills-lock:
+    # Lint Markdown only after the formatter has rewritten the staged files.
+    - name: format-and-lint
+      group:
+        piped: true
+        jobs:
+          - name: check
+            glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
+            exclude:
+              - ".kiro/**"
+              - "**/routeTree.gen.ts"
+            run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
+            stage_fixed: true
+          - name: markdownlint
+            glob: "*.md"
+            run: pnpm exec markdownlint-cli2 {staged_files}
+    - name: skills-lock
       glob:
         - ".kiro/**"
         - "skills-lock.json"
       run: node scripts/verify-skills-lock.mjs
-    repo-policy:
+    - name: repo-policy
       glob:
         - "**/package.json"
         - "**/vite.config.ts"

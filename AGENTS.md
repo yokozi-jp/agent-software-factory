@@ -1,3 +1,5 @@
+# Agent instructions
+
 ## Workspace
 
 Commands, hooks, CI, release: `docs/development-setup.md`.

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 <!--
 PR タイトルは Conventional Commits で書く (例: `feat(api): ユーザー登録 API を追加`)。
 squash merge でタイトルが main のコミットになり、リリースのバージョンと CHANGELOG に使われる。

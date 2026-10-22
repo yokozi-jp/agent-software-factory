@@ -15,7 +15,7 @@
 | コミットメッセージの検証              | commitlint (Conventional Commits)                    |
 | 秘密情報の検出                        | betterleaks (`.betterleaks-version` で固定)          |
 
-```
+```text
 apps/
   api/   Hono (Node.js)。GET /health
   web/   React + TanStack Router
@@ -133,16 +133,16 @@ pnpm check && pnpm test && pnpm build
 
 root から実行します。タスクは Nx が実行し、結果を cache します。
 
-| やりたいこと                               | コマンド                                         |
-| ------------------------------------------ | ------------------------------------------------ |
-| api の開発サーバー (http://localhost:3000) | `pnpm exec nx dev api`                           |
-| web の開発サーバー (http://localhost:5173) | `pnpm exec nx dev web`                           |
-| 全プロジェクトの lint、format、型チェック  | `pnpm check`                                     |
-| 全プロジェクトのテスト                     | `pnpm test`                                      |
-| 全プロジェクトの build                     | `pnpm build`                                     |
-| 変更の影響を受けるプロジェクトだけ実行     | `pnpm exec nx affected -t check test build`      |
-| format と lint の自動修正                  | `pnpm exec vp check --fix`                       |
-| 依存の追加 (例: api)                       | `pnpm --filter @hono-nx-vite-plus/api add <pkg>` |
+| やりたいこと                                 | コマンド                                         |
+| -------------------------------------------- | ------------------------------------------------ |
+| api の開発サーバー (<http://localhost:3000>) | `pnpm exec nx dev api`                           |
+| web の開発サーバー (<http://localhost:5173>) | `pnpm exec nx dev web`                           |
+| 全プロジェクトの lint、format、型チェック    | `pnpm check`                                     |
+| 全プロジェクトのテスト                       | `pnpm test`                                      |
+| 全プロジェクトの build                       | `pnpm build`                                     |
+| 変更の影響を受けるプロジェクトだけ実行       | `pnpm exec nx affected -t check test build`      |
+| format と lint の自動修正                    | `pnpm exec vp check --fix`                       |
+| 依存の追加 (例: api)                         | `pnpm --filter @hono-nx-vite-plus/api add <pkg>` |
 
 補足:
 
@@ -154,7 +154,7 @@ root から実行します。タスクは Nx が実行し、結果を cache し�
 
 [Conventional Commits](https://www.conventionalcommits.org/ja/v1.0.0/) に従います。commit-msg hook と CI の commitlint で検証します。
 
-```
+```text
 <type>(<scope>): <subject>
 ```
 
@@ -165,7 +165,7 @@ root から実行します。タスクは Nx が実行し、結果を cache し�
 
 例:
 
-```
+```text
 feat(api): ユーザー登録 API を追加
 fix(web): トップページの表示崩れを修正
 ci: secret scan のタイムアウトを延長
