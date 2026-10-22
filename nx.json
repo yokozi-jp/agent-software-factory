@@ -26,5 +26,24 @@
       "cache": true,
       "inputs": ["default", "^production"]
     }
+  },
+  "release": {
+    "projects": ["api", "web"],
+    "projectsRelationship": "independent",
+    "releaseTag": {
+      "pattern": "{projectName}@{version}"
+    },
+    "version": {
+      "conventionalCommits": true
+    },
+    "changelog": {
+      "workspaceChangelog": false,
+      "projectChangelogs": {
+        "createRelease": "github"
+      }
+    },
+    "git": {
+      "commitMessage": "chore: release"
+    }
   }
 }

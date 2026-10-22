@@ -14,6 +14,7 @@
     "@commitlint/config-conventional": "catalog:",
     "@commitlint/config-nx-scopes": "catalog:",
     "@commitlint/types": "catalog:",
+    "@nx/js": "catalog:",
     "lefthook": "catalog:",
     "nx": "catalog:",
     "vite-plus": "catalog:"
