@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Domain Docs"
+description: How the engineering skills consume this repo's domain documentation (GLOSSARY.md and docs/adr/). Read when exploring domain language or ADRs.
+tags: [agents, skills, domain]
+---
+
 # Domain Docs
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
@@ -14,7 +21,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 Single-context repo (most repos):
 
-```
+```text
 /
 ├── GLOSSARY.md
 ├── docs/adr/
@@ -25,7 +32,7 @@ Single-context repo (most repos):
 
 Multi-context repo (presence of `GLOSSARY-MAP.md` at the root):
 
-```
+```text
 /
 ├── GLOSSARY-MAP.md
 ├── docs/adr/                          ← system-wide decisions

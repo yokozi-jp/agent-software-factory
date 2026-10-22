@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Triage Labels"
+description: Maps the five canonical triage roles used by the skills to this repo's label strings. Read when applying triage labels.
+tags: [agents, skills, triage]
+---
+
 # Triage Labels
 
 The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.

@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "block-iwe-normalize",
+      "trigger": "PreToolUse",
+      "description": "Refuse `iwe normalize` from the shell tool and from the iwe MCP server (docs/adr/0006). Bypass with IWE_ALLOW_NORMALIZE=1.",
+      "matcher": "shell|execute_bash|@iwe*",
+      "action": {
+        "type": "command",
+        "command": "sh .kiro/hooks/block-iwe-normalize.sh"
+      }
+    }
+  ]
+}

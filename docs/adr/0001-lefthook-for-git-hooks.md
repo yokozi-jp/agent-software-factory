@@ -1,4 +1,11 @@
-# Git hook は Vite+ の hook ではなく lefthook で管理する
+---
+type: ADR
+title: "ADR 0001: Git hook は Vite+ の hook ではなく lefthook で管理する"
+description: Git hook を Vite+ の hook ではなく lefthook で管理し、両者が core.hooksPath を取り合わないようにする決定。
+tags: [adr, tooling, lefthook, vite-plus]
+---
+
+# ADR 0001: Git hook は Vite+ の hook ではなく lefthook で管理する
 
 Vite+ には `vp config` / `vp hooks` による hook の仕組み (`.vite-hooks/` のシェルスクリプトと `core.hooksPath`) がありますが、使わずに lefthook に一本化しました。hook は commit-msg (commitlint)、pre-commit (betterleaks と `vp check --fix`)、pre-push (betterleaks) の3つで、npm 以外のツール (betterleaks) も呼びます。lefthook は宣言的な設定、並列実行、`{staged_files}` と `stage_fixed` を標準で持つ安定版のツールで、ベータ版の Vite+ の hook 機能に依存せずに済みます。両方を入れると `core.hooksPath` を取り合うので、Vite+ の hook は `vp create --no-hooks` で無効にしています。
 

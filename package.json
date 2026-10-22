@@ -7,15 +7,18 @@
     "prepare": "lefthook install",
     "check": "nx run-many -t check",
     "test": "nx run-many -t test",
-    "build": "nx run-many -t build"
+    "build": "nx run-many -t build",
+    "lint:md": "markdownlint-cli2 \"**/*.md\""
   },
   "devDependencies": {
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
     "@commitlint/config-nx-scopes": "catalog:",
     "@commitlint/types": "catalog:",
+    "@iwe-org/iwe": "catalog:",
     "@nx/js": "catalog:",
     "lefthook": "catalog:",
+    "markdownlint-cli2": "catalog:",
     "nx": "catalog:",
     "vite-plus": "catalog:"
   },

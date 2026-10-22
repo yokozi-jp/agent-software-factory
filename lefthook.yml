@@ -2,7 +2,8 @@
 # Docs: https://lefthook.dev/configuration/
 # Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
 
-# Hook commands invoke `betterleaks` from PATH. It is not an npm package; see docs/development-setup.md.
+# The secret-scan commands run scripts/secret-scan.sh, which needs `betterleaks` on PATH.
+# It is not an npm package; see docs/local-env-setup/setup.md.
 
 commit-msg:
   commands:
@@ -11,22 +12,34 @@ commit-msg:
 
 pre-commit:
   parallel: true
-  commands:
-    secrets:
-      run: scripts/betterleaks.sh git --staged --redact --no-banner --config .betterleaks.toml .
-    check:
-      glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
-      exclude:
-        - ".kiro/**"
-        - "**/routeTree.gen.ts"
-      run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
-      stage_fixed: true
-    skills-lock:
+  jobs:
+    - name: secret-scan
+      run: scripts/secret-scan.sh staged
+    # Lint Markdown only after the formatter has rewritten the staged files.
+    - name: format-and-lint
+      group:
+        piped: true
+        jobs:
+          - name: check
+            glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
+            exclude:
+              - ".kiro/**"
+              - "**/routeTree.gen.ts"
+            run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
+            stage_fixed: true
+          - name: markdownlint
+            glob: "*.md"
+            run: pnpm exec markdownlint-cli2 {staged_files}
+    - name: docs-check
+      glob:
+        - "docs/**"
+      run: scripts/docs-check.sh
+    - name: skills-lock
       glob:
         - ".kiro/**"
         - "skills-lock.json"
       run: node scripts/verify-skills-lock.mjs
-    repo-policy:
+    - name: repo-policy
       glob:
         - "**/package.json"
         - "**/vite.config.ts"
@@ -37,7 +50,7 @@ pre-commit:
 
 pre-push:
   commands:
-    secrets:
+    secret-scan:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
-      run: scripts/betterleaks-pre-push.sh
+      run: scripts/secret-scan.sh pre-push
       use_stdin: true
