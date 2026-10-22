@@ -37,4 +37,20 @@ jobs:
 
       - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
 
+      - name: Repo policy (docs/adr)
+        run: scripts/check-repo-policy.sh
+
+      - name: Agent skills match skills-lock.json
+        run: node scripts/verify-skills-lock.mjs
+
       - run: pnpm exec nx affected -t check test build
+
+      # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
+      - name: Generated files are committed
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            git --no-pager diff
+            echo "::error::The build changed tracked files. Run the build locally and commit the result."
+            exit 1
+          fi

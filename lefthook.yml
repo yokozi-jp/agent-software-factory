@@ -21,6 +21,19 @@ pre-commit:
         - "**/routeTree.gen.ts"
       run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
+    skills-lock:
+      glob:
+        - ".kiro/**"
+        - "skills-lock.json"
+      run: node scripts/verify-skills-lock.mjs
+    repo-policy:
+      glob:
+        - "**/package.json"
+        - "**/vite.config.ts"
+        - ".vite-hooks/**"
+        - ".betterleaks.toml"
+        - ".betterleaks-version"
+      run: scripts/check-repo-policy.sh
 
 pre-push:
   commands:

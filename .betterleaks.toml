@@ -3,7 +3,7 @@
 # Auto-discovery of repo configs differs between betterleaks versions (see docs/adr/0003).
 title = "hono-nx-vite-plus"
 
-# Fail fast on older binaries. Keep in sync with BETTERLEAKS_VERSION in CI and docs.
+# Fail fast on older binaries. Must equal .betterleaks-version (checked by scripts/check-repo-policy.sh).
 betterleaksMinVersion = "1.9.0"
 
 [extend]
