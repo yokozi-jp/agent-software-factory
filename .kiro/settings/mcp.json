@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "iwe": {
+      "command": "sh",
+      "args": ["-c", "cd \"$(git rev-parse --show-toplevel)/docs\" && exec pnpm exec iwec"],
+      "disabledTools": [
+        "iwe_normalize",
+        "iwe_rename",
+        "iwe_update",
+        "iwe_extract",
+        "iwe_inline",
+        "iwe_squash",
+        "iwe_attach",
+        "iwe_delete"
+      ],
+      "disabled": false
+    }
+  }
+}

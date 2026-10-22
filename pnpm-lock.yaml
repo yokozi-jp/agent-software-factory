@@ -182,6 +182,9 @@ catalogs:
     '@hono/vite-dev-server':
       specifier: ^0.26.1
       version: 0.26.1
+    '@iwe-org/iwe':
+      specifier: 0.29.0
+      version: 0.29.0
     '@nx/js':
       specifier: 24.0.0
       version: 24.0.0
@@ -250,6 +253,9 @@ importers:
       '@commitlint/types':
         specifier: 'catalog:'
         version: 21.2.3
+      '@iwe-org/iwe':
+        specifier: 'catalog:'
+        version: 0.29.0
       '@nx/js':
         specifier: 'catalog:'
         version: 24.0.0(@babel/traverse@7.29.10(supports-color@7.2.0))(nx@24.0.0)(supports-color@7.2.0)
@@ -1008,6 +1014,36 @@ packages:
         optional: true
       wrangler:
         optional: true
+
+  '@iwe-org/cli-darwin-arm64@0.29.0':
+    resolution: {integrity: sha512-MFiJVDFha/uQMQCz9+VS6qqYMnCQ11LANWlYS3uoFHGXEL7bgA4hFTQrM4Lb5yGRWQWvkLq+M2Vy0IOn5qKWmw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@iwe-org/cli-darwin-x64@0.29.0':
+    resolution: {integrity: sha512-PXTTTixQp7O2mSWB3bLahr0izbTmLO4XpS93JyB707Fzx/jkxZJqaNgkQWvqwbZ7z4UGjyWJgOLo6w7fJMUCjA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@iwe-org/cli-linux-arm64@0.29.0':
+    resolution: {integrity: sha512-PQJkMBbJYiVI0Lgx4FXGETcc0U3QanX+Kk784g6JdcSIbHZAQhZB7NBYhDvau4UIT9LH0MMCbXir6YpkSIoNHA==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@iwe-org/cli-linux-x64@0.29.0':
+    resolution: {integrity: sha512-qemOQPk8Hnht7qKvA6RTTe/x2a+bx/Txyj2QM6Nfe3LiOdWw2iGN/5glwkQZkHZ2r+waxsdeuvhTss9WXCY+/Q==}
+    cpu: [x64]
+    os: [linux]
+
+  '@iwe-org/cli-win32-x64@0.29.0':
+    resolution: {integrity: sha512-LA+Nacy6rlp9ZB2kkSf8j/ULEgt5YNkMnrVBWJHIuEy0yLhGIZXrKmzG3yA9CwZ5PNnw50uuuojJsV44IcbKxA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@iwe-org/iwe@0.29.0':
+    resolution: {integrity: sha512-rqdaNbifrk129dpMW91s9g4325+yarmDMAzLKzCiMCg2ZEW0IVfojhXZH6FpNgPGKSOAbcOaIE2FIfPoRkkptQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@jest/diff-sequences@30.0.1':
     resolution: {integrity: sha512-n5H8QLDJ47QqbCNn5SuFjCRDrOLEZ0h8vAHCK5RL9Ls7Xa8AQLa/YxAc9UjFqoEDM48muwtBGjtMY5cr0PLDCw==}
@@ -4291,6 +4327,29 @@ snapshots:
       '@hono/node-server': 1.19.17(hono@4.13.13)
       hono: 4.13.13
       minimatch: 9.0.9
+
+  '@iwe-org/cli-darwin-arm64@0.29.0':
+    optional: true
+
+  '@iwe-org/cli-darwin-x64@0.29.0':
+    optional: true
+
+  '@iwe-org/cli-linux-arm64@0.29.0':
+    optional: true
+
+  '@iwe-org/cli-linux-x64@0.29.0':
+    optional: true
+
+  '@iwe-org/cli-win32-x64@0.29.0':
+    optional: true
+
+  '@iwe-org/iwe@0.29.0':
+    optionalDependencies:
+      '@iwe-org/cli-darwin-arm64': 0.29.0
+      '@iwe-org/cli-darwin-x64': 0.29.0
+      '@iwe-org/cli-linux-arm64': 0.29.0
+      '@iwe-org/cli-linux-x64': 0.29.0
+      '@iwe-org/cli-win32-x64': 0.29.0
 
   '@jest/diff-sequences@30.0.1': {}
 

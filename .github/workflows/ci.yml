@@ -46,6 +46,9 @@ jobs:
       - name: Lint Markdown
         run: pnpm lint:md
 
+      - name: Docs bundle (OKF, links, orphans)
+        run: scripts/docs-check.sh
+
       - run: pnpm exec nx affected -t check test build
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
