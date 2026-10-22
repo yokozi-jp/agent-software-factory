@@ -3,9 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "prepare": "lefthook install",
+    "check": "nx run-many -t check",
+    "test": "nx run-many -t test",
+    "build": "nx run-many -t build"
+  },
   "devDependencies": {
-    "nx": "24.0.0",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@commitlint/config-nx-scopes": "catalog:",
+    "@commitlint/types": "catalog:",
+    "lefthook": "catalog:",
+    "nx": "catalog:",
     "vite-plus": "catalog:"
   },
   "devEngines": {

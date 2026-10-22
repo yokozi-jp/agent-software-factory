@@ -1,0 +1,30 @@
+# Git hooks. Installed by `pnpm install` (root `prepare` script runs `lefthook install`).
+# Docs: https://lefthook.dev/configuration/
+# Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
+
+# Hook commands invoke `betterleaks` from PATH. It is not an npm package; see docs/development-setup.md.
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: scripts/betterleaks.sh git --staged --redact --no-banner --config .betterleaks.toml .
+    check:
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
+      exclude:
+        - ".kiro/**"
+        - "**/routeTree.gen.ts"
+      run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    secrets:
+      # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
+      run: scripts/betterleaks-pre-push.sh
+      use_stdin: true

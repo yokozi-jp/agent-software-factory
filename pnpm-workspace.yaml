@@ -6,8 +6,11 @@ packages:
 catalogMode: prefer
 
 catalog:
+  "@commitlint/cli": ^21.2.4
+  "@commitlint/config-conventional": ^21.2.4
+  "@commitlint/config-nx-scopes": ^21.2.3
+  "@commitlint/types": ^21.2.3
   "@hono/node-server": ^2.1.5
-  "@hono/vite-build": ^1.11.1
   "@hono/vite-dev-server": ^0.26.1
   "@tanstack/react-router": ^1.170.45
   "@tanstack/router-plugin": ^1.168.47
@@ -16,6 +19,8 @@ catalog:
   "@types/react-dom": ^19.3.0
   "@vitejs/plugin-react": ^6.1.2
   hono: ^4.13.13
+  lefthook: ^2.2.2
+  nx: 24.0.0
   react: ^19.3.1
   react-dom: ^19.3.1
   typescript: ^7.0.2
@@ -30,6 +35,10 @@ peerDependencyRules:
     vite: "*"
 allowBuilds:
   nx: true
+  # Git hooks are installed by the root `prepare` script, not by lefthook's postinstall.
+  lefthook: false
+# nx 24.0.0 was younger than pnpm's minimumReleaseAge when added by `nx init`.
+# Remove these entries once the version is old enough.
 minimumReleaseAgeExclude:
   - "@nx/nx-darwin-arm64@24.0.0"
   - "@nx/nx-darwin-x64@24.0.0"
@@ -42,8 +51,3 @@ minimumReleaseAgeExclude:
   - "@nx/nx-win32-arm64-msvc@24.0.0"
   - "@nx/nx-win32-x64-msvc@24.0.0"
   - nx@24.0.0
-  - "@nx/devkit@24.0.0"
-  - "@nx/js@24.0.0"
-  - "@nx/vite@24.0.0"
-  - "@nx/vitest@24.0.0"
-  - "@nx/workspace@24.0.0"
