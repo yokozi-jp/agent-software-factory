@@ -1,0 +1,62 @@
+name: Release
+
+# Manual release with nx release (docs/development-setup.md "リリース").
+# Versions come from Conventional Commits; each project gets its own tag, CHANGELOG.md and GitHub Release.
+# Nothing is published to npm.
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Preview only (no commit, tag or GitHub Release)"
+        type: boolean
+        default: true
+      first-release:
+        description: "First release (no previous tags exist yet)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  LEFTHOOK: "0"
+  NX_NO_CLOUD: "true"
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      # Push the release commit and tags, and create GitHub Releases.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          node-version-file: .node-version
+          cache: true
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: nx release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          FIRST_RELEASE: ${{ inputs.first-release }}
+        run: |
+          args="--skip-publish --verbose"
+          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
+          if [ "$FIRST_RELEASE" = "true" ]; then args="$args --first-release"; fi
+          pnpm exec nx release $args
