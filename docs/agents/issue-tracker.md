@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Issue tracker: GitHub"
+description: How skills create, read, label and link GitHub issues with the gh CLI. Read when a skill touches the issue tracker.
+tags: [agents, skills, github, issues]
+---
+
 # Issue tracker: GitHub
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.

@@ -1,6 +1,6 @@
 name: Release
 
-# Manual release with nx release (docs/development-setup.md "リリース").
+# Manual release with nx release (docs/repository/release.md).
 # Versions come from Conventional Commits; each project gets its own tag, CHANGELOG.md and GitHub Release.
 # Nothing is published to npm.
 on:

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Domain Docs"
+description: How the engineering skills consume this repo's domain documentation (GLOSSARY.md and docs/adr/). Read when exploring domain language or ADRs.
+tags: [agents, skills, domain]
+---
+
 # Domain Docs
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.

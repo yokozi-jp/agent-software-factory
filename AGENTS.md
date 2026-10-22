@@ -1,9 +1,8 @@
 # Agent instructions
 
-## Workspace
+## Docs
 
-Commands, hooks, CI, release: `docs/development-setup.md`.
-Before adding a tool, plugin, or task runner, read `docs/adr/`: Nx orchestrates, Vite+ is toolchain only, hooks are lefthook.
+Conventions, runbooks, and ADRs live in `docs/`. Start at `docs/index.md`; each line says when to read that area. Read `docs/adr/index.md` before adding or changing a tool, plugin, or task runner.
 
 ## Agent skills
 
