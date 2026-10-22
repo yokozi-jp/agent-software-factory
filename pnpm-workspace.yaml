@@ -1,0 +1,49 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+catalogMode: prefer
+
+catalog:
+  "@hono/node-server": ^2.1.5
+  "@hono/vite-build": ^1.11.1
+  "@hono/vite-dev-server": ^0.26.1
+  "@tanstack/react-router": ^1.170.45
+  "@tanstack/router-plugin": ^1.168.47
+  "@types/node": ^26
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
+  "@vitejs/plugin-react": ^6.1.2
+  hono: ^4.13.13
+  react: ^19.3.1
+  react-dom: ^19.3.1
+  typescript: ^7.0.2
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vite-plus: 1.1.0
+overrides:
+  vite@*: "catalog:"
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"
+allowBuilds:
+  nx: true
+minimumReleaseAgeExclude:
+  - "@nx/nx-darwin-arm64@24.0.0"
+  - "@nx/nx-darwin-x64@24.0.0"
+  - "@nx/nx-freebsd-x64@24.0.0"
+  - "@nx/nx-linux-arm-gnueabihf@24.0.0"
+  - "@nx/nx-linux-arm64-gnu@24.0.0"
+  - "@nx/nx-linux-arm64-musl@24.0.0"
+  - "@nx/nx-linux-x64-gnu@24.0.0"
+  - "@nx/nx-linux-x64-musl@24.0.0"
+  - "@nx/nx-win32-arm64-msvc@24.0.0"
+  - "@nx/nx-win32-x64-msvc@24.0.0"
+  - nx@24.0.0
+  - "@nx/devkit@24.0.0"
+  - "@nx/js@24.0.0"
+  - "@nx/vite@24.0.0"
+  - "@nx/vitest@24.0.0"
+  - "@nx/workspace@24.0.0"

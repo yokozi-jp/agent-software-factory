@@ -1,0 +1,21 @@
+{
+  "name": "hono-nx-vite-plus",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "nx": "24.0.0",
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.15.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=26"
+  }
+}

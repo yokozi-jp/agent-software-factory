@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "sharedGlobals": [
+      "{workspaceRoot}/vite.config.ts",
+      "{workspaceRoot}/tsconfig.json",
+      "{workspaceRoot}/pnpm-workspace.yaml",
+      "{workspaceRoot}/.node-version"
+    ],
+    "production": ["default", "!{projectRoot}/**/*.test.{ts,tsx}"]
+  },
+  "targetDefaults": {
+    "build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"],
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "test": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
+    "check": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    }
+  }
+}
