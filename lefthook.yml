@@ -2,7 +2,8 @@
 # Docs: https://lefthook.dev/configuration/
 # Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
 
-# Hook commands invoke `betterleaks` from PATH. It is not an npm package; see docs/development-setup.md.
+# The secret-scan commands run scripts/secret-scan.sh, which needs `betterleaks` on PATH.
+# It is not an npm package; see docs/local-env-setup/setup.md.
 
 commit-msg:
   commands:
@@ -13,7 +14,7 @@ pre-commit:
   parallel: true
   jobs:
     - name: secrets
-      run: scripts/betterleaks.sh git --staged --redact --no-banner --config .betterleaks.toml .
+      run: scripts/secret-scan.sh staged
     # Lint Markdown only after the formatter has rewritten the staged files.
     - name: format-and-lint
       group:
@@ -47,5 +48,5 @@ pre-push:
   commands:
     secrets:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
-      run: scripts/betterleaks-pre-push.sh
+      run: scripts/secret-scan.sh pre-push
       use_stdin: true
