@@ -13,7 +13,7 @@
 | build、test、lint、format、型チェック | Vite+ (`vp`)                                         |
 | Git hook                              | lefthook                                             |
 | コミットメッセージの検証              | commitlint (Conventional Commits)                    |
-| 秘密情報の検出                        | betterleaks 1.9.0                                    |
+| 秘密情報の検出                        | betterleaks (`.betterleaks-version` で固定)          |
 
 ```
 apps/
@@ -66,17 +66,26 @@ irm https://vite.plus/ps1 | iex
 vp --version
 ```
 
-### betterleaks 1.9.0
+Windows は WSL2 上で開発することを推奨します (hook のスクリプトは POSIX sh で書いています)。
+
+## 2. clone とセットアップ
+
+```sh
+git clone https://github.com/yokozi-jp/hono-nx-vite-plus.git
+cd hono-nx-vite-plus
+```
+
+### betterleaks
 
 Git hook と CI で秘密情報を検出するために使います。npm パッケージではないので、各自でインストールします。
-バージョンは **1.9.0 ちょうど** に揃えてください。違うバージョンだと hook が失敗します (理由は [ADR 0003](./adr/0003-pin-betterleaks-v1.md))。
+バージョンは `.betterleaks-version` に書いたものに **ちょうど** 揃えてください。違うバージョンだと hook が失敗します (理由は [ADR 0003](./adr/0003-pin-betterleaks-v1.md))。
 
 Homebrew や `go install` は最新版 (v2 系を含む) が入ることがあるので使いません。
-GitHub Releases からバイナリを取得し、checksum を確認して `PATH` の通った場所に置きます。
+GitHub Releases からバイナリを取得し、checksum を確認して `PATH` の通った場所に置きます。リポジトリの root で実行します。
 
 ```sh
 # macOS / Linux (x64 / arm64)
-version=1.9.0
+version=$(cat .betterleaks-version)
 os=$(uname -s | tr '[:upper:]' '[:lower:]')            # linux / darwin
 arch=$(uname -m); case "$arch" in x86_64) arch=x64;; aarch64) arch=arm64;; esac
 archive="betterleaks_${version}_${os}_${arch}.tar.gz"
@@ -96,21 +105,15 @@ cd - && rm -rf "$tmp"
 確認します。
 
 ```sh
-command -v betterleaks   # 1.9.0 を置いた場所が表示されること
-betterleaks version      # 1.9.0
+command -v betterleaks   # いま置いた ~/.local/bin/betterleaks が表示されること
+betterleaks version      # .betterleaks-version と同じ値
 ```
 
 別の場所に古い版や v2 系の betterleaks がある場合は、`PATH` で先に見つかる方が使われます。
-`command -v betterleaks` で、1.9.0 を置いた場所が表示されることを確認してください。
 
-Windows は WSL2 上で開発することを推奨します (hook のスクリプトは POSIX sh で書いています)。
-
-## 2. clone とセットアップ
+### 依存のインストール
 
 ```sh
-git clone https://github.com/yokozi-jp/hono-nx-vite-plus.git
-cd hono-nx-vite-plus
-
 vp env install   # .node-version の Node.js と、package.json の pnpm をインストール
 pnpm install     # 依存をインストールし、prepare スクリプトで lefthook の hook を設定
 ```
@@ -263,11 +266,17 @@ main に branch protection を設定する場合は、`github-actions[bot]` が 
 | `secret-scan.yml` | PR、main への push | PR は PR のコミットを、main は全履歴を betterleaks で scan |
 | `release.yml`     | 手動               | `nx release` (上記)                                        |
 
-betterleaks のバージョンを上げるときは、次の3か所を揃えて変更します。
+`ci.yml` は `nx affected` の前後に、次の検証も実行します。どれも pre-commit hook でも実行します。
 
-- `.github/workflows/secret-scan.yml` の `BETTERLEAKS_VERSION` と `BETTERLEAKS_SHA256` (リリースの `checksums.txt` の `linux_x64` の値)
-- `scripts/betterleaks.sh` の `REQUIRED_VERSION`
-- `.betterleaks.toml` の `betterleaksMinVersion`
+- `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している)。
+- `scripts/verify-skills-lock.mjs`: `.kiro/skills` が `skills-lock.json` の記録と一致していることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
+- build の後に `git status` が空であること: `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。
+
+betterleaks のバージョンを上げるときは、次の3か所を変更します。`check-repo-policy.sh` が1と3の一致を、CI の checksum 検証が1と2の一致を確認します。
+
+1. `.betterleaks-version`
+2. `.github/workflows/secret-scan.yml` の `BETTERLEAKS_SHA256` (リリースの `checksums.txt` の `linux_x64` の値)
+3. `.betterleaks.toml` の `betterleaksMinVersion`
 
 ## 9. GitHub リポジトリの設定 (管理者が1回だけ実行)
 

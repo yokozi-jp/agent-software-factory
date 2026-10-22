@@ -3,7 +3,7 @@
 # Fails (instead of silently skipping) when betterleaks is missing, so nobody commits unscanned.
 set -eu
 
-REQUIRED_VERSION="1.9.0"
+REQUIRED_VERSION="$(tr -d '[:space:]' < "$(git rev-parse --show-toplevel)/.betterleaks-version")"
 
 if ! command -v betterleaks >/dev/null 2>&1; then
   cat >&2 <<EOF

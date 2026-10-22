@@ -1,3 +1,8 @@
+## Workspace
+
+Commands, hooks, CI, release: `docs/development-setup.md`.
+Before adding a tool, plugin, or task runner, read `docs/adr/`: Nx orchestrates, Vite+ is toolchain only, hooks are lefthook.
+
 ## Agent skills
 
 ### Issue tracker
