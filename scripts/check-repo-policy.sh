@@ -40,4 +40,28 @@ for rule in import/no-nodejs-modules no-restricted-imports no-restricted-globals
   fi
 done
 
+# docs/knowledge/steering-authoring.md: steering frontmatter. Malformed frontmatter is silently loaded as `always`.
+for file in $(git ls-files '.kiro/steering/*.md') $(git ls-files --others --exclude-standard '.kiro/steering/*.md'); do
+  problem="$(awk -v name="$(basename "$file" .md)" '
+    NR == 1 { if ($0 != "---") { print "must start with a frontmatter block"; exit } next }
+    /^---$/ { closed = 1; exit }
+    /^inclusion:/ { inclusion = $2 }
+    /^name:/ { n = $2 }
+    /^description:[[:space:]]*[^[:space:]]/ { description = 1 }
+    /^fileMatchPattern:/ { pattern = 1; if ($2 !~ /^\[/) array = "no" }
+    END {
+      if (!closed && NR > 1) { print "frontmatter is not closed"; exit }
+      if (inclusion !~ /^(always|fileMatch|manual|auto)$/) print "inclusion must be always, fileMatch, manual or auto"
+      if (n != name) print "name must be \"" name "\""
+      if (!description) print "description is required"
+      if (inclusion == "fileMatch" && !pattern) print "fileMatchPattern is required for inclusion: fileMatch"
+      if (inclusion != "fileMatch" && pattern) print "fileMatchPattern is only for inclusion: fileMatch"
+      if (array == "no") print "fileMatchPattern must be a one-line array"
+    }' "$file")"
+  if [ -n "$problem" ]; then
+    echo "$problem" | while IFS= read -r line; do echo "repo-policy: $file: $line (docs/knowledge/steering-authoring.md)" >&2; done
+    status=1
+  fi
+done
+
 exit "$status"
