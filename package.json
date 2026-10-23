@@ -21,6 +21,7 @@
     "lefthook": "catalog:",
     "markdownlint-cli2": "catalog:",
     "nx": "catalog:",
+    "typescript": "catalog:",
     "vite-plus": "catalog:"
   },
   "devEngines": {

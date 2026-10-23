@@ -268,6 +268,9 @@ importers:
       nx:
         specifier: 'catalog:'
         version: 24.0.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
       vite-plus:
         specifier: 'catalog:'
         version: 1.1.0(@types/node@26.6.5)(@vitest/ui@5.0.3)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.0)
