@@ -23,6 +23,7 @@ pre-commit:
           - name: check
             glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
             exclude:
+              - ".agents/**"
               - ".kiro/**"
               - "**/routeTree.gen.ts"
             run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
@@ -36,7 +37,8 @@ pre-commit:
       run: scripts/docs-check.sh
     - name: skills-lock
       glob:
-        - ".kiro/**"
+        - ".agents/**"
+        - ".kiro/skills/**"
         - "skills-lock.json"
       run: node scripts/verify-skills-lock.mjs
     - name: repo-policy
