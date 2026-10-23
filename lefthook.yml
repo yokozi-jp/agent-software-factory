@@ -70,9 +70,11 @@ pre-commit:
         - "scripts/test/secret-scan.test.sh"
       run: sh scripts/test/run.sh scripts/test/secret-scan.test.sh
     # Tests run from this hook with GIT_DIR set; isolation.test.sh proves they still stay in their sandbox.
+    # Only lib.sh decides isolation, so this runs when it changes. CI runs it for every change.
     - name: isolation-test
       glob:
-        - "scripts/test/**"
+        - "scripts/test/lib.sh"
+        - "scripts/test/isolation.test.sh"
       run: sh scripts/test/run.sh scripts/test/isolation.test.sh
     - name: guard-push-test
       glob:

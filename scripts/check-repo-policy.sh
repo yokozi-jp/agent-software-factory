@@ -64,6 +64,26 @@ for file in $(git ls-files '.kiro/steering/*.md') $(git ls-files --others --excl
   fi
 done
 
+# Scripts that create or point git at another repository (git init / clone, git -C, --git-dir, GIT_DIR=).
+# Run from a Git hook, such a script inherits GIT_DIR and GIT_INDEX_FILE and acts on this repository instead
+# (docs/tooling/ci.md ("スクリプトのテスト")). Only tests isolated by scripts/test/lib.sh may do this.
+# This file holds the pattern, and lib.sh is the isolation itself, so both are skipped.
+other_repo_git='(^|[^[:alnum:]_-])git[[:space:]]+(init|clone)([[:space:]]|$)|git[[:space:]]+-C[[:space:]]|--git-dir|GIT_DIR='
+for file in $(git ls-files -- '*.sh' '*.mjs' '*.js' '*.cjs' '*.ts' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/lib.sh' ':!scripts/check-repo-policy.sh'); do
+  grep -qE "$other_repo_git" "$file" || continue
+  case "$file" in
+    scripts/test/*.test.sh)
+      # The pattern matches the literal line `. "$(dirname "$0")/lib.sh"`.
+      # shellcheck disable=SC2016
+      grep -qE '^\. "\$\(dirname "\$0"\)/lib\.sh"' "$file" && continue
+      fail "$file runs git on another repository but does not source scripts/test/lib.sh."
+      ;;
+    *)
+      fail "$file runs git on another repository. Move that code into a scripts/test/*.test.sh that sources lib.sh, or run git only on this repository."
+      ;;
+  esac
+done
+
 # References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
 # docs-check.sh only follows Markdown links inside docs/, so these plain-text paths are checked here.
 #   docs/<path>.md               the file must exist

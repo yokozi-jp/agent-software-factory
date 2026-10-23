@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Tests for scripts/check-repo-policy.sh and scripts/docs-check.sh against a throwaway copy of this repo.
 # Each case breaks one thing in the copy and expects the check to fail; the untouched copy must pass.
-# Needs node_modules (pnpm install) for `pnpm exec iwe`.
+# Needs node_modules (pnpm install) for node_modules/.bin/iwe.
 set -u
 # shellcheck source=scripts/test/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -56,6 +56,19 @@ expect_exit 1 "repo-policy: betterleaks versions must agree (ADR 0003)" policy
 fresh_copy
 printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"
 expect_exit 1 "repo-policy: steering frontmatter is required" policy
+
+# check-repo-policy: git on another repository only from tests isolated by lib.sh.
+fresh_copy
+printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && stage
+expect_exit 1 "repo-policy: git init outside scripts/test is refused" policy
+fresh_copy
+# $1 belongs to the generated script.
+# shellcheck disable=SC2016
+printf '#!/bin/sh\ngit -C "$1" commit -m x\n' > "$copy/.kiro/hooks/other.sh" && stage
+expect_exit 1 "repo-policy: git -C outside scripts/test is refused" policy
+fresh_copy
+printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.sh" && stage
+expect_exit 1 "repo-policy: a test that does not source lib.sh is refused" policy
 
 # docs-check: OKF schema, links, orphans.
 fresh_copy

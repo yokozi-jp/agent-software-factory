@@ -78,4 +78,4 @@ main を force push で戻すなど、ruleset に反する操作がどうして�
 
 [リリース](release.md) の workflow は `GITHUB_TOKEN` で `chore: release` コミットを main に直接 push します。
 `GITHUB_TOKEN` (GitHub Actions) は ruleset の bypass に追加できないので、この ruleset を有効にすると、Release workflow の push は拒否されます。
-リリースを始める前に、リリースのコミットを PR にする方式か、bypass に追加できる GitHub App のトークンを使う方式に変える必要があります。
+リリースを始める前に、リリースのコミットを PR にする方式か、bypass に追加できる GitHub App のトークンを使う方式に変える必要があります ([#12](https://github.com/yokozi-jp/hono-nx-vite-plus/issues/12))。それまでは、Release workflow は dry-run ではない実行を最初のステップで止めます。

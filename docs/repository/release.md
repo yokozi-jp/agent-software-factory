@@ -33,4 +33,4 @@ pnpm exec nx release --dry-run --skip-publish --first-release   # 初回
 
 Release workflow は `chore: release` コミットとタグを main に直接 push します。
 main を保護する ruleset を有効にすると、この push は拒否されます。`GITHUB_TOKEN` は ruleset の bypass に追加できないためです ([GitHub リポジトリの設定](github-settings.md) の「既知の制約: Release workflow」)。
-最初のリリースの前に、リリースの方式を変える必要があります。
+最初のリリースの前に、リリースの方式を変える必要があります ([#12](https://github.com/yokozi-jp/hono-nx-vite-plus/issues/12))。それまでは、dry-run ではない実行は、main が PR を必須にしている間、最初のステップで止まります。dry-run は今まで通り動きます。

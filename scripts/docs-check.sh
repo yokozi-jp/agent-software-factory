@@ -6,8 +6,15 @@
 # Run by the pre-commit hook (when docs/ changes) and by CI.
 set -eu
 
-cd "$(git rev-parse --show-toplevel)/docs"
-iwe="pnpm exec iwe"
+root="$(git rev-parse --show-toplevel)"
+# The pinned iwe from node_modules, called directly. `pnpm exec` would fall back to a global iwe of another
+# version when node_modules is missing, and runs pnpm's dependency check (an install) on every call.
+iwe="$root/node_modules/.bin/iwe"
+if [ ! -x "$iwe" ]; then
+  echo "docs-check: $iwe not found. Run \`pnpm install\` first." >&2
+  exit 1
+fi
+cd "$root/docs"
 status=0
 
 if ! $iwe schema validate; then

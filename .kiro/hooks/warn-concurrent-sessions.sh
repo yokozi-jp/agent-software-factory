@@ -13,8 +13,16 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 here="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 own_pid=""
-if [ -n "${KIRO_SESSION_ID:-}" ] && [ -f "$sessions/$KIRO_SESSION_ID.lock" ]; then
+if [ -n "${KIRO_SESSION_ID:-}" ]; then
   own_pid="$(jq -r '.pid // empty' "$sessions/$KIRO_SESSION_ID.lock" 2>/dev/null || true)"
+  # The session files are not a documented interface. When this session's own record cannot be read,
+  # the format has probably changed and no other session would be detected either, so say so.
+  own_cwd="$(jq -r '.cwd // empty' "$sessions/$KIRO_SESSION_ID.json" 2>/dev/null || true)"
+  if [ -z "$own_pid" ] || [ -z "$own_cwd" ]; then
+    echo "NOTE: warn-concurrent-sessions could not read this session's record in $sessions (pid in <id>.lock, cwd in <id>.json)."
+    echo "The Kiro session file format may have changed, so concurrent sessions are not detected. Fix .kiro/hooks/warn-concurrent-sessions.sh."
+    exit 0
+  fi
 fi
 
 is_kiro_process() {
