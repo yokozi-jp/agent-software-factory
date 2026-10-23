@@ -80,5 +80,17 @@ expect_exit 1 "docs-check: missing frontmatter fields and orphans fail" docs
 fresh_copy
 echo "See [missing](missing.md)." >> "$copy/docs/tooling/ci.md"
 expect_exit 1 "docs-check: broken links fail" docs
+fresh_copy
+# Over 250 lines is a review reminder, not an error: the check still passes (warning only).
+{ cat "$copy/docs/tooling/ci.md"; yes '' | head -n 300; } > "$copy/docs/tooling/ci.md.big" && mv "$copy/docs/tooling/ci.md.big" "$copy/docs/tooling/ci.md"
+expect_exit 0 "docs-check: over 250 lines warns but does not fail" docs
+fresh_copy
+# An index link line without a "：when to read" note fails.
+echo '- [commands](commands.md)' >> "$copy/docs/tooling/index.md"
+expect_exit 1 "docs-check: index link line needs a when-to-read note" docs
+fresh_copy
+# A half-width colon is not the full-width colon (：) the convention uses, so it also fails.
+echo '- [commands](commands.md): foo' >> "$copy/docs/tooling/index.md"
+expect_exit 1 "docs-check: index note must use the full-width colon" docs
 
 finish

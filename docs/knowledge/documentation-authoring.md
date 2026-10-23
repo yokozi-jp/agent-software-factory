@@ -15,7 +15,7 @@ tags: [knowledge, convention, documentation, iwe, okf]
 
 - 文書は `docs/<領域>/` に置き、各領域に `index.md` を置きます。`docs/index.md` から各領域の `index.md` へリンクします。
 - `index.md` は OKF の予約ファイルで、frontmatter を持ちません。`docs/index.md` だけは `okf_version` を持ちます。
-- `index.md` には H1 と、次の形式の箇条書きだけを書きます。「いつ読むか」には、その文書を開くべき作業や状況を書きます。
+- `index.md` には H1 と、次の形式の箇条書きだけを書きます。「いつ読むか」には、その文書を開くべき作業や状況を書きます。各リンク行には全角コロン `：` に続けて「いつ読むか」を必ず書きます (空や半角コロンは `scripts/docs-check.sh` が失敗させます)。開く前に要否を判断できるようにして、docs 全体を読ませないためです。
 
   ```markdown
   - [タイトル](file.md)：いつ読むか
@@ -26,7 +26,7 @@ tags: [knowledge, convention, documentation, iwe, okf]
 ## 文書の構造
 
 - 1ファイルに1つの責務を書きます。「この文書を読めば何が決まるか」を一つの問いで言える単位にします。
-- 250行は責務が混ざっていないかを見直す目安です。超えただけでは分割しません。
+- 250行は責務が混ざっていないかを見直す目安です。超えただけでは分割しません。`scripts/docs-check.sh` が250行超を警告しますが、検査は失敗させません。行数を割るための分割は、関連する内容が複数ファイルに散って読む量が増えるので避け、分けるときは責務で分けます。
 - 冒頭の H1 の直後に、要点を1〜4行で書きます。
 - 規約文書には今のルールと検査方法を書き、理由は ADR にリンクします。
 
@@ -67,7 +67,7 @@ ADR は `docs/adr/` に `NNNN-slug.md` の連番で置き、`domain-modeling` sk
 ## 検査
 
 ```sh
-scripts/docs-check.sh   # OKF のスキーマ、docs/ 内のリンク切れ、孤立文書
+scripts/docs-check.sh   # OKF のスキーマ、docs/ 内のリンク切れ、孤立文書、index の「いつ読むか」、250行超の警告
 pnpm lint:md            # markdownlint-cli2
 ```
 
