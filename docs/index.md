@@ -10,3 +10,4 @@ okf_version: "0.2"
 - [Architecture Decision Records](adr/index.md)：ツールや構成を追加、変更する前に既存の決定を確かめるとき、ADR を書くとき
 - [ナレッジ管理](knowledge/index.md)：docs、steering、AGENTS.md を追加、変更するとき、知識をどこに書くか迷ったとき
 - [エージェント設定](agents/index.md)：Issue tracker、triage ラベル、ドメイン文書の配置を確かめるとき、Matt Pocock の skill を使うとき
+- [ログ設計](logging/index.md)：アプリケーションのログを設計、実装、レビューするとき、ログ基盤の設定や費用を見直すとき
