@@ -1,0 +1,82 @@
+---
+type: Runbook
+title: "画面の性能テスト: チューニング"
+description: "データ転送量の削減 (圧縮・画像最適化・Minify)・キャッシュの活用・ネットワーク通信の最適化 (遅延読み込み・HTTP/2,3) といった画面のチューニングを定める文書。画面の性能を改善するときに読む。"
+tags: [performance-test, runbook, frontend, tuning]
+sources:
+  - resource: https://future-architect.github.io/arch-guidelines/documents/forPerformanceTest/appendix.html
+    title: Appendix
+    author: フューチャー株式会社
+---
+
+# 画面の性能テスト: チューニング
+
+画面のチューニングは、ネットワーク転送量の削減とキャッシュの活用が中心となる。
+コンテンツ圧縮・画像最適化・Minify・CDN・ブラウザキャッシュ・HTTP/2,3 の導入で体感速度を改善する。
+出典は [Appendix](about.md) (CC BY 4.0) で、OKF の形式に合わせて分割、変更している。
+
+## チューニング
+
+画面の性能テストにおけるチューニングでは、ネットワーク転送量を削減し、キャッシュを活用する。  
+システム全体としては、アプリケーションロジックやデータベースレイヤーがボトルネックとなることが多い。そのため、それらの対応を検討した後、更なるチューニングの必要があれば実施する。
+
+### データ転送量の削減
+
+#### コンテンツ圧縮
+
+HTML/CSS/JavaScript/画像などの静的リソースを圧縮して送信する。  
+2026年4月時点ではgzipよりも圧縮率の高いBrotliに対応しているブラウザも多く、導入が推奨される。
+
+> [!TIP]
+> **Brotli**
+>
+> Brotliは2015年にGoogleがWeb向けに公開した圧縮アルゴリズムである。圧縮率はトップクラスであり、圧縮レベル次第ではgzipよりも高い圧縮効果を発揮する（テキスト系ファイルでは15％〜25％程度軽量化できる）。
+>
+> 主要なブラウザでもBrotliエンコーディングに対応しており、多くのCDN（Amazon CloudFront、Google Cloud CDN、Azure CDN）でも圧縮形式としてサポートしている。
+
+#### 画像の最適化
+
+JPEGやPNGの代わりに、より圧縮率の高いWebPやAVIFを使用する。  
+また、デバイス（スマホ・PC）に合わせて適切なサイズの画像を出し分ける（`<picture>` タグや `srcset` 属性の活用）。
+
+詳細は「[Webフロントエンド設計ガイドライン \- 画像](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#%E7%94%BB%E5%83%8F)」を参照されたい。
+
+#### コードのMinify
+
+Minifyによりファイルサイズを縮小する。Minifyでは、CSSやJavaScriptから不要な改行、スペース、コメントを削除し、変数名や関数名を短く置き換える。
+
+詳細は「[Webフロントエンド設計ガイドライン \- Minify](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#minify)」を参照されたい。
+
+### キャッシュの活用
+
+#### CDNの活用
+
+HTML/CSS/JavaScript/画像などの静的リソースをエッジサーバーにキャッシュし、物理的に最も近いサーバーから応答を返却させる。
+
+#### ブラウザキャッシュの制御
+
+HTTPヘッダーの `Cache-Control` を適切に設定し、静的ファイルはブラウザに長期間キャッシュ（有効期限を長く設定）させる。
+
+`ETag` や `Last-Modified` を用いて、ファイルに変更がない場合は「304 Not Modified」を返し、ダウンロードをスキップさせる。
+
+詳細は「[Webフロントエンド設計ガイドライン \- キャッシュ](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5)」を参照されたい。
+
+### ネットワーク通信の最適化
+
+#### 画像の遅延読み込み（Lazy Load）
+
+画面のファーストビュー（スクロールせずに見える範囲）に入っていない画像は、スクロールして近づくまで読み込みを遅延させる（`<img loading="lazy">` の活用）。
+
+#### HTTP/2またはHTTP/3の導入
+
+HTTP/2・HTTP/3では、1つのコネクションで複数のリソースを並列して送受信（多重化）できるため、通信のオーバーヘッドを大幅に削減できる。
+
+Amazon CloudFrontなど主要なCDNを用いている場合は設定変更のみでHTTP/2・HTTP/3化でき、導入自体は簡易である。実施の際は、次の理由からHTTP/2とHTTP/3双方の有効化を推奨する。
+
+- **HTTP/2の弱点**: 通信環境が極端に悪い場合、一部のパケットのロスが発生すると、そのパケットが再送されるまで同一コネクション内の全てのデータ通信が一時的に停止してしまう
+- **HTTP/3による解消**: HTTP/3ではこの問題が解消されており、双方を有効化することでHTTP/2のデメリットを補える
+
+あわせて、並列リクエストによるメリットを活かすため、配信するファイルの粒度も次の通り調整する。
+
+- CSSやJavaScriptを巨大な単一ファイルとしてビルド・配信するのではなく、分割して配信することを推奨する
+- ただし、むやみに数百個まで分割すると先述のgzipやBrotliの圧縮効率が下がるため、過度な分割は避ける
