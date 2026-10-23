@@ -6,3 +6,4 @@
 - [ADR 0004: PR は squash merge だけにし、PR タイトルを Conventional Commits で検証する](0004-squash-merge-and-pr-title-lint.md)：merge の方式やコミットの検証を変えるとき
 - [ADR 0005: docs を IWE で管理し、OKF v0.2 のバンドルにする](0005-manage-docs-with-iwe-okf.md)：docs の構成、frontmatter、IWE の設定を変えるとき
 - [ADR 0006: IWE の書き換え操作を使わず、Markdown の書式は oxfmt に任せる](0006-no-iwe-rewrites.md)：IWE で文書を編集、移動しようとするとき
+- [ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く](0007-api-on-node-web-standard-app.md)：API のランタイムやデプロイ先を変えるとき、`apps/api` に入口のファイルを足すとき、Node.js や Bun 固有の API を使いたくなったとき
