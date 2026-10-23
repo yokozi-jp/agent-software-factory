@@ -55,6 +55,7 @@ export default defineConfig({
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
       {
         files: ["apps/api/src/server.ts", "apps/api/src/**/*.test.ts"],
+        // A plugin rule can only be turned off in an override that also lists the plugin.
         plugins: ["import"],
         rules: {
           "import/no-nodejs-modules": "off",
