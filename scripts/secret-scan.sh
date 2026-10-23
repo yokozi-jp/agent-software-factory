@@ -23,7 +23,7 @@ usage() {
 
 require_mise() {
   if ! command -v mise >/dev/null 2>&1; then
-    echo "secret-scan: mise is not installed, so the secret scan cannot run. See docs/local-env-setup/setup.md (\"mise\")." >&2
+    echo "secret-scan: mise is not installed, so the secret scan cannot run. See docs/local-env-setup/setup.md (\"Ubuntu の初期セットアップ\")." >&2
     exit 1
   fi
 }
