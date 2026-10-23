@@ -7,6 +7,9 @@ const ignorePatterns = [
   ".kiro/**",
 ];
 
+const runtimeImportMessage =
+  "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
+
 // Root config for `vp check` / `vp lint` / `vp fmt`.
 // Task orchestration and caching are handled by Nx, not `vp run` (see docs/adr/0002).
 export default defineConfig({
@@ -18,5 +21,47 @@ export default defineConfig({
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     options: { typeAware: true, typeCheck: true },
+    overrides: [
+      // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
+      // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
+      {
+        files: ["apps/api/src/**"],
+        plugins: ["import"],
+        rules: {
+          "import/no-nodejs-modules": "error",
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [
+                { name: "bun", message: runtimeImportMessage },
+                { name: "@hono/node-server", message: runtimeImportMessage },
+                { name: "@hono/aws-lambda", message: runtimeImportMessage },
+                { name: "@hono/node-ws", message: runtimeImportMessage },
+              ],
+              patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
+            },
+          ],
+          "no-restricted-globals": [
+            "error",
+            { name: "process", message: "Read environment variables from `c.env`." },
+            { name: "Bun", message: runtimeImportMessage },
+            { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
+            { name: "__dirname", message: "Use `import.meta.url`." },
+            { name: "__filename", message: "Use `import.meta.url`." },
+            { name: "require", message: "Use `import`." },
+          ],
+        },
+      },
+      // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
+      {
+        files: ["apps/api/src/server.ts", "apps/api/src/**/*.test.ts"],
+        plugins: ["import"],
+        rules: {
+          "import/no-nodejs-modules": "off",
+          "no-restricted-imports": "off",
+          "no-restricted-globals": "off",
+        },
+      },
+    ],
   },
 });
