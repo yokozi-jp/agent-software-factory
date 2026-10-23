@@ -14,6 +14,7 @@ frontmatter で読み込み方を決め、`scripts/check-repo-policy.sh` (pre-co
 ## frontmatter
 
 すべてのファイルに `inclusion`、`name`、`description` を書きます。
+この節の動きは Kiro CLI のエンジン (KAS) 2.32.0 で確かめました。Kiro を更新したら、`~/.local/share/kiro-cli/kas/<版>/node_modules/@kiro/agent/dist/server/acp-server.js` の `inclusion:A.enum` で、値と扱いが変わっていないかを確かめます。
 
 ```yaml
 ---

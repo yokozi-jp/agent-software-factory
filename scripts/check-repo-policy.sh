@@ -34,8 +34,8 @@ fi
 
 # ADR 0007: apps/api/src uses Web standard APIs only, enforced by lint.overrides in vite.config.ts.
 for rule in import/no-nodejs-modules no-restricted-imports no-restricted-globals; do
-  # Matches `"rule": "error"` and `"rule": [` (options on the following lines).
-  if ! grep -qE "\"$rule\": (\"error\"|\\[)" vite.config.ts; then
+  # The severity is either on the rule line (`"rule": "error"`, `"rule": ["error", ...]`) or on the next line.
+  if ! grep -A1 -E "\"$rule\":" vite.config.ts | tr -d '\n' | grep -qE "\"$rule\":[[:space:]]*\\[?[[:space:]]*\"error\""; then
     fail "vite.config.ts must set $rule to error for apps/api/src (docs/adr/0007)."
   fi
 done
