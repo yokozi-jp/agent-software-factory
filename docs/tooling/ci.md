@@ -27,7 +27,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
   `git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作するスクリプトは、`scripts/test/lib.sh` を読み込んだテストの中だけに置けます (理由は「スクリプトのテスト」)。
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
-- `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。CI は `.shellcheck-version` の版をリリースから取得し、`SHELLCHECK_SHA256` で検証してから使います ([ADR 0008](../adr/0008-pin-shellcheck.md))。
+- `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
 - `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。
@@ -40,7 +40,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 ## スクリプトのテスト
 
 `scripts/test/*.test.sh` は、`scripts/` のスクリプトと `.kiro/hooks/` の hook が、止めるべき入力で止まり、通すべき入力を通すかを確かめます。
-`ci.yml` で実行し、`secret-scan.test.sh` は betterleaks を入れた `secret-scan.yml` で実行します。pre-commit hook でも、対象のスクリプトを変えたときに実行します。
+`ci.yml` で実行し、`secret-scan.test.sh` は mise で betterleaks を入れた `secret-scan.yml` で実行します。pre-commit hook でも、対象のスクリプトを変えたときに実行します。
 
 テストは一時ディレクトリに git リポジトリを作って操作するので、このリポジトリを触らないように次の規則を守ります。
 

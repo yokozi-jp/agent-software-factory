@@ -20,7 +20,7 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 | build、test、lint、format、型チェック | Vite+ (`vp`)                                         |
 | Git hook                              | lefthook                                             |
 | コミットメッセージの検証              | commitlint (Conventional Commits)                    |
-| 秘密情報の検出                        | betterleaks (`.betterleaks-version` で固定)          |
+| 秘密情報の検出                        | betterleaks (`mise.toml` と `mise.lock` で固定)      |
 | Markdown の検査                       | markdownlint-cli2                                    |
 | docs の管理と検査                     | IWE (OKF v0.2 バンドル)                              |
 

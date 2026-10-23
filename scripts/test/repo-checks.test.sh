@@ -37,7 +37,7 @@ fresh_copy
 echo "# see docs/local-env-setup/setup.md (\"No such heading\")" >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: cited heading must exist" policy
 fresh_copy
-echo "# see docs/local-env-setup/setup.md (\"betterleaks\")" >> "$copy/lefthook.yml" && stage
+echo "# see docs/local-env-setup/setup.md (\"clone\")" >> "$copy/lefthook.yml" && stage
 expect_exit 0 "repo-policy: a heading is matched without its number" policy
 fresh_copy
 echo "# docs/adr/9999" >> "$copy/lefthook.yml" && stage
@@ -51,7 +51,7 @@ fresh_copy
 mkdir "$copy/.vite-hooks"
 expect_exit 1 "repo-policy: .vite-hooks is refused (ADR 0001)" policy
 fresh_copy
-echo "9.9.9" > "$copy/.betterleaks-version"
+sed -i.bak 's/^betterleaks = .*/betterleaks = "9.9.9"/' "$copy/mise.toml" && stage
 expect_exit 1 "repo-policy: betterleaks versions must agree (ADR 0003)" policy
 fresh_copy
 printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"

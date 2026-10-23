@@ -40,7 +40,8 @@ pre-commit:
     - name: shellcheck
       glob:
         - "*.sh"
-        - ".shellcheck-version"
+        - "mise.toml"
+        - "mise.lock"
       run: scripts/shellcheck.sh
     - name: skills-lock
       glob:
@@ -88,7 +89,7 @@ pre-commit:
         - "**/vite.config.ts"
         - ".vite-hooks/**"
         - ".betterleaks.toml"
-        - ".betterleaks-version"
+        - "mise.toml"
         - ".kiro/steering/**"
         - "scripts/check-repo-policy.sh"
         # Plain-text references to docs/ live in these files.

@@ -40,10 +40,10 @@ scripts/secret-scan.sh worktree   # 作業ツリー
 
 ## betterleaks のバージョンを上げる
 
-次の3か所を変更します。`check-repo-policy.sh` が1と3の一致を、CI の checksum 検証が1と2の一致を確認します。
+次の2か所を変えてから `mise lock --platform linux-x64` を実行し、3つのファイルを commit します。`check-repo-policy.sh` が1と2の一致を確認します。
 
-1. `.betterleaks-version`
-2. `.github/workflows/secret-scan.yml` の `BETTERLEAKS_SHA256` (リリースの `checksums.txt` の `linux_x64` の値)
-3. `.betterleaks.toml` の `betterleaksMinVersion`
+1. `mise.toml` の `betterleaks`
+2. `.betterleaks.toml` の `betterleaksMinVersion`
+3. `mise.lock` (`mise lock` が書き換える)
 
 v2 系に上げる場合は、先に [ADR 0003](../adr/0003-pin-betterleaks-v1.md) を見直します。
