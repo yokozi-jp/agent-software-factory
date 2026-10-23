@@ -35,16 +35,26 @@ fingerprint() {
 }
 before="$(fingerprint)"
 
-tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh"
-if command -v betterleaks >/dev/null 2>&1; then
-  tests="$tests scripts/test/secret-scan.test.sh"
+# The test files to run under hook variables. Each CI job passes the ones it can run: repo-checks.test.sh
+# needs node_modules, secret-scan.test.sh needs betterleaks. Without arguments, every other test file runs.
+if [ $# -gt 0 ]; then
+  tests="$*"
 else
-  echo "isolation.test.sh: betterleaks is not on PATH, so secret-scan.test.sh is not covered here (the Secret scan workflow covers it)."
+  tests=""
+  for file in "$repo_root"/scripts/test/*.test.sh; do
+    case "$file" in */isolation.test.sh) continue ;; esac
+    tests="$tests scripts/test/${file##*/}"
+  done
 fi
 
 for test in $tests; do
   # Same variables git exports to a pre-commit hook, pointing at the decoy instead of this repository.
   # cwd stays this repository, as in a hook, so the tests still copy this repository's files.
+  [ -f "$repo_root/$test" ] || {
+    echo "FAIL: $test does not exist" >&2
+    failures=$((failures + 1))
+    continue
+  }
   expect_exit 0 "$test passes with hook variables set" \
     env GIT_DIR="$decoy/.git" GIT_INDEX_FILE="$decoy/.git/index" GIT_PREFIX="" sh "$repo_root/$test"
   after="$(fingerprint)"
