@@ -48,6 +48,7 @@ pre-commit:
         - ".vite-hooks/**"
         - ".betterleaks.toml"
         - ".betterleaks-version"
+        - ".kiro/steering/**"
       run: scripts/check-repo-policy.sh
 
 pre-push:

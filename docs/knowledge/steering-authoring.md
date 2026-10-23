@@ -1,16 +1,43 @@
 ---
 type: Convention
 title: steering の書き方
-description: .kiro/steering/ のファイルに何を書くかと、1 行の形式を定める規約。steering を追加、変更するときに読む。
+description: .kiro/steering/ のファイルの frontmatter (inclusion、name、description、fileMatchPattern) と、本文の 1 行の形式を定める規約。steering を追加、変更するときに読む。
 tags: [knowledge, convention, steering]
 ---
 
 # steering の書き方
 
-`.kiro/steering/` のファイルは毎回のセッションで読み込まれるので、`docs/` の文書へのポインタだけを書きます。
-内容は `docs/` に書き、steering には「いつ」「どの文書を」読むかを 1 行で書きます ([役割分担](knowledge-architecture.md))。
+`.kiro/steering/` のファイルには、`docs/` の文書へのポインタだけを書きます。
+内容は `docs/` に書き、steering には「いつ」「どの文書を」読むかを書きます ([役割分担](knowledge-architecture.md))。
+frontmatter で読み込み方を決め、`scripts/check-repo-policy.sh` (pre-commit と CI) が検査します。
 
-## 形式
+## frontmatter
+
+すべてのファイルに `inclusion`、`name`、`description` を書きます。
+
+```yaml
+---
+inclusion: fileMatch
+fileMatchPattern: ["**/{Dockerfile,Dockerfile.*,*.Dockerfile,*.dockerfile}", "**/.dockerignore"]
+name: container
+description: Dockerfile や .dockerignore を新規作成または編集するときに、どの docs の規約を読むかを示す。
+---
+```
+
+- `inclusion`: 次から選びます。
+
+  | 値          | 読み込まれ方                                                | 使うとき                                      |
+  | ----------- | ----------------------------------------------------------- | --------------------------------------------- |
+  | `fileMatch` | 作業中のファイルが `fileMatchPattern` に一致したとき        | 特定のファイルを作成、編集するときの規約      |
+  | `auto`      | 毎回 `description` だけを読み込み、必要になったら本文を読む | ファイルと結び付かない作業 (調査、運用の手順) |
+  | `always`    | 毎回、本文まで読み込む                                      | どの作業でも必ず必要なもの                    |
+  | `manual`    | `/context add` で足したときだけ                             | ほとんど使わないもの                          |
+
+- `name`: ファイル名から `.md` を除いたものにします。
+- `description`: 「いつ」「どの docs を読むかを示すか」を書きます。`auto` では、この 1 行で読むかどうかが決まります。
+- `fileMatchPattern`: `inclusion: fileMatch` のときだけ、1 行の配列で書きます。複数のパターンは配列の要素に分けるか、`{a,b}` のブレースで書きます。パターンの中のカンマは「または」と解釈されません。
+
+## 本文
 
 - 1 つのファイルに 1 つの領域を書きます。ファイル名は領域の名前にします (例: `external-docs.md`)。
 - 本文は H1 と、次の形式の行だけにします。
