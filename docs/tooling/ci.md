@@ -24,6 +24,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 どれも、対応するファイルを変えたときに pre-commit hook でも実行します。
 
 - `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している)。
+- `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。CI は `.shellcheck-version` の版をリリースから取得し、`SHELLCHECK_SHA256` で検証してから使います ([ADR 0008](../adr/0008-pin-shellcheck.md))。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
 - `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。

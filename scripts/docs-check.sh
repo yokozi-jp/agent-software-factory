@@ -16,6 +16,8 @@ if ! $iwe schema validate; then
 fi
 
 stats="$($iwe stats -f json)"
+# The node program is single-quoted on purpose: $ and backticks belong to JavaScript, not the shell.
+# shellcheck disable=SC2016
 report="$(printf '%s' "$stats" | node -e '
   let raw = "";
   process.stdin.on("data", (c) => (raw += c)).on("end", () => {

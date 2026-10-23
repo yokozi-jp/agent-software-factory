@@ -18,6 +18,9 @@ env:
   # Git hooks are for local development only.
   LEFTHOOK: "0"
   NX_NO_CLOUD: "true"
+  # sha256 of shellcheck-v<version>.linux.x86_64.tar.gz (the asset digest on the GitHub release).
+  # Update together with .shellcheck-version; a mismatch fails the checksum step (docs/adr/0008).
+  SHELLCHECK_SHA256: "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6"
 
 jobs:
   main:
@@ -39,6 +42,21 @@ jobs:
 
       - name: Repo policy (docs/adr)
         run: scripts/check-repo-policy.sh
+
+      # The runner image ships its own shellcheck; the pinned one is put first on PATH.
+      - name: Install shellcheck
+        run: |
+          SHELLCHECK_VERSION="$(tr -d '[:space:]' < .shellcheck-version)"
+          archive="shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/${archive}"
+          echo "${SHELLCHECK_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/bin" --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Lint shell scripts
+        run: scripts/shellcheck.sh
 
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs

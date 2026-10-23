@@ -17,6 +17,8 @@ fi
 haystack="${command_str:-$payload}"
 
 # Look at each `git ... push ...` segment up to the next shell separator.
+# tr maps each separator character (; & | newline) to a newline, so the repeated \n in the second set is intended.
+# shellcheck disable=SC2020
 if printf '%s' "$haystack" | tr ';&|\n' '\n\n\n\n' \
   | grep -E '(^|[[:space:]])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)' \
   | grep -Eq '[[:space:]](--force(-with-lease|-if-includes)?(=[^[:space:]]*)?|-[[:alnum:]]*f[[:alnum:]]*|\+[^[:space:]]+)([[:space:]]|$)'; then

@@ -46,6 +46,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | 変更の影響を受けるプロジェクトだけ実行       | `pnpm exec nx affected -t check test build`      |
 | format と lint の自動修正                    | `pnpm exec vp check --fix`                       |
 | Markdown の検査                              | `pnpm lint:md`                                   |
+| シェルスクリプトの検査                       | `scripts/shellcheck.sh`                          |
 | docs の検査 (OKF、リンク切れ、孤立文書)      | `scripts/docs-check.sh`                          |
 | 依存の追加 (例: api)                         | `pnpm --filter @hono-nx-vite-plus/api add <pkg>` |
 
