@@ -25,6 +25,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 - `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している)。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
+  `git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作するスクリプトは、`scripts/test/lib.sh` を読み込んだテストの中だけに置けます (理由は「スクリプトのテスト」)。
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。CI は `.shellcheck-version` の版をリリースから取得し、`SHELLCHECK_SHA256` で検証してから使います ([ADR 0008](../adr/0008-pin-shellcheck.md))。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
@@ -50,3 +51,4 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 `lib.sh` は、git が hook の中で設定する `GIT_DIR`、`GIT_INDEX_FILE` などを消し、`GIT_CEILING_DIRECTORIES` でリポジトリの探索を `$sandbox` で止め、`GIT_ALLOW_PROTOCOL=file` でネットワーク越しの git を禁じます。
 これらがないと、pre-commit hook から実行したテストが、このリポジトリに commit して main に push します (2026-10-23 に実際に起きました)。
 `isolation.test.sh` は hook と同じ変数を設定して他のテストを実行し、その変数が指すリポジトリが変わらないことを確かめます。
+テストが失敗すると、失敗したコマンドの出力の最後の20行を表示します。

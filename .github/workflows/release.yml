@@ -50,6 +50,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      # GITHUB_TOKEN cannot bypass the main ruleset, so a real release would fail at its final push,
+      # after creating the commit locally. Stop before that while main requires pull requests (issue #12).
+      - name: Stop if main only accepts pull requests
+        if: ${{ !inputs.dry-run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Fails the step if the API call fails, instead of releasing without knowing.
+          requires_pr="$(gh api "repos/$REPO/rules/branches/main" --jq 'any(.[]; .type == "pull_request")')"
+          if [ "$requires_pr" != "false" ]; then
+            echo "::error::main only accepts pull requests (ruleset), so this workflow cannot push the release commit. See https://github.com/$REPO/issues/12 and docs/repository/release.md."
+            exit 1
+          fi
+
       - name: nx release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,4 +74,5 @@ jobs:
           args="--skip-publish --verbose"
           if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
           if [ "$FIRST_RELEASE" = "true" ]; then args="$args --first-release"; fi
+          # shellcheck disable=SC2086 # $args is a list of flags and must be split
           pnpm exec nx release $args

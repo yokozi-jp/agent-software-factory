@@ -53,18 +53,22 @@ in_sandbox_repo() {
   (cd "$dir" && "$@")
 }
 
+# On failure, the last lines of the command's output are shown, so a CI log explains the failure.
 expect_exit() {
   want="$1"
   what="$2"
   shift 2
-  "$@" >/dev/null 2>&1
+  output="$(mktemp)"
+  "$@" >"$output" 2>&1
   got=$?
   if [ "$got" -eq "$want" ]; then
     passes=$((passes + 1))
   else
     echo "FAIL: $what (want exit $want, got $got)" >&2
+    tail -n 20 "$output" | sed 's/^/    | /' >&2
     failures=$((failures + 1))
   fi
+  rm -f "$output"
 }
 
 hook_event() {

@@ -62,7 +62,16 @@ warns() {
   out="$(cd "$repo_root" && KIRO_SESSIONS_DIR="$tmp" KIRO_SESSION_ID=self sh "$sessions")"
   case "$out" in *WARNING*) return 0 ;; *) return 1 ;; esac
 }
+notes() {
+  out="$(cd "$repo_root" && KIRO_SESSIONS_DIR="$tmp" KIRO_SESSION_ID=self sh "$sessions")"
+  case "$out" in *NOTE:*) return 0 ;; *) return 1 ;; esac
+}
+expect_exit 0 "warn-concurrent-sessions notes an unreadable own record" notes
+printf '{"process":1}' > "$tmp/self.lock"
+jq -n --arg cwd "$repo_root" '{cwd: $cwd}' > "$tmp/self.json"
+expect_exit 0 "warn-concurrent-sessions notes a record without pid" notes
 write_session self "$$" "$repo_root"
+expect_exit 1 "warn-concurrent-sessions does not note a readable own record" notes
 write_session other-dir "$live" /somewhere/else
 write_session stale 999999 "$repo_root"
 write_session not-kiro "$not_kiro" "$repo_root"
