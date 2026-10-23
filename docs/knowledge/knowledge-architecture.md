@@ -29,7 +29,7 @@ tags: [knowledge, architecture, agents, steering, iwe]
 ## steering を作るとき
 
 steering は常に読み込まれ、毎回コンテキストを使います。ナビゲーションに限り、規約の本文は書きません。
-steering の書き方の規約 (`docs/knowledge/steering-authoring.md`) は、最初の steering を作るときに作ります。
+書き方は [steering の書き方](steering-authoring.md) に従います。
 
 ## 見つからないとき
 

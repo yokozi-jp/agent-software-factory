@@ -4,3 +4,4 @@
 - [Git hook](git-hooks.md)：hook で commit や push が止まったとき、hook を飛ばしたいとき、hook を変えるとき
 - [CI](ci.md)：CI が失敗したとき、workflow や CI の検証を変えるとき
 - [secret scan](secret-scan.md)：betterleaks で止まったとき、誤検知を除外するとき、betterleaks を更新するとき
+- [外部ドキュメントの読み方](external-docs.md)：AWS や Hono のドキュメントを web で調べるとき
