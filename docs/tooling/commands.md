@@ -40,6 +40,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | api の開発サーバー (<http://localhost:3000>) | `pnpm exec nx dev api`                           |
 | web の開発サーバー (<http://localhost:5173>) | `pnpm exec nx dev web`                           |
 | 全プロジェクトの lint、format、型チェック    | `pnpm check`                                     |
+| プロジェクトの外にあるファイルの同じ検査     | `pnpm check:root`                                |
 | 全プロジェクトのテスト                       | `pnpm test`                                      |
 | 全プロジェクトの build                       | `pnpm build`                                     |
 | 変更の影響を受けるプロジェクトだけ実行       | `pnpm exec nx affected -t check test build`      |

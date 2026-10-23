@@ -27,4 +27,8 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
 - `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。
+- `pnpm check:root` (`scripts/check-root-files.sh`): `apps/`、`packages/`、`tools/` の外にあるファイル (ルートの設定ファイル、`scripts/`、`docs/`、`.github/` など) に `vp check` を実行します。
+  各プロジェクトの `check` は Nx のプロジェクトの中のファイルしか見ないので、これらのファイルはこのステップで検査します。
+  対象は `git ls-files` で選ぶので、commit していない作業用のファイルは検査しません。
+  pre-commit hook では、ステージしたファイルに `vp check --fix` を実行します。
 - build の後に `git status` が空であること: `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。

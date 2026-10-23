@@ -49,6 +49,10 @@ jobs:
       - name: Docs bundle (OKF, links, orphans)
         run: scripts/docs-check.sh
 
+      # Files outside apps/ and packages/ (root configs, scripts/, docs/, .github/). Nx checks the projects.
+      - name: Check root files
+        run: pnpm check:root
+
       - run: pnpm exec nx affected -t check test build
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
