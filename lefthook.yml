@@ -25,7 +25,7 @@ pre-commit:
             glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
             exclude:
               - ".agents/**"
-              - ".kiro/**"
+              - ".kiro/skills/**"
               - "**/routeTree.gen.ts"
             run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
             stage_fixed: true
@@ -49,6 +49,37 @@ pre-commit:
         - "skills-lock.json"
         - "scripts/verify-skills-lock.mjs"
       run: node scripts/verify-skills-lock.mjs
+    # Behaviour tests (scripts/test/) for the scripts and Kiro hooks that changed.
+    - name: kiro-hooks-test
+      glob:
+        - ".kiro/hooks/*.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/kiro-hooks.test.sh"
+      run: sh scripts/test/run.sh scripts/test/kiro-hooks.test.sh
+    - name: repo-checks-test
+      glob:
+        - "scripts/check-repo-policy.sh"
+        - "scripts/docs-check.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/repo-checks.test.sh"
+      run: sh scripts/test/run.sh scripts/test/repo-checks.test.sh
+    - name: secret-scan-test
+      glob:
+        - "scripts/secret-scan.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/secret-scan.test.sh"
+      run: sh scripts/test/run.sh scripts/test/secret-scan.test.sh
+    # Tests run from this hook with GIT_DIR set; isolation.test.sh proves they still stay in their sandbox.
+    - name: isolation-test
+      glob:
+        - "scripts/test/**"
+      run: sh scripts/test/run.sh scripts/test/isolation.test.sh
+    - name: guard-push-test
+      glob:
+        - "scripts/guard-push.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/guard-push.test.sh"
+      run: sh scripts/test/run.sh scripts/test/guard-push.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
@@ -58,10 +89,22 @@ pre-commit:
         - ".betterleaks-version"
         - ".kiro/steering/**"
         - "scripts/check-repo-policy.sh"
+        # Plain-text references to docs/ live in these files.
+        - "AGENTS.md"
+        - "README.md"
+        - "lefthook.yml"
+        - ".github/**"
+        - ".kiro/hooks/**"
+        - "scripts/**"
+        - "docs/**"
+        - "**/*.ts"
       run: scripts/check-repo-policy.sh
 
 pre-push:
   commands:
+    guard-push:
+      run: scripts/guard-push.sh
+      use_stdin: true
     secret-scan:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
       run: scripts/secret-scan.sh pre-push

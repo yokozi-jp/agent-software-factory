@@ -58,6 +58,10 @@ jobs:
       - name: Lint shell scripts
         run: scripts/shellcheck.sh
 
+      # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
+      - name: Script tests
+        run: sh scripts/test/run.sh scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/isolation.test.sh
+
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs
 

@@ -1,0 +1,71 @@
+#!/usr/bin/env sh
+# Tests for scripts/check-repo-policy.sh and scripts/docs-check.sh against a throwaway copy of this repo.
+# Each case breaks one thing in the copy and expects the check to fail; the untouched copy must pass.
+# Needs node_modules (pnpm install) for `pnpm exec iwe`.
+set -u
+# shellcheck source=scripts/test/lib.sh
+. "$(dirname "$0")/lib.sh"
+
+make_sandbox
+
+# Copy tracked files (including staged ones) into a fresh sandbox repo; reuse node_modules via a symlink.
+# The file list is read from this repo before the copy is touched; every git command after that runs in the copy.
+files="$sandbox/files"
+(cd "$repo_root" && git ls-files -z) > "$files"
+fresh_copy() {
+  copy="$sandbox/copy"
+  rm -rf "$copy"
+  mkdir "$copy"
+  (cd "$repo_root" && xargs -0 tar -cf - < "$files" 2>/dev/null) | tar -xf - -C "$copy"
+  ln -s "$repo_root/node_modules" "$copy/node_modules"
+  git init -q "$copy"
+  stage
+}
+stage() { in_sandbox_repo "$copy" git add -A; }
+policy() { in_sandbox_repo "$copy" sh scripts/check-repo-policy.sh; }
+docs() { in_sandbox_repo "$copy" sh scripts/docs-check.sh; }
+
+fresh_copy
+expect_exit 0 "repo-policy passes on this repo" policy
+expect_exit 0 "docs-check passes on this repo" docs
+
+# check-repo-policy: references to docs/ from outside docs/.
+fresh_copy
+echo "# see docs/tooling/missing.md" >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: cited docs file must exist" policy
+fresh_copy
+echo "# see docs/local-env-setup/setup.md (\"No such heading\")" >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: cited heading must exist" policy
+fresh_copy
+echo "# see docs/local-env-setup/setup.md (\"betterleaks\")" >> "$copy/lefthook.yml" && stage
+expect_exit 0 "repo-policy: a heading is matched without its number" policy
+fresh_copy
+echo "# docs/adr/9999" >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: cited ADR number must exist" policy
+
+# check-repo-policy: ADR decisions.
+fresh_copy
+sed -i.bak 's/"nx": "catalog:",/"nx": "catalog:", "@nx\/vite": "24.0.0",/' "$copy/package.json" && stage
+expect_exit 1 "repo-policy: @nx/vite is refused (ADR 0002)" policy
+fresh_copy
+mkdir "$copy/.vite-hooks"
+expect_exit 1 "repo-policy: .vite-hooks is refused (ADR 0001)" policy
+fresh_copy
+echo "9.9.9" > "$copy/.betterleaks-version"
+expect_exit 1 "repo-policy: betterleaks versions must agree (ADR 0003)" policy
+fresh_copy
+printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"
+expect_exit 1 "repo-policy: steering frontmatter is required" policy
+
+# docs-check: OKF schema, links, orphans.
+fresh_copy
+sed -i.bak 's/^type: Reference$/type: Guide/' "$copy/docs/tooling/ci.md"
+expect_exit 1 "docs-check: type must be in the vocabulary" docs
+fresh_copy
+printf -- '---\ntype: Reference\ntitle: x\n---\n\n# x\n' > "$copy/docs/tooling/stray.md"
+expect_exit 1 "docs-check: missing frontmatter fields and orphans fail" docs
+fresh_copy
+echo "See [missing](missing.md)." >> "$copy/docs/tooling/ci.md"
+expect_exit 1 "docs-check: broken links fail" docs
+
+finish

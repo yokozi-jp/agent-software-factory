@@ -5,8 +5,8 @@ const ignorePatterns = [
   "**/routeTree.gen.ts",
   // Agent skills installed from upstream (tracked by skills-lock.json). Must stay byte-identical.
   ".agents/**",
-  // Kiro config. .kiro/skills holds symlinks to .agents/skills.
-  ".kiro/**",
+  // Symlinks to .agents/skills. The rest of .kiro/ (hooks, settings, steering) is checked like any other file.
+  ".kiro/skills/**",
 ];
 
 const runtimeImportMessage =

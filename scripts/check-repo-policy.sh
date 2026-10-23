@@ -64,4 +64,42 @@ for file in $(git ls-files '.kiro/steering/*.md') $(git ls-files --others --excl
   fi
 done
 
+# References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
+# docs-check.sh only follows Markdown links inside docs/, so these plain-text paths are checked here.
+#   docs/<path>.md               the file must exist
+#   docs/<path>.md ("Heading")   the file must have a heading with that text (cite headings without numbers)
+#   docs/adr/NNNN                an ADR with that number must exist
+# .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check.sh;
+# scripts/test/ cites missing docs on purpose.
+refs="$(git ls-files -- ':!docs/' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/' ':!pnpm-lock.yaml' |
+  xargs grep -HoE '(^|[^A-Za-z0-9_./-])docs/([A-Za-z0-9_./-]+\.md( \(\\?"[^"\\]+\\?"\))?|adr/[0-9]{4}([^0-9-]|$))' 2>/dev/null || true)"
+printf '%s\n' "$refs" | while IFS= read -r ref; do
+  [ -n "$ref" ] || continue
+  source="${ref%%:*}"
+  match="docs/${ref#*docs/}"
+  case "$match" in
+    docs/adr/[0-9][0-9][0-9][0-9]*.md*) path="${match%%.md*}.md" ;;
+    docs/adr/[0-9][0-9][0-9][0-9]*)
+      number="$(printf '%s' "$match" | cut -c10-13)"
+      if ! ls docs/adr/"$number"-*.md >/dev/null 2>&1; then
+        echo "repo-policy: $source cites docs/adr/$number, which does not exist." >&2
+        echo fail
+      fi
+      continue
+      ;;
+    *) path="${match%%.md*}.md" ;;
+  esac
+  if [ ! -f "$path" ]; then
+    echo "repo-policy: $source cites $path, which does not exist." >&2
+    echo fail
+    continue
+  fi
+  heading="$(printf '%s' "$match" | sed -n 's/^[^(]*(\\\{0,1\}"\([^"\\]*\)\\\{0,1\}")$/\1/p')"
+  [ -n "$heading" ] || continue
+  if ! grep -qxE "#+ ([0-9]+\. )?$(printf '%s' "$heading" | sed 's/[][\.*^$+?(){}|/]/\\&/g')" "$path"; then
+    echo "repo-policy: $source cites the heading \"$heading\" in $path, which has no such heading." >&2
+    echo fail
+  fi
+done | grep -q fail && status=1
+
 exit "$status"

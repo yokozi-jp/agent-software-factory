@@ -48,6 +48,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | Markdown の検査                              | `pnpm lint:md`                                   |
 | シェルスクリプトの検査                       | `scripts/shellcheck.sh`                          |
 | docs の検査 (OKF、リンク切れ、孤立文書)      | `scripts/docs-check.sh`                          |
+| スクリプトと Kiro の hook のテスト           | `sh scripts/test/run.sh`                         |
 | 依存の追加 (例: api)                         | `pnpm --filter @hono-nx-vite-plus/api add <pkg>` |
 
 ## 補足
