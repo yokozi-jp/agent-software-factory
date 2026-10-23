@@ -1,8 +1,8 @@
 ---
 type: Reference
 title: 外部ドキュメントの読み方
-description: AWS、Hono、Vite+、Nx の一次情報を、ナビゲーションの少ない Markdown やローカルのファイルで読むための早見表。これらのドキュメントや設定項目を調べるときに読む。
-tags: [tooling, reference, aws, hono, vite-plus, nx, web-fetch]
+description: AWS、Hono、Vite+、Nx、mise の一次情報を、ナビゲーションの少ない Markdown やローカルのファイルで読むための早見表。これらのドキュメントや設定項目を調べるときに読む。
+tags: [tooling, reference, aws, hono, vite-plus, nx, mise, web-fetch]
 ---
 
 # 外部ドキュメントの読み方
@@ -19,3 +19,4 @@ Vite+ と Nx は、GitHub の Markdown と、インストールされている�
 | Vite+ のドキュメント | `https://raw.githubusercontent.com/voidzero-dev/vite-plus/main/docs/<path>.md` | `<path>` は viteplus.dev の URL のパス (例: `guide/monorepo`、`config/run`)                                   |
 | Vite+ のテンプレート | `https://github.com/voidzero-dev/vite-plus` の `packages/cli/templates/`       | `vp create vite:monorepo` などが生成する構成。Vite+ の標準の形を確かめるときに読む                            |
 | Nx の設定項目        | `node_modules/nx/schemas/nx-schema.json`                                       | `nx.json` の各設定の説明と既定値。インストールされている版のものなので、web の docs より正確                  |
+| mise のドキュメント  | `https://raw.githubusercontent.com/jdx/mise/main/docs/<path>.md`               | `<path>` は mise.jdx.dev の URL のパス (例: `dev-tools/mise-lock`)。設定項目と既定値は `settings.toml` にある |

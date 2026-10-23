@@ -2,12 +2,12 @@
 type: Runbook
 title: 開発環境の構築
 description: clone してから hook が動き、check、test、build が通るまでの手順。新しく開発に参加するとき、マシンを作り直したときに読む。
-tags: [setup, runbook, node, pnpm, vite-plus, betterleaks, shellcheck]
+tags: [setup, runbook, node, pnpm, vite-plus, mise, betterleaks, shellcheck]
 ---
 
 # 開発環境の構築
 
-前提ツール (Git、Vite+、betterleaks、shellcheck) を入れ、`vp env install` と `pnpm install` を実行すると、Node.js、pnpm、依存、Git hook が揃います。
+前提ツール (Git、Vite+、mise) を入れ、`mise install --locked`、`vp env install`、`pnpm install` を実行すると、betterleaks、shellcheck、Node.js、pnpm、依存、Git hook が揃います。
 最後に `pnpm check && pnpm test && pnpm build` が通れば完了です。
 日常のコマンドは [開発コマンド](../tooling/commands.md) にあります。
 
@@ -56,6 +56,43 @@ vp --version
 
 Windows は WSL2 上で開発することを推奨します (hook のスクリプトは POSIX sh で書いています)。
 
+### mise
+
+Git hook と CI で使う betterleaks と shellcheck を、`mise.toml` と `mise.lock` で固定した版で入れるために使います (理由は [ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
+Debian 11 以上と Ubuntu 22.04 以上 (WSL を含む) では、署名された apt リポジトリから入れます。
+
+```sh
+sudo apt install -y extrepo
+sudo extrepo enable mise
+sudo apt update
+sudo apt install -y mise
+mise --version
+```
+
+`extrepo enable mise` が `Could not download index YAML file` で失敗するときは (社内のプロキシで extrepo のデータの取得が TLS の検証に失敗する場合など)、extrepo が書くのと同じ設定を手で書きます。
+鍵の fingerprint が `24853EC9F655CE80B48E6C3A8B81C9D17413A06D` であることを確かめてから進みます。これは extrepo のデータ (`salsa.debian.org/extrepo-team/extrepo-data` の `repos/debian/mise.yaml`) に入っている鍵と同じものです。
+
+```sh
+sudo install -dm 755 /etc/apt/keyrings
+curl -fsSL https://mise.jdx.dev/gpg-key.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/mise-archive-keyring.gpg > /dev/null
+gpg --show-keys /etc/apt/keyrings/mise-archive-keyring.gpg   # 24853EC9F655CE80B48E6C3A8B81C9D17413A06D
+sudo tee /etc/apt/sources.list.d/mise.sources > /dev/null <<'EOF'
+Types: deb
+URIs: https://mise.jdx.dev/deb
+Suites: stable
+Components: main
+Architectures: amd64 arm64
+Signed-By: /etc/apt/keyrings/mise-archive-keyring.gpg
+EOF
+cat /etc/apt/sources.list.d/mise.sources   # 6 行で、どの行も空白で始まらないこと
+sudo apt update
+sudo apt install -y mise
+mise --version
+```
+
+ほかの OS は [mise の docs](https://mise.jdx.dev/installing-mise.html) を見てください。
+hook とスクリプトは `mise exec` で道具を呼ぶので、シェルの設定 (`mise activate`) は要りません。
+
 ## 2. clone
 
 ```sh
@@ -63,71 +100,19 @@ git clone https://github.com/yokozi-jp/hono-nx-vite-plus.git
 cd hono-nx-vite-plus
 ```
 
-## 3. betterleaks
+## 3. betterleaks と shellcheck
 
-Git hook と CI で秘密情報を検出するために使います。npm パッケージではないので、各自でインストールします。
-バージョンは `.betterleaks-version` に書いたものに **ちょうど** 揃えてください。違うバージョンだと hook が失敗します (理由は [ADR 0003](../adr/0003-pin-betterleaks-v1.md))。
-
-Homebrew や `go install` は最新版 (v2 系を含む) が入ることがあるので使いません。
-GitHub Releases からバイナリを取得し、checksum を確認して `PATH` の通った場所に置きます。リポジトリの root で実行します。
+リポジトリの root で実行します。`mise.lock` に記録した版を、記録した checksum で検証してから入れます。betterleaks は、release の署名 (cosign) も検証します。
 
 ```sh
-# macOS / Linux (x64 / arm64)
-version=$(cat .betterleaks-version)
-os=$(uname -s | tr '[:upper:]' '[:lower:]')            # linux / darwin
-arch=$(uname -m); case "$arch" in x86_64) arch=x64;; aarch64) arch=arm64;; esac
-archive="betterleaks_${version}_${os}_${arch}.tar.gz"
-base="https://github.com/betterleaks/betterleaks/releases/download/v${version}"
-
-tmp=$(mktemp -d) && cd "$tmp"
-curl -sSfLO "$base/$archive"
-curl -sSfLO "$base/checksums.txt"
-# Linux: sha256sum / macOS: shasum -a 256
-grep " $archive\$" checksums.txt | (sha256sum -c - 2>/dev/null || shasum -a 256 -c -)
-tar -xzf "$archive" betterleaks
-mkdir -p ~/.local/bin && install -m 0755 betterleaks ~/.local/bin/betterleaks
-cd - && rm -rf "$tmp"
+mise install --locked
+mise exec -- betterleaks version    # mise.toml と同じ版
+mise exec -- shellcheck --version   # version: が mise.toml と同じ版
 ```
 
-`~/.local/bin` が `PATH` に入っていない場合は、シェルの設定ファイルに追加してください。
-確認します。
+`PATH` に別の版の betterleaks や shellcheck があっても、hook と CI は `mise exec` 経由で固定した版を使います。
 
-```sh
-command -v betterleaks   # いま置いた ~/.local/bin/betterleaks が表示されること
-betterleaks version      # .betterleaks-version と同じ値
-```
-
-別の場所に古い版や v2 系の betterleaks がある場合は、`PATH` で先に見つかる方が使われます。
-
-## 4. shellcheck
-
-Git hook と CI でシェルスクリプトを検査するために使います。betterleaks と同じく、バージョンは `.shellcheck-version` に書いたものに **ちょうど** 揃えます (理由は [ADR 0008](../adr/0008-pin-shellcheck.md))。
-apt や Homebrew で入る版は固定できないので、GitHub Releases からバイナリを取得し、checksum を確認して置きます。リポジトリの root で実行します。
-
-```sh
-# macOS / Linux (x86_64 / aarch64)
-version=$(cat .shellcheck-version)
-os=$(uname -s | tr '[:upper:]' '[:lower:]')            # linux / darwin
-arch=$(uname -m); case "$arch" in arm64) arch=aarch64;; esac
-archive="shellcheck-v${version}.${os}.${arch}.tar.gz"
-
-tmp=$(mktemp -d) && cd "$tmp"
-curl -sSfLO "https://github.com/koalaman/shellcheck/releases/download/v${version}/${archive}"
-# GitHub のリリースページの digest (sha256) と一致すること
-sha256sum "$archive" 2>/dev/null || shasum -a 256 "$archive"
-tar -xzf "$archive"
-mkdir -p ~/.local/bin && install -m 0755 "shellcheck-v${version}/shellcheck" ~/.local/bin/shellcheck
-cd - && rm -rf "$tmp"
-```
-
-確認します。
-
-```sh
-command -v shellcheck    # いま置いた ~/.local/bin/shellcheck が表示されること
-shellcheck --version     # version: が .shellcheck-version と同じ値
-```
-
-## 5. 依存のインストール
+## 4. 依存のインストール
 
 ```sh
 vp env install   # .node-version の Node.js と、package.json の pnpm をインストール
@@ -137,7 +122,7 @@ pnpm install     # 依存をインストールし、prepare スクリプトで l
 `pnpm install` の最後に `sync hooks: ✔️ (pre-commit, commit-msg, pre-push)` と表示されれば、hook が設定されています。
 IWE (`iwe`、`iwec`) も devDependency として入るので、別途インストールする必要はありません。
 
-## 6. 動作の確認
+## 5. 動作の確認
 
 ```sh
 node -v                      # v26.x

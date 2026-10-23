@@ -26,10 +26,12 @@ if [ -n "$(git ls-files .vite-hooks)" ] || [ -d .vite-hooks ]; then
   fail ".vite-hooks exists. Git hooks are managed by lefthook.yml (docs/adr/0001)."
 fi
 
-# ADR 0003: one betterleaks version, defined in .betterleaks-version.
-version="$(tr -d '[:space:]' < .betterleaks-version)"
-if ! grep -qE "^betterleaksMinVersion[[:space:]]*=[[:space:]]*\"$version\"" .betterleaks.toml; then
-  fail ".betterleaks.toml betterleaksMinVersion must equal .betterleaks-version ($version)."
+# ADR 0003, 0009: one betterleaks version, pinned in mise.toml.
+version="$(sed -n 's/^betterleaks[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' mise.toml)"
+if [ -z "$version" ]; then
+  fail "mise.toml must pin betterleaks to an exact version (docs/adr/0009)."
+elif ! grep -qE "^betterleaksMinVersion[[:space:]]*=[[:space:]]*\"$version\"" .betterleaks.toml; then
+  fail ".betterleaks.toml betterleaksMinVersion must equal the betterleaks version in mise.toml ($version)."
 fi
 
 # ADR 0007: apps/api/src uses Web standard APIs only, enforced by lint.overrides in vite.config.ts.

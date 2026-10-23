@@ -8,3 +8,4 @@
 - [ADR 0006: IWE の書き換え操作を使わず、Markdown の書式は oxfmt に任せる](0006-no-iwe-rewrites.md)：IWE で文書を編集、移動しようとするとき
 - [ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く](0007-api-on-node-web-standard-app.md)：API のランタイムやデプロイ先を変えるとき、`apps/api` に入口のファイルを足すとき、Node.js や Bun 固有の API を使いたくなったとき
 - [ADR 0008: シェルスクリプトは版を固定した shellcheck で検査する](0008-pin-shellcheck.md)：シェルスクリプトを足すとき、shellcheck の版や検査の対象を変えるとき
+- [ADR 0009: 版を固定する CLI ツールは mise と mise.lock で入れる](0009-mise-for-pinned-cli-tools.md)：版を固定した CLI ツールを足すとき、`mise.toml` や `mise.lock`、mise の設定を変えるとき

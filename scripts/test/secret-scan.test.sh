@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Tests for scripts/secret-scan.sh in a sandboxed repository with a generated token.
-# Needs the pinned betterleaks on PATH (the Secret scan workflow installs it).
+# Needs mise with the tools in mise.lock installed (the Secret scan workflow installs them).
 # Every git command here runs through in_sandbox_repo, and pushes go to a sandbox path, never to a named remote.
 set -u
 # shellcheck source=scripts/test/lib.sh
@@ -11,7 +11,7 @@ repo="$sandbox/repo"
 remote="$sandbox/remote.git"
 git init -q --bare "$remote"
 git init -q "$repo"
-cp "$repo_root/.betterleaks.toml" "$repo_root/.betterleaks-version" "$repo/"
+cp "$repo_root/.betterleaks.toml" "$repo_root/mise.toml" "$repo_root/mise.lock" "$repo/"
 mkdir "$repo/scripts"
 cp "$repo_root/scripts/secret-scan.sh" "$repo/scripts/"
 scan="$repo/scripts/secret-scan.sh"
@@ -45,15 +45,12 @@ expect_exit 1 "pre-push finds the token on a new branch" r sh -c "echo 'refs/hea
 expect_exit 0 "pre-push skips branch deletion" r sh -c "echo '(delete) $zero refs/heads/x $base' | sh '$scan' pre-push"
 expect_exit 1 "pre-push fails when the remote commit is unknown" r sh -c "echo 'refs/heads/main $head refs/heads/main 1111111111111111111111111111111111111111' | sh '$scan' pre-push"
 
-# Version gate.
+# Without mise the scan fails instead of passing unscanned.
 bin="$sandbox/bin"
 mkdir "$bin"
 for tool in git sh cat tr sed wc mktemp dirname basename head; do
   ln -s "$(command -v "$tool")" "$bin/$tool"
 done
-expect_exit 1 "fails without betterleaks" r env PATH="$bin" sh "$scan" all
-printf '#!/bin/sh\necho 0.0.1\n' > "$bin/betterleaks"
-chmod +x "$bin/betterleaks"
-expect_exit 1 "fails with the wrong betterleaks version" r env PATH="$bin" sh "$scan" all
+expect_exit 1 "fails without mise" r env PATH="$bin" sh "$scan" all
 
 finish

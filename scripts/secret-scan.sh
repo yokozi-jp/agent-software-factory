@@ -9,9 +9,9 @@
 #   scripts/secret-scan.sh all                  # CI push to main, manual: full history
 #   scripts/secret-scan.sh worktree             # manual: working tree files
 #
-# Fails (instead of silently skipping) when betterleaks is missing or the wrong version,
-# so nobody commits unscanned. Prints how many commits/files each scan covers, so an
-# empty scan is visible instead of passing silently.
+# betterleaks runs through `mise exec`, so the version is the one pinned in mise.toml and mise.lock
+# (docs/adr/0009). Fails (instead of silently skipping) when mise is missing, so nobody commits unscanned.
+# Prints how many commits/files each scan covers, so an empty scan is visible instead of passing silently.
 set -eu
 
 cd "$(git rev-parse --show-toplevel)"
@@ -21,22 +21,9 @@ usage() {
   exit 2
 }
 
-# Version gate (docs/adr/0003).
-require_betterleaks() {
-  required="$(tr -d '[:space:]' < .betterleaks-version)"
-  if ! command -v betterleaks >/dev/null 2>&1; then
-    cat >&2 <<EOF
-secret-scan: betterleaks is not installed, so the secret scan cannot run.
-Install betterleaks v${required}: see docs/local-env-setup/setup.md ("betterleaks").
-EOF
-    exit 1
-  fi
-  installed="$(betterleaks version 2>/dev/null || true)"
-  if [ "$installed" != "$required" ]; then
-    cat >&2 <<EOF
-secret-scan: betterleaks ${required} is required, but found "${installed}" at $(command -v betterleaks).
-Reinstall it: see docs/local-env-setup/setup.md ("betterleaks").
-EOF
+require_mise() {
+  if ! command -v mise >/dev/null 2>&1; then
+    echo "secret-scan: mise is not installed, so the secret scan cannot run. See docs/local-env-setup/setup.md (\"mise\")." >&2
     exit 1
   fi
 }
@@ -45,7 +32,7 @@ EOF
 run_betterleaks() {
   mode="$1"
   shift
-  betterleaks "$mode" --redact --no-banner --config .betterleaks.toml "$@" .
+  mise exec -- betterleaks "$mode" --redact --no-banner --config .betterleaks.toml "$@" .
 }
 
 # Scan commits selected by rev-list arguments, e.g. "base..head" or "sha --not --remotes".
@@ -94,7 +81,7 @@ shift
 case "$target" in
   staged)
     [ $# -eq 0 ] || usage
-    require_betterleaks
+    require_mise
     count="$(git diff --cached --name-only | wc -l | tr -d ' ')"
     if [ "$count" -eq 0 ]; then
       echo "secret-scan: staged: 0 files, skipped (nothing staged)"
@@ -105,23 +92,23 @@ case "$target" in
     ;;
   pre-push)
     [ $# -eq 0 ] || usage
-    require_betterleaks
+    require_mise
     scan_pre_push
     ;;
   range)
     [ $# -eq 2 ] || usage
-    require_betterleaks
+    require_mise
     scan_commits "range" "$1..$2"
     ;;
   all)
     [ $# -eq 0 ] || usage
-    require_betterleaks
+    require_mise
     echo "secret-scan: all: scanning $(git rev-list --count --all) commit(s) (full history)"
     run_betterleaks git
     ;;
   worktree)
     [ $# -eq 0 ] || usage
-    require_betterleaks
+    require_mise
     echo "secret-scan: worktree: scanning working tree files"
     run_betterleaks dir
     ;;
