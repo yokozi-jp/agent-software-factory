@@ -1,6 +1,6 @@
 # 開発ツール
 
 - [開発コマンド](commands.md)：開発サーバー、check、test、build、依存の追加などのコマンドを探すとき
-- [Git hook](git-hooks.md)：hook で commit や push が止まったとき、hook を飛ばしたいとき、hook を変えるとき
+- [Git hook](git-hooks.md)：hook で commit や push が止まったとき、Kiro の hook でコマンドが拒否されたとき、hook を飛ばしたいとき、hook を変えるとき
 - [CI](ci.md)：CI が失敗したとき、workflow や CI の検証を変えるとき
 - [secret scan](secret-scan.md)：betterleaks で止まったとき、誤検知を除外するとき、betterleaks を更新するとき

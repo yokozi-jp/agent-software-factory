@@ -34,12 +34,14 @@ pre-commit:
     - name: docs-check
       glob:
         - "docs/**"
+        - "scripts/docs-check.sh"
       run: scripts/docs-check.sh
     - name: skills-lock
       glob:
         - ".agents/**"
         - ".kiro/skills/**"
         - "skills-lock.json"
+        - "scripts/verify-skills-lock.mjs"
       run: node scripts/verify-skills-lock.mjs
     - name: repo-policy
       glob:
@@ -48,6 +50,7 @@ pre-commit:
         - ".vite-hooks/**"
         - ".betterleaks.toml"
         - ".betterleaks-version"
+        - "scripts/check-repo-policy.sh"
       run: scripts/check-repo-policy.sh
 
 pre-push:
