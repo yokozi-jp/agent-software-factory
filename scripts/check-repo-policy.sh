@@ -32,4 +32,12 @@ if ! grep -qE "^betterleaksMinVersion[[:space:]]*=[[:space:]]*\"$version\"" .bet
   fail ".betterleaks.toml betterleaksMinVersion must equal .betterleaks-version ($version)."
 fi
 
+# ADR 0007: apps/api/src uses Web standard APIs only, enforced by lint.overrides in vite.config.ts.
+for rule in import/no-nodejs-modules no-restricted-imports no-restricted-globals; do
+  # Matches `"rule": "error"` and `"rule": [` (options on the following lines).
+  if ! grep -qE "\"$rule\": (\"error\"|\\[)" vite.config.ts; then
+    fail "vite.config.ts must set $rule to error for apps/api/src (docs/adr/0007)."
+  fi
+done
+
 exit "$status"
