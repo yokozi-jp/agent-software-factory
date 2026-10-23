@@ -1,9 +1,9 @@
 ---
 inclusion: auto
 name: external-docs
-description: AWS や Hono のドキュメントを web で調べるときに、どの docs を読むかを示す。
+description: AWS、Hono、Vite+ のドキュメントや `nx.json` の設定項目を調べるときに、どこを読むかを示す。
 ---
 
 # 外部ドキュメント
 
-AWS や Hono のドキュメントを web で調べるときは、`docs/tooling/external-docs.md` を読む。
+AWS、Hono、Vite+ のドキュメントや、`nx.json` の設定項目を調べるときは、`docs/tooling/external-docs.md` を読む。
