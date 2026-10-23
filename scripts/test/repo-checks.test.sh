@@ -37,7 +37,7 @@ fresh_copy
 echo "# see docs/local-env-setup/setup.md (\"No such heading\")" >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: cited heading must exist" policy
 fresh_copy
-echo "# see docs/local-env-setup/setup.md (\"clone\")" >> "$copy/lefthook.yml" && stage
+echo "# see docs/local-env-setup/setup.md (\"VS Code で開く\")" >> "$copy/lefthook.yml" && stage
 expect_exit 0 "repo-policy: a heading is matched without its number" policy
 fresh_copy
 echo "# docs/adr/9999" >> "$copy/lefthook.yml" && stage

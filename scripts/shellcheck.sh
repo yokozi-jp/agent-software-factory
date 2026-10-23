@@ -9,7 +9,7 @@ set -eu
 cd "$(git rev-parse --show-toplevel)"
 
 if ! command -v mise >/dev/null 2>&1; then
-  echo "shellcheck: mise is not installed, so shell scripts cannot be linted. See docs/local-env-setup/setup.md (\"mise\")." >&2
+  echo "shellcheck: mise is not installed, so shell scripts cannot be linted. See docs/local-env-setup/setup.md (\"Ubuntu の初期セットアップ\")." >&2
   exit 1
 fi
 
