@@ -4,6 +4,7 @@
 
 # The secret-scan commands run scripts/secret-scan.sh, which needs `betterleaks` on PATH.
 # It is not an npm package; see docs/local-env-setup/setup.md.
+# The shellcheck job runs scripts/shellcheck.sh, which needs the pinned `shellcheck` on PATH (same doc).
 
 commit-msg:
   commands:
@@ -36,6 +37,11 @@ pre-commit:
         - "docs/**"
         - "scripts/docs-check.sh"
       run: scripts/docs-check.sh
+    - name: shellcheck
+      glob:
+        - "*.sh"
+        - ".shellcheck-version"
+      run: scripts/shellcheck.sh
     - name: skills-lock
       glob:
         - ".agents/**"

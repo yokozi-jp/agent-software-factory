@@ -16,7 +16,7 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | `commit-msg` | commitlint でコミットメッセージを検証                                                                                           |
 | `pre-commit` | betterleaks で staged の変更を scan。staged ファイルに `vp check --fix` を実行して修正を stage し、その後 Markdown を lint する |
-| `pre-commit` | 変更したファイルに応じて、`docs-check.sh`、`verify-skills-lock.mjs`、`check-repo-policy.sh` を実行                              |
+| `pre-commit` | 変更したファイルに応じて、`docs-check.sh`、`shellcheck.sh`、`verify-skills-lock.mjs`、`check-repo-policy.sh` を実行             |
 | `pre-push`   | betterleaks で push するコミットの範囲を scan                                                                                   |
 
 ## hook を一時的に飛ばす

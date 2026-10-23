@@ -2,12 +2,12 @@
 type: Runbook
 title: 開発環境の構築
 description: clone してから hook が動き、check、test、build が通るまでの手順。新しく開発に参加するとき、マシンを作り直したときに読む。
-tags: [setup, runbook, node, pnpm, vite-plus, betterleaks]
+tags: [setup, runbook, node, pnpm, vite-plus, betterleaks, shellcheck]
 ---
 
 # 開発環境の構築
 
-前提ツール (Git、Vite+、betterleaks) を入れ、`vp env install` と `pnpm install` を実行すると、Node.js、pnpm、依存、Git hook が揃います。
+前提ツール (Git、Vite+、betterleaks、shellcheck) を入れ、`vp env install` と `pnpm install` を実行すると、Node.js、pnpm、依存、Git hook が揃います。
 最後に `pnpm check && pnpm test && pnpm build` が通れば完了です。
 日常のコマンドは [開発コマンド](../tooling/commands.md) にあります。
 
@@ -99,7 +99,35 @@ betterleaks version      # .betterleaks-version と同じ値
 
 別の場所に古い版や v2 系の betterleaks がある場合は、`PATH` で先に見つかる方が使われます。
 
-## 4. 依存のインストール
+## 4. shellcheck
+
+Git hook と CI でシェルスクリプトを検査するために使います。betterleaks と同じく、バージョンは `.shellcheck-version` に書いたものに **ちょうど** 揃えます (理由は [ADR 0008](../adr/0008-pin-shellcheck.md))。
+apt や Homebrew で入る版は固定できないので、GitHub Releases からバイナリを取得し、checksum を確認して置きます。リポジトリの root で実行します。
+
+```sh
+# macOS / Linux (x86_64 / aarch64)
+version=$(cat .shellcheck-version)
+os=$(uname -s | tr '[:upper:]' '[:lower:]')            # linux / darwin
+arch=$(uname -m); case "$arch" in arm64) arch=aarch64;; esac
+archive="shellcheck-v${version}.${os}.${arch}.tar.gz"
+
+tmp=$(mktemp -d) && cd "$tmp"
+curl -sSfLO "https://github.com/koalaman/shellcheck/releases/download/v${version}/${archive}"
+# GitHub のリリースページの digest (sha256) と一致すること
+sha256sum "$archive" 2>/dev/null || shasum -a 256 "$archive"
+tar -xzf "$archive"
+mkdir -p ~/.local/bin && install -m 0755 "shellcheck-v${version}/shellcheck" ~/.local/bin/shellcheck
+cd - && rm -rf "$tmp"
+```
+
+確認します。
+
+```sh
+command -v shellcheck    # いま置いた ~/.local/bin/shellcheck が表示されること
+shellcheck --version     # version: が .shellcheck-version と同じ値
+```
+
+## 5. 依存のインストール
 
 ```sh
 vp env install   # .node-version の Node.js と、package.json の pnpm をインストール
@@ -109,7 +137,7 @@ pnpm install     # 依存をインストールし、prepare スクリプトで l
 `pnpm install` の最後に `sync hooks: ✔️ (pre-commit, commit-msg, pre-push)` と表示されれば、hook が設定されています。
 IWE (`iwe`、`iwec`) も devDependency として入るので、別途インストールする必要はありません。
 
-## 5. 動作の確認
+## 6. 動作の確認
 
 ```sh
 node -v                      # v26.x
