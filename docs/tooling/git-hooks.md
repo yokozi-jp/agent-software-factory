@@ -12,14 +12,16 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 
 ## 実行内容
 
-| hook         | 実行内容                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `commit-msg` | commitlint でコミットメッセージを検証                                                                                           |
-| `pre-commit` | betterleaks で staged の変更を scan。staged ファイルに `vp check --fix` を実行して修正を stage し、その後 Markdown を lint する |
-| `pre-commit` | 変更したファイルに応じて、`docs-check.sh`、`shellcheck.sh`、`verify-skills-lock.mjs`、`check-repo-policy.sh` を実行             |
-| `pre-push`   | betterleaks で push するコミットの範囲を scan                                                                                   |
+| hook         | 実行内容                                                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commit-msg` | commitlint でコミットメッセージを検証                                                                                                        |
+| `pre-commit` | betterleaks で staged の変更を scan。staged ファイルに `vp check --fix` を実行して修正を stage し、その後 Markdown を lint する              |
+| `pre-commit` | 変更したファイルに応じて、`docs-check.sh`、`shellcheck.sh`、`verify-skills-lock.mjs`、`check-repo-policy.sh`、`scripts/test/` のテストを実行 |
+| `pre-push`   | main への push を拒否し (`scripts/guard-push.sh`)、betterleaks で push するコミットの範囲を scan                                             |
 
 ## hook を一時的に飛ばす
+
+main への push は PR の squash merge と Release workflow だけで行います。main を意図して直すときだけ、`ALLOW_PUSH_TO_MAIN=1 git push ...` で利用者が実行します。
 
 ```sh
 LEFTHOOK=0 git commit ...                # 全 hook を飛ばす
@@ -39,11 +41,12 @@ pnpm exec lefthook run pre-commit   # hook を手動で実行
 
 ## Kiro の hook
 
-`.kiro/hooks/` には、エージェントの shell の実行を止める Kiro の PreToolUse hook があります。Git hook とは別のものです。
+`.kiro/hooks/` には、エージェントの shell の実行を止める Kiro の PreToolUse hook と、セッションの開始時に警告を出す SessionStart hook があります。Git hook とは別のものです。
 
-| hook                  | 止めるもの                                                        | 一時的に許すとき          |
-| --------------------- | ----------------------------------------------------------------- | ------------------------- |
-| `block-force-push`    | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>` | `KIRO_ALLOW_FORCE_PUSH=1` |
-| `block-iwe-normalize` | `iwe normalize` ([ADR 0006](../adr/0006-no-iwe-rewrites.md))      | `IWE_ALLOW_NORMALIZE=1`   |
+| hook                       | 止めるもの                                                                                                                       | 一時的に許すとき          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `block-force-push`         | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>`                                                                | `KIRO_ALLOW_FORCE_PUSH=1` |
+| `block-iwe-normalize`      | `iwe normalize` ([ADR 0006](../adr/0006-no-iwe-rewrites.md))                                                                     | `IWE_ALLOW_NORMALIZE=1`   |
+| `warn-concurrent-sessions` | 止めない。セッションの開始時に、同じ作業ツリーで別の Kiro セッションが動いていれば警告する ([並行作業と worktree](worktrees.md)) | 不要                      |
 
 force push が必要なときは、履歴を確かめてから利用者が自分で実行します。PR は squash merge なので、main を取り込むための rebase は要りません ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))。

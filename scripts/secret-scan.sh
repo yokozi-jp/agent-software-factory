@@ -27,7 +27,7 @@ require_betterleaks() {
   if ! command -v betterleaks >/dev/null 2>&1; then
     cat >&2 <<EOF
 secret-scan: betterleaks is not installed, so the secret scan cannot run.
-Install betterleaks v${required}: see docs/local-env-setup/setup.md ("3. betterleaks").
+Install betterleaks v${required}: see docs/local-env-setup/setup.md ("betterleaks").
 EOF
     exit 1
   fi
@@ -35,7 +35,7 @@ EOF
   if [ "$installed" != "$required" ]; then
     cat >&2 <<EOF
 secret-scan: betterleaks ${required} is required, but found "${installed}" at $(command -v betterleaks).
-Reinstall it: see docs/local-env-setup/setup.md ("3. betterleaks").
+Reinstall it: see docs/local-env-setup/setup.md ("betterleaks").
 EOF
     exit 1
   fi

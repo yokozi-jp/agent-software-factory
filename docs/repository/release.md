@@ -32,4 +32,5 @@ pnpm exec nx release --dry-run --skip-publish --first-release   # 初回
 ## 注意
 
 Release workflow は `chore: release` コミットとタグを main に直接 push します。
-main に branch protection を設定する場合は、`github-actions[bot]` が push できるように bypass を許可します ([GitHub リポジトリの設定](github-settings.md))。
+main を保護する ruleset を有効にすると、この push は拒否されます。`GITHUB_TOKEN` は ruleset の bypass に追加できないためです ([GitHub リポジトリの設定](github-settings.md) の「既知の制約: Release workflow」)。
+最初のリリースの前に、リリースの方式を変える必要があります。

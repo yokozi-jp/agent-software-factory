@@ -9,12 +9,12 @@ cd "$(git rev-parse --show-toplevel)"
 
 required="$(tr -d '[:space:]' < .shellcheck-version)"
 if ! command -v shellcheck >/dev/null 2>&1; then
-  echo "shellcheck: shellcheck is not installed. Install v${required}: see docs/local-env-setup/setup.md (\"4. shellcheck\")." >&2
+  echo "shellcheck: shellcheck is not installed. Install v${required}: see docs/local-env-setup/setup.md (\"shellcheck\")." >&2
   exit 1
 fi
 installed="$(shellcheck --version | sed -n 's/^version: //p')"
 if [ "$installed" != "$required" ]; then
-  echo "shellcheck: shellcheck ${required} is required, but found \"${installed}\" at $(command -v shellcheck). Reinstall it: see docs/local-env-setup/setup.md (\"4. shellcheck\")." >&2
+  echo "shellcheck: shellcheck ${required} is required, but found \"${installed}\" at $(command -v shellcheck). Reinstall it: see docs/local-env-setup/setup.md (\"shellcheck\")." >&2
   exit 1
 fi
 
