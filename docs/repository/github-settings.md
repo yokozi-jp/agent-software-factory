@@ -40,12 +40,12 @@ gh api --method PUT "repos/yokozi-jp/hono-nx-vite-plus/rulesets/$id" --input .gi
 
 ruleset の内容:
 
-| ルール                   | 効果                                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `deletion`               | main を削除できない                                                                                    |
-| `non_fast_forward`       | main に force push できない                                                                            |
-| `pull_request`           | main への直接の push を拒否し、PR からの squash merge だけを許可する。承認の数は 0 (1人で運用するため) |
-| `required_status_checks` | `main` (CI)、`commitlint`、`betterleaks` の3つのチェックが GitHub Actions で通らないと merge できない  |
+| ルール                   | 効果                                                                                                                                                                                                                                                                        |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deletion`               | main を削除できない                                                                                                                                                                                                                                                         |
+| `non_fast_forward`       | main に force push できない                                                                                                                                                                                                                                                 |
+| `pull_request`           | main への直接の push を拒否し、PR からの squash merge だけを許可する。承認の数は 0 (1人で運用するため)                                                                                                                                                                      |
+| `required_status_checks` | `main` (CI)、`commitlint`、`betterleaks` の3つのチェックが GitHub Actions で通らないと merge できない。`integration_id` の `15368` は GitHub Actions アプリの ID で、同じ名前のチェックを他から送っても数えられない (`gh api /apps/github-actions --jq .id` で確かめられる) |
 
 bypass は、リポジトリの管理者に `pull_request` モードだけを許しています。管理者は、チェックが壊れたときなどに PR の merge で ruleset を飛ばせますが、main への直接の push はできません。
 エージェントは利用者の認証情報で push するので、管理者に直接の push を許すと、エージェントの誤った push も通るためです。
