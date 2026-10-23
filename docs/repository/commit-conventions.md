@@ -19,7 +19,12 @@ PR は squash merge だけを使い、破壊的変更は PR タイトルの `!` 
 ```
 
 - **type** (必須): `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` `revert`
-- **scope** (任意): 書く場合は Nx のプロジェクト名 (`api`, `web`)。複数のプロジェクトにまたがる場合は省略します。
+- **scope** (任意): 変更した場所を1つ書きます。複数の場所にまたがる場合は省略します。次の中から選びます (`commitlint.config.ts` の `scope-enum` で検証します)。
+  - Nx のプロジェクト名: `api`、`web` (プロジェクトを足すと自動で増えます)
+  - `docs`: `docs/` の文書
+  - `ci`: `.github/` の workflow と ruleset
+  - `hooks`: Git hook (`lefthook.yml`、`scripts/`) と Kiro の hook (`.kiro/hooks/`)
+  - `deps`: 依存の追加と更新 (`package.json`、`pnpm-workspace.yaml` の catalog、lockfile)
 - **subject**: 日本語でも英語でも構いません。
 - **本文**: 1行は 100 文字以内にします (`body-max-line-length`)。
 - 破壊的変更は `feat(api)!: ...` のように `!` を付けます。
@@ -30,6 +35,8 @@ PR は squash merge だけを使い、破壊的変更は PR タイトルの `!` 
 feat(api): ユーザー登録 API を追加
 fix(web): トップページの表示崩れを修正
 ci: secret scan のタイムアウトを延長
+docs(docs): リリース手順を書き直す
+chore(deps): hono を 4.14 に上げる
 ```
 
 `feat` と `fix` はリリース時のバージョン決定と CHANGELOG に使われます ([リリース](release.md))。
