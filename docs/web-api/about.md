@@ -33,6 +33,7 @@ sources:
 - idempotency-and-patch.md の Idempotency-Key の IETF Draft のバージョンを、05 (2024年12月) から 08 (2026年10月) にした。IETF Datatracker (draft-ietf-httpapi-idempotency-key-header-08)。
 - status-codes.md の HTTP ステータスコードの出典を、RFC 7231 から RFC 9110 (Section 15) にした。RFC 9110 (7231 を obsolete)。
 - http-methods.md の HTTP メソッドの出典を RFC 7231 から RFC 9110 (Section 9) に、リクエストライン長 (8000 オクテット) の出典を RFC 7230 から RFC 9112 (Section 3) にした。RFC 9110・RFC 9112 (7231・7230 の該当部分を obsolete)。
+- security.md の Strict-Transport-Security の推奨値で閉じ忘れていたバッククォートを足した (`max-age=63072000; includeSubDomains`)。値は変えていない。
 
 ## 位置づけ
 
