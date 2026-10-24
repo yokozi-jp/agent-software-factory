@@ -193,6 +193,13 @@ fresh_fixture
 printf -- '---\ntype: Reference\ntitle: x\n---\n\n# x\n' > "$fixture/docs/tooling/stray.md"
 expect_exit 1 "docs-check: missing frontmatter fields and orphans fail" docs
 fresh_fixture
+# `javascript: x` in an unquoted value is invalid YAML; the check names the cause instead of leaving iwe's "required property".
+sed -i.bak 's/^description: d$/description: javascript: x/' "$fixture/docs/tooling/a.md" && rm "$fixture/docs/tooling/a.md.bak"
+expect_exit 1 "docs-check: an unquoted frontmatter value with a colon fails" docs
+fresh_fixture
+sed -i.bak 's/^description: d$/description: "javascript: x"/' "$fixture/docs/tooling/a.md" && rm "$fixture/docs/tooling/a.md.bak"
+expect_exit 0 "docs-check: a quoted frontmatter value with a colon passes" docs
+fresh_fixture
 echo "See [missing](missing.md)." >> "$fixture/docs/tooling/a.md"
 expect_exit 1 "docs-check: broken links fail" docs
 fresh_fixture
