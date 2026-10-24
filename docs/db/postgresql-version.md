@@ -36,13 +36,16 @@ PostgreSQLは概ね、次の方針でバージョンアップが公開されて�
 
 Amazon Auroraにおいて特定のバージョンが長期サポート (LTS) として指定される。[Aurora PostgreSQL 長期サポート (LTS) リリースの使用](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/AuroraUserGuide/AuroraPostgreSQL.Updates.LTS.html)によると、LTSはリリースされてから少なくとも3年間利用可能と定義されている。
 
-[Release calendars for Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraPostgreSQLReleaseNotes/aurorapostgresql-release-calendar.html) より、2024年10月時点のLTSは下表の通り。
+特定のバージョンが LTS に指定される。具体的な LTS バージョンや EOL 日は時期により変わるため、本文に表として固定せず、下記の一次情報の最新の一覧で都度確認する。
 
-| バージョン | コミュニティリリース日 | Auroraリリース日 | EOL       |
-| :--------- | :--------------------- | :--------------- | :-------- |
-| 14.6 (LTS) | 2022/10/10             | 2023/1/23        | 2027/2/28 |
-| 13.9 (LTS) | 2022/10/10             | 2023/1/23        | 2026/2/28 |
-| 12.9 (LTS) | 2021/10/11             | 2022/1/25        | 2025/2/28 |
+> [!NOTE]
+> **バージョンとサポート期限の確認先（最新の一覧を参照する）**
+>
+> コミュニティ版の PostgreSQL は、メジャーバージョンを初回リリースから5年間サポートする。2026年10月時点でサポート対象は 14〜18（18 が最新）であり、13（2025/11）・12（2024/11）は EOL 済みである。最新の対応表・EOL 日は下記で確認する。
+>
+> - [PostgreSQL: Versioning Policy](https://www.postgresql.org/support/versioning/)
+> - [Release calendars for Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraPostgreSQLReleaseNotes/aurorapostgresql-release-calendar.html)
+> - [Release calendar for Amazon RDS for PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html)
 
 LTSバージョンを利用するメリットは以下の通り。
 

@@ -55,7 +55,7 @@ sources:
   [SHOULD] APIのレスポンスタイムは、3秒以内となるように設計することを推奨する。ただし、大量のデータ集計を伴う日次レポート出力APIなど、即時性が求められない場合はこの限りではない。
 
 > [!TIP]
-> **RFC 2199 で定義されている要件レベル**
+> **RFC 2119 で定義されている要件レベル**
 >
 > インターネット技術の標準仕様であるRFCでは以下のキーワードで要件レベルを表すように規定されている。
 >
@@ -63,7 +63,7 @@ sources:
 >
 > > The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 > >
-> > [RFC 2199: Key words for use in RFCs to Indicate Requirement Levels](https://datatracker.ietf.org/doc/html/rfc2119)
+> > [RFC 2119: Key words for use in RFCs to Indicate Requirement Levels](https://datatracker.ietf.org/doc/html/rfc2119)
 >
 > <!-- textlint-enable ja-technical-writing/max-comma -->
 

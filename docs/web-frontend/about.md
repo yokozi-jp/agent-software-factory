@@ -28,6 +28,10 @@ sources:
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - 原文の図を mermaid の図に、画面のキャプチャやツールのスクリーンショットを文章の説明に置き換えた (画像はコピーしていない)。
 - 静的解析の例 (`static-analysis.md`) の ESLint、Biome、Prettier、lint-staged を、このリポジトリで使う Vite+ (`vp check`、`vp lint`、`vp fmt`) と lefthook に書き換えた。
+- validation-message.md のエラーメッセージの記述に、`aria-errormessage` は `aria-invalid="true"` とともに設定しないと支援技術に露出しない旨を足した。MDN aria-errormessage。
+- image.md の画像形式の表で、AVIF のブラウザ対応を ⚠️ から対応済みの印 (✅️) に変え、PNG のアニメーションは APNG である旨を注記した。MDN Image file type and format guide。
+- dark-mode.md の状態の保持の表で、Cookie の有効期限「最大で約68年」を、Chrome M104 以降は最大400日である旨に直し、一次情報を参考に足した。Chrome for Developers「Cookie Expires and Max-Age attributes now have upper limit」。
+- favicon.md の形式比較の表で、SVG のブラウザ対応を Safari 26 以降で対応済みに直した。WebKit Blog「WebKit Features in Safari 26.0」。
 
 ## 位置づけ
 

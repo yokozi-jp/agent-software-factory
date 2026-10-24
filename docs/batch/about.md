@@ -28,6 +28,9 @@ sources:
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - 原文の図を mermaid のコードブロックに書き直した。業務日付のタイムチャートや構成図は `flowchart`、エンティティ図は `erDiagram` で表した。表のセルの中にあった図は、表をほどいて図として並べ直した。
 - リリース (`release.md`) の、取り込んでいない Git ブランチフローのガイドラインへの参照を、このリポジトリのトランクベース開発 (ADR 0010) とリリースの手順に書き換えた。
+- ワークフローエンジン (`workflow-engine.md`) の製品比較表で、タスク間パラメータ連携の Step Functions 列と Airflow 列が入れ替わっていたのを直した。`InputPath`/`ResultPath` を Step Functions 列、XCom を Airflow 列にした。AWS Step Functions デベロッパーガイド、Apache Airflow XComs ドキュメント。
+- ワークフローエンジン (`workflow-engine.md`) の製品比較表の Airflow 列の `schedule_interval` を `schedule` に直し、Airflow 3.0 でこの引数が変わった旨の注記を表の前に足した。Apache Airflow Cron & Time Intervals ドキュメント。
+- ワークフローエンジン (`workflow-engine.md`) の Step Functions の個別タスクのリランのサポート年を、アナウンス日 (2023-11-15) に合わせて「2024年」から「2023年」に直した。AWS の What's New アナウンス。
 
 ## 位置づけ
 

@@ -135,9 +135,9 @@ PostgreSQLにはユーザーの使用可能な豊富な[データ型](https://ww
 - `smallint`
   - 代わりに `integer` または `bigint` を用いる
   - 設計者に選択させる余地をできる限り減らすため
-- `float`
-  - 代わりに `double` を用いる
-  - ドキュメント（[PostgreSQL: Documentation: 17: 8.1. Numeric Types](https://www.postgresql.org/docs/current/datatype-numeric.html)）によると、`float` 型の精度は小数点6桁程度、`double` 型は15桁程度。DBの型がJavaやGoなどの型にマッピングされることが多く、計算結果の精度に影響することを考えると、最初からdouble型を利用し、精度落ちを事前に回避する方針とする
+- `real` および `float(1)` ～ `float(24)`
+  - 浮動小数点が必要な場合は、代わりに `double precision` を用いる
+  - ドキュメント（[PostgreSQL: Documentation: 18: 8.1. Numeric Types](https://www.postgresql.org/docs/current/datatype-numeric.html)）によると、`real`（= `float4`）の精度は小数点6桁程度、`double precision`（= `float8`）は15桁程度である。また精度指定のない `float` は `double precision` を意味する。DBの型がJavaやGoなどの型にマッピングされることが多く、計算結果の精度に影響することを考えると、精度の低い `real` を避け `double precision` を利用し、精度落ちを事前に回避する方針とする
 - `money`（通貨）型
   - 代わりに桁数と適切な精度を設定した `numeric` を用いる
 

@@ -19,7 +19,7 @@ REST で表現しにくい操作はカスタムメソッド (`/copy` など) を
 
 ### 利用方針
 
-HTTPリクエストメソッドは[RFC 7231](https://datatracker.ietf.org/doc/html/rfc7231#section-4.3)および[RFC 5789](https://datatracker.ietf.org/doc/html/rfc5789#section-2)で定義されている。業務アプリケーションで使用するメソッドは以下の通りとする。CONNECT、OPTIONS、TRACEには言及しない。
+HTTPリクエストメソッドは[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-9)および[RFC 5789](https://datatracker.ietf.org/doc/html/rfc5789#section-2)で定義されている。業務アプリケーションで使用するメソッドは以下の通りとする。CONNECT、OPTIONS、TRACEには言及しない。
 
 | メソッド | 副作用 | 冪等性 | 説明                                                                                                                                                  |
 | :------- | :----- | :----- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -62,7 +62,7 @@ HTTPリクエストメソッドは[RFC 7231](https://datatracker.ietf.org/doc/ht
   - 検索条件がネストしている
 - バッチ的に複数の検索キーがあり、長大になりえる
   - IEの時代は2083文字が上限
-  - 現在は[RFC 7230の仕様上、8000文字以上の制限](https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1)であることがHTTP実装に求められる
+  - 現在は[RFC 9112の仕様上、8000オクテット以上のリクエストラインを受け付けること](https://www.rfc-editor.org/rfc/rfc9112.html#section-3)がHTTP実装に求められる
 - URLに表示したくない、ログに書き出したくない値（秘匿情報、個人情報など）を指定したい
   - 暗号化することで緩和可能だが、通常、ログに出ること自体避けるべきである
 

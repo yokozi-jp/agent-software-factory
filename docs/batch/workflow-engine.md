@@ -62,10 +62,12 @@ sources:
 
 【製品比較例 ※2025年2月時点】
 
+なお、Airflow の DAG スケジュール引数 `schedule_interval` は Airflow 3.0 (2025 年) で廃止され、`schedule` に統一された。上表の `schedule` はこの変更を反映した表記である。
+
 | 分類       | 項目                   | StepFunctions                                                                                                                | Airflow                                                                                   |
 | :--------- | :--------------------- | :--------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
-| 起動制御   | 定時起動               | ✅️Event Bridgeと組み合わせ                                                                                                   | ✅️\`schedule_interval\`                                                                   |
-|            | サイクル起動           | ✅️Event Bridgeと組み合わせ                                                                                                   | ✅️\`schedule_interval\`                                                                   |
+| 起動制御   | 定時起動               | ✅️Event Bridgeと組み合わせ                                                                                                   | ✅️\`schedule\`                                                                            |
+|            | サイクル起動           | ✅️Event Bridgeと組み合わせ                                                                                                   | ✅️\`schedule\`                                                                            |
 |            | イベント起動           | ✅️                                                                                                                           | ✅️Task Sensor                                                                             |
 |            | 繰越実行               | ❌️個別開発（外部DBを利用した状態管理など）                                                                                   | ✅️ \``` depends_on_past=true` や `trigger_rule` ``                                        |
 |            | 追い越し実行           | ✅️ステート名で制御                                                                                                           | ✅️ \``` depends_on_past=true` ``                                                          |
@@ -76,13 +78,13 @@ sources:
 |            | 条件分岐（排他分岐）   | ✅️Choiceステート                                                                                                             | ✅️BranchOperator                                                                          |
 |            | 並列実行（分散）       | ✅️Parallelステート                                                                                                           | ✅️DAG定義                                                                                 |
 |            | 集約                   | ✅️Parallel、Mapステート                                                                                                      | ✅️DAG定義                                                                                 |
-| パラメータ | タスク間パラメータ連携 | ✅️XComなど                                                                                                                   | ✅️`InputPath` `ResultPath` など                                                           |
+| パラメータ | タスク間パラメータ連携 | ✅️`InputPath` `ResultPath` など                                                                                              | ✅️XComなど                                                                                |
 | 構造化     | グループ化             | ✅️ステートマシン分離                                                                                                         | ✅️\`TaskGroup\`                                                                           |
 |            | ネスト定義             | ✅️Nested Workflows                                                                                                           | ✅️\`TaskGroup\`                                                                           |
 | 可視化     | フロー定義ビューア     | ✅️AWSコンソール                                                                                                              | ✅️Web UIある                                                                              |
 |            | 実行ビューア           | ✅️AWSコンソール                                                                                                              | ✅️Web UIある                                                                              |
 | 手動操作   | フローのリラン         | ✅️                                                                                                                           | ✅️                                                                                        |
-|            | 個別タスクのリラン     | ✅️[2024年にサポート](https://aws.amazon.com/jp/about-aws/whats-new/2023/11/aws-step-functions-restarting-workflows-failure/) | ✅️                                                                                        |
+|            | 個別タスクのリラン     | ✅️[2023年にサポート](https://aws.amazon.com/jp/about-aws/whats-new/2023/11/aws-step-functions-restarting-workflows-failure/) | ✅️                                                                                        |
 |            | 手動実行               | ⚠️最初のタスクからのみ実行可能                                                                                               | ✅️                                                                                        |
 |            | パラメータ上書き       | ✅️                                                                                                                           | ✅️                                                                                        |
 |            | タスクの強制終了       | ✅️                                                                                                                           | ✅️                                                                                        |

@@ -17,7 +17,7 @@ sources:
 
 ## HTTPステータスコード
 
-[RFC 7231](https://tools.ietf.org/html/rfc7231#section-6)で定義されているレスポンスステータスコードを利用する。使い分けは、[RFC9205](https://datatracker.ietf.org/doc/html/rfc9205)（[日本語訳](https://tex2e.github.io/rfc-translater/html/rfc9205.html#section-4.6)）の方針に従う。各種エラーに対して適用可能なステータスコードを使用し、疑わしい場合は一般的なステータスコード（200・400・500）を利用する。
+[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-15)で定義されているレスポンスステータスコードを利用する。使い分けは、[RFC9205](https://datatracker.ietf.org/doc/html/rfc9205)（[日本語訳](https://tex2e.github.io/rfc-translater/html/rfc9205.html#section-4.6)）の方針に従う。各種エラーに対して適用可能なステータスコードを使用し、疑わしい場合は一般的なステータスコード（200・400・500）を利用する。
 
 使い分けを下表に示す。
 

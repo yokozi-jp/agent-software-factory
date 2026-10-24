@@ -36,6 +36,10 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - 原文の図 (画像) を mermaid の図、または文章に置き換えた。RDB / DynamoDB の設計プロセス、データ連携方式、キャッシュパターン、RPO/RTO と復旧シナリオ、DynamoDB の選定フローは mermaid の図にし、DynamoDB のプライマリーキーの例 (`pk_sk.png`) は図の内容を文章にした。表のセルの中にある図は、変換器が表の直後に「図N」として出す。
 - Markdown の検査を通すため、次を直した。見出しのレベルが飛んでいる 5 箇所を1つ上の見出しの直下のレベルにした。太字だけの行 (「【命名ルールの例】」「【例】メジャーバージョンアップ方針」) を見出しにした。Go のコードのタブをスペースにした。
 - 実行計画の制御の表で、原文の `/_+ ... _/` を pg_hint_plan のヒント句の書き方 `/*+ ... */` に直した。原文の `*` が Markdown の強調として `_` に崩れていたと判断した。
+- postgresql-version.md の LTS/EOL の表 (2024年10月断面で固定) を、現時点のサポート対象 (14〜18) の簡潔な記述と、一次情報 (PostgreSQL Versioning Policy、Aurora/RDS の Release calendar) への参照に置き換えた。PostgreSQL: Versioning Policy。
+- postgresql-keys.md の UUID を DB 側で生成する記述を、PostgreSQL 18 以降は組み込みの `uuidv7()` で拡張不要、17 以前は拡張 (またはアプリ側) が必要、とバージョンで条件づけた。PostgreSQL 18 Documentation 9.14 UUID Functions。
+- postgresql-keys.md の参考リンクのうち、到達不能 (404) の 2 件 (terra-drone.net と zenn.dev/uncode_jp/articles/dcf20a2c5b0d76) を削除した。curl による HTTP 404 の確認。
+- postgresql-column.md のデータ型で、存在しない型名 `double` を `double precision` に直し、`real` は約6桁・`double precision` は約15桁・精度指定のない `float` は `double precision` を意味する、と精度の記述を正した。PostgreSQL: Documentation 8.1 Numeric Types。
 
 ## 位置づけ
 

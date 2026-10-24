@@ -48,7 +48,7 @@ sources:
   "error.code": "PAYMENT-003",
   "exception.type": "com.example.PaymentApiException",
   "exception.message": "Credit card company timeout",
-  "exception.stack_trace": "com.example.PaymentApiException: Credit card company timeout\n\tat com.example.MyPaymentService.processPayment(MyPaymentService.java:42)\n\t... (スタックトレースが続く)"
+  "exception.stacktrace": "com.example.PaymentApiException: Credit card company timeout\n\tat com.example.MyPaymentService.processPayment(MyPaymentService.java:42)\n\t... (スタックトレースが続く)"
 }
 ```
 
