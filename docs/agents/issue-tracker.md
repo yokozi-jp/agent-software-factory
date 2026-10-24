@@ -19,6 +19,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
+- **Retry transient failures**: `api.github.com` sometimes fails with `EOF` or `SSL_ERROR_SYSCALL`. Repeat the same request: `for i in 1 2 3 4 5; do gh issue view 45 --json title && break; sleep 3; done`. A write (`gh issue comment`, `gh issue edit`) that failed with `EOF` may still have reached GitHub, so read the issue before repeating it.
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 

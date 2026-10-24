@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: 並行作業と worktree
-description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree から PR を出すときに読む。
+description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いている、または main の作業ツリーが origin/main より古いと警告されたとき、並行して作業を始めるとき、worktree から PR を出すときに読む。
 tags: [tooling, runbook, git, worktree, kiro]
 ---
 
@@ -15,6 +15,14 @@ Kiro の hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツ�
 
 1. 編集、commit、ブランチの切り替えをする前に、利用者に伝えます。
 2. 下の手順で worktree を作り、そこで作業します。
+
+## 作業ツリーが古いと警告されたとき
+
+main の作業ツリーが origin/main より遅れていると、そこにある docs、ADR、設定は古い内容です。それを読んで調べたり決めたりすると、すでに変わったことを前提にしてしまいます。Kiro の hook (`.kiro/hooks/warn-stale-checkout.sh`) は、セッションの開始時に origin/main を fetch し、main にいて遅れていれば、遅れた commit 数と違いのあるファイルを警告します。feature ブランチは、普段から origin/main より遅れているので警告しません。
+
+1. 調べる前に、`git show origin/main:<path>` か `git diff --stat HEAD origin/main` で origin/main の内容を読みます。
+2. 作業は、下の手順で origin/main から worktree を作って行います。
+3. main の作業ツリーを `git pull` で進めるのは、別のセッションがいないことを確かめ、利用者に伝えてからにします。hook は作業ツリーを変えません。
 
 ## worktree を作る
 
