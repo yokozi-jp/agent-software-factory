@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0016: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く"
+title: "ADR 0017: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く"
 description: pnpm workspace の全てのプロジェクトとルートを Knip 6.42.1 で検査し、未参照のファイル、未使用の export、未使用の依存が見つかったら pre-commit hook と CI で失敗させる決定。例外を entry、project、ignoreDependencies、@public で個別に書き、不要になった例外も失敗させる。Knip で止まったとき、例外を足すとき、Knip の版や設定を変えるときに読む。
 tags: [adr, tooling, knip, ci, quality, dependencies]
 ---
 
-# ADR 0016: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く
+# ADR 0017: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く
 
 どこからも使われていないファイル、export、依存を見つけるものはありませんでした。TypeScript の `noUnusedLocals` や oxlint の `no-unused-vars` は 1 つのファイルの中しか見ません。ほかのファイルから import されない export や、`package.json` に残った依存は見えません。そこで Knip で、workspace 全体の import のつながりを見て検査します。
 

@@ -49,7 +49,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | format と lint の自動修正                                                                        | `pnpm exec vp check --fix`                                                                                                |
 | Markdown の検査                                                                                  | `pnpm lint:md`                                                                                                            |
 | 重複コードの検査 (`apps/`、`packages/`)                                                          | `pnpm lint:dup`。閾値は [ADR 0014](../adr/0014-jscpd-duplication-threshold.md)                                            |
-| 未使用のファイル、export、依存の検査 (workspace の全プロジェクトとルート)                        | `pnpm lint:unused`。例外は `knip.jsonc` ([ADR 0016](../adr/0016-knip-unused-code.md))                                     |
+| 未使用のファイル、export、依存の検査 (workspace の全プロジェクトとルート)                        | `pnpm lint:unused`。例外は `knip.jsonc` ([ADR 0017](../adr/0017-knip-unused-code.md))                                     |
 | シェルスクリプトの検査                                                                           | `scripts/shellcheck.sh`                                                                                                   |
 | GitHub Actions の workflow の検査 (actionlint、zizmor)                                           | `scripts/lint-workflows.sh`                                                                                               |
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |

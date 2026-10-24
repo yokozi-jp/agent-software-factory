@@ -1,4 +1,4 @@
-// Unused files, exports and dependencies in every pnpm workspace project and the root (docs/adr/0016).
+// Unused files, exports and dependencies in every pnpm workspace project and the root (docs/adr/0017).
 // Each entry and ignore below is an exception Knip cannot see by itself; its reason is written next to it.
 {
   // The JSONC schema allows the trailing commas that vp fmt writes.
