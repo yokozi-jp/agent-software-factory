@@ -12,6 +12,8 @@ remote="$sandbox/remote.git"
 git init -q --bare "$remote"
 git init -q "$repo"
 cp "$repo_root/.betterleaks.toml" "$repo_root/mise.toml" "$repo_root/mise.lock" "$repo/"
+# `mise exec` installs every missing tool in mise.toml, and Semgrep installs from its dependency graph in .mise/locks/.
+cp -R "$repo_root/.mise" "$repo/"
 mkdir "$repo/scripts"
 cp "$repo_root/scripts/secret-scan.sh" "$repo/scripts/"
 scan="$repo/scripts/secret-scan.sh"
