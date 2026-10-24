@@ -1,25 +1,25 @@
-# Agent instructions
+# エージェント向けの指示
 
-## Docs
+## ドキュメント
 
-Conventions, runbooks, and ADRs live in `docs/`. Start at `docs/index.md`; each line says when to read that area. Read `docs/adr/index.md` before adding or changing a tool, plugin, or task runner.
+規約、ランブック、ADR は `docs/` にあります。まず `docs/index.md` から読み始めてください。各行に、その領域をいつ読むべきかが書かれています。ツール・プラグイン・タスクランナーを追加・変更する前に、`docs/adr/index.md` を読んでください。
 
 `docs/` は過去の調査の cache で、古くなっていることがある。作業する前に、今の一次情報 (仕様、公式ドキュメント) と、今のデファクトスタンダード、ベストプラクティス、アンチパターンを調べる。取り込んだガイドライン (`about.md` がある領域) は 2023〜2025 年に書かれている。一次情報と docs が食い違ったら一次情報に従い、同じ変更で docs を直す。取り込んだ領域なら、その `about.md` の「原文からの変更点」に書く。合意した範囲の外の修正になるなら、直さずに報告する。
 
-## Recommendations
+## 推奨 (レコメンデーション)
 
-When you recommend a tool, layout, or setting, say whether it is the standard practice, name the source of that standard (official docs, the tool's template or defaults), and name the anti-pattern it avoids. Mark your own judgement as judgement.
+ツール・レイアウト・設定を推奨するときは、それが標準的なやり方かどうかを述べ、その標準の出典 (公式ドキュメント、そのツールのテンプレートやデフォルト) を挙げ、それが避けるアンチパターンを挙げる。あなた自身の判断は、判断であると明示する。
 
-## Agent skills
+## エージェントスキル
 
-### Issue tracker
+### イシュートラッカー
 
-Issues live in GitHub Issues for `yokozi-jp/agent-software-factory`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+イシューは `yokozi-jp/agent-software-factory` の GitHub Issues にあり、`gh` CLI で管理する。`docs/agents/issue-tracker.md` を参照。
 
-### Triage labels
+### トリアージラベル
 
-The five canonical triage roles use the default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+5 つの正式なトリアージ役割は、デフォルトのラベル文字列 (`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`) を使う。`docs/agents/triage-labels.md` を参照。
 
-### Domain docs
+### ドメインドキュメント
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+シングルコンテキスト構成: リポジトリルートに `GLOSSARY.md` 1 つと `docs/adr/` を置く。`docs/agents/domain.md` を参照。
