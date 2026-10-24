@@ -1,4 +1,2 @@
-# Code owners: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
-# GitHub requests a review from the owner on every pull request. The ruleset does not require it
-# (require_code_owner_review is false in .github/rulesets/protect-main.json). See docs/repository/github-settings.md.
+# Code owners. What this does here, and why owner approval is not required: docs/repository/github-settings.md
 * @yokozi-jp

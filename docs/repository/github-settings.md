@@ -54,18 +54,19 @@ bypass は、リポジトリの管理者に `pull_request` モードだけを許
 ## 3. 脆弱性の報告 (private vulnerability reporting)
 
 [SECURITY.md](../../SECURITY.md) は、脆弱性を GitHub の private vulnerability reporting で報告するよう案内しています。
-有効にすると、リポジトリの Security タブの Advisories に「Report a vulnerability」のボタンが出て、報告は非公開の advisory の下書きとして届きます ([GitHub の docs](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository))。
+有効にすると、リポジトリの Security タブの Advisories に「Report a vulnerability」のボタンが出て、報告者は非公開で報告を送れます ([GitHub の docs](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository))。
 公開リポジトリでだけ使えます。
 
 ```sh
 gh api --method PUT repos/yokozi-jp/agent-software-factory/private-vulnerability-reporting
 ```
 
-報告の通知は、リポジトリを All Activity か Custom の Security alerts で Watch している管理者に届きます。
+新しい報告の通知は、リポジトリの管理者に届きます。届くのは、リポジトリを All Activity か Custom の Security alerts で Watch していて、リポジトリの通知を有効にしている場合です。
 
 ## 4. CODEOWNERS
 
-`.github/CODEOWNERS` で、全てのファイルの所有者を `@yokozi-jp` にしています。PR を開くと、所有者にレビューの依頼が自動で届きます ([GitHub の docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners))。
+`.github/CODEOWNERS` で、全てのファイルの所有者を `@yokozi-jp` にしています ([GitHub の docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners))。
+GitHub は、所有するファイルを変える PR が開かれると、所有者にレビューを依頼します。ただし PR を開いた人自身には依頼しません。エージェントは利用者の認証情報で PR を開くので、このリポジトリでは依頼はほとんど届かず、CODEOWNERS は所有者を記録し、ファイルの画面に表示するために置いています。
 ruleset の `require_code_owner_review` は `false` のままにし、所有者の承認を merge の条件にしていません。1人で運用していて、承認の数も 0 にしているためです。
 
 CODEOWNERS の設定は GitHub の側にはなく、ファイルを main に置くだけで有効になります。所有者には、リポジトリへの書き込みの権限が必要です。
@@ -77,13 +78,13 @@ gh api repos/yokozi-jp/agent-software-factory --jq '{allow_squash_merge, allow_m
 gh api repos/yokozi-jp/agent-software-factory/rules/branches/main --jq '.[].type'
 gh api repos/yokozi-jp/agent-software-factory/private-vulnerability-reporting
 gh api repos/yokozi-jp/agent-software-factory/codeowners/errors
-gh api repos/yokozi-jp/agent-software-factory/community/profile --jq '.files | {contributing: (.contributing != null), readme: (.readme != null), license: (.license != null)}'
+gh api repos/yokozi-jp/agent-software-factory/community/profile --jq '.files.contributing.html_url'
 ```
 
 - 2つ目のコマンドで、`deletion`、`non_fast_forward`、`pull_request`、`required_status_checks` が表示されれば有効です。
 - 3つ目で `{"enabled":true}` なら、private vulnerability reporting は有効です。
-- 4つ目で `"errors":[]` なら、CODEOWNERS に書き間違いや、書き込みの権限がない所有者はありません。
-- 5つ目は、GitHub が CONTRIBUTING.md などを認識しているかを表示します。SECURITY.md は、Insights の Community Standards の「Security policy」で確かめます。
+- 4つ目で `"errors":[]` なら、CODEOWNERS に書き間違いや、書き込みの権限がない所有者はありません。CODEOWNERS が main にないときは 404 を返します。
+- 5つ目で URL が表示されれば、GitHub は CONTRIBUTING.md を認識しています。SECURITY.md はこの API に出ないので、Insights の Community Standards の「Security policy」で確かめます。
 
 ## 緊急時に main を直す
 
