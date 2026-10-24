@@ -22,13 +22,17 @@ env:
   MISE_LOCKED: "1"
 
 jobs:
-  main:
+  # The jobs run in parallel. `main` at the end is the required status check (.github/rulesets/protect-main.json),
+  # so a job added here must also be listed in the `needs` of `main`, or it will not block a merge.
+
+  # Checks that need the repository and node_modules only.
+  checks:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # nx affected compares against the merge base.
+          # adr-check compares against the base of the pull request.
           fetch-depth: 0
           persist-credentials: false
 
@@ -37,36 +41,12 @@ jobs:
           node-version-file: .node-version
           cache: true
 
-      - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
-
       - name: Repo policy (docs/adr)
         run: scripts/check-repo-policy.sh
-
-      # Installs the tools in mise.lock (checksum verified). `mise exec` in the scripts picks the pinned ones,
-      # not the runner image's. No cache: a restored cache is not checked against the lock.
-      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
-        with:
-          version: 2026.10.18
-          cache: false
-
-      - name: Lint shell scripts
-        run: scripts/shellcheck.sh
-
-      - name: Lint workflows (actionlint, zizmor)
-        run: scripts/lint-workflows.sh
 
       # Runs the Renovate pinned in scripts/renovate.sh through pnpm dlx, so it needs the network.
       - name: Validate Renovate config
         run: scripts/renovate.sh validate
-
-      # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
-      - name: Script tests
-        run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh"
-          # shellcheck disable=SC2086 # word splitting of $tests is intended
-          sh scripts/test/run.sh $tests
-          # shellcheck disable=SC2086 # word splitting of $tests is intended
-          sh scripts/test/isolation.test.sh $tests
 
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs
@@ -94,6 +74,61 @@ jobs:
       - name: Unused code and dependencies (Knip)
         run: pnpm lint:unused
 
+  # The scripts and their tests. This is the slowest job: the tests run one after another.
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: true
+
+      # Installs the tools in mise.lock (checksum verified). `mise exec` in the scripts picks the pinned ones,
+      # not the runner image's. No cache: a restored cache is not checked against the lock.
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.18
+          cache: false
+
+      - name: Lint shell scripts
+        run: scripts/shellcheck.sh
+
+      - name: Lint workflows (actionlint, zizmor)
+        run: scripts/lint-workflows.sh
+
+      # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
+      - name: Script tests
+        run: |
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh"
+          # shellcheck disable=SC2086 # word splitting of $tests is intended
+          sh scripts/test/run.sh $tests
+          # shellcheck disable=SC2086 # word splitting of $tests is intended
+          sh scripts/test/isolation.test.sh $tests
+
+  # The projects (apps/ and packages/): check, test and build the ones that the change affects.
+  nx:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # nx affected compares against the merge base.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: true
+
+      - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
+
       - run: pnpm exec nx affected -t check test build
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
@@ -105,3 +140,18 @@ jobs:
             echo "::error::The build changed tracked files. Run the build locally and commit the result."
             exit 1
           fi
+
+  # The required status check. It keeps the name `main` that the ruleset refers to. `always()` makes it run
+  # (and fail) when a job it needs failed or was cancelled; without it, the job would be skipped, and a
+  # skipped required check counts as passing.
+  main:
+    needs: [checks, scripts, nx]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: A job that main needs did not succeed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: |
+          echo "::error::A job that main needs did not succeed."
+          exit 1

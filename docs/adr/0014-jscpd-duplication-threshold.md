@@ -10,7 +10,7 @@ tags: [adr, tooling, jscpd, ci, quality]
 ファイルをまたぐコードの重複を検査するものはありませんでした。oxlint の `no-dupe-keys`、`no-dupe-class-members`、`no-duplicate-case` などは、1 つのオブジェクト、クラス、`switch` の中の重複を見る規則です。そこで jscpd で、ファイルをまたぐ重複を検査します。
 
 - **道具**: jscpd 5.4.2 です。v5 は検出を Rust で書き直した版で、npm の `jscpd` は、platform ごとの optionalDependencies からビルド済みのバイナリを入れ、Node.js の小さな wrapper (`run-jscpd.js`) から呼びます。install script はありません。版は `pnpm-workspace.yaml` の catalog で固定し、ルートの devDependencies に入れます。
-- **実行の経路**: ルートの `package.json` の `lint:dup` (`jscpd`) を、CI の `ci.yml` の `main` job と、`apps/`、`packages/`、`.jscpd.json`、`pnpm-workspace.yaml` を変えた commit の pre-commit hook から呼びます。設定はすべて `.jscpd.json` に書くので、どちらも同じ検査です。リポジトリ全体のタスクはルートの `package.json` scripts で足りる、とした [ADR 0002](0002-nx-orchestrates-vite-plus.md) に従います。`pnpm lint:md` と同じ形です。
+- **実行の経路**: ルートの `package.json` の `lint:dup` (`jscpd`) を、CI の `ci.yml` の `checks` job と、`apps/`、`packages/`、`.jscpd.json`、`pnpm-workspace.yaml` を変えた commit の pre-commit hook から呼びます。設定はすべて `.jscpd.json` に書くので、どちらも同じ検査です。リポジトリ全体のタスクはルートの `package.json` scripts で足りる、とした [ADR 0002](0002-nx-orchestrates-vite-plus.md) に従います。`pnpm lint:md` と同じ形です。
 - **対象**: `apps/` と `packages/` の JavaScript、JSX、TypeScript、TSX、CSS です (`pattern` と `format`)。`packages/` はまだないので、パスとしては渡さず、`.` を `{apps,packages}/**` で絞ります。jscpd は存在しないパスを渡すと失敗するためです。
 - **外すもの**: `.gitignore` の対象 (`dist`、`node_modules`、TanStack Router が一時ファイルを書く `.tanstack/`)、生成物の `**/routeTree.gen.ts`、テストの fixture (`**/fixtures/**`、`**/__fixtures__/**`) です。fixture はまだありませんが、わざと同じ内容を並べるものなので、先に外しておきます。テストのコード (`*.test.ts`) は手書きなので対象です。
 - **閾値**: `threshold` は 0 です。2026-10-24 に、この設定で `apps/` を測った重複率が 0% (5 ファイル、367 トークン、clone 0) だったので、その値を閾値にしました。jscpd は重複率が閾値を超えると失敗するので、今は clone が 1 つでもあれば止まります。0 より下げられないので、0 のまま保ちます。

@@ -12,12 +12,26 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 ## workflow
 
-| workflow          | 実行タイミング     | 内容                                                       |
-| ----------------- | ------------------ | ---------------------------------------------------------- |
-| `ci.yml`          | PR、main への push | 下の検証と `nx affected -t check test build`               |
-| `commitlint.yml`  | PR                 | PR タイトルと PR 内の全コミットを検証                      |
-| `secret-scan.yml` | PR、main への push | PR は PR のコミットを、main は全履歴を betterleaks で scan |
-| `release.yml`     | 手動               | `nx release` ([リリース](../repository/release.md))        |
+| workflow          | 実行タイミング     | 内容                                                             |
+| ----------------- | ------------------ | ---------------------------------------------------------------- |
+| `ci.yml`          | PR、main への push | 下の検証と `nx affected -t check test build` (並列の 4 つの job) |
+| `commitlint.yml`  | PR                 | PR タイトルと PR 内の全コミットを検証                            |
+| `secret-scan.yml` | PR、main への push | PR は PR のコミットを、main は全履歴を betterleaks で scan       |
+| `release.yml`     | 手動               | `nx release` ([リリース](../repository/release.md))              |
+
+## ci.yml の job
+
+`ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。どれも `setup-vp` で依存を入れます。
+
+| job       | 内容                                                                                                                              |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | リポジトリと node_modules だけで済む検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip |
+| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、actionlint と zizmor、Script tests。いちばん時間がかかる             |
+| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                            |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す            |
+
+`main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
+`main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと `main` は skip され、必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
 
 ## ci.yml の検証
 
@@ -52,7 +66,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 検査はローカルと CI で同じコマンドを呼ぶので、1 つ足すと次の場所を全部直します。`pnpm lint:dup` (jscpd) を足した PR #91 が例です。
 
 1. コマンド: リポジトリ全体を見る検査は、`scripts/<name>.sh` か、ルートの `package.json` の script にします。プロジェクトごとの検査は、そのプロジェクトの `package.json` の script にし、Nx の target として動かします。どちらも `vp run` は使いません ([ADR 0002](../adr/0002-nx-orchestrates-vite-plus.md))。道具の版は、npm で配られるものは `pnpm-workspace.yaml` の catalog で、それ以外は `mise.toml` で固定します ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
-2. `ci.yml` の `main` job に step を足します。
+2. `ci.yml` の job に step を足します。mise の道具を使う検査とスクリプトのテストは `scripts` に、それ以外でリポジトリ全体を見る検査は `checks` に、プロジェクトごとの検査は `nx` に入れます。新しい job を作るなら `main` の `needs` に足します。
 3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
 4. 止めるべき入力で失敗し、通すべき入力で通ることを `scripts/test/<name>.test.sh` で確かめ、`ci.yml` の Script tests と `lefthook.yml` の job に載せます。載せ忘れと実行権限の付け忘れは `check-repo-policy.sh` が止めます。
 5. docs: この文書の「ci.yml の検証」、[開発コマンド](commands.md) の構成とコマンドの表、[Git hook](git-hooks.md) の `pre-commit` の行。
