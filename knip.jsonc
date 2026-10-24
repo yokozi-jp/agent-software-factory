@@ -1,0 +1,30 @@
+// Unused files, exports and dependencies in every pnpm workspace project and the root (docs/adr/0015).
+// Each entry and ignore below is an exception Knip cannot see by itself; its reason is written next to it.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // A hint means an exception here is no longer needed (or no longer matches). Fail, so stale exceptions get removed.
+  "treatConfigHintsAsErrors": true,
+  "workspaces": {
+    ".": {
+      // scripts/docs-check.sh runs it with node. Knip does not read shell scripts.
+      "entry": ["scripts/docs-links.mjs"],
+      // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).
+      "project": ["**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}!", "!.agents/**"],
+      "ignoreDependencies": [
+        // Run as a binary outside package.json: node_modules/.bin/iwe in scripts/docs-check.sh,
+        // and `pnpm exec iwec` (the MCP server) in .kiro/settings/mcp.json.
+        "@iwe-org/iwe",
+        // nx release loads @nx/js/src/release/version-actions when nx.json sets no versionActions.
+        "@nx/js",
+      ],
+    },
+    "apps/api": {
+      "entry": [
+        // The dev server entry (@hono/vite-dev-server in vite.config.ts), also Knip's default.
+        "src/index.ts",
+        // The production entry: build.ssr in vite.config.ts. The start script runs its output, dist/server.js.
+        "src/server.ts",
+      ],
+    },
+  },
+}
