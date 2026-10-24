@@ -11,11 +11,12 @@ set -u
 
 make_sandbox
 
-# Copy tracked files (including staged ones) into a sandbox repo and commit them; reuse node_modules via a symlink.
+# Copy the working tree into a sandbox repo and commit it; reuse node_modules via a symlink.
+# Untracked files that are not ignored are copied too, so a new file counts before it is staged.
 # The file list is read from this repo before the copy is touched; every git command after that runs in the copy.
 copy="$sandbox/copy"
 mkdir "$copy"
-(cd "$repo_root" && git ls-files -z | xargs -0 tar -cf - 2>/dev/null) | tar -xf - -C "$copy"
+(cd "$repo_root" && git ls-files -z -co --exclude-standard | xargs -0 tar -cf - 2>/dev/null) | tar -xf - -C "$copy"
 ln -s "$repo_root/node_modules" "$copy/node_modules"
 git init -q "$copy"
 in_sandbox_repo "$copy" sh -c 'git add -A && git commit -qm base --no-verify'
@@ -137,5 +138,21 @@ fresh_fixture
 # A half-width colon is not the full-width colon (：) the convention uses, so it also fails.
 echo '- [A](a.md): foo' >> "$fixture/docs/tooling/index.md"
 expect_exit 1 "docs-check: index note must use the full-width colon" docs
+
+# docs-check staged: a staged change to an imported area (guide/, whose about.md cites forLog) needs its about.md.
+staged_docs() { in_sandbox_repo "$fixture" sh scripts/docs-check.sh staged; }
+fixture_base() { fresh_fixture && in_sandbox_repo "$fixture" sh -c 'git add -A && git commit -qm base --no-verify'; }
+fixture_base
+echo "more" >> "$fixture/docs/guide/page.md" && in_sandbox_repo "$fixture" git add -A
+expect_exit 1 "docs-check staged: a change to an imported area without its about.md fails" staged_docs
+expect_exit 0 "docs-check: without staged, the same change passes (CI)" docs
+echo "- page.md を変えた。" >> "$fixture/docs/guide/about.md" && in_sandbox_repo "$fixture" git add -A
+expect_exit 0 "docs-check staged: the change passes once about.md is staged too" staged_docs
+fixture_base
+echo "more" >> "$fixture/docs/tooling/a.md" && in_sandbox_repo "$fixture" git add -A
+expect_exit 0 "docs-check staged: a change to an area that is not imported passes" staged_docs
+fixture_base
+echo "more" >> "$fixture/docs/guide/page.md"
+expect_exit 0 "docs-check staged: an unstaged change to an imported area does not count" staged_docs
 
 finish

@@ -9,7 +9,9 @@
 #   5. Length reminder: documents over 250 lines are warned about, not failed. 250 lines is a
 #      review trigger for a document that may mix responsibilities, not a hard limit
 #      (docs/knowledge/documentation-authoring.md). Warnings go to stderr and leave the status 0.
-# Run by the pre-commit hook (when docs/ changes) and by CI.
+#   6. `docs-check.sh staged` only (pre-commit): a staged change to an imported area (its about.md cites
+#      arch-guidelines in `sources`) must stage that area's about.md too, which lists "原文からの変更点" (AGENTS.md).
+# Run by the pre-commit hook (when docs/ changes, with `staged`) and by CI (without it).
 set -eu
 
 root="$(git rev-parse --show-toplevel)"
@@ -90,6 +92,21 @@ find . -type f -name '*.md' -exec wc -l {} + | awk '$2 != "total" && $1 > 250 {
   sub(/^\.\//, "", $2)
   print "docs-check: " $2 " is " $1 " lines (over 250): check it answers one question (its description); split by responsibility, not to hit a line count"
 }' >&2
+
+# A change to an imported guideline is recorded in its about.md. Only the staged set says what changed together.
+if [ "${1:-}" = "staged" ]; then
+  changed="$(git diff --cached --name-only --relative --diff-filter=ACDMR -- .)"
+  for file in $changed; do
+    area="${file%%/*}"
+    [ "$area" != "$file" ] && [ "$file" != "$area/about.md" ] && [ -f "$area/about.md" ] || continue
+    # Imported when the frontmatter of about.md cites arch-guidelines (the same rule as scripts/docs-links.mjs).
+    sed -n '2,/^---$/p' "$area/about.md" | grep -q 'arch-guidelines/documents/for' || continue
+    if ! printf '%s\n' "$changed" | grep -qx "$area/about.md"; then
+      echo "docs-check: $file is in an imported guideline. Record the change under 原文からの変更点 in $area/about.md and stage it (AGENTS.md)." >&2
+      status=1
+    fi
+  done
+fi
 
 [ "$status" -eq 0 ] && echo "docs-check: OK"
 exit "$status"

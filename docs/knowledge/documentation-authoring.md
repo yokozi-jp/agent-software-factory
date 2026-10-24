@@ -72,4 +72,4 @@ scripts/docs-check.sh   # OKF のスキーマ、docs/ 内のリンク切れと�
 pnpm lint:md            # markdownlint-cli2
 ```
 
-どちらも pre-commit hook と CI で実行します。`docs/` の外へのリンク (`../` で始まるもの) は、リンク切れの検査の対象外です。
+どちらも pre-commit hook と CI で実行します。pre-commit hook は `scripts/docs-check.sh staged` を実行し、取り込んだガイドライン (`about.md` の `sources` が arch-guidelines を挙げる領域) の文書をステージしたのに、その領域の `about.md` をステージしていなければ失敗させます。変えたことを「原文からの変更点」に書くためです。`docs/` の外へのリンク (`../` で始まるもの) は、リンク切れの検査の対象外です。

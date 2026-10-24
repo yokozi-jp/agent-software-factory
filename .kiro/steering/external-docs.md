@@ -1,9 +1,9 @@
 ---
 inclusion: auto
 name: external-docs
-description: AWS、Hono、Vite+ のドキュメントや `nx.json` の設定項目を調べるときに、どこを読むかを示す。
+description: AWS、Hono、Vite+、Nx、mise、pnpm、lefthook、Oxlint、betterleaks、GitHub、RFC、OpenTelemetry、MDN のドキュメントや設定項目を調べるとき、docs の記述を一次情報で確かめるときに、どこを読むかを示す。
 ---
 
 # 外部ドキュメント
 
-AWS、Hono、Vite+ のドキュメントや、`nx.json` の設定項目を調べるときは、`docs/tooling/external-docs.md` を読む。
+外部の道具や仕様のドキュメント、設定項目を調べるとき、docs の記述を一次情報で確かめるときは、`docs/tooling/external-docs.md` を読む。対象と読む URL の一覧がある。

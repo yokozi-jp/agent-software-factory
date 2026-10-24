@@ -30,7 +30,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
-- `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。
+- `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。CI は `staged` を付けずに実行するので、`about.md` の記録の検査は pre-commit だけで行います。
 - `pnpm check:root` (`scripts/check-root-files.sh`): `apps/`、`packages/`、`tools/` の外にあるファイル (ルートの設定ファイル、`scripts/`、`docs/`、`.github/` など) に `vp check` を実行します。
   各プロジェクトの `check` は Nx のプロジェクトの中のファイルしか見ないので、これらのファイルはこのステップで検査します。
   対象は `git ls-files` で選ぶので、commit していない作業用のファイルは検査しません。

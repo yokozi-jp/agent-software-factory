@@ -35,21 +35,21 @@ docs/      ドキュメント (入口は docs/index.md)
 
 ## コマンド
 
-| やりたいこと                                                                                     | コマンド                                              |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| api の開発サーバー (<http://localhost:3000>)                                                     | `pnpm exec nx dev api`                                |
-| web の開発サーバー (<http://localhost:5173>)                                                     | `pnpm exec nx dev web`                                |
-| 全プロジェクトの lint、format、型チェック                                                        | `pnpm check`                                          |
-| プロジェクトの外にあるファイルの同じ検査                                                         | `pnpm check:root`                                     |
-| 全プロジェクトのテスト                                                                           | `pnpm test`                                           |
-| 全プロジェクトの build                                                                           | `pnpm build`                                          |
-| 変更の影響を受けるプロジェクトだけ実行                                                           | `pnpm exec nx affected -t check test build`           |
-| format と lint の自動修正                                                                        | `pnpm exec vp check --fix`                            |
-| Markdown の検査                                                                                  | `pnpm lint:md`                                        |
-| シェルスクリプトの検査                                                                           | `scripts/shellcheck.sh`                               |
-| docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`                               |
-| スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                              |
-| 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>` |
+| やりたいこと                                                                                     | コマンド                                                                                                                  |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| api の開発サーバー (<http://localhost:3000>)                                                     | `pnpm exec nx dev api`                                                                                                    |
+| web の開発サーバー (<http://localhost:5173>)                                                     | `pnpm exec nx dev web`                                                                                                    |
+| 全プロジェクトの lint、format、型チェック                                                        | `pnpm check`                                                                                                              |
+| プロジェクトの外にあるファイルの同じ検査                                                         | `pnpm check:root`                                                                                                         |
+| 全プロジェクトのテスト                                                                           | `pnpm test`                                                                                                               |
+| 全プロジェクトの build                                                                           | `pnpm build`                                                                                                              |
+| 変更の影響を受けるプロジェクトだけ実行                                                           | `pnpm exec nx affected -t check test build`                                                                               |
+| format と lint の自動修正                                                                        | `pnpm exec vp check --fix`                                                                                                |
+| Markdown の検査                                                                                  | `pnpm lint:md`                                                                                                            |
+| シェルスクリプトの検査                                                                           | `scripts/shellcheck.sh`                                                                                                   |
+| docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
+| スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
+| 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
 
