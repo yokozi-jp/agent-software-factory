@@ -122,7 +122,7 @@ done
 [ -n "$others" ] || exit 0
 
 if [ "$mode" = "pre-tool-use" ]; then
-  ask_once "${self:-unknown} $ids" "$(printf 'Other Kiro sessions are running in this working tree (%s):\n%sThey share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md).' "$here" "$others")"
+  ask_once "${self:-unknown} $ids" "$(printf 'Other Kiro sessions are running in this working tree (%s):\n%sThey share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md). File tools resolve a relative path against this working tree, not the worktree: pass absolute paths.' "$here" "$others")"
   exit 0
 fi
 
@@ -130,5 +130,7 @@ cat <<EOF
 WARNING: other Kiro sessions are running in this working tree (${here}):
 ${others}They share this index and these files. Before editing, committing, or switching branches,
 tell the user, and work in a separate git worktree (docs/tooling/worktrees.md).
+File tools (read, write, edit) resolve a relative path against this working tree, not against the worktree,
+so pass them absolute paths inside the worktree.
 EOF
 exit 0
