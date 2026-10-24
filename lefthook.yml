@@ -125,6 +125,12 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/adr-number.test.sh"
       run: sh scripts/test/run.sh scripts/test/adr-number.test.sh
+    - name: worktree-test
+      glob:
+        - "scripts/worktree.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/worktree.test.sh"
+      run: sh scripts/test/run.sh scripts/test/worktree.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
