@@ -13,6 +13,8 @@ repo="$sandbox/repo"
 git init -q "$repo"
 cp "$repo_root/mise.toml" "$repo_root/mise.lock" "$repo/"
 mkdir -p "$repo/scripts" "$repo/.github/workflows"
+# The profile in the config decides which rules run, so the test checks the same rules as the repository.
+cp "$repo_root/.github/jactionlint.yaml" "$repo/.github/"
 cp "$repo_root/scripts/lint-workflows.sh" "$repo/scripts/"
 lint="$repo/scripts/lint-workflows.sh"
 workflow="$repo/.github/workflows/test.yml"
@@ -28,27 +30,27 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
 $1
 EOF
   r git add .github/workflows/test.yml
 }
 
-r git add mise.toml mise.lock scripts
+r git add mise.toml mise.lock scripts .github/jactionlint.yaml
 r git commit -qm base
 expect_exit 0 "passes when no workflow is tracked" r sh "$lint"
 
 write_workflow '      - run: echo ok'
 expect_exit 0 "passes a clean workflow" r sh "$lint"
 
-# actionlint: an expression that refers to a step that does not exist.
+# jactionlint: an expression that refers to a step that does not exist.
 write_workflow '      - run: echo "$OUT"
         env:
           OUT: ${{ steps.missing.outputs.value }}'
-expect_exit 1 "actionlint finds an undefined step in an expression" r sh "$lint"
+expect_exit 1 "jactionlint finds an undefined step in an expression" r sh "$lint"
 
-# actionlint runs the pinned shellcheck on run: scripts.
+# jactionlint runs the pinned shellcheck on run: scripts.
 write_workflow '      - run: echo $HOME'
 expect_exit 1 "shellcheck finds an unquoted variable in run:" r sh "$lint"
 
@@ -57,7 +59,7 @@ write_workflow '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c18127
 expect_exit 1 "zizmor finds checkout without persist-credentials: false" r sh "$lint"
 
 # Script injection: an attacker-controlled value expanded into a shell script.
-# Both tools report it (actionlint: expression, zizmor: template-injection).
+# Both tools report it (jactionlint: expression, zizmor: template-injection).
 write_workflow '      - run: echo "${{ github.event.pull_request.title }}"'
 expect_exit 1 "finds a PR title expanded into run:" r sh "$lint"
 

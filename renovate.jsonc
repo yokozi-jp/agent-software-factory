@@ -31,7 +31,7 @@
       "enabled": false,
     },
     {
-      // The runner image is a platform choice (ubuntu-24.04), not a pinned tool version.
+      // The runner image is a platform choice (ubuntu-26.04, the same release as the WSL in docs/local-env-setup/setup.md), not a pinned tool version.
       "description": "Do not update the runs-on image",
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["github-runner"],

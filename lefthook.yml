@@ -43,10 +43,11 @@ pre-commit:
         - "mise.toml"
         - "mise.lock"
       run: scripts/shellcheck.sh
-    # actionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
+    # jactionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
     - name: lint-workflows
       glob:
         - ".github/workflows/*.{yml,yaml}"
+        - ".github/jactionlint.yaml"
         - "scripts/lint-workflows.sh"
         - "mise.toml"
         - "mise.lock"
@@ -124,7 +125,8 @@ pre-commit:
         - "scripts/lint-workflows.sh"
         - "scripts/test/lib.sh"
         - "scripts/test/lint-workflows.test.sh"
-        # The test copies them, and a new linter version can change what it reports.
+        # The test copies them, and a new linter version or profile can change what it reports.
+        - ".github/jactionlint.yaml"
         - "mise.toml"
         - "mise.lock"
       run: sh scripts/test/run.sh scripts/test/lint-workflows.test.sh

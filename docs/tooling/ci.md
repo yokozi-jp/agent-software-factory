@@ -23,12 +23,12 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 `ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                                                     |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip                                       |
-| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、actionlint と zizmor、Script tests。テストを 1 つずつ順に実行するので、いちばん時間がかかる |
-| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                                                   |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                   |
+| job       | 内容                                                                                                                                                      |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip                                        |
+| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、jactionlint と zizmor、Script tests。テストを 1 つずつ順に実行するので、いちばん時間がかかる |
+| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                                                    |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                    |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
@@ -45,7 +45,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `scripts/adr-check.sh`: 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定 (対象は `scripts/adr-check.sh` の `decision_path`) を変えたのに、PR の base との差分に ADR (`docs/adr/NNNN-*.md`) の追加がないと、`::warning::` を出します。job は失敗させません ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。テストと fixture の変更は対象外です。base と比べられない (浅い clone など) ときは、理由を `::notice::` に出して通します。pre-push hook でも実行します ([Git hook](git-hooks.md))。
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
-- `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を actionlint と zizmor で検査します ([ADR 0012](../adr/0012-lint-workflows.md))。actionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。actionlint は `run:` のスクリプトも固定した shellcheck で検査します。
+- `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を jactionlint (actionlint の fork。`.github/jactionlint.yaml` の `correctness` profile) と zizmor で検査します ([ADR 0012](../adr/0012-lint-workflows.md))。jactionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。jactionlint は `run:` のスクリプトも固定した shellcheck で検査します。
   zizmor は `--offline` で動かすので、GitHub API を使う audit は実行しません ([zizmor の Usage](https://docs.zizmor.sh/usage/))。版は shellcheck と同じく mise で固定します。指摘を抑制するときは、その場所に理由を書きます (`# zizmor: ignore[<audit>]`、`# shellcheck disable=SCxxxx`)。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
