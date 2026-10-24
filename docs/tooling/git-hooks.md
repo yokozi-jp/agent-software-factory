@@ -43,6 +43,8 @@ pnpm exec lefthook run pre-commit   # hook を手動で実行
 
 `.kiro/hooks/` には、エージェントの操作の前に動く Kiro の PreToolUse hook と、セッションの開始時に警告を出す SessionStart hook があります。Git hook とは別のものです。
 
+Kiro の hook は、信頼した workspace でだけ読まれます。Kiro 2.33.1 の Kiro CLI V3 (`kiro-cli --v3`) で動くことを確かめました。初めて開くと「Trust this workspace?」と聞かれ、信頼すると `~/.kiro/workspace-roots/<hash>/permissions.yaml` に `workspaceTrusted: true` が書かれます。信頼していない workspace では、下の hook はどれも動きません。worktree は workspace として別に数えるので、worktree ごとに信頼します。
+
 | hook                       | 止めるもの                                                                                                                                                                                                                                 | 一時的に許すとき          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
 | `block-force-push`         | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>`                                                                                                                                                                          | `KIRO_ALLOW_FORCE_PUSH=1` |
