@@ -53,6 +53,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
 | スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                        | `scripts/check-adr-number.sh`                                                                                             |
+| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                       |
 | 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
