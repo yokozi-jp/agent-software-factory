@@ -9,6 +9,7 @@ force="$repo_root/.kiro/hooks/block-force-push.sh"
 normalize="$repo_root/.kiro/hooks/block-iwe-normalize.sh"
 generated="$repo_root/.kiro/hooks/block-generated-writes.sh"
 sessions="$repo_root/.kiro/hooks/warn-concurrent-sessions.sh"
+stale="$repo_root/.kiro/hooks/warn-stale-checkout.sh"
 
 # block-force-push: refuse rewriting pushes, allow ordinary ones.
 for cmd in \
@@ -175,5 +176,30 @@ expect_exit 0 "warn-concurrent-sessions asks once when its own record is missing
 expect_exit 1 "warn-concurrent-sessions does not repeat the missing-record question" v3_asks sess_missing
 expect_exit 0 "warn-concurrent-sessions exits 0 without a sessions dir" sh -c "KIRO_SESSIONS_ROOT=/nonexistent KIRO_SESSIONS_DIR=/nonexistent sh '$sessions'"
 kill "$not_kiro" 2>/dev/null
+
+# warn-stale-checkout: warn only when main in this working tree is behind origin/main.
+# Runs git in clones under the sandbox made above (lib.sh refuses anything outside it).
+stale_dir="$sandbox/stale"
+mkdir -p "$stale_dir"
+git init -q --bare -b main "$stale_dir/origin.git"
+git clone -q "$stale_dir/origin.git" "$stale_dir/seed" 2>/dev/null
+in_sandbox_repo "$stale_dir/seed" sh -c 'git checkout -q -b main && echo one > a.txt && git add a.txt && git commit -q -m one && git push -q origin main'
+git clone -q "$stale_dir/origin.git" "$stale_dir/clone"
+stale_warns() {
+  out="$(in_sandbox_repo "$stale_dir/clone" sh "$stale")" || return 2
+  case "$out" in *WARNING*"commit(s) behind origin/main"*) return 0 ;; "") return 1 ;; *) return 3 ;; esac
+}
+expect_exit 1 "warn-stale-checkout is silent when main is up to date" stale_warns
+in_sandbox_repo "$stale_dir/seed" sh -c 'echo two > b.txt && git add b.txt && git commit -q -m two && git push -q origin main'
+expect_exit 0 "warn-stale-checkout warns when main is behind origin/main (fetches first)" stale_warns
+out="$(in_sandbox_repo "$stale_dir/clone" sh "$stale")"
+case "$out" in *"1 commit(s) behind"*b.txt*) passes=$((passes + 1)) ;; *) echo "FAIL: warn-stale-checkout names the count and the changed file" >&2; failures=$((failures + 1)) ;; esac
+expect_exit 0 "warn-stale-checkout leaves the working tree alone" sh -c "[ ! -e '$stale_dir/clone/b.txt' ]"
+in_sandbox_repo "$stale_dir/clone" git checkout -q -b feature
+expect_exit 1 "warn-stale-checkout is silent on a feature branch" stale_warns
+in_sandbox_repo "$stale_dir/clone" git remote remove origin
+in_sandbox_repo "$stale_dir/clone" git checkout -q main
+expect_exit 1 "warn-stale-checkout is silent without origin" stale_warns
+expect_exit 0 "warn-stale-checkout exits 0 outside a git repository" sh -c "cd '$stale_dir' && sh '$stale'"
 
 finish

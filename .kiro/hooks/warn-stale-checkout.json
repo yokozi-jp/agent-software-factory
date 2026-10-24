@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "warn-stale-checkout",
+      "trigger": "SessionStart",
+      "description": "Warn the agent when main in this working tree is behind origin/main, so it does not research or decide from out-of-date files (docs/tooling/worktrees.md).",
+      "action": {
+        "type": "command",
+        "command": "sh .kiro/hooks/warn-stale-checkout.sh"
+      },
+      "timeout": 10
+    }
+  ]
+}

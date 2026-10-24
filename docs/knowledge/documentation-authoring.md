@@ -65,6 +65,7 @@ CLI の `iwe normalize` は、Kiro の hook (`.kiro/hooks/block-iwe-normalize.sh
 
 ADR は `docs/adr/` に `NNNN-slug.md` の連番で置き、`domain-modeling` skill の ADR-FORMAT.md の形式で書きます。frontmatter の `type` は `ADR` です。
 追加したら `docs/adr/index.md` に1行加えます。
+ADR の事実の主張にも、一次情報の出典を付けます。出典がない判断は、判断と書きます ([CODING_STANDARDS.md](../../CODING_STANDARDS.md) の「docs の事実と出典」)。
 
 ### ADR を書くかどうか
 
