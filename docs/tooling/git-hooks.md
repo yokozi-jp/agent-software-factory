@@ -65,10 +65,11 @@ force push が必要なときは、履歴を確かめてから利用者が自分
 | `pnpm-lock.yaml`                                           | pnpm                                   | `package.json` か `pnpm-workspace.yaml` を直して `pnpm install` (または `pnpm add`) | `setup-vp` の `vp install`。CI では pnpm が lockfile を更新せず、更新が要る lockfile で失敗する ([pnpm の `frozenLockfile`](https://pnpm.io/settings/store#frozenlockfile)) |
 | `mise.lock`                                                | `mise lock`                            | `mise.toml` を直して `mise lock --platform linux-x64`                               | `jdx/mise-action` (`MISE_LOCKED=1`)。lock の記録だけを、checksum を確かめて入れる ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))                                    |
 
-hook が見るのは、Kiro 2.33.1 のエンジン (`~/.local/share/kiro-cli/kas/<版>/node_modules/@kiro/agent/dist/server/acp-server.js`) で確かめた tool と項目です。`tool_name` には tool の id が、`tool_input` には tool の入力がそのまま入ります。`fs_write`、`str_replace`、`fs_append` は `path` を、`delete_file` は `targetFile` を見ます。相対 path は event の `cwd` から解決し、`.kiro/skills/<name>` のような symlink も実体の path に直してから判定します。
+hook が見るのは、Kiro 2.33.1 のエンジン (`~/.local/share/kiro-cli/kas/<版>/node_modules/@kiro/agent/dist/server/acp-server.js`) で確かめた tool と項目です。`tool_name` には tool の id が、`tool_input` には tool の入力がそのまま入ります。`fs_write`、`str_replace`、`fs_append` は `path` を、`delete_file` は `targetFile` を見ます。相対 path は event の `cwd` から解決します。Kiro は `cwd` に最初の workspace root を入れ、file tool も workspace root から path を解決するためです。`.kiro/skills/<name>` のような symlink も実体の path に直してから判定します。skills CLI のコマンドは [skills の README](https://github.com/vercel-labs/skills#readme) にあります。
 
 次の経路は hook では止められません。上の表の CI の検査が最後の網です。
 
 - shell のリダイレクトやコマンド (`>`、`sed -i`、`cp`、`rm` など)。hook は shell のコマンドを解析しません
+- `code` tool の `format_code` と `rename_symbol`。入力に書き込む path の一覧がありません
 - MCP server の tool と、IDE のクライアントが提供する tool (`smart_relocate` など)
 - Kiro の外での編集 (エディタ、ほかのエージェント)

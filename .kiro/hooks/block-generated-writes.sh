@@ -7,9 +7,11 @@
 # Only the file tools that create, replace, append or delete are checked; reads always pass.
 # Tool names and path fields, checked against Kiro 2.33.1 (kas/<version>/node_modules/@kiro/agent/dist/server/acp-server.js):
 # tool_name is the tool id, tool_input is the tool's input. fs_write, str_replace and fs_append take `path`;
-# delete_file takes `targetFile`. A relative path is resolved against the event's `cwd`.
-# Not covered: shell redirects and commands (`>`, `sed -i`, `cp`, `rm`), MCP tools, and IDE client tools
-# such as smart_relocate. CI is the last net (docs/tooling/git-hooks.md "Kiro の hook"):
+# delete_file takes `targetFile`. A relative path is resolved against the event's `cwd`, which Kiro sets to the
+# first workspace root, the same root the file tools resolve against.
+# Not covered: shell redirects and commands (`>`, `sed -i`, `cp`, `rm`), the `code` tool (format_code,
+# rename_symbol), MCP tools, and IDE client tools such as smart_relocate.
+# CI is the last net (docs/tooling/git-hooks.md "Kiro の hook"):
 #   routeTree.gen.ts: the "Generated files are committed" step after the build
 #   skills: the "Agent skills match skills-lock.json" step (scripts/verify-skills-lock.mjs)
 #   pnpm-lock.yaml: `vp install` in setup-vp; pnpm runs with a frozen lockfile in CI

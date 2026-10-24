@@ -49,11 +49,13 @@ expect_exit 0 "block-iwe-normalize override" sh -c "printf '%s' '{\"tool_input\"
 # block-generated-writes: refuse file tools that write generated files, allow other files and every read.
 # run_file_hook <tool name> <tool_input JSON> [cwd]: feed a PreToolUse event for a file tool. stderr goes to stdout.
 run_file_hook() {
-  jq -cn --arg tool "$1" --argjson input "$2" --arg cwd "${3:-$repo_root}" \
+  rf_cwd="${3:-$repo_root}"
+  jq -cn --arg tool "$1" --argjson input "$2" --arg cwd "$rf_cwd" \
     '{hook_event_name: "PreToolUse", cwd: $cwd, tool_name: $tool, tool_input: $input}' \
-    | (cd "${3:-$repo_root}" && sh "$generated" 2>&1)
+    | (cd "$rf_cwd" && sh "$generated" 2>&1)
 }
 # refuses_with <text> <run_file_hook arguments...>: exit 2 and stderr mentions <text>.
+# POSIX sh has no `local`; the rf_ and rw_ prefixes keep these variables from clobbering lib.sh's.
 refuses_with() {
   rw_text="$1"
   shift
