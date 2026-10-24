@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Warn when a change touches files that tend to carry a decision but adds no ADR (docs/adr/0015). Never fails.
+# Warn when a change touches files that tend to carry a decision but adds no ADR (docs/adr/0016). Never fails.
 #   scripts/adr-check.sh            compare HEAD with the base (CI, and by hand)
 #   scripts/adr-check.sh pre-push   compare each commit being pushed with the base (pre-push hook; reads the refs from stdin)
 # The base is origin/$GITHUB_BASE_REF in a pull request, and origin/main elsewhere. The diff runs from the merge base.

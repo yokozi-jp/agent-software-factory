@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0015: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）"
+title: "ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）"
 description: 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに、同じ変更で docs/adr/ に ADR が増えていないと scripts/adr-check.sh が警告する決定。失敗させない理由、pre-commit ではなく pre-push と CI に置く理由、対象の範囲、比較の起点がないときの扱いも書く。adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったときに読む。
 tags: [adr, tooling, ci, git-hooks, adr-check]
 ---
 
-# ADR 0015: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）
+# ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）
 
 決定が絡みやすいファイル (依存、ツールの設定、workflow、ruleset、Kiro の hook など) を変える変更が、ADR を書くかどうかを考えないまま通ることがありえます。変更を出す人も、レビューする人も、変更したファイルの名前から ADR を連想するとは限らないためです。そこで `scripts/adr-check.sh` で、そのような変更に ADR (`docs/adr/NNNN-*.md`) の追加がなければ、書くかどうかを考え直す合図を出します。
 

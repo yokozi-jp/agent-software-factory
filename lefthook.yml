@@ -160,7 +160,11 @@ pre-push:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
       run: scripts/secret-scan.sh pre-push
       use_stdin: true
-    # Warns only (docs/adr/0015). Silence it with ADR_ACK=1 for a change that needs no ADR.
+    # Warns only (docs/adr/0016). Silence it with ADR_ACK=1 for a change that needs no ADR.
     adr-check:
       run: scripts/adr-check.sh pre-push
       use_stdin: true
+    # Two open PRs can take the same ADR number (docs/tooling/worktrees.md ("PR を出す")).
+    # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
+    adr-number:
+      run: scripts/check-adr-number.sh || [ $? -ne 1 ]

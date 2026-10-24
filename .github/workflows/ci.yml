@@ -67,7 +67,7 @@ jobs:
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs
 
-      # Warns, never fails: a change to a file that tends to carry a decision should add an ADR (docs/adr/0015).
+      # Warns, never fails: a change to a file that tends to carry a decision should add an ADR (docs/adr/0016).
       # In a pull request, GITHUB_BASE_REF names the base that the diff is taken from.
       - name: ADR check (warning only)
         run: scripts/adr-check.sh
