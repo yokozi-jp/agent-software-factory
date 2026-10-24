@@ -31,4 +31,4 @@ Hono が Bun 上で速いのは主にサーバー部分で、Node.js では `@ho
 ## Consequences
 
 - Lambda、Cloudflare Workers の入口を足すときは、その入口を `vite.config.ts` の `lint.overrides` の除外の一覧に追加します。
-- Lambda では Lambda Web Functions を使わず、同じ Node.js 26 のコンテナイメージを Lambda Web Adapter で動かすことにしました (ADR 0013)。Web Functions のランタイムは `nodejs24.x` だけで、Lambda Event Functions の `nodejs26.x` は 2026-10 時点で public preview です (docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html)。Web Functions が Node.js 26 に対応したら、入口を移すかを判断します。
+- Lambda では Lambda Web Functions を使うので、リポジトリを Node.js 24 にすることにしました (ADR 0013)。Web Functions のランタイムは `nodejs24.x` だけで、Lambda Event Functions の `nodejs26.x` は 2026-10 時点で public preview です (docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html)。Web Functions が Node.js 26 に対応したら、26 に上げます。
