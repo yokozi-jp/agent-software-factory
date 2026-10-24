@@ -112,9 +112,8 @@ pre-commit:
         - "mise.toml"
         - ".kiro/steering/**"
         - "scripts/check-repo-policy.sh"
-        # Plain-text references to docs/ live in these files.
-        - "AGENTS.md"
-        - "README.md"
+        # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
+        - "*.md"
         - "lefthook.yml"
         - ".github/**"
         - ".kiro/hooks/**"

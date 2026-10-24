@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0011: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する"
+title: "ADR 0012: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する"
 description: git で管理している workflow を actionlint 1.7.12 と zizmor 1.31.1 で検査し、mise で固定した版を pre-commit hook と CI の同じスクリプトから使う決定。zizmor はオフラインで動かし、fork の jactionlint はまだ使わない。workflow の検査を変えるとき、二つの道具の版や設定を変えるとき、jactionlint への移行を考えるときに読む。
 tags: [adr, tooling, actionlint, zizmor, github-actions, ci, security]
 ---
 
-# ADR 0011: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する
+# ADR 0012: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する
 
 `.github/workflows/` の workflow を検査するものは、`vp check` の書式の検査しかありませんでした。式の型の誤りや存在しない step の参照は、PR で workflow が動くまで分かりません。script injection、過大な権限、`persist-credentials` の書き忘れは、動いても分かりません。そこで二つの道具で検査します。
 

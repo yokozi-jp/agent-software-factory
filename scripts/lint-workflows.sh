@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Lint the tracked GitHub Actions workflows with the pinned actionlint and zizmor (docs/adr/0011).
+# Lint the tracked GitHub Actions workflows with the pinned actionlint and zizmor (docs/adr/0012).
 # actionlint checks syntax and expression types, and runs the pinned shellcheck on run: scripts.
 # zizmor checks for security problems (template injection, excessive permissions, persisted credentials).
 # zizmor runs --offline, so the result does not depend on whether a GitHub token is set.

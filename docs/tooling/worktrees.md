@@ -37,7 +37,15 @@ pnpm install --frozen-lockfile   # node_modules は worktree ごとに必要。G
 PR が merge されたら、worktree とブランチを消します。
 
 ```sh
-git worktree remove ../agent-software-factory-worktrees/feat/example
-git branch -d feat/example
+branch=feat/example
+gh pr view "$branch" --json state --jq .state   # MERGED であることを確かめる
+git worktree remove "../agent-software-factory-worktrees/$branch"
+git fetch origin
+files=$(git diff --name-only "$(git merge-base "$branch" origin/main)" "$branch")
+git diff --quiet "$branch" origin/main -- $files && git branch -D "$branch"
 git worktree prune
 ```
+
+PR は squash merge なので ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))、ブランチの commit は main の履歴に入らず、`git branch -d` は `not fully merged` で必ず止まります。
+そこで、ブランチで変えたファイルの中身が main と同じことを確かめてから、`-D` で消します。
+merge の後に別の PR が同じファイルを変えていると `git diff --quiet` が失敗し、ブランチは残ります。そのときは差分を読み、ブランチにしかない変更がないことを確かめてから消します。
