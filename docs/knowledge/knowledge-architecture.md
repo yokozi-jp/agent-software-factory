@@ -22,7 +22,7 @@ tags: [knowledge, architecture, agents, steering, iwe]
 
 ## 依存の向き
 
-- AGENTS.md と steering から `docs/` へは、パスを文字列で示します。本文を展開しません。
+- AGENTS.md と steering から `docs/` へは、パスを文字列で示します。本文を展開しません。例外は、ポインタだけでは守られないと確かめた規則で、その理由を ADR に書きます (今は振り返りの節だけ。[ADR 0015](../adr/0015-retro-at-task-boundary.md))。
 - `docs/` から AGENTS.md や steering を参照しません。
 - 規約文書には今のルールと検査方法を書き、理由は ADR にリンクします。
 

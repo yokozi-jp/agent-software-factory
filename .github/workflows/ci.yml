@@ -58,7 +58,7 @@ jobs:
       # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/adr-check.test.sh"
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended

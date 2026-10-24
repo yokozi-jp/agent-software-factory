@@ -166,6 +166,10 @@ expect_exit 0 "warn-concurrent-sessions (V3) warns at start for a live session i
 expect_exit 0 "warn-concurrent-sessions (V3) asks for a live session in the same workspace" v3_asks sess_me
 expect_exit 1 "warn-concurrent-sessions (V3) asks only once" v3_asks sess_me
 expect_exit 0 "warn-concurrent-sessions (V3) finds its record from an id without the sess_ prefix" v3_warns me
+# A non-interactive session (kiro-cli chat --no-interactive) writes session.json but no .lock.
+mkdir -p "$v3/hashC/sess_batch"
+printf '{"title":"batch","cwd":null}' > "$v3/hashC/sess_batch/session.json"
+expect_exit 1 "warn-concurrent-sessions (V3) finds a record without .lock (non-interactive)" v3_asks sess_batch
 # No record in either layout: say so once instead of staying silent.
 expect_exit 0 "warn-concurrent-sessions asks once when its own record is missing" v3_asks sess_missing
 expect_exit 1 "warn-concurrent-sessions does not repeat the missing-record question" v3_asks sess_missing
