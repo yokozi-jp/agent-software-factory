@@ -105,6 +105,12 @@ for file in $(git ls-files -- '*.sh' '*.mjs' '*.js' '*.cjs' '*.ts' ':!.agents/' 
   esac
 done
 
+# ADR numbers are unique. Two branches can each take the next free number, and both ADRs can reach main
+# without a merge conflict (docs/tooling/worktrees.md ("PR を出す")).
+for number in $(git ls-files 'docs/adr/[0-9][0-9][0-9][0-9]-*.md' | sed 's|^docs/adr/\([0-9]\{4\}\)-.*|\1|' | sort | uniq -d); do
+  fail "ADR $number is used by more than one file: $(git ls-files "docs/adr/$number-*.md" | tr '\n' ' ')"
+done
+
 # References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
 # docs-check.sh only follows Markdown links inside docs/, so these plain-text paths are checked here.
 #   docs/<path>.md               the file must exist

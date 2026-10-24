@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: 並行作業と worktree
-description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順と片付け方。別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるときに読む。
+description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree から PR を出すときに読む。
 tags: [tooling, runbook, git, worktree, kiro]
 ---
 
@@ -31,6 +31,13 @@ pnpm install --frozen-lockfile   # node_modules は worktree ごとに必要。G
 ```
 
 作業の手順そのものは `using-git-worktrees` skill に従います。
+
+## PR を出す
+
+worktree を作った後も、別の PR が main に入り続けます。番号を振るもの (ADR の `NNNN`) は、ほかの PR と同じ番号を取りやすい箇所です。
+
+1. push の前に `git fetch origin` し、`git ls-tree --name-only origin/main docs/adr/` で、足した ADR の番号がまだ空いているかを確かめます。取られていたら、次の空いている番号に付け替え、その番号を参照している箇所も直します。番号の重複は `scripts/check-repo-policy.sh` でも止まります。
+2. PR を作った後、`gh pr checks` が `no checks reported` のままなら、`gh pr view --json mergeable,mergeStateStatus` を見ます。`CONFLICTING` の PR では、`pull_request` の workflow が始まりません。main を merge して衝突を直し、push します。PR は squash merge なので、rebase や force push は要りません。
 
 ## 片付ける
 
