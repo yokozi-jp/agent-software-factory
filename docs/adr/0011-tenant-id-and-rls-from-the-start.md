@@ -30,5 +30,5 @@ tags: [adr, db, postgresql, multitenancy, security]
 
 ## Consequences
 
-- DB は PostgreSQL（RDS か Aurora の PostgreSQL 互換版）に決まります。ホスティングの形は [デプロイ先と実行基盤を決める](https://github.com/yokozi-jp/agent-software-factory/issues/25) で決めます。
+- DB は PostgreSQL に決まります。ホスティングの形は、[デプロイ先と実行基盤を決める](https://github.com/yokozi-jp/agent-software-factory/issues/25) で Aurora PostgreSQL Serverless v2 に決めました（ADR 0013）。
 - キャッシュのキーとログにも `tenant_id` を含めます。細かい規約は、`docs/db` と `docs/logging` に足すときに決めます。
