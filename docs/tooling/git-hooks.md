@@ -45,6 +45,8 @@ pnpm exec lefthook run pre-commit   # hook を手動で実行
 
 Kiro の hook は、信頼した workspace でだけ読まれます。Kiro 2.33.1 の Kiro CLI V3 (`kiro-cli --v3`) で動くことを確かめました。初めて開くと「Trust this workspace?」と聞かれ、信頼すると `~/.kiro/workspace-roots/<hash>/permissions.yaml` に `workspaceTrusted: true` が書かれます。信頼していない workspace では、下の hook はどれも動きません。worktree は workspace として別に数えるので、worktree ごとに信頼します。
 
+hook は jq で event の JSON を読みます。jq がないと、`block-generated-writes` と `warn-concurrent-sessions` は何もせずに exit 0 で終わり、操作をそのまま通します。`block-force-push` と `block-iwe-normalize` は、jq がなければ JSON 全体を文字列として調べます。jq は [開発環境の構築](../local-env-setup/setup.md) の手順で入ります。
+
 | hook                       | 止めるもの                                                                                                                                                                                                                                 | 一時的に許すとき               |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
 | `block-force-push`         | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>`                                                                                                                                                                          | `KIRO_ALLOW_FORCE_PUSH=1`      |
