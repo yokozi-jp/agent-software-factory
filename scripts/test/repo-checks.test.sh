@@ -71,6 +71,28 @@ reset
 printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"
 expect_exit 1 "repo-policy: steering frontmatter is required" policy
 
+# check-repo-policy: one Node.js major version (ADR 0013). .node-version decides; the others must agree.
+node_major="$(sed -n 's/^v\{0,1\}\([0-9][0-9]*\).*/\1/p' "$repo_root/.node-version" | head -n 1)"
+other_major=$((node_major + 1))
+reset
+printf 'v%s.1.2\n' "$node_major" > "$copy/.node-version" && stage
+expect_exit 0 "repo-policy: .node-version may be an exact version with a v" policy
+reset
+printf '%s\n' "$other_major" > "$copy/.node-version" && stage
+expect_exit 1 "repo-policy: .node-version moving alone is refused (ADR 0013)" policy
+reset
+printf 'lts\n' > "$copy/.node-version" && stage
+expect_exit 1 "repo-policy: .node-version must start with a version (ADR 0013)" policy
+reset
+sed -i.bak "s/\"node\": \"[^\"]*\"/\"node\": \">=$other_major\"/" "$copy/package.json" && stage
+expect_exit 1 "repo-policy: engines.node must follow .node-version (ADR 0013)" policy
+reset
+sed -i.bak "s/\"@types\/node\": [^ ]*/\"@types\/node\": ^$other_major/" "$copy/pnpm-workspace.yaml" && stage
+expect_exit 1 "repo-policy: the @types/node catalog must follow .node-version (ADR 0013)" policy
+reset
+sed -i.bak "s/target: \"node[0-9]*\"/target: \"node$other_major\"/" "$copy/apps/api/vite.config.ts" && stage
+expect_exit 1 "repo-policy: the API build target must follow .node-version (ADR 0013)" policy
+
 # check-repo-policy: git on another repository only from tests isolated by lib.sh.
 reset
 printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && stage
