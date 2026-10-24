@@ -65,6 +65,19 @@ CLI の `iwe normalize` は、Kiro の hook (`.kiro/hooks/block-iwe-normalize.sh
 ADR は `docs/adr/` に `NNNN-slug.md` の連番で置き、`domain-modeling` skill の ADR-FORMAT.md の形式で書きます。frontmatter の `type` は `ADR` です。
 追加したら `docs/adr/index.md` に1行加えます。
 
+### ADR を書くかどうか
+
+次の3つがそろうときだけ ADR を書きます (`domain-modeling` skill の ADR-FORMAT.md の基準です)。
+
+1. 戻しにくい: 後で考えを変えるときの費用が大きい
+2. 文脈なしには意外: 後から読んだ人が「なぜこうしたのか」と思う
+3. 本当の trade-off の結果: ほかの選択肢があり、理由があって選んだ
+
+戻しやすい決定は、戻せばよいので書きません。意外でなければ、疑問を持つ人がいません。選択肢がなければ、「当たり前のことをした」以上に残すことがありません。
+書く価値があるのは、構成の形、ロックインを伴う技術の選択、意図して常識から外れた選択、コードからは見えない制約、理由が自明でない却下した案です。
+
+依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに ADR が増えていないと、`scripts/adr-check.sh` が警告します ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。警告が出たら、この3つに当てはめて判断し、要らなければ `ADR_ACK=1` で抑えます。
+
 ## 検査
 
 ```sh

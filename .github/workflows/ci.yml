@@ -58,7 +58,7 @@ jobs:
       # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh"
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended
@@ -66,6 +66,11 @@ jobs:
 
       - name: Agent skills match skills-lock.json
         run: node scripts/verify-skills-lock.mjs
+
+      # Warns, never fails: a change to a file that tends to carry a decision should add an ADR (docs/adr/0016).
+      # In a pull request, GITHUB_BASE_REF names the base that the diff is taken from.
+      - name: ADR check (warning only)
+        run: scripts/adr-check.sh
 
       - name: Lint Markdown
         run: pnpm lint:md
