@@ -1,0 +1,49 @@
+# DB設計
+
+- [出典と適用範囲](about.md)：これらの規約がどの DB に適用されるかを確かめるとき、出典やライセンスを確かめるとき
+- [PostgreSQL のテーブル種別と正規化](postgresql-table-types.md)：テーブルをトラン・マスタ・ワーク・サマリに分類するとき、非正規化を検討するとき
+- [PostgreSQL の命名（バリュードメイン・論物変換・区分値）](postgresql-naming-value-domain.md)：カラムの型やコード値の設計方針を決めるとき
+- [PostgreSQL の物理名の命名ポリシー](postgresql-naming-physical.md)：テーブルやカラムに物理名を付けるとき
+- [PostgreSQL のインデックス](postgresql-index.md)：インデックスを追加・設計するとき
+- [PostgreSQL のカラム（生成列・データ型）](postgresql-column.md)：カラムの型を設計するとき
+- [PostgreSQL の IDENTITY 列とデフォルト値](postgresql-column-identity-default.md)：採番や既定値を設計するとき
+- [PostgreSQL の JSON 型とラージオブジェクト](postgresql-column-json-lob.md)：JSON を列に格納したいとき、大きなバイナリを扱うとき
+- [PostgreSQL の独自型（DOMAIN・ENUM・ltree）](postgresql-custom-types.md)：独自のデータ型や階層データを扱うか決めるとき
+- [PostgreSQL の制約](postgresql-constraints.md)：テーブルに制約を設計するとき
+- [PostgreSQL の関数・トリガー・Pub/Sub](postgresql-functions-triggers.md)：DB 側にロジックを持たせるか検討するとき
+- [PostgreSQL のパーティション設計](postgresql-partitioning.md)：巨大なテーブルをパーティション化するとき
+- [PostgreSQL のテーブル物理設計（一時テーブル・VIEW・継承）](postgresql-physical-tables.md)：中間テーブルやビューを設計するとき
+- [PostgreSQL のキー設計（サロゲートキー・連番/UUID・共通カラム）](postgresql-keys.md)：主キーや共通カラムを設計するとき
+- [PostgreSQL のテーブル論理設計（スナップショット・導出・業務日付）](postgresql-logical-design-snapshot.md)：属性の持たせ方や業務日付の扱いを決めるとき
+- [PostgreSQL のテーブル論理設計（適用期間・世代管理・論理削除）](postgresql-logical-design-history.md)：履歴や有効期間を持つデータを設計するとき
+- [PostgreSQL のクライアント管理](postgresql-client.md)：アプリから DB に接続する実装を設計するとき
+- [PostgreSQL の海外対応](postgresql-i18n.md)：多言語対応や複数タイムゾーンのデータを扱うとき
+- [PostgreSQL のマルチテナント](postgresql-multitenancy.md)：マルチテナントのシステムで DB を設計するとき
+- [PostgreSQL の排他制御](postgresql-concurrency.md)：排他制御を設計するとき
+- [PostgreSQL のテスト](postgresql-test.md)：DB を含むテストを設計するとき
+- [PostgreSQL のスキーママイグレーション](postgresql-migration.md)：スキーマを変更するとき
+- [PostgreSQL のバージョン](postgresql-version.md)：利用バージョンやアップグレードを計画するとき
+- [PostgreSQL の拡張機能](postgresql-extensions.md)：拡張機能を導入するか検討するとき
+- [PostgreSQL の VACUUM とロケール](postgresql-vacuum-locale.md)：自動バキュームを設定するとき、照合順序を決めるとき
+- [PostgreSQL のパラメータ](postgresql-parameters.md)：パラメータを調整するとき
+- [PostgreSQL のインスタンスタイプとスケーリング戦略（AWS）](postgresql-instance-scaling.md)：インスタンスを選定するとき、スケーリングを計画するとき
+- [PostgreSQL の dblink/fdw とリードレプリカ](postgresql-dblink-replica.md)：他システムと DB を接続するとき、参照を分散するとき
+- [PostgreSQL のキャッシュ](postgresql-cache.md)：キャッシュを導入するとき、破棄ポリシーを決めるとき
+- [PostgreSQL のデータ連携方式](postgresql-data-integration.md)：他システムやデータ基盤へデータを連携するとき
+- [PostgreSQL の改廃](postgresql-retention.md)：データの保持期間や削除方法を決めるとき
+- [PostgreSQL の監視](postgresql-monitoring.md)：DB の監視を設計するとき
+- [PostgreSQL の権限管理](postgresql-roles.md)：DB の権限やユーザーを設計するとき
+- [PostgreSQL の監査](postgresql-audit.md)：監査ログを設計するとき
+- [PostgreSQL の BCP/DR](postgresql-bcp-dr.md)：災害対策やバックアップ方針を決めるとき
+- [DynamoDB の技術選定](dynamodb-selection.md)：DynamoDB を採用するか判断するとき
+- [DynamoDB の命名規則](dynamodb-naming.md)：DynamoDB のテーブルや属性に名前を付けるとき
+- [DynamoDB のデータモデリング](dynamodb-data-modeling.md)：DynamoDB のテーブルとキーを設計するとき
+- [DynamoDB のインデックス設計](dynamodb-index.md)：インデックスや属性を設計するとき
+- [DynamoDB の API 利用](dynamodb-api.md)：DynamoDB を読み書きするコードを書くとき
+- [DynamoDB Streams](dynamodb-streams.md)：変更を他処理へ伝播させるとき
+- [DynamoDB と他のデータストアの組み合わせ](dynamodb-integration.md)：DynamoDB のデータを分析や全文検索に使うとき
+- [DynamoDB の SDK とテスト](dynamodb-sdk-test.md)：DynamoDB のコードや自動テストを書くとき
+- [DynamoDB の性能とコスト](dynamodb-performance-cost.md)：性能と費用を設計するとき
+- [DynamoDB の可用性](dynamodb-availability.md)：可用性や災害復旧を設計するとき
+- [DynamoDB の監視とセキュリティ](dynamodb-monitoring-security.md)：監視やセキュリティを設計するとき
+- [DynamoDB の移行](dynamodb-migration.md)：DynamoDB からの移行を検討するとき
