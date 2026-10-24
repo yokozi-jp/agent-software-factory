@@ -12,6 +12,8 @@
 #   6. `docs-check.sh staged` only (pre-commit): a staged change to an imported area (its about.md cites
 #      arch-guidelines in `sources`) must stage that area's about.md too, which lists "原文からの変更点" (AGENTS.md).
 #   7. Links between documents name the .md file (`[b](b.md)`, not `[b](b)`).
+#   8. A frontmatter value that is not quoted holds no `: ` or ` #`. YAML reads those as a new key or a comment, and
+#      iwe then reports every required field as missing, which hides the cause.
 # Run by the pre-commit hook (when docs/ changes, with `staged`) and by CI (without it).
 set -eu
 
@@ -25,6 +27,33 @@ if [ ! -x "$iwe" ]; then
 fi
 cd "$root/docs"
 status=0
+
+# Checked before the schema: a value like `description: javascript: の URL` is invalid YAML, and iwe answers with
+# "type/title/description/tags is a required property" for the file. Only top-level `key: value` lines are read.
+# shellcheck disable=SC2016
+frontmatter_report="$(node -e '
+  const fs = require("fs");
+  const { execSync } = require("child_process");
+  const files = execSync("find . -type f -name \"*.md\"", { encoding: "utf8" })
+    .split("\n").filter(Boolean);
+  const problems = [];
+  for (const file of files) {
+    const lines = fs.readFileSync(file, "utf8").split("\n");
+    if (lines[0] !== "---") continue;
+    for (let i = 1; i < lines.length && lines[i] !== "---"; i++) {
+      const m = lines[i].match(/^([A-Za-z_][\w-]*):\s+(.+)$/);
+      if (!m || /^["\x27\[{|>&*!#]/.test(m[2])) continue;
+      if (/:\s|\s#/.test(m[2])) {
+        problems.push(`${file.replace(/^\.\//, "")}:${i + 1}: the value of ${m[1]} has a colon followed by a space, or a space and #, and is not quoted; wrap it in double quotes`);
+      }
+    }
+  }
+  process.stdout.write(problems.join("\n"));
+')"
+if [ -n "$frontmatter_report" ]; then
+  echo "$frontmatter_report" | sed 's/^/docs-check: /' >&2
+  status=1
+fi
 
 if ! $iwe schema validate; then
   echo "docs-check: OKF schema validation failed (see above)." >&2
