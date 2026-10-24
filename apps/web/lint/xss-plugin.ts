@@ -1,11 +1,10 @@
 // Oxlint plugin: blocks the code that opens an XSS hole in apps/web (docs/web-frontend/static-analysis.md).
 // Oxlint's built-in rules (react/no-danger, no-eval, ...) cannot carry a message that tells the reader
 // what to write instead, so these rules report their own messages: the reason, then the alternative.
-import { definePlugin, defineRule } from "vite-plus/lint/plugins";
+import { definePlugin, defineRule, type ESTree } from "vite-plus/lint/plugins";
 
-// The plugin API's AST types are not worth restating for these small checks; nodes are read by property name.
 // Not named `Node`, which would shadow the DOM global.
-type AstNode = any;
+type AstNode = ESTree.Node | null | undefined;
 
 const timerFunctions = new Set(["setTimeout", "setInterval"]);
 const globalObjects = new Set(["window", "globalThis", "self"]);
@@ -49,13 +48,13 @@ const noHtmlInjection = defineRule({
   },
   create(context) {
     return {
-      JSXAttribute(node: AstNode) {
+      JSXAttribute(node) {
         if (node.name.type === "JSXIdentifier" && node.name.name === "dangerouslySetInnerHTML") {
           context.report({ node, messageId: "dangerouslySetInnerHTML" });
         }
       },
       // `createElement("div", { dangerouslySetInnerHTML })` and `{...{ dangerouslySetInnerHTML }}`.
-      Property(node: AstNode) {
+      Property(node) {
         const key = node.computed
           ? staticString(node.key)
           : (nameOf(node.key) ?? staticString(node.key));
@@ -63,17 +62,19 @@ const noHtmlInjection = defineRule({
           context.report({ node, messageId: "dangerouslySetInnerHTML" });
         }
       },
-      AssignmentExpression(node: AstNode) {
+      AssignmentExpression(node) {
         const name = propertyNameOf(node.left);
         if (name && htmlSinkProperties.has(name)) {
           context.report({ node, messageId: "htmlSink", data: { name } });
         }
       },
-      CallExpression(node: AstNode) {
+      CallExpression(node) {
         const name = propertyNameOf(node.callee);
         if (!name || !htmlSinkMethods.has(name)) return;
         // `write` and `writeln` are common method names; only `document.write` is the sink.
-        if (name !== "insertAdjacentHTML" && nameOf(node.callee.object) !== "document") return;
+        const receiver =
+          node.callee.type === "MemberExpression" ? nameOf(node.callee.object) : undefined;
+        if (name !== "insertAdjacentHTML" && receiver !== "document") return;
         context.report({ node, messageId: "htmlSink", data: { name } });
       },
     };
@@ -90,7 +91,7 @@ const noJavascriptUrl = defineRule({
     },
   },
   create(context) {
-    const check = (node: AstNode) => {
+    const check = (node: ESTree.Node) => {
       const value = staticString(node);
       // Browsers ignore leading whitespace and control characters, and the scheme is case-insensitive.
       // oxlint-disable-next-line no-control-regex -- the control characters are what browsers strip
@@ -123,6 +124,7 @@ const noDynamicCode = defineRule({
       const property = propertyNameOf(node);
       if (
         (property === "eval" || property === "Function") &&
+        node?.type === "MemberExpression" &&
         globalObjects.has(nameOf(node.object) ?? "")
       ) {
         return property;
@@ -132,7 +134,7 @@ const noDynamicCode = defineRule({
       return undefined;
     };
     return {
-      CallExpression(node: AstNode) {
+      CallExpression(node) {
         const name = dynamicCodeName(node.callee);
         if (name) {
           context.report({ node, messageId: "dynamicCode", data: { name } });
@@ -148,7 +150,7 @@ const noDynamicCode = defineRule({
           });
         }
       },
-      NewExpression(node: AstNode) {
+      NewExpression(node) {
         const name = dynamicCodeName(node.callee);
         if (name) context.report({ node, messageId: "dynamicCode", data: { name: `new ${name}` } });
       },

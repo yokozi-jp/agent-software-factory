@@ -6,11 +6,18 @@ import plugin from "./xss-plugin.ts";
 RuleTester.describe = describe;
 RuleTester.it = it;
 
+// Indexing `plugin.rules` gives `Rule | undefined` (noUncheckedIndexedAccess).
+const rule = (name: string) => {
+  const found = plugin.rules[name];
+  if (!found) throw new Error(`no rule named ${name}`);
+  return found;
+};
+
 const tester = new RuleTester({
   languageOptions: { parserOptions: { lang: "tsx", ecmaFeatures: { jsx: true } } },
 });
 
-tester.run("no-html-injection", plugin.rules["no-html-injection"], {
+tester.run("no-html-injection", rule("no-html-injection"), {
   valid: [
     "const a = <div>{text}</div>;",
     "el.textContent = text;",
@@ -37,7 +44,7 @@ tester.run("no-html-injection", plugin.rules["no-html-injection"], {
   ],
 });
 
-tester.run("no-javascript-url", plugin.rules["no-javascript-url"], {
+tester.run("no-javascript-url", rule("no-javascript-url"), {
   valid: [
     'const a = <a href="https://example.com">x</a>;',
     'const a = "see javascript: docs";',
@@ -57,7 +64,7 @@ tester.run("no-javascript-url", plugin.rules["no-javascript-url"], {
   ],
 });
 
-tester.run("no-dynamic-code", plugin.rules["no-dynamic-code"], {
+tester.run("no-dynamic-code", rule("no-dynamic-code"), {
   valid: [
     "JSON.parse(text);",
     "setTimeout(() => run(), 0);",
@@ -78,7 +85,7 @@ tester.run("no-dynamic-code", plugin.rules["no-dynamic-code"], {
   ],
 });
 
-tester.run("require-disable-reason", plugin.rules["require-disable-reason"], {
+tester.run("require-disable-reason", rule("require-disable-reason"), {
   valid: [
     "// an ordinary comment\nconst a = 1;",
     "// oxlint-disable-next-line no-eval -- the string is a build-time constant\neval(code);",
