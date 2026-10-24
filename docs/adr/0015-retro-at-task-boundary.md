@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0015: タスクの区切りで、エージェントが retro skill を実行する規則を AGENTS.md と docs に置く"
-description: retro skill を、利用者が /retro と打つのを待たずに、タスクの区切りでエージェントが実行する規則を、AGENTS.md の短い案内と docs/agents/retro.md に置く決定。上流の skill を変える案、自前の skill、Kiro の hook を選ばなかった理由も書く。振り返りの規則や retro skill の扱いを変えるとき、規則が守られないので hook を足したくなったときに読む。
+description: retro skill を、利用者が /retro と打つのを待たずに、タスクの区切りでエージェントが実行する規則を、AGENTS.md の短い案内と docs/agents/retro.md に置く決定。上流の skill を変える案、自前の skill、Kiro の hook を選ばなかった理由も書く。振り返りの規則や retro skill の扱いを変えるとき、規則が守られないので hook を足したくなったとき、上流の skill の frontmatter を変えたくなったとき、AGENTS.md の振り返りの節を短くしたくなったときに読む。
 tags: [adr, agents, skills, retro]
 ---
 
@@ -15,11 +15,14 @@ tags: [adr, agents, skills, retro]
 - **Claude Code**: `disable-model-invocation: true` の skill は、description が context に入らず、Claude が自分では呼べません。規則では、skill として読み込めないときは `.agents/skills/retro/SKILL.md` を読んで手順に従う、とします。このフラグは、エージェントが自分の判断で実行するのを防ぐためのものです。ここでは、いつ実行するかをリポジトリの規則が決めるので、フラグの意図に反しないと判断しました。
 - **Codex**: `.agents/skills/retro/agents/openai.yaml` の `allow_implicit_invocation: false` で、暗黙の呼び出しが止まります。Claude Code と同じく、ファイルを読んで手順に従います。
 
-`AGENTS.md` の案内は、「エージェントスキル」の下の小見出しではなく、独立した節にして、完了を報告する前に何を確かめるかを書きます。2026-10-24 に Kiro 2.33.1 の新しいセッション (`kiro-cli chat --v3 --no-interactive`) で、「README.md に 1 行足して commit して」と頼んで確かめました。
+`AGENTS.md` の案内は、「エージェントスキル」の下の小見出しではなく、独立した節にし、完了を報告する応答の前に、commit、PR、Issue を閉じることのどれかをしたかを確かめる、という形で書きます。[AGENTS.md、steering、docs、IWE の役割分担](../knowledge/knowledge-architecture.md) では `AGENTS.md` はナビゲーションだけを持ちますが、この節は区切りの判定まで書きます。ポインタだけでは守られなかったためです。
 
-- 「エージェントスキル」の下に「タスクの区切りでは `retro` skill を実行する」と書いた案内では、3 回とも、commit の後に振り返らずに完了を報告しました。
-- 独立した節に、報告の前に commit、PR、Issue を閉じることのどれかに当たるかを確かめる、と書いた案内では、commit の後に `retro` を読み込み、改善候補を示して利用者の選択を待ちました。
-- 同じ案内で、commit しない作業 (誤字を探して、なければ何もしない) を頼むと、振り返りませんでした。
+2026-10-24 に Kiro 2.33.1 の新しいセッション (`kiro-cli chat --v3 --no-interactive`) で、「README.md に 1 行足して commit して」と頼んで確かめました。
+
+- 「エージェントスキル」の下の小見出しで、区切りに `retro` skill を実行する、と書いた案内では、4 回とも、commit の後に振り返らずに完了を報告しました。最初の 3 回は「PR を作った後、Issue を閉じる前など」と例だけを挙げた文言、4 回目は 3 つの区切りを並べた文言です。
+- 今の節の形の案内では、commit の後に `retro` を読み込み、改善候補を示して利用者の選択を待ちました。
+- 同じ案内で、commit しない作業 (誤字を探して、なければ何もしない) を頼むと、振り返らずに終えました。
+- PR を作る区切りと、Issue を閉じる区切りは試していません。
 
 ## Considered Options
 
