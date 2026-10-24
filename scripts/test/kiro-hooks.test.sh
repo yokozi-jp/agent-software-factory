@@ -47,6 +47,7 @@ done
 expect_exit 0 "block-iwe-normalize override" sh -c "printf '%s' '{\"tool_input\":{\"command\":\"iwe normalize\"}}' | IWE_ALLOW_NORMALIZE=1 sh '$normalize'"
 
 # block-generated-writes: refuse file tools that write generated files, allow other files and every read.
+# POSIX sh has no `local`; the rf_ and rw_ prefixes keep the helpers' variables from clobbering lib.sh's.
 # run_file_hook <tool name> <tool_input JSON> [cwd]: feed a PreToolUse event for a file tool. stderr goes to stdout.
 run_file_hook() {
   rf_cwd="${3:-$repo_root}"
@@ -55,7 +56,6 @@ run_file_hook() {
     | (cd "$rf_cwd" && sh "$generated" 2>&1)
 }
 # refuses_with <text> <run_file_hook arguments...>: exit 2 and stderr mentions <text>.
-# POSIX sh has no `local`; the rf_ and rw_ prefixes keep these variables from clobbering lib.sh's.
 refuses_with() {
   rw_text="$1"
   shift

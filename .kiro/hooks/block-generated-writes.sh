@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Kiro PreToolUse hook: refuse hand edits of generated files, and say how to regenerate them instead.
-#   apps/web/src/routeTree.gen.ts (any routeTree.gen.ts)  TanStack Router writes it during the build
+#   apps/web/src/routeTree.gen.ts (any routeTree.gen.ts)  TanStack Router's bundler plugin writes it during dev and build
 #   .agents/skills/**, .kiro/skills/**, skills-lock.json  the skills CLI installs them from upstream
 #   pnpm-lock.yaml                                        pnpm writes it
 #   mise.lock                                             `mise lock` writes it
