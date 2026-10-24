@@ -146,7 +146,7 @@ Web APIの応答には、RFC 8594 \- Sunset HTTPヘッダーフィールド（[�
 ```json
 HTTP/1.1 200 OK
 Content-Type: application/json
-Deprecation: true
+Deprecation: @1688169599
 Sunset: Sat, 30 Sep 2025 00:00:00 GMT
 Link: <https://api.example.com/v2/orders/{order_id}>; rel="alternate"
 
@@ -157,7 +157,7 @@ Link: <https://api.example.com/v2/orders/{order_id}>; rel="alternate"
 }
 ```
 
-- **Deprecation**: trueで廃止予定になったことを示す
+- **Deprecation**: 廃止された（または廃止される）日時を示す。[RFC 9745 \- The Deprecation HTTP Response Header Field](https://www.rfc-editor.org/rfc/rfc9745.html)により、値は真偽値`true`ではなく構造化フィールドのDate（`@`に続くUNIXタイムスタンプ秒。例は2023年6月30日 23:59:59 UTCを示す`@1688169599`）でなければならない
 - **Sunset**: 廃止予定の年月日を示す。特に無くても良い
 - **Link**: 代替先のURLを提示。オプションである
 
@@ -165,9 +165,9 @@ Link: <https://api.example.com/v2/orders/{order_id}>; rel="alternate"
 
 - プライベートAPIの廃止は影響度調査を実施し、周知と調整を実施する
 - 同時に、OpenAPI定義にdeprecated設定する
-- レスポンスヘッダーのDeprecationヘッダーをtrueにする
+- レスポンスヘッダーのDeprecationヘッダーを設定する（[RFC 9745](https://www.rfc-editor.org/rfc/rfc9745.html)に従い、値は構造化フィールドのDateとする）
   - Sunset, Linkは任意で設定する
-- クライアントは、Deprecationヘッダーがtrueの場合、WARNログを出すようにするなどの周知を予め行う
+- クライアントは、Deprecationヘッダーが設定されている場合、WARNログを出すようにするなどの周知を予め行う
 
 実際に廃止予定のAPIを削除する際は、アクセスログなどから利用実績を確認した上で行う。
 

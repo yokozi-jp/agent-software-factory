@@ -30,6 +30,8 @@ sources:
 - 初マージを祝う Slack の画面キャプチャは、何が写っているかを説明する文章に置き換えた。
 - 前提条件の表 (`prerequisites.md`) の JS の例 (ESLint、prettier) を、このリポジトリで使う `vp lint` と `vp fmt --check` に書き換えた。
 - 原文が前提にしていた Git ブランチフローのガイドライン (Lite GitLab Flow と GitLab Flow、取り込んでいない) を、このリポジトリのトランクベース開発 (ADR 0010) に書き換えた。前提条件 (`prerequisites.md`) のブランチ戦略と GitHub の設定の表、マージの担当 (`reviewee-review-request.md`) の参照先が対象。
+- レビュアーの姿勢と進め方 (`reviewer-mindset.md`) の「hotfix の場合はマージ先のブランチを確認する」節 (develop/hotfix ブランチ前提) を、このリポジトリのトランクベース開発 (ADR 0010) に合わないため削除した。ADR 0010。
+- レビュアーの姿勢と進め方 (`reviewer-mindset.md`) の「暗黙知を形式知にする」に、このリポジトリの形式知の落とし先として `docs/`、`AGENTS.md`、`.kiro/skills/` 配下のスキルを含める旨を足した。リポジトリの構成。
 
 ## 位置づけ
 

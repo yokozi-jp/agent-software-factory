@@ -144,7 +144,7 @@ HTML制約検証が可能なバリデーションを、HTMLに寄せるのかJav
 - バリデーションロジックは、基本的にJavaScript上で実装する（Zodなど何かしらライブラリを用いることを推奨する）
 - アクセシビリティの観点から、HTML上の型や検証関連属性も適切に設定する（必須、桁数、最小最大、正規表現など）
 - [novalidate](https://developer.mozilla.org/ja/docs/Web/HTML/Element/form#novalidate) 属性を付けて、HTML側の検証を無効化しておく
-- エラーメッセージも [aria-errormessage \- アクセシビリティ | MDN](https://developer.mozilla.org/ja/docs/Web/Accessibility/ARIA/Attributes/aria-errormessage) にある通り、`aria-errormessage` で記載する
+- エラーメッセージも [aria-errormessage \- アクセシビリティ | MDN](https://developer.mozilla.org/ja/docs/Web/Accessibility/ARIA/Attributes/aria-errormessage) にある通り、対象を不正状態とする `aria-invalid="true"` とともに `aria-errormessage` で記載する（`aria-errormessage` は `aria-invalid="true"` のときだけ有効なため、単独では読み上げられない）
 
 ### JavaScriptによるバリデーション
 

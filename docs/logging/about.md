@@ -27,6 +27,11 @@ sources:
 - VitePress の記法 (`<page-title/>`、`::: tip` などのコンテナ、見出しの `{#id}`) を、GitHub の Markdown の記法 (`> [!TIP]` など) に置き換えた。
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - フロントエンドのログ出力 (`frontend.md`) の「ESLint や Biome のルールで console の使用は警告される」を、このリポジトリの設定 (`apps/web/src` で Oxlint の `no-console` を error) に書き換え、参考のリンクを Oxlint のルールにした。
+- keys.md の `http.server.request.duration` の単位を、ナノ秒から秒 (例を `0.125`) にした。OpenTelemetry Semantic Conventions (HTTP メトリクス、単位は `s`)。
+- keys.md の DB 拡張スキーマのキーを、`db.system`→`db.system.name`、`db.statement`→`db.query.text`、`db.operation`→`db.operation.name` にした。OpenTelemetry Semantic Conventions レジストリ (いずれも非推奨で置き換え先が指定されている)。
+- keys.md の `db.duration` (OTel に存在しない属性) を、メトリクス `db.client.operation.duration` (単位は秒、例を `0.015`) にした。OpenTelemetry Semantic Conventions (データベースメトリクス、単位は `s`)。
+- web-api.md の処理時間の単位を、ミリ秒推奨から秒推奨にした。OpenTelemetry Semantic Conventions (HTTP メトリクス、単位は `s`)。
+- keys.md と messages.md の例外属性キーを、`exception.stack_trace` から `exception.stacktrace` にした。OpenTelemetry Semantic Conventions レジストリ (exception 属性、Stable)。
 
 ## 適用範囲と前提条件
 

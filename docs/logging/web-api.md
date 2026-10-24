@@ -58,5 +58,5 @@ Web APIアクセスに対して適切にログ出力することで、不具合�
 | 送信元IPアドレス | client.address               | ❓️     | ❓️     | パブリックAPIの場合、個人情報特定に繋がる可能性があるため、出力可否はプロジェクトのセキュリティ基準に従う            |
 | ユーザーID       | user_id                      | ❓️     | ❓️     | ログイン済みの場合、ユーザーIDを出力する                                                                             |
 | ステータスコード | http.response.status_code    | ー     | ✅️     | HTTPステータスコード                                                                                                 |
-| 処理時間         | http.server.request.duration | ー     | ✅️     | ミリ秒を推奨                                                                                                         |
+| 処理時間         | http.server.request.duration | ー     | ✅️     | 秒を推奨（OTel の http.server.request.duration の単位は秒）                                                          |
 | User Agent       | user_agent.original          | ✅️     | ✅️     | クライアントの特定に利用する。                                                                                       |
