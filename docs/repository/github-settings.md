@@ -1,13 +1,13 @@
 ---
 type: Runbook
 title: GitHub リポジトリの設定
-description: squash merge だけを許可する設定と、main を ruleset で保護する設定を、管理者が gh で設定する手順と、設定を確かめる方法、緊急時に main を直す方法。リポジトリを作ったとき、merge の設定や main の保護を変えるときに読む。
-tags: [repository, runbook, github, ruleset, branch-protection]
+description: squash merge だけを許可する設定、main を ruleset で保護する設定、private vulnerability reporting と CODEOWNERS を、管理者が gh で設定する手順と、設定を確かめる方法、緊急時に main を直す方法。リポジトリを作ったとき、merge の設定、main の保護、脆弱性の報告の受け付け、コードの所有者を変えるときに読む。
+tags: [repository, runbook, github, ruleset, branch-protection, codeowners, security]
 ---
 
 # GitHub リポジトリの設定
 
-管理者がリポジトリを作ったときに1回だけ実行します。squash merge だけを許可し ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))、main を ruleset で保護します。
+管理者がリポジトリを作ったときに1回だけ実行します。squash merge だけを許可し ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))、main を ruleset で保護し、脆弱性の非公開の報告を受け付けます。
 main を変えられるのは、必須チェックが通った PR の squash merge だけになります。
 
 ## 1. merge の方式
@@ -51,14 +51,39 @@ bypass は、リポジトリの管理者に `pull_request` モードだけを許
 エージェントは利用者の認証情報で push するので、管理者に直接の push を許すと、エージェントの誤った push も通るためです。
 ローカルでは、pre-push hook (`scripts/guard-push.sh`) も main への push を拒否します ([Git hook](../tooling/git-hooks.md))。
 
-## 3. 設定を確かめる
+## 3. 脆弱性の報告 (private vulnerability reporting)
+
+[SECURITY.md](../../SECURITY.md) は、脆弱性を GitHub の private vulnerability reporting で報告するよう案内しています。
+有効にすると、リポジトリの Security タブの Advisories に「Report a vulnerability」のボタンが出て、報告は非公開の advisory の下書きとして届きます ([GitHub の docs](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository))。
+公開リポジトリでだけ使えます。
+
+```sh
+gh api --method PUT repos/yokozi-jp/agent-software-factory/private-vulnerability-reporting
+```
+
+報告の通知は、リポジトリを All Activity か Custom の Security alerts で Watch している管理者に届きます。
+
+## 4. CODEOWNERS
+
+`.github/CODEOWNERS` で、全てのファイルの所有者を `@yokozi-jp` にしています。PR を開くと、所有者にレビューの依頼が自動で届きます ([GitHub の docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners))。
+ruleset の `require_code_owner_review` は `false` のままにし、所有者の承認を merge の条件にしていません。1人で運用していて、承認の数も 0 にしているためです。
+
+CODEOWNERS の設定は GitHub の側にはなく、ファイルを main に置くだけで有効になります。所有者には、リポジトリへの書き込みの権限が必要です。
+
+## 5. 設定を確かめる
 
 ```sh
 gh api repos/yokozi-jp/agent-software-factory --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, squash_merge_commit_title, squash_merge_commit_message, delete_branch_on_merge}'
 gh api repos/yokozi-jp/agent-software-factory/rules/branches/main --jq '.[].type'
+gh api repos/yokozi-jp/agent-software-factory/private-vulnerability-reporting
+gh api repos/yokozi-jp/agent-software-factory/codeowners/errors
+gh api repos/yokozi-jp/agent-software-factory/community/profile --jq '.files | {contributing: (.contributing != null), readme: (.readme != null), license: (.license != null)}'
 ```
 
-2つ目のコマンドで、`deletion`、`non_fast_forward`、`pull_request`、`required_status_checks` が表示されれば有効です。
+- 2つ目のコマンドで、`deletion`、`non_fast_forward`、`pull_request`、`required_status_checks` が表示されれば有効です。
+- 3つ目で `{"enabled":true}` なら、private vulnerability reporting は有効です。
+- 4つ目で `"errors":[]` なら、CODEOWNERS に書き間違いや、書き込みの権限がない所有者はありません。
+- 5つ目は、GitHub が CONTRIBUTING.md などを認識しているかを表示します。SECURITY.md は、Insights の Community Standards の「Security policy」で確かめます。
 
 ## 緊急時に main を直す
 

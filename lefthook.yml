@@ -97,6 +97,8 @@ pre-commit:
         # Plain-text references to docs/ live in these files.
         - "AGENTS.md"
         - "README.md"
+        - "CONTRIBUTING.md"
+        - "SECURITY.md"
         - "lefthook.yml"
         - ".github/**"
         - ".kiro/hooks/**"
