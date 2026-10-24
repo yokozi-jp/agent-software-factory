@@ -48,6 +48,13 @@ r git commit -qm mine
 prs "$own_0002"
 expect_exit 0 "ignores this branch's own PR" r sh "$check"
 
+# Renumbered after another PR took the number: the staged rename counts before it is committed.
+prs "$other_0002"
+expect_exit 1 "fails while the committed ADR uses another PR's number" r sh "$check"
+r git mv docs/adr/0002-mine.md docs/adr/0003-mine.md
+expect_exit 0 "passes once the ADR is renamed to a free number, before the commit" r sh "$check"
+r git commit -qm renumber
+
 prs "$none"
 echo c >"$repo/docs/adr/0001-again.md"
 expect_exit 1 "fails when origin/main has the number" r sh "$check"

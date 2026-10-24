@@ -60,6 +60,24 @@ pre-commit:
         - ".jscpd.json"
         - "pnpm-workspace.yaml"
       run: pnpm lint:dup
+    # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
+    # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
+    # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.
+    - name: unused-code
+      glob:
+        - "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"
+        - "**/package.json"
+        - "**/tsconfig.json"
+        - "knip.jsonc"
+        - "pnpm-workspace.yaml"
+        - "lefthook.yml"
+        - ".github/workflows/*.{yml,yaml}"
+        - "nx.json"
+        - "mise.toml"
+        - ".markdownlint-cli2.yaml"
+        - "scripts/docs-check.sh"
+        - ".kiro/settings/mcp.json"
+      run: pnpm lint:unused
     - name: skills-lock
       glob:
         - ".agents/**"
@@ -138,6 +156,14 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/renovate.test.sh"
       run: sh scripts/test/run.sh scripts/test/renovate.test.sh
+    - name: unused-code-test
+      glob:
+        - "knip.jsonc"
+        - "scripts/test/lib.sh"
+        - "scripts/test/unused-code.test.sh"
+        # A new Knip version (pinned in the catalog) can change what it reports.
+        - "pnpm-workspace.yaml"
+      run: sh scripts/test/run.sh scripts/test/unused-code.test.sh
     - name: worktree-test
       glob:
         - "scripts/worktree.sh"
