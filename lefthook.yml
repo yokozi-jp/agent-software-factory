@@ -60,8 +60,9 @@ pre-commit:
         - ".jscpd.json"
         - "pnpm-workspace.yaml"
       run: pnpm lint:dup
-    # Knip reads every workspace project and the root, and the files that name dependencies outside code:
-    # package.json scripts, workflows, lefthook.yml and the configs of the tools it has plugins for.
+    # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
+    # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
+    # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.
     - name: unused-code
       glob:
         - "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"
@@ -71,6 +72,11 @@ pre-commit:
         - "pnpm-workspace.yaml"
         - "lefthook.yml"
         - ".github/workflows/*.{yml,yaml}"
+        - "nx.json"
+        - "mise.toml"
+        - ".markdownlint-cli2.yaml"
+        - "scripts/docs-check.sh"
+        - ".kiro/settings/mcp.json"
       run: pnpm lint:unused
     - name: skills-lock
       glob:

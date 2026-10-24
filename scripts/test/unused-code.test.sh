@@ -23,27 +23,34 @@ git init -q "$copy"
 in_sandbox_repo "$copy" sh -c 'git add -A && git commit -qm base --no-verify'
 reset() { in_sandbox_repo "$copy" sh -c 'git reset -q --hard && git clean -qfd -e node_modules'; }
 knip() { in_sandbox_repo "$copy" "$repo_root/node_modules/.bin/knip" --no-progress; }
+# reports <text>: Knip fails (exit 1) and its report names <text>, so a case cannot pass on an unrelated finding.
+reports() {
+  out="$(knip 2>&1)"
+  status=$?
+  printf '%s\n' "$out" >&2
+  [ "$status" -eq 1 ] && printf '%s\n' "$out" | grep -qF "$1"
+}
 
 expect_exit 0 "passes on this repository" knip
 
 reset
 echo 'export const unusedValue = 1;' >>"$copy/apps/api/src/app.ts"
-expect_exit 1 "fails on an export nothing imports" knip
+expect_exit 0 "reports an export nothing imports" reports unusedValue
 
 reset
 echo 'export const orphan = 1;' >"$copy/apps/web/src/orphan.ts"
-expect_exit 1 "fails on a file nothing imports" knip
+expect_exit 0 "reports a file nothing imports" reports apps/web/src/orphan.ts
 
 reset
 sed -i.bak 's/"vite-plus": "catalog:"/"vite-plus": "catalog:", "jscpd": "catalog:"/' "$copy/apps/web/package.json"
-expect_exit 1 "fails on a dependency the project does not use" knip
+expect_exit 0 "reports a dependency the project does not use" reports jscpd
 
 # treatConfigHintsAsErrors: an exception that is no longer needed fails, so it gets removed.
 reset
 sed -i.bak 's|"apps/api": {|"apps/api": { "ignoreDependencies": ["hono"],|' "$copy/knip.jsonc"
-expect_exit 1 "fails on an ignoreDependencies entry for a dependency that is used" knip
+expect_exit 0 "reports an ignoreDependencies entry for a dependency that is used" reports hono
 
-# An export tagged @public (see apps/api/src/app.ts) is kept on purpose.
+# An export tagged @public is kept on purpose (docs/adr/0015).
 reset
 printf '/** @public */\nexport const keptValue = 1;\n' >>"$copy/apps/api/src/app.ts"
 expect_exit 0 "passes an unused export tagged @public" knip

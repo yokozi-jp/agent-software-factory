@@ -1,7 +1,8 @@
 // Unused files, exports and dependencies in every pnpm workspace project and the root (docs/adr/0015).
 // Each entry and ignore below is an exception Knip cannot see by itself; its reason is written next to it.
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // The JSONC schema allows the trailing commas that vp fmt writes.
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // A hint means an exception here is no longer needed (or no longer matches). Fail, so stale exceptions get removed.
   "treatConfigHintsAsErrors": true,
   "workspaces": {
