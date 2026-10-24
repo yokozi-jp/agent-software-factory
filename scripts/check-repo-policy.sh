@@ -143,6 +143,25 @@ for test in $(git ls-files 'scripts/test/*.test.sh'); do
     fail "$test is not run by the pre-commit hook. Add a job for it to lefthook.yml."
 done
 
+# `main` in ci.yml is the required status check (.github/rulesets/protect-main.json) and collects the other jobs.
+# A job that `main` does not need can fail without blocking a merge (docs/tooling/ci.md ("ci.yml の検証")).
+# Job ids are the 2-space-indented keys under `jobs:`. `needs` must be written as `needs: [a, b]` on one line.
+ci=.github/workflows/ci.yml
+ci_jobs="$(awk '/^jobs:/ { in_jobs = 1; next } /^[^ #]/ { in_jobs = 0 } in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { sub(/^  /, ""); sub(/:.*/, ""); print }' "$ci")"
+main_needs="$(awk '/^  main:/ { in_main = 1; next } /^  [A-Za-z0-9_-]+:/ { in_main = 0 } in_main && /^    needs:/ { print }' "$ci")"
+case "$main_needs" in
+  *'['*']'* | '') ;;
+  *) fail "$ci: write the needs of the main job as \`needs: [a, b]\` on one line (docs/tooling/ci.md (\"ci.yml の検証\"))." ;;
+esac
+needed="$(printf '%s' "$main_needs" | tr -d '[],' | sed 's/^[[:space:]]*needs://')"
+for job in $ci_jobs; do
+  [ "$job" = main ] && continue
+  case " $needed " in
+    *" $job "*) ;;
+    *) fail "$ci: the main job must list \`$job\` in its needs, or a failure of \`$job\` will not block a merge (docs/tooling/ci.md (\"ci.yml の検証\"))." ;;
+  esac
+done
+
 # Hooks, CI and the tests run shell scripts directly, so git must record them as executable (100755).
 for file in $(git ls-files -s -- '*.sh' ':!.agents/' ':!.kiro/skills/' | awk '$1 != "100755" { print $4 }'); do
   fail "$file is not executable in git. Run \`chmod +x $file\` and stage it again."
