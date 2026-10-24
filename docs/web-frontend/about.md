@@ -27,6 +27,7 @@ sources:
 - VitePress の記法 (`<page-title/>`、`::: tip` などのコンテナ、見出しの `{#id}`) を、GitHub の Markdown の記法 (`> [!TIP]` など) に置き換えた。
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - 原文の図を mermaid の図に、画面のキャプチャやツールのスクリーンショットを文章の説明に置き換えた (画像はコピーしていない)。
+- 静的解析の例 (`static-analysis.md`) の ESLint、Biome、Prettier、lint-staged を、このリポジトリで使う Vite+ (`vp check`、`vp lint`、`vp fmt`) と lefthook に書き換えた。
 
 ## 位置づけ
 

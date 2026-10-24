@@ -42,21 +42,21 @@ Webフロントエンド開発における静的解析の主な手法や技術�
 - **型チェック**
   - 型に起因するエラーを未然に防ぐ
   - 例
-    - TypeScript による型安全の担保
+    - TypeScript による型安全の担保。このリポジトリでは `vp check` が tsgolint で型チェックも行う
 - **Linter**
   - コード規約に基づいたチェックを行い、一貫性のあるコードを保つ
   - 例
-    - JavaScript/TypeScript: `ESLint` `biome` など
+    - JavaScript/TypeScript: Vite+ の `vp lint` (Oxlint)。ルールはルートの `vite.config.ts` の `lint` に書く
     - CSS: `Stylelint` など
-    - その他、JSON・YAML・Markdown 等の周辺ファイルにも各種 Linter が存在
+    - その他、JSON・YAML・Markdown 等の周辺ファイルにも各種 Linter が存在 (このリポジトリの Markdown は `markdownlint-cli2`)
 - **フォーマッター**
   - コードスタイルを自動整形し、見た目の統一と差分の削減を図る
   - 例
-    - `prettier` `biome` などによる自動整形
+    - Vite+ の `vp fmt` (Oxfmt) による自動整形。`vp check` が整形、lint、型チェックをまとめて実行する
 - **補助的ツール**
   - 静的解析を補完し、コードの変更時に自動でチェックを行う仕組みや、プロジェクトの構成・依存関係の健全性を維持する仕組みを提供する
   - 例
-    - コミットフックによる自動実行: `lefthook` `lint-staged` などを用いた、コミット時の Linter や フォーマッター の自動実行
+    - コミットフックによる自動実行: `lefthook` で、コミット時にステージしたファイルへ `vp check --fix` を実行する ([Git hook](../tooling/git-hooks.md))
     - 依存パッケージの健全性チェック: `knip` `depcheck` などを用いた、未使用or未インストールの依存パッケージの検出
     - 依存関係の可視化: `madge` などを用いた、ファイル間の依存関係の視覚的な表示
 

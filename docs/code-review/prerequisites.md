@@ -19,24 +19,21 @@ sources:
 
 ### 利用するGitブランチ戦略
 
-[Gitブランチフローガイドライン \> ブランチ戦略の選定](https://future-architect.github.io/arch-guidelines/documents/forGitBranch/git_branch_standards.html#%E3%83%95%E3%82%99%E3%83%A9%E3%83%B3%E3%83%81%E6%88%A6%E7%95%A5%E3%81%AE%E9%81%B8%E5%AE%9A) にある、以下の2パターンのいずれかを利用しているとする。
+このリポジトリはトランクベース開発 ([ADR 0010](../adr/0010-trunk-based-development.md)) を利用している。
 
-- `Lite GitLab Flow`
-- `GitLab Flow`
-
-そのため、全ての機能開発や不具合修正は、`feature` ブランチを使用したプルリクエストを経由してマージする。その他の `feature` ブランチから `develop` ブランチへのマージ方法なども、Gitブランチフロー記載の推奨事項に則る。
+そのため、全ての機能開発や不具合修正は、`main` から切った短命なブランチを使用したプルリクエストを経由して、squash merge で `main` にマージする ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))。`develop` などの永続ブランチは無い。
 
 ### 事前設定（GitHub）
 
-[Gitブランチフローガイドライン](https://future-architect.github.io/arch-guidelines/documents/forGitBranch/git_setup_guidelines.html#git-config%E6%8E%A8%E5%A5%A8%E8%A8%AD%E5%AE%9A) に則った設定を実施する。例えば、ブランチ保護やレビューの設定には以下の内容がある。できるかぎり自動化やテンプレートを用意して個々人が考慮すべきことを減らし、運用負荷を下げて規則を形骸化させず実効性を上げることを基本姿勢とする。
+`main` は ruleset (`.github/rulesets/protect-main.json`) で保護している ([GitHub リポジトリの設定](../repository/github-settings.md))。できるかぎり自動化やテンプレートを用意して個々人が考慮すべきことを減らし、運用負荷を下げて規則を形骸化させず実効性を上げることを基本姿勢とする。
 
-| 設定項目                                                                                                                                            | 設定例 | 説明                                                                                |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------- | :----- | :---------------------------------------------------------------------------------- |
-| Require a pull request before merging                                                                                                               | ✔      | プルリクエストを必須とする                                                          |
-| Require approvals                                                                                                                                   | 1      | 1名以上の承認を必須とする                                                           |
-| Require status checks to pass before merging                                                                                                        | ✔      | CIの成功をマージ条件とする                                                          |
-| [CODEOWNERS](https://docs.github.com/ja/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) | (省略) | 重要ファイル（例えば、ddl.sqlやopenapi.yamlなど）は承認が必須なレビュアーを指定する |
-| [linguist-generated=true](https://docs.github.com/ja/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github) | (省略) | ツールなどによる生成ファイルの差分を非表示にする .gitattributesの設定               |
+| 設定項目                                                                                                                                            | このリポジトリ                    | 説明                                                                                |
+| :-------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- | :---------------------------------------------------------------------------------- |
+| Require a pull request before merging                                                                                                               | ✔ (squash merge だけ)             | プルリクエストを必須とする                                                          |
+| Require approvals                                                                                                                                   | 0                                 | 承認の数は必須にしていない                                                          |
+| Require status checks to pass before merging                                                                                                        | ✔ (main、commitlint、betterleaks) | CIの成功をマージ条件とする                                                          |
+| [CODEOWNERS](https://docs.github.com/ja/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) | 未設定                            | 重要ファイル（例えば、ddl.sqlやopenapi.yamlなど）は承認が必須なレビュアーを指定する |
+| [linguist-generated=true](https://docs.github.com/ja/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github) | 未設定                            | ツールなどによる生成ファイルの差分を非表示にする .gitattributesの設定               |
 
 ### 機械的なチェックが可能な場合はCIに寄せる方針としている
 
@@ -44,14 +41,14 @@ sources:
 
 例えば、下表のような内容はフォーマッターやリンターに寄せられる可能性が高い。
 
-| 自動化可能だと考えられる指摘例         | ツール例                                                                             |
-| :------------------------------------- | :----------------------------------------------------------------------------------- |
-| 使われていないメソッドや関数           | Pythonの場合、Flake8 など                                                            |
-| デッドコード                           | Pythonの場合、Vultureなど                                                            |
-| デバッグ用のログの残骸                 | JSの場合は、ESLint（console.logの検知など）。 Pythonの場合は、Pylintなど             |
-| 不適切なレイヤーに対するimport         | Pythonの場合、import-linterなど                                                      |
-| //TODO コメントが残っている            | JSでは、eslint-plugin-no-inline-commentsなど                                         |
-| フォーマッターが適用されているかどうか | JSでは `prettier --check "yourfile.js"`、Pythonでは `black --check yourfile.py` など |
+| 自動化可能だと考えられる指摘例         | ツール例                                                                                                             |
+| :------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| 使われていないメソッドや関数           | Pythonの場合、Flake8 など                                                                                            |
+| デッドコード                           | Pythonの場合、Vultureなど                                                                                            |
+| デバッグ用のログの残骸                 | JS/TS は `vp lint` (Oxlint の `no-console`。このリポジトリでは `apps/web/src` で error)。 Pythonの場合は、Pylintなど |
+| 不適切なレイヤーに対するimport         | Pythonの場合、import-linterなど                                                                                      |
+| //TODO コメントが残っている            | JSでは、eslint-plugin-no-inline-commentsなど                                                                         |
+| フォーマッターが適用されているかどうか | JS/TS は `vp fmt --check`、Pythonでは `black --check yourfile.py` など                                               |
 
 ### CIによるレビューコメント連携を行う
 

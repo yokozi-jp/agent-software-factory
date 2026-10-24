@@ -65,6 +65,12 @@ export default defineConfig({
           "no-restricted-globals": "off",
         },
       },
+      // The frontend logs nothing to the browser console (docs/logging/frontend.md).
+      // Collect client errors with an error tracking service instead.
+      {
+        files: ["apps/web/src/**"],
+        rules: { "no-console": "error" },
+      },
     ],
   },
 });

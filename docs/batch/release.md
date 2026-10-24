@@ -21,7 +21,7 @@ sources:
 
 推奨は以下。
 
-- リリース周りのプロセスは、[Gitブランチフローガイドライン](https://future-architect.github.io/arch-guidelines/documents/forGitBranch/git_branch_standards.html) を参考に整備する（開発環境、検証環境で動作確認を取ってから、本番環境にデプロイするなど）
+- リリース周りのプロセスは、[ADR 0010](../adr/0010-trunk-based-development.md) (トランクベース開発) と [リリース](../repository/release.md) に従って整備する（開発環境、検証環境で動作確認を取ってから、本番環境にデプロイするなど）
 - いざというときのために、前回のバージョンへ切り戻せるようにしておく
 - もし、影響範囲が広い重要なジョブを大きく改修した場合は、データバックアップを取っておくと良い
 

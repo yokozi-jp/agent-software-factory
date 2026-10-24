@@ -9,3 +9,4 @@
 - [ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く](0007-api-on-node-web-standard-app.md)：API のランタイムやデプロイ先を変えるとき、`apps/api` に入口のファイルを足すとき、Node.js や Bun 固有の API を使いたくなったとき
 - [ADR 0008: シェルスクリプトは版を固定した shellcheck で検査する](0008-pin-shellcheck.md)：シェルスクリプトを足すとき、shellcheck の版や検査の対象を変えるとき
 - [ADR 0009: 版を固定する CLI ツールは mise と mise.lock で入れる](0009-mise-for-pinned-cli-tools.md)：版を固定した CLI ツールを足すとき、`mise.toml` や `mise.lock`、mise の設定を変えるとき
+- [ADR 0010: ブランチ運用はトランクベース開発にし、main と短命なブランチだけを使う](0010-trunk-based-development.md)：ブランチを作るとき、ブランチ運用やリリースの流れを変えるとき、取り込んだガイドラインが develop や release ブランチを前提にしているとき

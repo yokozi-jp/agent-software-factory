@@ -86,12 +86,10 @@ fi
 
 # Length reminder. A document over 250 lines is a review trigger, not an error: warn but keep the status.
 # Splitting to hit a line count can raise total tokens; split by responsibility, not by length.
-find . -type f -name '*.md' | while read -r doc; do
-  count="$(wc -l < "$doc" | tr -d ' ')"
-  if [ "$count" -gt 250 ]; then
-    echo "docs-check: ${doc#./} is $count lines (over 250): check it answers one question (its description); split by responsibility, not to hit a line count" >&2
-  fi
-done
+find . -type f -name '*.md' -exec wc -l {} + | awk '$2 != "total" && $1 > 250 {
+  sub(/^\.\//, "", $2)
+  print "docs-check: " $2 " is " $1 " lines (over 250): check it answers one question (its description); split by responsibility, not to hit a line count"
+}' >&2
 
 [ "$status" -eq 0 ] && echo "docs-check: OK"
 exit "$status"

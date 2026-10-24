@@ -28,6 +28,8 @@ sources:
 - VitePress の記法 (`<page-title/>`、`::: tip` などのコンテナ、見出しの `{#id}`) を、GitHub の Markdown の記法 (`> [!TIP]` など) に置き換えた。
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - 初マージを祝う Slack の画面キャプチャは、何が写っているかを説明する文章に置き換えた。
+- 前提条件の表 (`prerequisites.md`) の JS の例 (ESLint、prettier) を、このリポジトリで使う `vp lint` と `vp fmt --check` に書き換えた。
+- 原文が前提にしていた Git ブランチフローのガイドライン (Lite GitLab Flow と GitLab Flow、取り込んでいない) を、このリポジトリのトランクベース開発 (ADR 0010) に書き換えた。前提条件 (`prerequisites.md`) のブランチ戦略と GitHub の設定の表、マージの担当 (`reviewee-review-request.md`) の参照先が対象。
 
 ## 位置づけ
 

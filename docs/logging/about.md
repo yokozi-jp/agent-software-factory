@@ -26,6 +26,7 @@ sources:
 - 各文書に OKF の frontmatter と、冒頭の要約を足した。
 - VitePress の記法 (`<page-title/>`、`::: tip` などのコンテナ、見出しの `{#id}`) を、GitHub の Markdown の記法 (`> [!TIP]` など) に置き換えた。
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
+- フロントエンドのログ出力 (`frontend.md`) の「ESLint や Biome のルールで console の使用は警告される」を、このリポジトリの設定 (`apps/web/src` で Oxlint の `no-console` を error) に書き換え、参考のリンクを Oxlint のルールにした。
 
 ## 適用範囲と前提条件
 
