@@ -133,15 +133,22 @@ printf '    # scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: a test named only in a comment is refused" policy
 
 # check-repo-policy: every job of ci.yml other than `main` is in the needs of `main`.
+# Once ci.yml is split, `main` already has a needs line. Add `extra` to it; otherwise write the line.
 reset
 printf '  extra:\n    runs-on: ubuntu-24.04\n    steps: []\n' >> "$copy/.github/workflows/ci.yml" && stage
 expect_exit 1 "repo-policy: a ci.yml job that main does not need is refused" policy
 reset
 printf '  extra:\n    runs-on: ubuntu-24.04\n    steps: []\n' >> "$copy/.github/workflows/ci.yml"
-sed -i.bak 's|^  main:$|  main:\n    needs: [extra]|' "$copy/.github/workflows/ci.yml" && stage
+if grep -q '^    needs: \[' "$copy/.github/workflows/ci.yml"; then
+  sed -i.bak 's|^    needs: \[|    needs: [extra, |' "$copy/.github/workflows/ci.yml"
+else
+  sed -i.bak 's|^  main:$|  main:\n    needs: [extra]|' "$copy/.github/workflows/ci.yml"
+fi
+stage
 expect_exit 0 "repo-policy: a ci.yml job that main needs passes" policy
 reset
 printf '  extra:\n    runs-on: ubuntu-24.04\n    steps: []\n' >> "$copy/.github/workflows/ci.yml"
+sed -i.bak '/^    needs:/d' "$copy/.github/workflows/ci.yml"
 sed -i.bak 's|^  main:$|  main:\n    needs:\n      - extra|' "$copy/.github/workflows/ci.yml" && stage
 expect_exit 1 "repo-policy: needs of main in a block list is refused" policy
 
