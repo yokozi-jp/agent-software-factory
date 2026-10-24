@@ -2,11 +2,11 @@
 // mise.toml and mise.lock, the commit SHAs of GitHub Actions, and the pnpm-workspace.yaml catalog.
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:best-practices"],
   // PR titles become commits on main and must pass commitlint (docs/adr/0004).
   // Renovate only detects Conventional Commits from the history of main, so state it.
+  // config:recommended makes the type `fix` for the `dependencies` depType; :semanticCommitTypeAll overrides that.
+  "extends": ["config:best-practices", ":semanticCommitTypeAll(chore)"],
   "semanticCommits": "enabled",
-  "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
   "packageRules": [
     {
@@ -46,7 +46,7 @@
       "matchStrings": ["betterleaksMinVersion\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "betterleaks",
       "packageNameTemplate": "betterleaks/betterleaks",
-      "datasourceTemplate": "github-tags",
+      "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$",
     },
   ],
