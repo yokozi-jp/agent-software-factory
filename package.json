@@ -9,7 +9,8 @@
     "check:root": "scripts/check-root-files.sh",
     "test": "nx run-many -t test",
     "build": "nx run-many -t build",
-    "lint:md": "markdownlint-cli2 \"**/*.md\""
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:dup": "jscpd"
   },
   "devDependencies": {
     "@commitlint/cli": "catalog:",
@@ -18,6 +19,7 @@
     "@commitlint/types": "catalog:",
     "@iwe-org/iwe": "catalog:",
     "@nx/js": "catalog:",
+    "jscpd": "catalog:",
     "lefthook": "catalog:",
     "markdownlint-cli2": "catalog:",
     "nx": "catalog:",

@@ -125,6 +125,7 @@ curl -fsSL https://vite.plus | VP_NODE_MANAGER=yes VP_PM_MANAGER=yes bash
 - Vite+ (`vp`) は Node.js と pnpm を `.node-version` と `package.json` に合わせて用意するので、Node.js と pnpm を別に入れる必要はありません。
 - mise は、Git hook と CI で使う CLI ツール (`mise.toml` の `[tools]`) を、`mise.toml` と `mise.lock` で固定した版で入れます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。hook とスクリプトは `mise exec` で道具を呼ぶので、`mise activate` は要りません。
 - GitHub CLI (`gh`) は、Git の HTTPS の認証と、Issue や PR の操作に使います。
+- jq は、Kiro の hook (`.kiro/hooks/`) が、エージェントの操作の JSON を読むのに使います。jq がないと、生成物への書き込みを止める hook と、並行セッションを警告する hook が動きません ([Kiro の hook](../tooling/git-hooks.md#kiro-の-hook))。`scripts/test/kiro-hooks.test.sh` も jq を使います。
 
 途中で失敗すると、そこでブロックが止まります。原因を直してから、同じブロックをもう一度貼り付けます (何度実行しても同じ結果になります)。
 
@@ -147,6 +148,7 @@ vp env install          # .node-version の Node.js と、package.json の pnpm
 pnpm install            # 依存と、prepare スクリプトで lefthook の hook
 
 mise ls --current --missing         # 何も表示しない (mise.toml の道具がすべて入っている)
+jq --version                        # jq-1.x (Kiro の hook が使う)
 node -v                             # v24.x
 pnpm -v                             # 12.15.0
 pnpm exec nx show projects          # api, web
