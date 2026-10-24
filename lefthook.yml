@@ -52,11 +52,13 @@ pre-commit:
         - "mise.lock"
       run: scripts/lint-workflows.sh
     # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
+    # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
     - name: duplicate-code
       glob:
         - "apps/**"
         - "packages/**"
         - ".jscpd.json"
+        - "pnpm-workspace.yaml"
       run: pnpm lint:dup
     - name: skills-lock
       glob:
