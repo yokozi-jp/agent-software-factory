@@ -25,7 +25,7 @@ PR は squash merge だけを使い、破壊的変更は PR タイトルの `!` 
   - `ci`: `.github/` の workflow と ruleset
   - `hooks`: Git hook (`lefthook.yml`、`scripts/`) と Kiro の hook (`.kiro/hooks/`)
   - `deps`: 依存の追加と更新 (`package.json`、`pnpm-workspace.yaml` の catalog、lockfile)
-- **subject**: 日本語でも英語でも構いません。
+- **subject**: 日本語でも英語でも構いません。先頭は大文字の英単語にしません (`subject-case`)。ファイル名や略語 (`CODEOWNERS`、`README`、`API`) で始めると拒否されるので、日本語の語を前に置きます (例: `docs: コミュニティの文書 (CODEOWNERS …) を置く`)。
 - **本文**: 1行は 100 文字以内にします (`body-max-line-length`)。
 - 破壊的変更は `feat(api)!: ...` のように `!` を付けます。
 

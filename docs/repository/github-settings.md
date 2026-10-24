@@ -9,6 +9,7 @@ tags: [repository, runbook, github, ruleset, branch-protection, codeowners, secu
 
 管理者がリポジトリを作ったときに1回だけ実行します。squash merge だけを許可し ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))、main を ruleset で保護し、脆弱性の非公開の報告を受け付けます。
 main を変えられるのは、必須チェックが通った PR の squash merge だけになります。
+設定を変えたら、[コードレビューの前提条件](../code-review/prerequisites.md#事前設定github) の GitHub の設定の表も直します。
 
 ## 1. merge の方式
 
