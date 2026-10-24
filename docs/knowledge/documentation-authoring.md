@@ -55,6 +55,7 @@ tags: [knowledge, convention, documentation, iwe, okf]
 
 `iwe create` は content mode でも書式を少し変えます (iwe 0.29.0 で、コードブロックの言語の前の空白、表の整列、リストの項目の間の空行)。
 `vp fmt` で前の2つは戻りますが、リストの空行は残ることがあるので、作成後に差分を確認します。
+`iwe create` は HTML コメント (`<!-- ... -->`) も消します。続けて2つ置いた注記 (`> [!NOTE]`) を分けるコメントなどを残したい文書は、作成した後にファイルを直接書き直します。
 
 使わない操作は、MCP では `.kiro/settings/mcp.json` の `disabledTools` で無効にしています。
 CLI の `iwe normalize` は、Kiro の hook (`.kiro/hooks/block-iwe-normalize.sh`) が拒否します。
@@ -67,7 +68,7 @@ ADR は `docs/adr/` に `NNNN-slug.md` の連番で置き、`domain-modeling` sk
 ## 検査
 
 ```sh
-scripts/docs-check.sh   # OKF のスキーマ、docs/ 内のリンク切れ、孤立文書、index の「いつ読むか」、250行超の警告
+scripts/docs-check.sh   # OKF のスキーマ、docs/ 内のリンク切れと見出しへのリンク、孤立文書、index の「いつ読むか」、取り込んだガイドラインの公開サイトへのリンク、250行超の警告
 pnpm lint:md            # markdownlint-cli2
 ```
 

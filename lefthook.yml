@@ -36,6 +36,7 @@ pre-commit:
       glob:
         - "docs/**"
         - "scripts/docs-check.sh"
+        - "scripts/docs-links.mjs"
       run: scripts/docs-check.sh
     - name: shellcheck
       glob:
@@ -61,6 +62,7 @@ pre-commit:
       glob:
         - "scripts/check-repo-policy.sh"
         - "scripts/docs-check.sh"
+        - "scripts/docs-links.mjs"
         - "scripts/test/lib.sh"
         - "scripts/test/repo-checks.test.sh"
       run: sh scripts/test/run.sh scripts/test/repo-checks.test.sh
@@ -101,7 +103,8 @@ pre-commit:
         - "scripts/**"
         - "docs/**"
         - "**/*.ts"
-      run: scripts/check-repo-policy.sh
+      # Check what is staged, so unstaged edits to other files cannot fail the commit.
+      run: scripts/check-repo-policy.sh staged
 
 pre-push:
   commands:

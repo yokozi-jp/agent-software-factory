@@ -1,8 +1,27 @@
 #!/usr/bin/env sh
 # Mechanical checks for decisions recorded in docs/adr/. Run by the pre-commit hook and CI.
+#   scripts/check-repo-policy.sh          check the working tree (CI, and by hand)
+#   scripts/check-repo-policy.sh staged   check what is staged (pre-commit). Unstaged edits to other files,
+#                                         such as a doc someone is still rewriting, cannot fail a commit.
 set -eu
 
 cd "$(git rev-parse --show-toplevel)"
+root="$(pwd)"
+if [ "${1:-}" = "staged" ]; then
+  # Write the index into a temporary tree and run the same checks there.
+  # `git ls-files` there still lists the index of this repository, and the tree holds exactly those files.
+  tree="$(mktemp -d)"
+  trap 'rm -rf "$tree"' EXIT
+  git checkout-index --all --prefix="$tree/"
+  # Kiro loads untracked steering files too, so they are checked even when not staged.
+  git ls-files --others --exclude-standard -- '.kiro/steering/*.md' | while IFS= read -r file; do
+    mkdir -p "$tree/$(dirname "$file")"
+    cp "$file" "$tree/$file"
+  done
+  export GIT_WORK_TREE="$tree"
+  export GIT_DIR="${GIT_DIR:-$(git rev-parse --absolute-git-dir)}"
+  cd "$tree"
+fi
 status=0
 fail() {
   echo "repo-policy: $1" >&2
@@ -21,8 +40,8 @@ for config in $(git ls-files '*vite.config.ts'); do
   fi
 done
 
-# ADR 0001: lefthook owns Git hooks.
-if [ -n "$(git ls-files .vite-hooks)" ] || [ -d .vite-hooks ]; then
+# ADR 0001: lefthook owns Git hooks. `vp` creates .vite-hooks without committing it, so look at the real tree.
+if [ -n "$(git ls-files .vite-hooks)" ] || [ -d "$root/.vite-hooks" ]; then
   fail ".vite-hooks exists. Git hooks are managed by lefthook.yml (docs/adr/0001)."
 fi
 

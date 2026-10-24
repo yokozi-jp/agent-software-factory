@@ -43,6 +43,18 @@ fresh_copy
 echo "# docs/adr/9999" >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: cited ADR number must exist" policy
 
+# check-repo-policy staged: only what is staged counts.
+staged_policy() { in_sandbox_repo "$copy" sh scripts/check-repo-policy.sh staged; }
+fresh_copy
+expect_exit 0 "repo-policy staged: passes on this repo" staged_policy
+fresh_copy
+# Someone is rewriting setup.md and has not staged it: the heading that scripts cite is gone from the working tree.
+sed -i.bak 's/^## 3\. Ubuntu の初期セットアップ$/## 3. 書き直し中/' "$copy/docs/local-env-setup/setup.md"
+expect_exit 1 "repo-policy: the working tree check sees the unstaged edit" policy
+expect_exit 0 "repo-policy staged: an unstaged edit to another file does not fail" staged_policy
+stage
+expect_exit 1 "repo-policy staged: the same edit fails once it is staged" staged_policy
+
 # check-repo-policy: ADR decisions.
 fresh_copy
 sed -i.bak 's/"nx": "catalog:",/"nx": "catalog:", "@nx\/vite": "24.0.0",/' "$copy/package.json" && stage
@@ -80,6 +92,15 @@ expect_exit 1 "docs-check: missing frontmatter fields and orphans fail" docs
 fresh_copy
 echo "See [missing](missing.md)." >> "$copy/docs/tooling/ci.md"
 expect_exit 1 "docs-check: broken links fail" docs
+fresh_copy
+echo "See [hooks](git-hooks.md#no-such-heading)." >> "$copy/docs/tooling/ci.md"
+expect_exit 1 "docs-check: a link to a missing heading of another document fails" docs
+fresh_copy
+echo "See [web api](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html)." >> "$copy/docs/logging/web-api.md"
+expect_exit 1 "docs-check: a link to the site of an imported guideline fails" docs
+fresh_copy
+echo "See [aws](https://future-architect.github.io/arch-guidelines/documents/forAWS/aws_guidelines.html)." >> "$copy/docs/logging/web-api.md"
+expect_exit 0 "docs-check: a link to the site of a guideline that is not imported passes" docs
 fresh_copy
 # Over 250 lines is a review reminder, not an error: the check still passes (warning only).
 { cat "$copy/docs/tooling/ci.md"; yes '' | head -n 300; } > "$copy/docs/tooling/ci.md.big" && mv "$copy/docs/tooling/ci.md.big" "$copy/docs/tooling/ci.md"

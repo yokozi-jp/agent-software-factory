@@ -49,6 +49,12 @@ if [ -n "$report" ]; then
   status=1
 fi
 
+# Heading anchors of links between documents, and links to the arch-guidelines site (scripts/docs-links.mjs).
+if ! links="$(node "$root/scripts/docs-links.mjs")"; then
+  echo "$links" | sed 's/^/docs-check: /' >&2
+  status=1
+fi
+
 # index.md link lines must carry a "when to read" note after the full-width colon (：).
 # node reads every index.md so the full-width colon and link syntax are handled as text, not shell globs.
 # shellcheck disable=SC2016
