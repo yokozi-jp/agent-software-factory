@@ -17,7 +17,7 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 | `commit-msg` | commitlint でコミットメッセージを検証                                                                                                                                              |
 | `pre-commit` | betterleaks で staged の変更を scan。staged ファイルに `vp check --fix` を実行して修正を stage し、その後 Markdown を lint する                                                    |
 | `pre-commit` | 変更したファイルに応じて、`docs-check.sh`、`shellcheck.sh`、`lint-workflows.sh`、`pnpm lint:dup`、`verify-skills-lock.mjs`、`check-repo-policy.sh`、`scripts/test/` のテストを実行 |
-| `pre-push`   | main への push を拒否し (`scripts/guard-push.sh`)、betterleaks で push するコミットの範囲を scan                                                                                   |
+| `pre-push`   | main への push を拒否し (`scripts/guard-push.sh`)、betterleaks で push するコミットの範囲を scan。判断が絡む変更に ADR がないと警告する (`scripts/adr-check.sh`、止めない)         |
 
 ## hook を一時的に飛ばす
 
@@ -31,6 +31,8 @@ git commit --no-verify ...               # Git 標準の方法
 
 飛ばしても CI で同じ検証を実行するので、問題は PR の段階で止まります。
 secret scan を飛ばして秘密情報を push してしまった場合は、[secret scan](secret-scan.md) の手順で対処します。
+
+`pre-push` の adr-check は警告だけで、push を止めません。ADR が要らない変更の警告は、`ADR_ACK=1 git push ...` で抑えます ([ADR 0015](../adr/0015-adr-check-warns-without-blocking.md))。判断の基準は [docs の書き方](../knowledge/documentation-authoring.md#adr-を書くかどうか) にあります。
 
 ## hook が動かないとき
 

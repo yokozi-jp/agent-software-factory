@@ -125,6 +125,12 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/adr-number.test.sh"
       run: sh scripts/test/run.sh scripts/test/adr-number.test.sh
+    - name: adr-check-test
+      glob:
+        - "scripts/adr-check.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/adr-check.test.sh"
+      run: sh scripts/test/run.sh scripts/test/adr-check.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
@@ -153,4 +159,8 @@ pre-push:
     secret-scan:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
       run: scripts/secret-scan.sh pre-push
+      use_stdin: true
+    # Warns only (docs/adr/0015). Silence it with ADR_ACK=1 for a change that needs no ADR.
+    adr-check:
+      run: scripts/adr-check.sh pre-push
       use_stdin: true

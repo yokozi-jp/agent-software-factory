@@ -53,6 +53,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
 | スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                        | `scripts/check-adr-number.sh`                                                                                             |
+| 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                   | `scripts/adr-check.sh`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0015](../adr/0015-adr-check-warns-without-blocking.md)) |
 | 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
