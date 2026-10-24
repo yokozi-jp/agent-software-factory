@@ -26,6 +26,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 - `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
   `git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作するスクリプトは、`scripts/test/lib.sh` を読み込んだテストの中だけに置けます (理由は「スクリプトのテスト」)。
+  `scripts/test/*.test.sh` がどれも workflow と `lefthook.yml` の両方で実行されること (コメントの中の名前は数えません)、git で管理しているシェルスクリプトの mode が `100755` であることも確認します。
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 - `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を actionlint と zizmor で検査します ([ADR 0012](../adr/0012-lint-workflows.md))。actionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。actionlint は `run:` のスクリプトも固定した shellcheck で検査します。
@@ -38,8 +39,19 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
   対象は `git ls-files` で選ぶので、commit していない作業用のファイルは検査しません。
   pre-commit hook では、ステージしたファイルに `vp check --fix` を実行します。
 - `pnpm lint:dup` (jscpd): `apps/` と `packages/` の JavaScript、TypeScript、CSS の重複を検査し、重複率が `.jscpd.json` の `threshold` を超えると失敗します ([ADR 0014](../adr/0014-jscpd-duplication-threshold.md))。
-  `.gitignore` の対象、生成物 (`routeTree.gen.ts`、`.tanstack/`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0014 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
+  `.gitignore` の対象 (`dist`、`.tanstack/` など)、生成物 (`routeTree.gen.ts`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0014 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
 - build の後に `git status` が空であること: `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。
+
+## 検査を足すとき
+
+検査はローカルと CI で同じコマンドを呼ぶので、1 つ足すと次の場所を全部直します。`pnpm lint:dup` (jscpd) を足した PR #91 が例です。
+
+1. コマンド: リポジトリ全体を見る検査は、`scripts/<name>.sh` か、ルートの `package.json` の script にします。プロジェクトごとの検査は、そのプロジェクトの `package.json` の script にし、Nx の target として動かします。どちらも `vp run` は使いません ([ADR 0002](../adr/0002-nx-orchestrates-vite-plus.md))。道具の版は、npm で配られるものは `pnpm-workspace.yaml` の catalog で、それ以外は `mise.toml` で固定します ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
+2. `ci.yml` の `main` job に step を足します。
+3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
+4. 止めるべき入力で失敗し、通すべき入力で通ることを `scripts/test/<name>.test.sh` で確かめ、`ci.yml` の Script tests と `lefthook.yml` の job に載せます。載せ忘れと実行権限の付け忘れは `check-repo-policy.sh` が止めます。
+5. docs: この文書の「ci.yml の検証」、[開発コマンド](commands.md) の構成とコマンドの表、[Git hook](git-hooks.md) の `pre-commit` の行。
+6. 道具や設定を選んだ理由は ADR に書きます。番号は `scripts/check-adr-number.sh` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
 ## スクリプトのテスト
 

@@ -72,17 +72,49 @@ printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"
 expect_exit 1 "repo-policy: steering frontmatter is required" policy
 
 # check-repo-policy: git on another repository only from tests isolated by lib.sh.
+# Each new script is executable, and the new test is listed, so only the git rule can fail the case.
 reset
-printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && stage
+printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && chmod +x "$copy/scripts/make-repo.sh" && stage
 expect_exit 1 "repo-policy: git init outside scripts/test is refused" policy
 reset
 # $1 belongs to the generated script.
 # shellcheck disable=SC2016
-printf '#!/bin/sh\ngit -C "$1" commit -m x\n' > "$copy/.kiro/hooks/other.sh" && stage
+printf '#!/bin/sh\ngit -C "$1" commit -m x\n' > "$copy/.kiro/hooks/other.sh" && chmod +x "$copy/.kiro/hooks/other.sh" && stage
 expect_exit 1 "repo-policy: git -C outside scripts/test is refused" policy
 reset
-printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.sh" && stage
+printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.sh" && chmod +x "$copy/scripts/test/bare.test.sh"
+sed -i.bak 's|tests="|tests="scripts/test/bare.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    - name: bare\n      run: sh scripts/test/run.sh scripts/test/bare.test.sh\n' >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: a test that does not source lib.sh is refused" policy
+
+# check-repo-policy: every script test runs in a workflow and in the pre-commit hook.
+listed_test() {
+  printf '#!/bin/sh\n' > "$copy/scripts/test/new.test.sh" && chmod +x "$copy/scripts/test/new.test.sh"
+}
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    - name: new\n      run: sh scripts/test/run.sh scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 0 "repo-policy: a test listed in ci.yml and lefthook.yml passes" policy
+reset
+listed_test
+printf '    - name: new\n      run: sh scripts/test/run.sh scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: a test that no workflow runs is refused" policy
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml" && stage
+expect_exit 1 "repo-policy: a test that the pre-commit hook does not run is refused" policy
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    # scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: a test named only in a comment is refused" policy
+
+# check-repo-policy: shell scripts are executable in git. The staged mode counts, not the file on disk.
+reset
+chmod -x "$copy/scripts/guard-push.sh" && stage
+expect_exit 1 "repo-policy: a non-executable shell script is refused" policy
+expect_exit 1 "repo-policy staged: a non-executable shell script is refused" staged_policy
 
 # docs-check against a small docs/ fixture: the repo's schemas and scripts, and a few documents.
 #   tooling/index.md -> a.md (Reference), b.md (has "## 見出し")
