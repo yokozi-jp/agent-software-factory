@@ -16,7 +16,7 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 | ------------------------------------- | ---------------------------------------------------- |
 | モノレポ、タスクの実行と cache        | Nx 24                                                |
 | パッケージマネージャ                  | pnpm 12.15.0 (`package.json` の `devEngines` で固定) |
-| Node.js                               | 26 (`.node-version` で固定)                          |
+| Node.js                               | 24 (`.node-version` で固定)                          |
 | build、test、lint、format、型チェック | Vite+ (`vp`)                                         |
 | Git hook                              | lefthook                                             |
 | コミットメッセージの検証              | commitlint (Conventional Commits)                    |

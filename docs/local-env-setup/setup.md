@@ -89,10 +89,10 @@ read -rp 'Git の user.email: ' git_email
 # 共通ワークスペース
 sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 755 /home/projects
 
-# 基本パッケージ。libatomic1 は Node 26 の公式バイナリが、extrepo は mise の apt リポジトリの登録が使う
+# 基本パッケージ。extrepo は mise の apt リポジトリの登録が使う
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y curl git wget unzip jq vim tree gnupg2 software-properties-common libatomic1 extrepo
+sudo apt install -y curl git wget unzip jq vim tree gnupg2 software-properties-common extrepo
 
 # GitHub CLI の apt リポジトリ (公式の手順と同じ鍵と URL)
 out=$(mktemp)
@@ -197,8 +197,3 @@ Signed-By: /etc/apt/keyrings/mise-archive-keyring.gpg
 EOF
 cat /etc/apt/sources.list.d/mise.sources   # 6 行で、どの行も空白で始まらないこと
 ```
-
-### `node` が `libatomic.so.1` で起動しない
-
-Node 26 の公式バイナリは `libatomic.so.1` を必要とします。
-`error while loading shared libraries: libatomic.so.1` と出るときは、`sudo apt install -y libatomic1` を実行します (3 のブロックでは入ります)。
