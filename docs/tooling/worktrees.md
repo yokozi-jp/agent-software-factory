@@ -27,6 +27,7 @@ cd "$(scripts/worktree.sh add feat/example)"   # origin/main からブランチ�
 ```
 
 `add` は、標準出力に worktree の絶対 path だけを出します。node_modules は worktree ごとに入れ、Git hook は全ての worktree で共有されます。
+Kiro の file tool (読む、書く、編集する) は、相対 path を worktree ではなく workspace root (main の作業ツリー) に対して解決します。worktree のファイルは絶対 path で渡します。相対 path のまま書くと、別のセッションが使っている main の作業ツリーのファイルを書き換えます。shell のコマンドは、`cwd` に worktree を指定すれば相対 path で構いません。
 作業の手順そのものは `using-git-worktrees` skill に従います。
 
 ## PR を出す

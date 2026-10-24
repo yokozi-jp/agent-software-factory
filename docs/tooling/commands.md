@@ -59,6 +59,7 @@ docs/      ドキュメント (入口は docs/index.md)
 ## 補足
 
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
+- `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。
 - registry のパッケージの情報 (版、公開日、依存) は `pnpm view <pkg>` で調べます。このリポジトリでは、`npm view` は `package.json` の `devEngines` (pnpm を指定) で `EBADDEVENGINES` になります。
 - `apps/web/src/routeTree.gen.ts` は TanStack Router が生成するファイルです。手で編集せず、生成された差分を commit します。CI は build の後に差分が残ると失敗します。
 - `vp check` と、それを呼ぶ Nx の target のエラーには ANSI の色のコードが入るので、出力を grep するときは `FORCE_COLOR=0` を付けます (例: `FORCE_COLOR=0 pnpm exec nx run api:check`)。`NO_COLOR=1` では色が消えません。
