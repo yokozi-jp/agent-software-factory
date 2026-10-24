@@ -54,6 +54,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                        | `scripts/check-adr-number.sh`                                                                                             |
 | worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                       |
+| 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                   | `scripts/adr-check.sh`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
 | 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
