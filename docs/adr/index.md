@@ -10,3 +10,4 @@
 - [ADR 0008: シェルスクリプトは版を固定した shellcheck で検査する](0008-pin-shellcheck.md)：シェルスクリプトを足すとき、shellcheck の版や検査の対象を変えるとき
 - [ADR 0009: 版を固定する CLI ツールは mise と mise.lock で入れる](0009-mise-for-pinned-cli-tools.md)：版を固定した CLI ツールを足すとき、`mise.toml` や `mise.lock`、mise の設定を変えるとき
 - [ADR 0010: ブランチ運用はトランクベース開発にし、main と短命なブランチだけを使う](0010-trunk-based-development.md)：ブランチを作るとき、ブランチ運用やリリースの流れを変えるとき、取り込んだガイドラインが develop や release ブランチを前提にしているとき
+- [ADR 0011: テナントが1つでも、tenant_id と PostgreSQL の RLS を最初から入れる](0011-tenant-id-and-rls-from-the-start.md)：表や migration を足すとき、DB のロールや接続の設定を変えるとき、テナントを使わない構成に戻したくなったとき、DB を PostgreSQL 以外にしたくなったとき
