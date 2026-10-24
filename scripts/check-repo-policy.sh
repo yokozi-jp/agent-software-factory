@@ -105,6 +105,27 @@ for file in $(git ls-files -- '*.sh' '*.mjs' '*.js' '*.cjs' '*.ts' ':!.agents/' 
   esac
 done
 
+# ADR 0013: one Node.js major version. .node-version decides it; the places that repeat it must agree.
+# A change of the major otherwise leaves a stale copy behind (the API build target, the type definitions).
+node_major="$(sed -n 's/^v\{0,1\}\([0-9][0-9]*\).*/\1/p' .node-version | head -n 1)"
+if [ -z "$node_major" ]; then
+  fail ".node-version must start with a Node.js version such as 24 or 24.22.1 (docs/adr/0013)."
+else
+  engines_major="$(sed -n '/"engines"/,/}/s/.*"node"[[:space:]]*:[[:space:]]*"[^0-9"]*\([0-9][0-9]*\).*/\1/p' package.json | head -n 1)"
+  types_major="$(sed -n 's/^[[:space:]]*"\{0,1\}@types\/node"\{0,1\}:[[:space:]]*"\{0,1\}[^0-9]*\([0-9][0-9]*\).*/\1/p' pnpm-workspace.yaml | head -n 1)"
+  [ "$engines_major" = "$node_major" ] ||
+    fail "package.json engines.node (${engines_major:-unreadable}) must be Node.js $node_major, the major of .node-version (docs/adr/0013)."
+  [ "$types_major" = "$node_major" ] ||
+    fail "pnpm-workspace.yaml catalog @types/node (${types_major:-unreadable}) must be Node.js $node_major, the major of .node-version (docs/adr/0013)."
+  for config in $(git ls-files '*vite.config.ts'); do
+    targets="$(grep -oE 'target:[[:space:]]*"node[0-9]+"' "$config" | grep -oE '[0-9]+' || true)"
+    for target in $targets; do
+      [ "$target" = "$node_major" ] ||
+        fail "$config builds for node$target, but .node-version is Node.js $node_major (docs/adr/0013)."
+    done
+  done
+fi
+
 # ADR numbers are unique. Two branches can each take the next free number, and both ADRs can reach main
 # without a merge conflict (docs/tooling/worktrees.md ("PR を出す")).
 for number in $(git ls-files 'docs/adr/[0-9][0-9][0-9][0-9]-*.md' | sed 's|^docs/adr/\([0-9]\{4\}\)-.*|\1|' | sort | uniq -d); do
