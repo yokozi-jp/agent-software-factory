@@ -78,6 +78,23 @@ export default defineConfig({
         files: ["apps/web/src/**"],
         rules: { "no-console": "error" },
       },
+      // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
+      // apps/web/lint/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
+      // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
+      {
+        files: ["apps/web/src/**"],
+        jsPlugins: [{ name: "web-xss", specifier: "./apps/web/lint/xss-plugin.ts" }],
+        plugins: ["unicorn"],
+        rules: {
+          "web-xss/no-html-injection": "error",
+          "web-xss/no-javascript-url": "error",
+          "web-xss/no-dynamic-code": "error",
+          "web-xss/require-disable-reason": "error",
+          "unicorn/no-abusive-eslint-disable": "error",
+          // web-xss/no-dynamic-code reports eval with a message that says what to write instead.
+          "no-eval": "off",
+        },
+      },
     ],
   },
 });

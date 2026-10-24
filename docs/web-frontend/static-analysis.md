@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: "Webフロントエンドの静的解析"
-description: "静的解析の目的、種類、取り組み方、導入時の考慮事項を定める文書。型チェック・Linter・フォーマッターを導入・運用するときに読む。"
+description: "静的解析の目的、種類、取り組み方、導入時の考慮事項と、このリポジトリで XSS の入口になる書き方を lint で禁止する一覧を定める文書。型チェック・Linter・フォーマッターを導入・運用するとき、lint で止まった書き方を直すとき、禁止を外す理由を書くときに読む。"
 tags: [web-frontend, convention, static-analysis, lint]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html
@@ -59,6 +59,39 @@ Webフロントエンド開発における静的解析の主な手法や技術�
     - コミットフックによる自動実行: `lefthook` で、コミット時にステージしたファイルへ `vp check --fix` を実行する ([Git hook](../tooling/git-hooks.md))
     - 依存パッケージの健全性チェック: `knip` `depcheck` などを用いた、未使用or未インストールの依存パッケージの検出
     - 依存関係の可視化: `madge` などを用いた、ファイル間の依存関係の視覚的な表示
+
+## XSS の入口になる書き方の禁止
+
+このリポジトリの `apps/web/src` では、XSS の入口になる書き方を Linter で禁止している。`vp check` (pre-commit と CI) で止まる。
+Oxlint の組み込みのルールは、メッセージに「代わりに何を書くか」を載せられない。そのため、規則は `apps/web/lint/xss-plugin.ts` の自作の plugin に置き、ルートの `vite.config.ts` の `lint.overrides` で有効にしている。
+
+| 規則                                | 禁止する書き方                                                                                                                                           | 理由                                                                            | 代わりの書き方                                                                                     |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------- |
+| `web-xss/no-html-injection`         | `dangerouslySetInnerHTML` (JSX の属性と、`createElement` に渡すオブジェクト)、`innerHTML` / `outerHTML` への代入、`insertAdjacentHTML`、`document.write` | 渡した文字列を HTML として解釈するため、利用者の入力が混ざるとスクリプトが動く  | React の要素で描画する。`textContent` を使う。制御できない HTML を出すなら、サニタイズしてから渡す |
+| `web-xss/no-javascript-url`         | `javascript:` で始まる文字列 (前の空白と大文字小文字は無視する)                                                                                          | リンクを辿ったときにコードが動く。React 19 は `javascript:` の URL を禁じている | 操作は `onClick` に書く。移動は実際の URL にする                                                   |
+| `web-xss/no-dynamic-code`           | `eval`、`new Function`、`Function()` (`window.eval` や `(0, eval)()` を含む)、文字列を渡した `setTimeout` / `setInterval`                                | 文字列をコードとして実行するため、利用者の入力が混ざるとスクリプトが動く        | 関数を直接呼ぶ。データは `JSON.parse` で読む                                                       |
+| `web-xss/require-disable-reason`    | 理由のない disable コメント (`// oxlint-disable-next-line <規則名>` だけ)                                                                                | 検出を隠しても、なぜ安全かが残らない                                            | `--` に続けて理由を足す                                                                            |
+| `unicorn/no-abusive-eslint-disable` | 規則名のない disable コメント (`/* oxlint-disable */`)                                                                                                   | 対象の規則だけでなく、そのファイルの検出を一括で隠してしまう                    | 規則名を書く                                                                                       |
+
+どの規則も、リンタが静的に分かる範囲だけを見る。変数に入れた文字列 (`const code = "..."; setTimeout(code)`) や、`el[name] = html` のように名前が動的な代入は見つけられない。
+サニタイズや CSP (web のデプロイ先が決まってから扱う) と置き換えるものではなく、入口の書き方を減らす補助である。
+
+禁止を外すときは、その行に規則名と理由を書く。理由がないと `web-xss/require-disable-reason` が止める。
+
+```ts
+// oxlint-disable-next-line web-xss/no-html-injection -- 管理者が書いた HTML を DOMPurify で処理した結果
+const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
+```
+
+規則の動きは `apps/web/lint/xss-plugin.test.ts` が、禁止の書き方と通す書き方の例で確かめる。`vp test` (Nx の `web:test`) で動く。
+
+> [!NOTE]
+> **参考**
+>
+> - [React: dangerouslySetInnerHTML](https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html)
+> - [React 19 Upgrade Guide: `javascript:` URL の廃止](https://react.dev/blog/2024/04/25/react-19-upgrade-guide#other-breaking-changes)
+> - [Writing JS plugins | Oxlint](https://oxc.rs/docs/guide/usage/linter/writing-js-plugins.html)
+> - [Vite+ Lint: Writing Your Own Rules](https://github.com/voidzero-dev/vite-plus/blob/main/docs/guide/lint.md)
 
 ## 取り組み方
 
