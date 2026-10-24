@@ -18,6 +18,11 @@ const runtimeImportMessage =
 const typedRules: Record<string, "error" | ["error", ...unknown[]]> = {
   "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
   "typescript/no-explicit-any": "error",
+  "typescript/no-empty-object-type": "error",
+  "typescript/no-namespace": "error",
+  "typescript/no-require-imports": "error",
+  "typescript/no-unnecessary-type-constraint": "error",
+  "typescript/no-unsafe-function-type": "error",
   "typescript/no-misused-promises": "error",
   "typescript/no-unnecessary-type-assertion": "error",
   "typescript/no-unsafe-argument": "error",
@@ -58,8 +63,9 @@ export default defineConfig({
       reportUnusedDisableDirectives: "error",
     },
     overrides: [
-      // JavaScript files (scripts/*.mjs) have no type information, so the type-aware rules above only
-      // report their untyped imports. They apply to TypeScript (docs/adr/0020).
+      // JavaScript files (scripts/*.mjs) have no type annotations and no type information, so these rules
+      // either cannot match (no-explicit-any, ban-ts-comment) or only report their untyped imports (the
+      // no-unsafe-* rules). They apply to TypeScript (docs/adr/0020).
       {
         files: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"],
         plugins: ["typescript"],
