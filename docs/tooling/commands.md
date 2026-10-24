@@ -37,30 +37,32 @@ docs/      ドキュメント (入口は docs/index.md)
 
 ## コマンド
 
-| やりたいこと                                                                                     | コマンド                                                                                                                  |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| api の開発サーバー (<http://localhost:3000>)                                                     | `pnpm exec nx dev api`                                                                                                    |
-| web の開発サーバー (<http://localhost:5173>)                                                     | `pnpm exec nx dev web`                                                                                                    |
-| 全プロジェクトの lint、format、型チェック                                                        | `pnpm check`                                                                                                              |
-| プロジェクトの外にあるファイルの同じ検査                                                         | `pnpm check:root`                                                                                                         |
-| 全プロジェクトのテスト                                                                           | `pnpm test`                                                                                                               |
-| 全プロジェクトの build                                                                           | `pnpm build`                                                                                                              |
-| 変更の影響を受けるプロジェクトだけ実行                                                           | `pnpm exec nx affected -t check test build`                                                                               |
-| format と lint の自動修正                                                                        | `pnpm exec vp check --fix`                                                                                                |
-| Markdown の検査                                                                                  | `pnpm lint:md`                                                                                                            |
-| 重複コードの検査 (`apps/`、`packages/`)                                                          | `pnpm lint:dup`。閾値は [ADR 0014](../adr/0014-jscpd-duplication-threshold.md)                                            |
-| 未使用のファイル、export、依存の検査 (workspace の全プロジェクトとルート)                        | `pnpm lint:unused`。例外は `knip.jsonc` ([ADR 0017](../adr/0017-knip-unused-code.md))                                     |
-| シェルスクリプトの検査                                                                           | `scripts/shellcheck.sh`                                                                                                   |
-| GitHub Actions の workflow の検査 (actionlint、zizmor)                                           | `scripts/lint-workflows.sh`                                                                                               |
-| docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
-| スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
-| 次に使える ADR の番号 (open な PR が使っている番号も除く)                                        | `scripts/check-adr-number.sh`                                                                                             |
-| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                       |
-| 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                   | `scripts/adr-check.sh`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
-| 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
+| やりたいこと                                                                                                     | コマンド                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| api の開発サーバー (<http://localhost:3000>)                                                                     | `pnpm exec nx dev api`                                                                                                    |
+| web の開発サーバー (<http://localhost:5173>)                                                                     | `pnpm exec nx dev web`                                                                                                    |
+| 全プロジェクトの lint、format、型チェック                                                                        | `pnpm check`                                                                                                              |
+| プロジェクトの外にあるファイルの同じ検査                                                                         | `pnpm check:root`                                                                                                         |
+| 全プロジェクトのテスト                                                                                           | `pnpm test`                                                                                                               |
+| 全プロジェクトの build                                                                                           | `pnpm build`                                                                                                              |
+| 変更の影響を受けるプロジェクトだけ実行                                                                           | `pnpm exec nx affected -t check test build`                                                                               |
+| format と lint の自動修正                                                                                        | `pnpm exec vp check --fix`                                                                                                |
+| Markdown の検査                                                                                                  | `pnpm lint:md`                                                                                                            |
+| 重複コードの検査 (`apps/`、`packages/`)                                                                          | `pnpm lint:dup`。閾値は [ADR 0014](../adr/0014-jscpd-duplication-threshold.md)                                            |
+| 未使用のファイル、export、依存の検査 (workspace の全プロジェクトとルート)                                        | `pnpm lint:unused`。例外は `knip.jsonc` ([ADR 0017](../adr/0017-knip-unused-code.md))                                     |
+| シェルスクリプトの検査                                                                                           | `scripts/shellcheck.sh`                                                                                                   |
+| GitHub Actions の workflow の検査 (actionlint、zizmor)                                                           | `scripts/lint-workflows.sh`                                                                                               |
+| `renovate.jsonc` の検査と、Renovate が出す PR の確認                                                             | `scripts/renovate.sh validate`、`scripts/renovate.sh preview` ([Renovate](renovate.md))                                   |
+| docs の検査 (OKF、リンク切れ、見出しへのリンク、リンクの `.md`、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
+| スクリプトと Kiro の hook のテスト                                                                               | `sh scripts/test/run.sh`                                                                                                  |
+| 次に使える ADR の番号 (open な PR が使っている番号も除く)                                                        | `scripts/check-adr-number.sh`                                                                                             |
+| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                       |
+| 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `scripts/adr-check.sh`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
+| 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
 
+- 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
 - `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。
 - registry のパッケージの情報 (版、公開日、依存) は `pnpm view <pkg>` で調べます。このリポジトリでは、`npm view` は `package.json` の `devEngines` (pnpm を指定) で `EBADDEVENGINES` になります。

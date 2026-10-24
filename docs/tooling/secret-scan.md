@@ -40,7 +40,7 @@ scripts/secret-scan.sh worktree   # 作業ツリー
 
 ## betterleaks のバージョンを上げる
 
-次の2か所を変えてから `mise lock --platform linux-x64` を実行し、3つのファイルを commit します。`check-repo-policy.sh` が1と2の一致を確認します。
+マイナー版とパッチ版は Renovate が3つのファイルをまとめて更新する PR を出します ([Renovate](renovate.md))。手で上げるときは、次の2か所を変えてから `mise lock --platform linux-x64` を実行し、3つのファイルを commit します。`check-repo-policy.sh` が1と2の一致を確認します。
 
 1. `mise.toml` の `betterleaks`
 2. `.betterleaks.toml` の `betterleaksMinVersion`

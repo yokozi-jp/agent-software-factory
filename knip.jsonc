@@ -7,8 +7,8 @@
   "treatConfigHintsAsErrors": true,
   "workspaces": {
     ".": {
-      // scripts/docs-check.sh runs it with node. Knip does not read shell scripts.
-      "entry": ["scripts/docs-links.mjs"],
+      // scripts/docs-check.sh and scripts/renovate.sh run these with node. Knip does not read shell scripts.
+      "entry": ["scripts/docs-links.mjs", "scripts/renovate-preview.mjs"],
       // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).
       "project": ["**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}!", "!.agents/**"],
       "ignoreDependencies": [

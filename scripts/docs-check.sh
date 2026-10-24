@@ -11,6 +11,7 @@
 #      (docs/knowledge/documentation-authoring.md). Warnings go to stderr and leave the status 0.
 #   6. `docs-check.sh staged` only (pre-commit): a staged change to an imported area (its about.md cites
 #      arch-guidelines in `sources`) must stage that area's about.md too, which lists "原文からの変更点" (AGENTS.md).
+#   7. Links between documents name the .md file (`[b](b.md)`, not `[b](b)`).
 # Run by the pre-commit hook (when docs/ changes, with `staged`) and by CI (without it).
 set -eu
 
@@ -83,6 +84,38 @@ index_report="$(node -e '
 ')"
 if [ -n "$index_report" ]; then
   echo "$index_report" | sed 's/^/docs-check: /' >&2
+  status=1
+fi
+
+# Links between documents name the .md file. GitHub resolves a relative link as written, so `](b)` is a 404.
+# An `iwe create` run outside docs/ writes links without the suffix (docs/knowledge/documentation-authoring.md).
+# Fenced code blocks and inline code are skipped.
+# shellcheck disable=SC2016
+link_report="$(node -e '
+  const fs = require("fs");
+  const { execSync } = require("child_process");
+  const files = execSync("find . -type f -name \"*.md\"", { encoding: "utf8" })
+    .split("\n").filter(Boolean);
+  const problems = [];
+  for (const file of files) {
+    let fenced = false;
+    fs.readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; return; }
+      if (fenced) return;
+      for (const m of line.replace(/`[^`]*`/g, "").matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+        const target = m[1];
+        if (/^([a-z][a-z0-9+.-]*:|#|<)/i.test(target)) continue;
+        const path = target.split("#")[0];
+        if (path !== "" && !/\.[A-Za-z0-9]+$/.test(path)) {
+          problems.push(`${file.replace(/^\.\//, "")}:${i + 1}: link to ${target} needs the file extension (.md)`);
+        }
+      }
+    });
+  }
+  process.stdout.write(problems.join("\n"));
+')"
+if [ -n "$link_report" ]; then
+  echo "$link_report" | sed 's/^/docs-check: /' >&2
   status=1
 fi
 

@@ -17,3 +17,4 @@
 - [ADR 0015: タスクの区切りで、エージェントが retro skill を実行する規則を AGENTS.md と docs に置く](0015-retro-at-task-boundary.md)：振り返りの規則や retro skill の扱いを変えるとき、規則が守られないので hook を足したくなったとき、上流の skill の frontmatter を変えたくなったとき
 - [ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）](0016-adr-check-warns-without-blocking.md)：adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったとき
 - [ADR 0017: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く](0017-knip-unused-code.md)：Knip で止まったとき、Knip が読めない場所からだけ使うファイルや依存を足すとき、使う予定の export を残したくなったとき、Knip の版や設定を変えるとき
+- [ADR 0018: 固定した版の更新は Renovate に任せる](0018-renovate-for-pinned-versions.md)：Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったとき
