@@ -12,17 +12,17 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 
 ## 構成
 
-| 役割                                  | ツール                                               |
-| ------------------------------------- | ---------------------------------------------------- |
-| モノレポ、タスクの実行と cache        | Nx 24                                                |
-| パッケージマネージャ                  | pnpm 12.15.0 (`package.json` の `devEngines` で固定) |
-| Node.js                               | 24 (`.node-version` で固定)                          |
-| build、test、lint、format、型チェック | Vite+ (`vp`)                                         |
-| Git hook                              | lefthook                                             |
-| コミットメッセージの検証              | commitlint (Conventional Commits)                    |
-| 秘密情報の検出                        | betterleaks (`mise.toml` と `mise.lock` で固定)      |
-| Markdown の検査                       | markdownlint-cli2                                    |
-| docs の管理と検査                     | IWE (OKF v0.2 バンドル)                              |
+| 役割                                  | ツール                                          |
+| ------------------------------------- | ----------------------------------------------- |
+| モノレポ、タスクの実行と cache        | Nx 24                                           |
+| パッケージマネージャ                  | pnpm (`package.json` の `devEngines` で固定)    |
+| Node.js                               | `.node-version` で固定                          |
+| build、test、lint、format、型チェック | Vite+ (`vp`)                                    |
+| Git hook                              | lefthook                                        |
+| コミットメッセージの検証              | commitlint (Conventional Commits)               |
+| 秘密情報の検出                        | betterleaks (`mise.toml` と `mise.lock` で固定) |
+| Markdown の検査                       | markdownlint-cli2                               |
+| docs の管理と検査                     | IWE (OKF v0.2 バンドル)                         |
 
 ```text
 apps/
