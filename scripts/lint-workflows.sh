@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
-# Lint the tracked GitHub Actions workflows with the pinned actionlint and zizmor (docs/adr/0012).
-# actionlint checks syntax and expression types, and runs the pinned shellcheck on run: scripts.
+# Lint the tracked GitHub Actions workflows with the pinned jactionlint and zizmor (docs/adr/0012).
+# jactionlint (a fork of actionlint, with the correctness profile in .github/jactionlint.yaml) checks syntax and
+# expression types, and runs the pinned shellcheck on run: scripts.
 # zizmor checks for security problems (template injection, excessive permissions, persisted credentials).
 # zizmor runs --offline, so the result does not depend on whether a GitHub token is set.
 # The linters run through `mise exec`, so the versions are the ones pinned in mise.toml and mise.lock (docs/adr/0009).
@@ -24,6 +25,6 @@ if [ -z "$(workflows | tr -d '\000')" ]; then
 fi
 
 status=0
-workflows | xargs -0 mise exec -- actionlint || status=1
+workflows | xargs -0 mise exec -- jactionlint || status=1
 workflows | xargs -0 mise exec -- zizmor --offline || status=1
 exit "$status"

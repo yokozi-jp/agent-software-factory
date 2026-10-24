@@ -1,0 +1,3 @@
+# jactionlint (docs/adr/0012). The correctness profile keeps the checks of actionlint; the security and policy
+# rules of the default profile are left to zizmor. https://github.com/jdx/jactionlint/blob/main/docs/actionlint.md
+profile: correctness

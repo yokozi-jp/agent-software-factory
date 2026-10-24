@@ -127,7 +127,11 @@ expect_exit 0 "block-generated-writes override" sh -c "printf '%s' '{\"tool_name
 make_sandbox
 tmp="$sandbox"
 trap 'kill "$live" 2>/dev/null; rm -rf "$sandbox"' EXIT
-cp "$(command -v sleep)" "$tmp/kiro-fake"
+# A live process whose command line contains "kiro". A shell script, not a renamed copy of sleep: on Ubuntu 26.04
+# sleep is the Rust coreutils multicall binary, which picks the program from its name and refuses "kiro-fake".
+# shellcheck disable=SC2016 # "$1" belongs to the generated script, so it must not expand here
+printf '#!/bin/sh\nsleep "$1"\n' >"$tmp/kiro-fake"
+chmod +x "$tmp/kiro-fake"
 "$tmp/kiro-fake" 60 &
 live=$!
 sleep 30 &

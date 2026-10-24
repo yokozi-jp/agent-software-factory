@@ -26,12 +26,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                                                                           |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip                                                             |
-| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、actionlint と zizmor、Semgrep、OSV-Scanner、Script tests。テストを 1 つずつ順に実行するので、いちばん時間がかかる |
-| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                                                                         |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                         |
+| job       | 内容                                                                                                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip                                                              |
+| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、Script tests。テストを 1 つずつ順に実行するので、いちばん時間がかかる |
+| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                                                                          |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                          |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
@@ -48,7 +48,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `scripts/adr-check.sh`: 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定 (対象は `scripts/adr-check.sh` の `decision_path`) を変えたのに、PR の base との差分に ADR (`docs/adr/NNNN-*.md`) の追加がないと、`::warning::` を出します。job は失敗させません ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。テストと fixture の変更は対象外です。base と比べられない (浅い clone など) ときは、理由を `::notice::` に出して通します。pre-push hook でも実行します ([Git hook](git-hooks.md))。
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
-- `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を actionlint と zizmor で検査します ([ADR 0012](../adr/0012-lint-workflows.md))。actionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。actionlint は `run:` のスクリプトも固定した shellcheck で検査します。
+- `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を jactionlint (actionlint の fork。`.github/jactionlint.yaml` の `correctness` profile) と zizmor で検査します ([ADR 0012](../adr/0012-lint-workflows.md))。jactionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。jactionlint は `run:` のスクリプトも固定した shellcheck で検査します。
   zizmor は `--offline` で動かすので、GitHub API を使う audit は実行しません ([zizmor の Usage](https://docs.zizmor.sh/usage/))。版は shellcheck と同じく mise で固定します。指摘を抑制するときは、その場所に理由を書きます (`# zizmor: ignore[<audit>]`、`# shellcheck disable=SCxxxx`)。
 - `scripts/semgrep.sh`: Semgrep CE の SAST で、PR の base (`origin/$GITHUB_BASE_REF`、なければ `origin/main`) との merge base になかった ERROR の指摘だけで失敗します ([ADR 0021](../adr/0021-sast-and-dependency-scan.md))。規則は Semgrep Registry の `p/typescript` と `p/react` で、実行のたびに取り寄せるのでネットワークが要ります。base にすでにある指摘と、ERROR より軽い指摘は、CodeQL の code scanning の alert で扱います。
   終了コードは、新しい指摘が 1、検査できなかった (mise がない、base がない、Semgrep の失敗) ときが 2 以上で、CI はどちらも失敗にします。指摘を抑えるときは、その行に `nosemgrep: <rule-id>` と理由を書きます。

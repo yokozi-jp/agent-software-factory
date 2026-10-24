@@ -27,7 +27,7 @@ jobs:
 
   # Checks that do not need the tools from mise.lock.
   checks:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,7 +76,7 @@ jobs:
 
   # The scripts and their tests. This is the slowest job: the tests run one after another.
   scripts:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,7 +100,7 @@ jobs:
       - name: Lint shell scripts
         run: scripts/shellcheck.sh
 
-      - name: Lint workflows (actionlint, zizmor)
+      - name: Lint workflows (jactionlint, zizmor)
         run: scripts/lint-workflows.sh
 
       # Fails only on ERROR findings that this branch adds (docs/adr/0021). Fetches the Registry rules, so it needs the network.
@@ -123,7 +123,7 @@ jobs:
 
   # The projects (apps/ and packages/): check, test and build the ones that the change affects.
   nx:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -157,7 +157,7 @@ jobs:
   main:
     needs: [checks, scripts, nx]
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: A job that main needs did not succeed
