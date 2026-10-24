@@ -12,7 +12,7 @@ tags: [adr, tooling, actionlint, zizmor, github-actions, ci, security]
 - **actionlint**: workflow の構文、式の型、`needs` や `steps` の参照、Action の入力を検査します。`PATH` に shellcheck があれば、`run:` のスクリプトも shellcheck で検査します。`mise exec` は `mise.toml` の道具をすべて `PATH` に入れるので、固定した shellcheck ([ADR 0008](0008-pin-shellcheck.md)) で検査します。
 - **zizmor**: workflow のセキュリティの問題を検査します。template injection、`persist-credentials` の書き忘れ (artipacked)、過大な権限、commit SHA で固定していない Action などです。
 
-二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (actionlint 1.7.12、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`scripts/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `main` job と、workflow を変えた commit の pre-commit hook から呼びます。
+二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (actionlint 1.7.12、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`scripts/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `scripts` job と、workflow を変えた commit の pre-commit hook から呼びます。
 
 zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TOKEN` があると、GitHub API を使う online audit (impostor-commit、known-vulnerable-actions、ref-confusion、stale-action-refs など) も実行します。トークンの有無で結果が変わると、ローカルの hook と CI の結果がずれます。API の一時的な失敗で hook や CI が落ちることもあります。
 
