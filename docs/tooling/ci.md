@@ -21,7 +21,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 ## ci.yml の検証
 
-どれも、対応するファイルを変えたときに pre-commit hook でも実行します。
+どれも、対応するファイルを変えたときに pre-commit hook でも実行します (`scripts/adr-check.sh` は pre-push hook で実行し、その test を pre-commit hook で実行します)。
 
 - `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない、Node.js のメジャー版が `.node-version`・`engines.node`・`@types/node` の catalog・`vite.config.ts` の build target でそろっている)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。

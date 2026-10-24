@@ -27,7 +27,8 @@ cd "$(git rev-parse --show-toplevel)" || exit 0
 # the ruleset, Kiro hooks and settings. Tests and fixtures are never decisions, so they are checked first.
 decision_path() {
   case "$1" in
-    scripts/test/* | */test/* | */tests/* | */__tests__/* | */fixtures/* | */__fixtures__/* | *.test.* | *.spec.*) return 1 ;;
+    test/* | tests/* | __tests__/* | fixtures/* | __fixtures__/*) return 1 ;;
+    */test/* | */tests/* | */__tests__/* | */fixtures/* | */__fixtures__/* | *.test.* | *.spec.*) return 1 ;;
   esac
   case "$1" in
     package.json | */package.json | pnpm-workspace.yaml | mise.toml) ;;
@@ -57,30 +58,32 @@ base="origin/${GITHUB_BASE_REF:-main}"
 git rev-parse -q --verify "$base^{commit}" >/dev/null 2>&1 ||
   skip "$base does not exist here, so there is nothing to compare with. Run \`git fetch origin\`."
 
+tab="$(printf '\t')"
 changed=""
-added_adr=""
 compared=0
 for tip in $tips; do
   tip="$(git rev-parse -q --verify "$tip^{commit}" 2>/dev/null)" || continue
   git merge-base "$base" "$tip" >/dev/null 2>&1 || continue
+  changes="$(git -c core.quotePath=false diff --name-status --no-renames "$base...$tip" 2>/dev/null)" || continue
   compared=$((compared + 1))
-  tab="$(printf '\t')"
-  diff="$(git -c core.quotePath=false diff --name-status --no-renames "$base...$tip" 2>/dev/null)" || continue
+  # Each pushed commit is judged on its own: an ADR on one ref does not cover another.
+  tip_changed=""
+  tip_adds_adr=""
   while IFS="$tab" read -r status path; do
     [ -n "$path" ] || continue
     case "$status:$path" in
-      A:docs/adr/[0-9][0-9][0-9][0-9]-*.md) added_adr=1 ;;
+      A:docs/adr/[0-9][0-9][0-9][0-9]-*.md) tip_adds_adr=1 ;;
     esac
-    decision_path "$path" && changed="$changed$path
+    decision_path "$path" && tip_changed="$tip_changed$path
 "
   done <<EOF
-$diff
+$changes
 EOF
+  [ -n "$tip_adds_adr" ] || changed="$changed$tip_changed"
 done
 [ "$compared" -gt 0 ] ||
-  skip "$base shares no history with the commits (a shallow clone?). Run \`git fetch --unshallow\`, or fetch more history."
+  skip "Could not compare $base with the commits (a shallow clone has no shared history). Run \`git fetch --unshallow\`, or fetch more history."
 
-[ -z "$added_adr" ] || exit 0
 changed="$(printf '%s' "$changed" | sort -u)"
 [ -n "$changed" ] || exit 0
 
