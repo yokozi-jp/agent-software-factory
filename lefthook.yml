@@ -110,6 +110,15 @@ pre-commit:
         - "mise.toml"
         - "mise.lock"
       run: sh scripts/test/run.sh scripts/test/lint-workflows.test.sh
+    - name: duplicate-code-test
+      glob:
+        - ".jscpd.json"
+        - ".gitignore"
+        - "scripts/test/lib.sh"
+        - "scripts/test/duplicate-code.test.sh"
+        # A new jscpd version (pinned in the catalog) can change what it reports.
+        - "pnpm-workspace.yaml"
+      run: sh scripts/test/run.sh scripts/test/duplicate-code.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
