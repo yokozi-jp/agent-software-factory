@@ -1,4 +1,4 @@
-# hono-nx-vite-plus
+# agent-software-factory
 
 コーディングエージェントが実装を担う開発環境を、テンプレートとして育てるリポジトリ。
 

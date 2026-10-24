@@ -5,5 +5,5 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return <h1>hono-nx-vite-plus</h1>;
+  return <h1>agent-software-factory</h1>;
 }

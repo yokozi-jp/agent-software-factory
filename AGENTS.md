@@ -14,7 +14,7 @@ When you recommend a tool, layout, or setting, say whether it is the standard pr
 
 ### Issue tracker
 
-Issues live in GitHub Issues for `yokozi-jp/hono-nx-vite-plus`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for `yokozi-jp/agent-software-factory`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

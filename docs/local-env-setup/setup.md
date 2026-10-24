@@ -125,8 +125,8 @@ gh auth status > /dev/null 2>&1 || gh auth login --hostname github.com --git-pro
 gh auth setup-git   # Git の HTTPS の認証を gh に任せる
 
 cd /home/projects
-[ -d hono-nx-vite-plus ] || git clone https://github.com/yokozi-jp/hono-nx-vite-plus.git
-cd hono-nx-vite-plus
+[ -d agent-software-factory ] || git clone https://github.com/yokozi-jp/agent-software-factory.git
+cd agent-software-factory
 
 mise install --locked   # betterleaks と shellcheck を、mise.lock の版と checksum で検証して入れる
 vp env install          # .node-version の Node.js と、package.json の pnpm
@@ -139,7 +139,7 @@ pnpm -v                             # 12.15.0
 pnpm exec nx show projects          # api, web
 pnpm check && pnpm test && pnpm build
 )
-cd /home/projects/hono-nx-vite-plus
+cd /home/projects/agent-software-factory
 ```
 
 `gh auth login` は、ワンタイムコードと URL を表示します。
