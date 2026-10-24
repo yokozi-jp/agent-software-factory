@@ -37,8 +37,8 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
   各プロジェクトの `check` は Nx のプロジェクトの中のファイルしか見ないので、これらのファイルはこのステップで検査します。
   対象は `git ls-files` で選ぶので、commit していない作業用のファイルは検査しません。
   pre-commit hook では、ステージしたファイルに `vp check --fix` を実行します。
-- `pnpm lint:dup` (jscpd): `apps/` と `packages/` の JavaScript、TypeScript、CSS の重複を検査し、重複率が `.jscpd.json` の `threshold` を超えると失敗します ([ADR 0013](../adr/0013-jscpd-duplication-threshold.md))。
-  `.gitignore` の対象、生成物 (`routeTree.gen.ts`、`.tanstack/`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0013 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
+- `pnpm lint:dup` (jscpd): `apps/` と `packages/` の JavaScript、TypeScript、CSS の重複を検査し、重複率が `.jscpd.json` の `threshold` を超えると失敗します ([ADR 0014](../adr/0014-jscpd-duplication-threshold.md))。
+  `.gitignore` の対象、生成物 (`routeTree.gen.ts`、`.tanstack/`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0014 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
 - build の後に `git status` が空であること: `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。
 
 ## スクリプトのテスト

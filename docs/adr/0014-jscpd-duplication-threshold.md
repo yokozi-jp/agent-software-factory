@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0013: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする"
+title: "ADR 0014: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする"
 description: apps/ と packages/ の手書きのコードを jscpd 5.4.2 で検査し、重複率が閾値を超えたら pre-commit hook と CI で失敗させる決定。閾値は導入時に測った 0% で、それより下げられないので 0 のまま保つ。対象の形式、外すもの、baseline の方式を選ばなかった理由も書く。重複の検査で止まったとき、検査の対象や閾値、jscpd の版や設定を変えるときに読む。
 tags: [adr, tooling, jscpd, ci, quality]
 ---
 
-# ADR 0013: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする
+# ADR 0014: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする
 
 ファイルをまたぐコードの重複を検査するものはありませんでした。oxlint の `no-dupe-keys`、`no-dupe-class-members`、`no-duplicate-case` などは、1 つのオブジェクト、クラス、`switch` の中の重複を見る規則です。そこで jscpd で、ファイルをまたぐ重複を検査します。
 

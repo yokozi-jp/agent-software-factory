@@ -63,7 +63,7 @@ for path in \
   expect_exit 0 "ignores a copy in $path" r "$jscpd"
 done
 
-# A deliberate copy is kept by marking it, not by raising the threshold (docs/adr/0013).
+# A deliberate copy is kept by marking it, not by raising the threshold (docs/adr/0014).
 reset
 put apps/web/src/summarize.ts
 {
