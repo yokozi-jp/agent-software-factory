@@ -1,5 +1,6 @@
 # Issue form: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
 # 構成は mattpocock/skills の .github/ISSUE_TEMPLATE/idea.yml に合わせ、ラベルは /triage の役割 (docs/agents/triage-labels.md) にしている。
+# ファイル名は、付ける category ラベルの enhancement に合わせている。
 name: 機能要望
 description: 新しい機能や、今ある機能の改善の提案。
 labels: ["enhancement", "needs-triage"]

@@ -25,13 +25,13 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 Issues created from the GitHub web UI go through the issue forms in `.github/ISSUE_TEMPLATE/`, modelled on the ones in `mattpocock/skills`. Each form applies one category role and the `needs-triage` state role ([Triage Labels](triage-labels.md)), so `/triage` finds them in the `needs-triage` bucket:
 
-| Form                         | Labels                        | Fields `/triage` reads                   |
-| ---------------------------- | ----------------------------- | ---------------------------------------- |
-| `bug.yml` (バグ)             | `bug`, `needs-triage`         | 再現手順, 期待する動作, 実際の動作, 環境 |
-| `enhancement.yml` (機能要望) | `enhancement`, `needs-triage` | 動機, 提案, 考えた代わりの案             |
+| Form                         | Labels                        |
+| ---------------------------- | ----------------------------- |
+| `bug.yml` (バグ)             | `bug`, `needs-triage`         |
+| `enhancement.yml` (機能要望) | `enhancement`, `needs-triage` |
 
-`config.yml` hides the blank issue from users without write access and links vulnerability reports to private vulnerability reporting.
-The forms do not apply to `gh issue create --title ... --body ...`, so issues that skills create carry only the labels the skill passes with `--label`.
+`config.yml` sets `blank_issues_enabled: false`, which hides the blank issue from users with the Read or Triage role; users with Write or above still see it as "Maintainers only" ([GitHub docs](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository#configuring-the-template-chooser)). It also links vulnerability reports to private vulnerability reporting.
+`gh issue create --title ... --body ...` does not go through the forms (`--template` only supplies starting body text, see the [gh manual](https://cli.github.com/manual/gh_issue_create)), so issues that skills create are unaffected and carry only the labels passed with `--label`.
 
 ## Pull requests as a triage surface
 

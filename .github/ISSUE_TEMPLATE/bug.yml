@@ -29,8 +29,7 @@ body:
     id: actual
     attributes:
       label: 実際の動作
-      description: 実際に起きたこと。エラーメッセージやログを貼る。
-      render: text
+      description: 実際に起きたこと。エラーメッセージやログは ``` で囲んで貼る。
     validations:
       required: true
   - type: textarea
