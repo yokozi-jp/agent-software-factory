@@ -18,3 +18,4 @@
 - [ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）](0016-adr-check-warns-without-blocking.md)：adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったとき
 - [ADR 0017: 未使用のファイル、export、依存は Knip で検査し、例外は理由とともに個別に書く](0017-knip-unused-code.md)：Knip で止まったとき、Knip が読めない場所からだけ使うファイルや依存を足すとき、使う予定の export を残したくなったとき、Knip の版や設定を変えるとき
 - [ADR 0018: 固定した版の更新は Renovate に任せる](0018-renovate-for-pinned-versions.md)：Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったとき
+- [ADR 0019: XSS の入口になる書き方は、メッセージを指定できる自作の Oxlint plugin で止める](0019-custom-oxlint-plugin-for-xss.md)：XSS の lint で止まったとき、禁止する書き方を足すとき、組み込みの Oxlint のルールに戻したくなったとき

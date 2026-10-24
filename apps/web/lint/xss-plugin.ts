@@ -4,18 +4,19 @@
 import { definePlugin, defineRule } from "vite-plus/lint/plugins";
 
 // The plugin API's AST types are not worth restating for these small checks; nodes are read by property name.
-type Node = any;
+// Not named `Node`, which would shadow the DOM global.
+type AstNode = any;
 
 const timerFunctions = new Set(["setTimeout", "setInterval"]);
 const globalObjects = new Set(["window", "globalThis", "self"]);
 const htmlSinkProperties = new Set(["innerHTML", "outerHTML"]);
 const htmlSinkMethods = new Set(["insertAdjacentHTML", "write", "writeln"]);
 
-const nameOf = (node: Node): string | undefined =>
+const nameOf = (node: AstNode): string | undefined =>
   node?.type === "Identifier" ? node.name : undefined;
 
 // `obj.name` and `obj["name"]`.
-const propertyNameOf = (member: Node): string | undefined => {
+const propertyNameOf = (member: AstNode): string | undefined => {
   if (member?.type !== "MemberExpression") return undefined;
   if (!member.computed) return nameOf(member.property);
   return member.property.type === "Literal" && typeof member.property.value === "string"
@@ -24,7 +25,7 @@ const propertyNameOf = (member: Node): string | undefined => {
 };
 
 // A string that is known at lint time: a literal, or a template literal without `${}`.
-const staticString = (node: Node): string | undefined => {
+const staticString = (node: AstNode): string | undefined => {
   if (node?.type === "Literal" && typeof node.value === "string") return node.value;
   if (node?.type === "TemplateLiteral" && node.expressions.length === 0) {
     return node.quasis[0]?.value.cooked ?? undefined;
@@ -48,13 +49,13 @@ const noHtmlInjection = defineRule({
   },
   create(context) {
     return {
-      JSXAttribute(node: Node) {
+      JSXAttribute(node: AstNode) {
         if (node.name.type === "JSXIdentifier" && node.name.name === "dangerouslySetInnerHTML") {
           context.report({ node, messageId: "dangerouslySetInnerHTML" });
         }
       },
       // `createElement("div", { dangerouslySetInnerHTML })` and `{...{ dangerouslySetInnerHTML }}`.
-      Property(node: Node) {
+      Property(node: AstNode) {
         const key = node.computed
           ? staticString(node.key)
           : (nameOf(node.key) ?? staticString(node.key));
@@ -62,13 +63,13 @@ const noHtmlInjection = defineRule({
           context.report({ node, messageId: "dangerouslySetInnerHTML" });
         }
       },
-      AssignmentExpression(node: Node) {
+      AssignmentExpression(node: AstNode) {
         const name = propertyNameOf(node.left);
         if (name && htmlSinkProperties.has(name)) {
           context.report({ node, messageId: "htmlSink", data: { name } });
         }
       },
-      CallExpression(node: Node) {
+      CallExpression(node: AstNode) {
         const name = propertyNameOf(node.callee);
         if (!name || !htmlSinkMethods.has(name)) return;
         // `write` and `writeln` are common method names; only `document.write` is the sink.
@@ -89,7 +90,7 @@ const noJavascriptUrl = defineRule({
     },
   },
   create(context) {
-    const check = (node: Node) => {
+    const check = (node: AstNode) => {
       const value = staticString(node);
       // Browsers ignore leading whitespace and control characters, and the scheme is case-insensitive.
       // oxlint-disable-next-line no-control-regex -- the control characters are what browsers strip
@@ -116,7 +117,7 @@ const noDynamicCode = defineRule({
   },
   create(context) {
     // `eval` / `Function`, bare or through the global object: `window.eval`, `globalThis["Function"]`.
-    const dynamicCodeName = (node: Node): string | undefined => {
+    const dynamicCodeName = (node: AstNode): string | undefined => {
       const bare = nameOf(node);
       if (bare === "eval" || bare === "Function") return bare;
       const property = propertyNameOf(node);
@@ -131,7 +132,7 @@ const noDynamicCode = defineRule({
       return undefined;
     };
     return {
-      CallExpression(node: Node) {
+      CallExpression(node: AstNode) {
         const name = dynamicCodeName(node.callee);
         if (name) {
           context.report({ node, messageId: "dynamicCode", data: { name } });
@@ -147,7 +148,7 @@ const noDynamicCode = defineRule({
           });
         }
       },
-      NewExpression(node: Node) {
+      NewExpression(node: AstNode) {
         const name = dynamicCodeName(node.callee);
         if (name) context.report({ node, messageId: "dynamicCode", data: { name: `new ${name}` } });
       },

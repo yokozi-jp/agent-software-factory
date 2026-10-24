@@ -69,6 +69,7 @@ tester.run("no-dynamic-code", plugin.rules["no-dynamic-code"], {
     { code: 'eval("1");', errors: [{ messageId: "dynamicCode" }] },
     { code: 'window.eval("1");', errors: [{ messageId: "dynamicCode" }] },
     { code: 'globalThis["eval"]("1");', errors: [{ messageId: "dynamicCode" }] },
+    { code: 'self.eval("1");', errors: [{ messageId: "dynamicCode" }] },
     { code: '(0, eval)("1");', errors: [{ messageId: "dynamicCode" }] },
     { code: 'new Function("return 1");', errors: [{ messageId: "dynamicCode" }] },
     { code: 'Function("return 1");', errors: [{ messageId: "dynamicCode" }] },

@@ -63,7 +63,7 @@ Webフロントエンド開発における静的解析の主な手法や技術�
 ## XSS の入口になる書き方の禁止
 
 このリポジトリの `apps/web/src` では、XSS の入口になる書き方を Linter で禁止している。`vp check` (pre-commit と CI) で止まる。
-Oxlint の組み込みのルールは、メッセージに「代わりに何を書くか」を載せられない。そのため、規則は `apps/web/lint/xss-plugin.ts` の自作の plugin に置き、ルートの `vite.config.ts` の `lint.overrides` で有効にしている。
+Oxlint の組み込みの `no-eval`、`no-new-func`、`no-script-url` などは、メッセージを指定できず、「代わりに何を書くか」を載せられない。そのため、規則は `apps/web/lint/xss-plugin.ts` の自作の plugin に置き、ルートの `vite.config.ts` の `lint.overrides` で有効にしている。
 
 | 規則                                | 禁止する書き方                                                                                                                                           | 理由                                                                            | 代わりの書き方                                                                                     |
 | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------- |
@@ -73,10 +73,18 @@ Oxlint の組み込みのルールは、メッセージに「代わりに何を�
 | `web-xss/require-disable-reason`    | 理由のない disable コメント (`// oxlint-disable-next-line <規則名>` だけ)                                                                                | 検出を隠しても、なぜ安全かが残らない                                            | `--` に続けて理由を足す                                                                            |
 | `unicorn/no-abusive-eslint-disable` | 規則名のない disable コメント (`/* oxlint-disable */`)                                                                                                   | 対象の規則だけでなく、そのファイルの検出を一括で隠してしまう                    | 規則名を書く                                                                                       |
 
-どの規則も、リンタが静的に分かる範囲だけを見る。変数に入れた文字列 (`const code = "..."; setTimeout(code)`) や、`el[name] = html` のように名前が動的な代入は見つけられない。
-サニタイズや CSP (web のデプロイ先が決まってから扱う) と置き換えるものではなく、入口の書き方を減らす補助である。
+どの規則も、リンタが静的に分かる範囲だけを見る。次は見つけられない。
 
-禁止を外すときは、その行に規則名と理由を書く。理由がないと `web-xss/require-disable-reason` が止める。
+- 変数に入れた文字列 (`const code = "..."; setTimeout(code)`) と、`${}` を含むテンプレートリテラルや `+` で組んだ `javascript:` の URL
+- `el[name] = html` のように名前が動的な代入と、`Object.assign(el, { innerHTML })`、`el.setHTMLUnsafe()`
+- 別名や型の変換を通した `eval` と `Function` (`const e = eval; e()`、`(window as any).eval()`)
+- HTML の文字参照で書いた `javascript:` (`&#106;avascript:`)
+- `document` 以外の名前を付けた変数への `write` (`d.write(html)`)
+
+また、`web-xss/require-disable-reason` を同じファイルの disable コメントで止められる。レビューで disable コメントの差分を見る。
+サニタイズや CSP の代わりにはならず、入口の書き方を減らす補助である。web の CSP はこの規則の対象に入れていない。
+
+禁止を外すときは、その行に規則名と理由を書く。理由がないと `web-xss/require-disable-reason` が止める (理由の中身までは見ない)。禁止の規則を外すときは、組み込みの `no-eval` ではなく `web-xss/` の規則名を書く。
 
 ```ts
 // oxlint-disable-next-line web-xss/no-html-injection -- 管理者が書いた HTML を DOMPurify で処理した結果
