@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Renovate checks for renovate.jsonc (docs/adr/0016, docs/tooling/renovate.md). Both run Renovate through
+# Renovate checks for renovate.jsonc (docs/adr/0018, docs/tooling/renovate.md). Both run Renovate through
 # `pnpm dlx`, so they need the network. Run `validate` from the Git hook and CI, `preview` by hand.
 #   scripts/renovate.sh validate   renovate-config-validator --strict: unknown options and bad values fail
 #   scripts/renovate.sh preview    run Renovate in local mode and print the PRs it would open

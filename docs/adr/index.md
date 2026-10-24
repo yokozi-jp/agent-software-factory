@@ -12,6 +12,8 @@
 - [ADR 0010: ブランチ運用はトランクベース開発にし、main と短命なブランチだけを使う](0010-trunk-based-development.md)：ブランチを作るとき、ブランチ運用やリリースの流れを変えるとき、取り込んだガイドラインが develop や release ブランチを前提にしているとき
 - [ADR 0011: テナントが1つでも、tenant_id と PostgreSQL の RLS を最初から入れる](0011-tenant-id-and-rls-from-the-start.md)：表や migration を足すとき、DB のロールや接続の設定を変えるとき、テナントを使わない構成に戻したくなったとき、DB を PostgreSQL 以外にしたくなったとき
 - [ADR 0012: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する](0012-lint-workflows.md)：workflow を足す、変えるとき、workflow の検査や actionlint、zizmor の版を変えるとき、検査の指摘を抑制したくなったとき
-- [ADR 0013: API、ワーカー、バッチを ECS と Lambda の両方に置けるようにし、Lambda は Web Functions のために Node.js 24 にし、IaC は AWS CDK で書く](0013-api-on-ecs-and-lambda-web-functions.md)：デプロイ先や実行基盤を変えるとき、入口のファイルやインフラのコードを足すとき、Node.js の版を変えるとき、Lambda Web Adapter や AWS Blocks や Cloudflare に移したくなったとき、キューや DB の種類を変えたくなったとき
+- [ADR 0013: API、ワーカー、バッチを ECS と Lambda の両方に置けるようにし、Lambda は Web Functions のために Node.js 24 にし、IaC は AWS CDK で書く](0013-api-on-ecs-and-lambda-web-functions.md)：デプロイ先や実行基盤を変えるとき、入口のファイルやインフラのコードを足すとき、Node.js の版を変えるとき、新しい AWS のサービスや外部システムを呼ぶとき、NAT Gateway や VPC エンドポイントを足したくなったとき、Lambda Web Adapter や AWS Blocks や Cloudflare に移したくなったとき、キューや DB の種類を変えたくなったとき
 - [ADR 0014: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする](0014-jscpd-duplication-threshold.md)：重複の検査で止まったとき、検査の対象や閾値、jscpd の版や設定を変えるとき、意図した重複を残したくなったとき
-- [ADR 0016: 固定した版の更新は Renovate に任せる](0016-renovate-for-pinned-versions.md)：Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったとき
+- [ADR 0015: タスクの区切りで、エージェントが retro skill を実行する規則を AGENTS.md と docs に置く](0015-retro-at-task-boundary.md)：振り返りの規則や retro skill の扱いを変えるとき、規則が守られないので hook を足したくなったとき、上流の skill の frontmatter を変えたくなったとき
+- [ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）](0016-adr-check-warns-without-blocking.md)：adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったとき
+- [ADR 0018: 固定した版の更新は Renovate に任せる](0018-renovate-for-pinned-versions.md)：Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったとき

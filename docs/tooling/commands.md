@@ -54,12 +54,15 @@ docs/      ドキュメント (入口は docs/index.md)
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、リンクの `.md`、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
 | スクリプトと Kiro の hook のテスト                                                                               | `sh scripts/test/run.sh`                                                                                                  |
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                                        | `scripts/check-adr-number.sh`                                                                                             |
+| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                       |
+| 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `scripts/adr-check.sh`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
 | 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
 
 ## 補足
 
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
+- `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。
 - registry のパッケージの情報 (版、公開日、依存) は `pnpm view <pkg>` で調べます。このリポジトリでは、`npm view` は `package.json` の `devEngines` (pnpm を指定) で `EBADDEVENGINES` になります。
 - `apps/web/src/routeTree.gen.ts` は TanStack Router が生成するファイルです。手で編集せず、生成された差分を commit します。CI は build の後に差分が残ると失敗します。
 - `vp check` と、それを呼ぶ Nx の target のエラーには ANSI の色のコードが入るので、出力を grep するときは `FORCE_COLOR=0` を付けます (例: `FORCE_COLOR=0 pnpm exec nx run api:check`)。`NO_COLOR=1` では色が消えません。

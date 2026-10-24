@@ -1,4 +1,4 @@
-// Renovate (docs/adr/0016, docs/tooling/renovate.md). Updates the versions this repository pins:
+// Renovate (docs/adr/0018, docs/tooling/renovate.md). Updates the versions this repository pins:
 // mise.toml and mise.lock, the commit SHAs of GitHub Actions, and the pnpm-workspace.yaml catalog.
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",

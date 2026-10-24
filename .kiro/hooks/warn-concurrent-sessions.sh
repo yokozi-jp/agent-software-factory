@@ -8,10 +8,11 @@
 #   Asks once per set of other sessions: a marker in $KIRO_HOOK_STATE_DIR remembers the sets already asked about.
 #
 # Session records are not a documented interface. Two layouts are read (checked against Kiro 2.33.1):
-# - V3: ~/.kiro/sessions/<workspace hash>/sess_<id>/.lock holds the pid. One directory per workspace root,
+# - V3: ~/.kiro/sessions/<workspace hash>/sess_<id>/. An interactive session writes .lock with its pid;
+#   `kiro-cli chat --no-interactive` writes only session.json, so this session is found by either file,
+#   but another session is detected only by its .lock. One directory per workspace root,
 #   so every other live session in the same <workspace hash> directory works in this working tree.
-# - Older: ~/.kiro/sessions/cli/<id>.lock holds the pid and <id>.json holds the cwd. Still written by
-#   `kiro-cli chat --no-interactive`.
+# - Older: ~/.kiro/sessions/cli/<id>.lock holds the pid and <id>.json holds the cwd.
 # This session is found by $KIRO_SESSION_ID. When its record is in neither layout, the layout has probably
 # changed and no session would be detected, so the hook says so instead of staying silent.
 # Stale locks are skipped (pid not running, or not a kiro process), and so are sessions in this process.
@@ -57,7 +58,8 @@ own_pid=""
 own_workspace=""
 if [ -n "$self" ]; then
   for dir in "$root"/*/"$self" "$root"/*/"sess_$self"; do
-    [ -f "$dir/.lock" ] || continue
+    # Interactive sessions write .lock; `kiro-cli chat --no-interactive` writes only session.json (Kiro 2.33.1).
+    [ -f "$dir/.lock" ] || [ -f "$dir/session.json" ] || continue
     own_pid="$(lock_pid "$dir/.lock")"
     own_workspace="$(dirname "$dir")"
     break
@@ -120,7 +122,7 @@ done
 [ -n "$others" ] || exit 0
 
 if [ "$mode" = "pre-tool-use" ]; then
-  ask_once "${self:-unknown} $ids" "$(printf 'Other Kiro sessions are running in this working tree (%s):\n%sThey share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md).' "$here" "$others")"
+  ask_once "${self:-unknown} $ids" "$(printf 'Other Kiro sessions are running in this working tree (%s):\n%sThey share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md). File tools resolve a relative path against this working tree, not the worktree: pass absolute paths.' "$here" "$others")"
   exit 0
 fi
 
@@ -128,5 +130,7 @@ cat <<EOF
 WARNING: other Kiro sessions are running in this working tree (${here}):
 ${others}They share this index and these files. Before editing, committing, or switching branches,
 tell the user, and work in a separate git worktree (docs/tooling/worktrees.md).
+File tools (read, write, edit) resolve a relative path against this working tree, not against the worktree,
+so pass them absolute paths inside the worktree.
 EOF
 exit 0

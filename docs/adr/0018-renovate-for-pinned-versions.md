@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0016: 固定した版の更新は Renovate に任せる"
+title: "ADR 0018: 固定した版の更新は Renovate に任せる"
 description: mise.toml と mise.lock、GitHub Actions の commit SHA、pnpm-workspace.yaml の catalog に固定した版を、Renovate の GitHub App が更新する PR で上げる決定。betterleaks の v2、Node.js のメジャー版、runs-on の image は更新させない。Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったときに読む。
 tags: [adr, tooling, renovate, mise, security]
 ---
 
-# ADR 0016: 固定した版の更新は Renovate に任せる
+# ADR 0018: 固定した版の更新は Renovate に任せる
 
 このリポジトリは、CLI ツール (`mise.toml` と `mise.lock`、[ADR 0009](0009-mise-for-pinned-cli-tools.md))、GitHub Actions (commit SHA)、npm のパッケージ (`pnpm-workspace.yaml` の catalog) の版を固定しています。固定した版は人が手で上げていたので、上げ忘れると古い版が残ります。OpenSSF Scorecard の Pinned-Dependencies も、依存を固定するなら自動更新のツールと組み合わせるよう求めています (`ossf/scorecard` の `docs/checks.md`)。そこで Mend の Renovate GitHub App を入れ、設定を `renovate.jsonc` に置いて、更新を PR として出させます。プリセットは `config:best-practices` です (Renovate が推奨する設定で、GitHub Actions の SHA 固定、npm の公開から3日待つ `minimumReleaseAge`、lock file の週次更新を含みます)。
 

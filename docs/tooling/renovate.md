@@ -7,7 +7,7 @@ tags: [tooling, runbook, renovate, mise, github-actions, pnpm]
 
 # Renovate
 
-Renovate は、固定した版を更新する PR を出します ([ADR 0016](../adr/0016-renovate-for-pinned-versions.md))。設定は `renovate.jsonc` です。
+Renovate は、固定した版を更新する PR を出します ([ADR 0018](../adr/0018-renovate-for-pinned-versions.md))。設定は `renovate.jsonc` です。
 PR は squash merge し、タイトルは `chore(deps): ...` です。
 
 ## インストール (管理者)
