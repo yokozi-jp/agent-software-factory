@@ -178,6 +178,24 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/adr-check.test.sh"
       run: sh scripts/test/run.sh scripts/test/adr-check.test.sh
+    - name: semgrep-test
+      glob:
+        - "scripts/semgrep.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/semgrep.test.sh"
+        # A new Semgrep version (or its dependency graph in .mise/locks/) can change what it reports.
+        - "mise.toml"
+        - "mise.lock"
+        - ".mise/locks/**"
+      run: sh scripts/test/run.sh scripts/test/semgrep.test.sh
+    - name: osv-scanner-test
+      glob:
+        - "scripts/osv-scanner.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/osv-scanner.test.sh"
+        - "mise.toml"
+        - "mise.lock"
+      run: sh scripts/test/run.sh scripts/test/osv-scanner.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
@@ -215,3 +233,11 @@ pre-push:
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
     adr-number:
       run: scripts/check-adr-number.sh || [ $? -ne 1 ]
+    # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
+    # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
+    # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
+    semgrep:
+      run: scripts/semgrep.sh || [ $? -ne 1 ]
+    # Warns only. dependency review in CI is the gate for dependencies (docs/adr/0021).
+    osv-scanner:
+      run: scripts/osv-scanner.sh
