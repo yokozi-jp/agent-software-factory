@@ -15,6 +15,12 @@ tags: [adr, agents, skills, retro]
 - **Claude Code**: `disable-model-invocation: true` の skill は、description が context に入らず、Claude が自分では呼べません。規則では、skill として読み込めないときは `.agents/skills/retro/SKILL.md` を読んで手順に従う、とします。このフラグは、エージェントが自分の判断で実行するのを防ぐためのものです。ここでは、いつ実行するかをリポジトリの規則が決めるので、フラグの意図に反しないと判断しました。
 - **Codex**: `.agents/skills/retro/agents/openai.yaml` の `allow_implicit_invocation: false` で、暗黙の呼び出しが止まります。Claude Code と同じく、ファイルを読んで手順に従います。
 
+`AGENTS.md` の案内は、「エージェントスキル」の下の小見出しではなく、独立した節にして、完了を報告する前に何を確かめるかを書きます。2026-10-24 に Kiro 2.33.1 の新しいセッション (`kiro-cli chat --v3 --no-interactive`) で、「README.md に 1 行足して commit して」と頼んで確かめました。
+
+- 「エージェントスキル」の下に「タスクの区切りでは `retro` skill を実行する」と書いた案内では、3 回とも、commit の後に振り返らずに完了を報告しました。
+- 独立した節に、報告の前に commit、PR、Issue を閉じることのどれかに当たるかを確かめる、と書いた案内では、commit の後に `retro` を読み込み、改善候補を示して利用者の選択を待ちました。
+- 同じ案内で、commit しない作業 (誤字を探して、なければ何もしない) を頼むと、振り返りませんでした。
+
 ## Considered Options
 
 - **上流の skill から `disable-model-invocation` を外す**: どの実行環境でもエージェントが skill として呼べます。ただ、`.agents/skills/retro` が `skills-lock.json` と一致しなくなり、CI の `Agent skills match skills-lock.json` で止まります。`skills update` でも元に戻ります。
