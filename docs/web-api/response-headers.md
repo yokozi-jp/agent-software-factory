@@ -71,7 +71,7 @@ Server-Timing: cache;desc="Cache Read";dur=23.4, db;dur=50, app;dur=75.3
 > [!NOTE]
 > **フロントエンドに置けるキャッシュ設計**
 >
-> [Webフロントエンド設計ガイドライン > キャッシュ](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5) 章にて全体の考え方が記載されている。
+> [Webフロントエンド設計ガイドライン > キャッシュ](../web-frontend/cache.md) 章にて全体の考え方が記載されている。
 
 ### その他のレスポンスヘッダー
 

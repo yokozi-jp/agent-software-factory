@@ -17,7 +17,7 @@ sources:
 
 ## 連携パターンを知る（Enterprise Integration Patterns）
 
-システムを疎結合に保ち、スケーラビリティを高める現代のアーキテクチャにおいて、システム間連携の重要性はかつてなく高まっている。[I/F設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forIF/if_guidelines.html)はその助けになるが、各連携の仕組みを独自にゼロから考案することは危険である。
+システムを疎結合に保ち、スケーラビリティを高める現代のアーキテクチャにおいて、システム間連携の重要性はかつてなく高まっている。[I/F設計ガイドライン](../interface/index.md)はその助けになるが、各連携の仕組みを独自にゼロから考案することは危険である。
 
 システム間連携における課題とその解決策は、すでに[Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/)（EIP）などで体系化されている。これら先人の知識をできるかぎり活用すべきである。
 

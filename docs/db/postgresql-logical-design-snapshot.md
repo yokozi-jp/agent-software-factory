@@ -28,7 +28,7 @@ boolean 型は別の型にできないか考え、業務日付はシステム日
 > [!NOTE]
 > **参考**
 >
-> [正規化 | I/F設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forIF/if_guidelines.html#%E6%AD%A3%E8%A6%8F%E5%8C%96) にもスナップショット属性についての記載がある。
+> [正規化 | I/F設計ガイドライン](../interface/file-layout.md#正規化) にもスナップショット属性についての記載がある。
 
 ### 導出属性
 

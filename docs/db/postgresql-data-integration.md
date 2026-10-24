@@ -162,4 +162,4 @@ AWSでRDS/Redshiftの構成であれば、ゼロETLによるOLAP連携ができ�
 > [!NOTE]
 > **参考**
 >
-> [OLAP連携 | I/F設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forIF/if_guidelines.html#olap%E9%80%A3%E6%90%BA) にもOLAP連携について記載がある。
+> [OLAP連携 | I/F設計ガイドライン](../interface/olap.md#olap連携) にもOLAP連携について記載がある。

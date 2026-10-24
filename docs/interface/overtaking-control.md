@@ -42,7 +42,7 @@ sources:
 > [!NOTE]
 > **参考**
 >
-> [バッチ設計ガイドライン \> サイクルジョブ](https://future-architect.github.io/arch-guidelines/documents/forBatch/batch_guidelines.html#%E3%82%B5%E3%82%A4%E3%82%AF%E3%83%AB%E3%82%B7%E3%82%99%E3%83%A7%E3%83%95%E3%82%99)章 の考慮事項に類似の記載がある。
+> [バッチ設計ガイドライン \> サイクルジョブ](../batch/cycle-jobs.md#サイクルジョブ)章 の考慮事項に類似の記載がある。
 
 ### ファイル追い抜き制御
 

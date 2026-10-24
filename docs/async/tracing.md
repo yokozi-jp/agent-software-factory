@@ -23,13 +23,13 @@ sources:
 
 - 非同期処理の呼び出し時に、トレースIDの設定は必須とする
 - トレースIDは、呼び出し元のシステムなど、なるべくシステムの上流で採番する（Web APIであれば、API Gatewayなどの層。バッチであればバッチ実行時に採番する）
-  - Web API設計ガイドライン > [トレースIDをどこで払い出すべきか](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html#%E3%83%88%E3%83%AC%E3%83%BC%E3%82%B9id%E3%82%92%E3%81%A8%E3%82%99%E3%81%93%E3%81%A6%E3%82%99%E6%89%95%E3%81%84%E5%87%BA%E3%81%99%E3%81%B8%E3%82%99%E3%81%8D%E3%81%8B) を参考にする
+  - Web API設計ガイドライン > [トレースIDをどこで払い出すべきか](../web-api/observability.md#トレースidをどこで払い出すべきか) を参考にする
 - トレースIDは、UUID v4かv7を用いる
   - 基本的には推測困難性は不要だと考えられるため、v7で良いと考えられる
 - トレースIDは、非同期処理・それらから呼び出される別の非同期処理などの全てのログ項目や、DBのシステム共通項目で必須とする
 - トレースIDは、ペイロードの本文に含めず、できる限りメッセージのメタデータとして付与させる（例えば、HTTPヘッダーやSQSのメッセージ属性）
   - リラン、リカバリ時に切り替えさせることができるようにしたいため
-- 各プログラムから、トレースIDの引き回しは、JavaであればMDC (Mapped Diagnostic Context)や、Goであればcontext などの機能を利用する（[ログ設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forLog/log_guidelines.html#%E3%83%A1%E3%83%83%E3%82%BB%E3%83%BC%E3%82%B7%E3%82%99%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)を参照する）
+- 各プログラムから、トレースIDの引き回しは、JavaであればMDC (Mapped Diagnostic Context)や、Goであればcontext などの機能を利用する（[ログ設計ガイドライン](../logging/messages.md#メッセージの書き方)を参照する）
 
 > [!TIP]
 > **AWS X-Rayを利用する**

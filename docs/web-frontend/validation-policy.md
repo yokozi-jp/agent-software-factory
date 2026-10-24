@@ -58,7 +58,7 @@ sources:
 > **参考**
 >
 > - [Client-side form validation \- Learn web development | MDN](https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation)
-> - サーバーサイドのバリデーションについては、 [Web API設計ガイドライン \> バリデーション章](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html#%E3%83%8F%E3%82%99%E3%83%AA%E3%83%86%E3%82%99%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3) に記載している
+> - サーバーサイドのバリデーションについては、 [Web API設計ガイドライン \> バリデーション章](../web-api/validation-and-code-values.md#バリデーション) に記載している
 
 ## バリデーションロジックの同期
 

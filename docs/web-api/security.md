@@ -97,7 +97,7 @@ AWSの場合、API Gatewayの機能でOPTIONSメソッドを提供できる。OP
 > [!NOTE]
 > **ローカル環境におけるCORS対応**
 >
-> [Webフロントエンド設計ガイドライン > CORS対応のローカル開発サーバー](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#cors対応のローカル開発サーバー) を参考する。
+> [Webフロントエンド設計ガイドライン > CORS対応のローカル開発サーバー](../web-frontend/local-dev-cors.md) を参考する。
 
 <!-- 前の注記と分ける -->
 
