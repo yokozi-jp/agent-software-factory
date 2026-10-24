@@ -147,7 +147,7 @@ vp env install          # .node-version の Node.js と、package.json の pnpm
 pnpm install            # 依存と、prepare スクリプトで lefthook の hook
 
 mise ls --current --missing         # 何も表示しない (mise.toml の道具がすべて入っている)
-node -v                             # v26.x
+node -v                             # v24.x
 pnpm -v                             # 12.15.0
 pnpm exec nx show projects          # api, web
 pnpm check && pnpm test && pnpm build
