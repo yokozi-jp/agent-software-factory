@@ -12,7 +12,7 @@ const repoScopes = ["docs", "ci", "hooks", "deps"];
 const config: UserConfig = {
   extends: ["@commitlint/config-conventional"],
   rules: {
-    "scope-enum": async (ctx) => [
+    "scope-enum": (ctx) => [
       RuleConfigSeverity.Error,
       "always",
       [...nxScopes.utils.getProjects(ctx), ...repoScopes],

@@ -16,14 +16,15 @@ agent の PR は、機械で判定できるものをゲートで止め、agent �
 
 次のものは、人が見る前に CI と Git hook のゲートで止まる。人はこれらを目で確かめなくてよい。
 
-| 確認点                                                     | このリポジトリのセンサー                                                                        |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| ビルドとテストが通り、新しい警告がない                     | CI の `nx affected -t check test build`。`vp check` は警告も出す                                |
-| 存在しない API を呼んでいない                              | `vp check` の型チェック (tsgolint)                                                              |
-| テストを直さずにスキップした、一部だけを実行するようにした | Oxlint の `vitest/no-disabled-tests` と `vitest/no-focused-tests` (`*.test.ts` と `*.test.tsx`) |
-| 秘密情報を commit していない                               | betterleaks (pre-commit、pre-push、CI)                                                          |
-| 公開されたばかりの版の依存を入れていない                   | pnpm の `minimumReleaseAge` (pnpm 11 以降の既定は 1440 分)                                      |
-| コミットと PR のタイトルの形式                             | commitlint                                                                                      |
+| 確認点                                                                | このリポジトリのセンサー                                                                                                                                              |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ビルドとテストが通り、新しい警告がない                                | CI の `nx affected -t check test build`。`vp check` は警告も失敗にする (`denyWarnings`、[ADR 0020](../adr/0020-typescript-strictness.md))                             |
+| 存在しない API を呼んでいない                                         | `vp check` の型チェック (tsgolint)                                                                                                                                    |
+| 型エラーを `any`、`!`、絞り込みの `as`、`@ts-ignore` で黙らせていない | Oxlint の `typescript/no-explicit-any`、`no-non-null-assertion`、`no-unsafe-type-assertion`、`ban-ts-comment` など ([ADR 0020](../adr/0020-typescript-strictness.md)) |
+| テストを直さずにスキップした、一部だけを実行するようにした            | Oxlint の `vitest/no-disabled-tests` と `vitest/no-focused-tests` (`*.test.ts` と `*.test.tsx`)                                                                       |
+| 秘密情報を commit していない                                          | betterleaks (pre-commit、pre-push、CI)                                                                                                                                |
+| 公開されたばかりの版の依存を入れていない                              | pnpm の `minimumReleaseAge` (pnpm 11 以降の既定は 1440 分)                                                                                                            |
+| コミットと PR のタイトルの形式                                        | commitlint                                                                                                                                                            |
 
 ゲートが止められない誤りを見つけたら、レビューで指摘するだけでなく、ゲートに足せないかを考える。
 
@@ -40,6 +41,7 @@ GitHub Copilot code review も、既定ではプルリクエストの必須の�
 - Issue の仕様と意図どおりか。「正しく見えるが、意図と違う」コードは、ゲートでも agent のレビューでも止まらない
 - 変更の範囲が Issue に合っているか。頼んでいないリファクタリングや機能が混じっていないか
 - テストが、仕様を確かめているか。実装に合わせて期待値を書き換えただけのテストではないか
+- `oxlint-disable` の理由が、その場で安全だと言えるものか。`apps/web/src` は理由の有無を機械で止めるが、それ以外では止まらない ([ADR 0020](../adr/0020-typescript-strictness.md))
 - 新しい依存が実在し、保守されていて、ライセンスが合うか
 
 `main` の ruleset は、マージに必要な承認の数を 0 にしている ([GitHub リポジトリの設定](../repository/github-settings.md))。

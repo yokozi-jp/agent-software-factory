@@ -12,6 +12,35 @@ const ignorePatterns = [
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
+// Rules of typescript-eslint's `recommended-type-checked` that Oxlint does not enable by default, plus three
+// stricter ones (docs/adr/0020). They stop `any`, `!`, narrowing `as` and @ts-ignore, the ways to silence a
+// type error. A description is required after @ts-expect-error.
+const typedRules: Record<string, "error" | ["error", ...unknown[]]> = {
+  "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
+  "typescript/no-explicit-any": "error",
+  "typescript/no-empty-object-type": "error",
+  "typescript/no-namespace": "error",
+  "typescript/no-require-imports": "error",
+  "typescript/no-unnecessary-type-constraint": "error",
+  "typescript/no-unsafe-function-type": "error",
+  "typescript/no-misused-promises": "error",
+  "typescript/no-unnecessary-type-assertion": "error",
+  "typescript/no-unsafe-argument": "error",
+  "typescript/no-unsafe-assignment": "error",
+  "typescript/no-unsafe-call": "error",
+  "typescript/no-unsafe-member-access": "error",
+  "typescript/no-unsafe-return": "error",
+  "typescript/no-unsafe-enum-comparison": "error",
+  "typescript/only-throw-error": "error",
+  "typescript/prefer-promise-reject-errors": "error",
+  "typescript/require-await": "error",
+  "typescript/restrict-plus-operands": "error",
+  // Stricter than recommended-type-checked.
+  "typescript/switch-exhaustiveness-check": "error",
+  "typescript/no-non-null-assertion": "error",
+  "typescript/no-unsafe-type-assertion": "error",
+};
+
 // Root config for `vp check` / `vp lint` / `vp fmt`.
 // Task orchestration and caching are handled by Nx, not `vp run` (see docs/adr/0002).
 export default defineConfig({
@@ -21,9 +50,27 @@ export default defineConfig({
   lint: {
     ignorePatterns,
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
-    options: { typeAware: true, typeCheck: true },
+    rules: {
+      "vite-plus/prefer-vite-plus-imports": "error",
+      ...typedRules,
+    },
+    options: {
+      typeAware: true,
+      typeCheck: true,
+      // A warning fails `vp check` too. Without this a warning-level rule such as no-floating-promises
+      // passes CI (docs/adr/0020).
+      denyWarnings: true,
+      reportUnusedDisableDirectives: "error",
+    },
     overrides: [
+      // JavaScript files (scripts/*.mjs) have no type annotations and no type information, so these rules
+      // either cannot match (no-explicit-any, ban-ts-comment) or only report their untyped imports (the
+      // no-unsafe-* rules). They apply to TypeScript (docs/adr/0020).
+      {
+        files: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"],
+        plugins: ["typescript"],
+        rules: Object.fromEntries(Object.keys(typedRules).map((name) => [name, "off"])),
+      },
       // Agent-written tests: block .only (runs a subset) and .skip (hides a failing test).
       // See docs/code-review/agent-pull-requests.md.
       {
