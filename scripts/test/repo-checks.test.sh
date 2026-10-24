@@ -196,6 +196,19 @@ fresh_fixture
 # A half-width colon is not the full-width colon (：) the convention uses, so it also fails.
 echo '- [A](a.md): foo' >> "$fixture/docs/tooling/index.md"
 expect_exit 1 "docs-check: index note must use the full-width colon" docs
+fresh_fixture
+# `iwe create` writes links without the suffix; GitHub cannot follow them.
+echo "See [b](b)." >> "$fixture/docs/tooling/a.md"
+expect_exit 1 "docs-check: a link to a document without .md fails" docs
+fresh_fixture
+echo "See [b](b#見出し)." >> "$fixture/docs/tooling/a.md"
+expect_exit 1 "docs-check: a link with a heading but without .md fails" docs
+fresh_fixture
+# Code is not a link: an example in a fenced block or in inline code passes.
+# The backticks are literal text for the document, not a command substitution.
+# shellcheck disable=SC2016
+printf 'Use `[b](b)` like this:\n\n```md\n[b](b)\n```\n' >> "$fixture/docs/tooling/a.md"
+expect_exit 0 "docs-check: a link example in code passes" docs
 
 # docs-check staged: a staged change to an imported area (guide/, whose about.md cites forLog) needs its about.md.
 staged_docs() { in_sandbox_repo "$fixture" sh scripts/docs-check.sh staged; }

@@ -45,17 +45,18 @@ tags: [knowledge, convention, documentation, iwe, okf]
 
 ## IWE の使い方
 
-| 操作                 | 方法                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 新しい文書を作る     | `iwe_create` (MCP) または `pnpm exec iwe create <key> -c -` で作り、すぐに `pnpm exec vp fmt <file>` を実行する |
-| 既存の文書を編集する | ファイルを直接編集する                                                                                          |
-| 文書を移動する       | `git mv` で移し、リンク元の相対パスを手で直す                                                                   |
-| 検索、リンクの追跡   | `iwe_find`、`iwe_retrieve`、`iwe_tree` (MCP)、または `pnpm exec iwe find` など                                  |
-| 使わない操作         | `normalize`、`rename`、`update`、`extract`、`inline`、`squash`、`attach`、`delete`                              |
+| 操作                 | 方法                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 新しい文書を作る     | `iwe_create` (MCP) または `docs/` で `pnpm exec iwe create <key> -c -` を実行して作り、すぐに `pnpm exec vp fmt <file>` を実行する |
+| 既存の文書を編集する | ファイルを直接編集する                                                                                                             |
+| 文書を移動する       | `git mv` で移し、リンク元の相対パスを手で直す                                                                                      |
+| 検索、リンクの追跡   | `iwe_find`、`iwe_retrieve`、`iwe_tree` (MCP)、または `pnpm exec iwe find` など                                                     |
+| 使わない操作         | `normalize`、`rename`、`update`、`extract`、`inline`、`squash`、`attach`、`delete`                                                 |
 
 `iwe create` は content mode でも書式を少し変えます (iwe 0.29.0 で、コードブロックの言語の前の空白、表の整列、リストの項目の間の空行)。
 `vp fmt` で前の2つは戻りますが、リストの空行は残ることがあるので、作成後に差分を確認します。
 `iwe create` は HTML コメント (`<!-- ... -->`) も消します。続けて2つ置いた注記 (`> [!NOTE]`) を分けるコメントなどを残したい文書は、作成した後にファイルを直接書き直します。
+`iwe create` は、カレントディレクトリにある `.iwe/` の設定で動きます。`docs/` の外 (リポジトリのルートなど) で実行すると、`docs/.iwe/` を読まずに、そのディレクトリにファイルを作り、リンクから `.md` を外し、行末の改行を空白に変えました (iwe 0.29.0)。`docs/` に移ってから実行します。
 
 使わない操作は、MCP では `.kiro/settings/mcp.json` の `disabledTools` で無効にしています。
 CLI の `iwe normalize` は、Kiro の hook (`.kiro/hooks/block-iwe-normalize.sh`) が拒否します。

@@ -125,6 +125,19 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/adr-number.test.sh"
       run: sh scripts/test/run.sh scripts/test/adr-number.test.sh
+    # Both run Renovate through `pnpm dlx` (the version is pinned in scripts/renovate.sh) and need the network.
+    - name: renovate-config
+      glob:
+        - "renovate.jsonc"
+        - "scripts/renovate.sh"
+      run: scripts/renovate.sh validate
+    - name: renovate-test
+      glob:
+        - "scripts/renovate.sh"
+        - "scripts/renovate-preview.mjs"
+        - "scripts/test/lib.sh"
+        - "scripts/test/renovate.test.sh"
+      run: sh scripts/test/run.sh scripts/test/renovate.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"

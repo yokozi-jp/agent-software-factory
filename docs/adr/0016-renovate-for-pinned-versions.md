@@ -27,4 +27,4 @@ Renovate 44.181.1 を `--platform=local` で動かし、`mise.toml` の4つの�
 - PR のタイトルは `chore(deps): ...` にそろえます ([ADR 0004](0004-squash-merge-and-pr-title-lint.md))。Renovate は main の履歴から Conventional Commits を検出しますが、検出に頼らず `semanticCommits` を `enabled` にします。
 - `mise.lock` の更新は、Renovate が `mise lock` を実行して行います。`--platform` を付けない `mise lock` は、lock に既にある platform だけを更新するので ([mise lock](https://mise.jdx.dev/dev-tools/mise-lock.html))、`linux-x64` だけの記録は保たれます。Renovate の docs と source (`lib/modules/manager/mise/artifacts.ts`) から読んだ動作で、App をインストールしたあとの最初の mise の PR で `mise.lock` が更新されることを確かめます。
 - zizmor や actionlint の版が上がって指摘が増えたら、その PR で直します ([ADR 0012](0012-lint-workflows.md))。
-- 設定の検査は CI にありません。`renovate.jsonc` を変えたら、手で `renovate-config-validator` を実行します。
+- 設定は pre-commit hook と CI で `scripts/renovate.sh validate` が検査します。どの PR が出るかは `scripts/renovate.sh preview` で見ます。実行する Renovate の版は `scripts/renovate.sh` に固定し、Renovate の PR で上げます。
