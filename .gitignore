@@ -39,3 +39,6 @@ dist-ssr
 
 # TanStack Router: temporary files of the route tree generator (atomic writes). TanStack/router ignores it too.
 .tanstack/
+
+# Test coverage reports (vitest --coverage)
+coverage
