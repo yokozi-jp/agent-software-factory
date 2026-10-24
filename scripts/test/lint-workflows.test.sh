@@ -12,6 +12,8 @@ make_sandbox
 repo="$sandbox/repo"
 git init -q "$repo"
 cp "$repo_root/mise.toml" "$repo_root/mise.lock" "$repo/"
+# `mise exec` installs every missing tool in mise.toml, and Semgrep installs from its dependency graph in .mise/locks/.
+cp -R "$repo_root/.mise" "$repo/"
 mkdir -p "$repo/scripts" "$repo/.github/workflows"
 cp "$repo_root/scripts/lint-workflows.sh" "$repo/scripts/"
 lint="$repo/scripts/lint-workflows.sh"
