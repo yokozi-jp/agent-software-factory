@@ -1,0 +1,27 @@
+# Issue form: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+# 構成は mattpocock/skills の .github/ISSUE_TEMPLATE/idea.yml に合わせ、ラベルは /triage の役割 (docs/agents/triage-labels.md) にしている。
+name: 機能要望
+description: 新しい機能や、今ある機能の改善の提案。
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 動機
+      description: 今どんな場面で何に困っているか。実際に起きたことを書く。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案
+      description: 何がどう変わればよいか。できるだけ具体的に書く。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考えた代わりの案
+      description: 今の回避策や、検討して見送った案があれば書く。
+    validations:
+      required: false

@@ -1,0 +1,42 @@
+# Issue form: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+# 構成は mattpocock/skills の .github/ISSUE_TEMPLATE/bug.yml に合わせ、ラベルは /triage の役割 (docs/agents/triage-labels.md) にしている。
+name: バグ
+description: 動くはずのものが動かない、壊れている。
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        脆弱性は公開の Issue に書かず、[SECURITY.md](https://github.com/yokozi-jp/agent-software-factory/blob/main/SECURITY.md) の手順で報告してください。
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 誰でも同じ結果になるように、実行したコマンドや操作を順に書く。
+      placeholder: |
+        1. `pnpm install` を実行する
+        2. `vp check` を実行する
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+      description: 本来どうなるべきか。根拠になる仕様や docs があれば、その場所も書く。
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      description: 実際に起きたこと。エラーメッセージやログを貼る。
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境
+      description: OS、Node.js や pnpm の版、ブラウザ、commit の SHA など、関係しそうなもの。
+    validations:
+      required: false

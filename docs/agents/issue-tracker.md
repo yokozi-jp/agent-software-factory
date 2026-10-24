@@ -21,6 +21,18 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## Issue forms (issues created on the web)
+
+Issues created from the GitHub web UI go through the issue forms in `.github/ISSUE_TEMPLATE/`, modelled on the ones in `mattpocock/skills`. Each form applies one category role and the `needs-triage` state role ([Triage Labels](triage-labels.md)), so `/triage` finds them in the `needs-triage` bucket:
+
+| Form                         | Labels                        | Fields `/triage` reads                   |
+| ---------------------------- | ----------------------------- | ---------------------------------------- |
+| `bug.yml` (バグ)             | `bug`, `needs-triage`         | 再現手順, 期待する動作, 実際の動作, 環境 |
+| `enhancement.yml` (機能要望) | `enhancement`, `needs-triage` | 動機, 提案, 考えた代わりの案             |
+
+`config.yml` hides the blank issue from users without write access and links vulnerability reports to private vulnerability reporting.
+The forms do not apply to `gh issue create --title ... --body ...`, so issues that skills create carry only the labels the skill passes with `--label`.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
