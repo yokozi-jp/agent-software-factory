@@ -42,7 +42,7 @@ jobs:
       - name: Repo policy (docs/adr)
         run: scripts/check-repo-policy.sh
 
-      # Installs shellcheck from mise.lock (checksum verified). `mise exec` in shellcheck.sh picks the pinned one,
+      # Installs the tools in mise.lock (checksum verified). `mise exec` in the scripts picks the pinned ones,
       # not the runner image's. No cache: a restored cache is not checked against the lock.
       - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
@@ -52,13 +52,16 @@ jobs:
       - name: Lint shell scripts
         run: scripts/shellcheck.sh
 
+      - name: Lint workflows (actionlint, zizmor)
+        run: scripts/lint-workflows.sh
+
       # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh"
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
-          # shellcheck disable=SC2086
+          # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/isolation.test.sh $tests
 
       - name: Agent skills match skills-lock.json

@@ -3,7 +3,21 @@ type: Runbook
 title: 開発環境の構築
 description: Windows 11 の WSL2 (Ubuntu 26.04) に、clone してから hook が動き、check、test、build が通るまでの環境を作る手順。新しく開発に参加するとき、マシンを作り直したときに読む。
 tags:
-  [setup, runbook, wsl, docker, github-cli, node, pnpm, vite-plus, mise, betterleaks, shellcheck]
+  [
+    setup,
+    runbook,
+    wsl,
+    docker,
+    github-cli,
+    node,
+    pnpm,
+    vite-plus,
+    mise,
+    betterleaks,
+    shellcheck,
+    actionlint,
+    zizmor,
+  ]
 ---
 
 # 開発環境の構築
@@ -109,7 +123,7 @@ curl -fsSL https://vite.plus | VP_NODE_MANAGER=yes VP_PM_MANAGER=yes bash
 各ツールを入れる理由は次のとおりです。
 
 - Vite+ (`vp`) は Node.js と pnpm を `.node-version` と `package.json` に合わせて用意するので、Node.js と pnpm を別に入れる必要はありません。
-- mise は Git hook と CI で使う betterleaks と shellcheck を、`mise.toml` と `mise.lock` で固定した版で入れます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。hook とスクリプトは `mise exec` で道具を呼ぶので、`mise activate` は要りません。
+- mise は Git hook と CI で使う betterleaks、shellcheck、actionlint、zizmor を、`mise.toml` と `mise.lock` で固定した版で入れます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。hook とスクリプトは `mise exec` で道具を呼ぶので、`mise activate` は要りません。
 - GitHub CLI (`gh`) は、Git の HTTPS の認証と、Issue や PR の操作に使います。
 
 途中で失敗すると、そこでブロックが止まります。原因を直してから、同じブロックをもう一度貼り付けます (何度実行しても同じ結果になります)。
@@ -128,12 +142,14 @@ cd /home/projects
 [ -d agent-software-factory ] || git clone https://github.com/yokozi-jp/agent-software-factory.git
 cd agent-software-factory
 
-mise install --locked   # betterleaks と shellcheck を、mise.lock の版と checksum で検証して入れる
+mise install --locked   # betterleaks、shellcheck、actionlint、zizmor を、mise.lock の版と checksum で検証して入れる (actionlint の非推奨の警告は docs/adr/0012)
 vp env install          # .node-version の Node.js と、package.json の pnpm
 pnpm install            # 依存と、prepare スクリプトで lefthook の hook
 
 mise exec -- betterleaks version    # mise.toml と同じ版
 mise exec -- shellcheck --version   # version: が mise.toml と同じ版
+mise exec -- actionlint -version    # 1 行目が mise.toml と同じ版
+mise exec -- zizmor --version       # mise.toml と同じ版
 node -v                             # v26.x
 pnpm -v                             # 12.15.0
 pnpm exec nx show projects          # api, web
@@ -152,7 +168,7 @@ cd /home/projects/agent-software-factory
 - `pnpm check`、`pnpm test`、`pnpm build` がエラーなしで終わる
 
 IWE (`iwe`、`iwec`) は devDependency として入るので、別に入れる必要はありません。
-`PATH` に別の版の betterleaks や shellcheck があっても、hook と CI は `mise exec` 経由で固定した版を使います。
+`PATH` に別の版の betterleaks、shellcheck、actionlint、zizmor があっても、hook と CI は `mise exec` 経由で固定した版を使います。
 
 ## 5. VS Code で開く
 

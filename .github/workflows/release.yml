@@ -35,8 +35,10 @@ jobs:
       # Push the release commit and tags, and create GitHub Releases.
       contents: write
     steps:
+      # nx release pushes the release commit and tags with the credentials checkout persists.
+      # No step uploads artifacts, so .git/config cannot leak through one.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
+        with: # zizmor: ignore[artipacked] nx release pushes with these credentials; no step uploads artifacts
           fetch-depth: 0
           fetch-tags: true
 
