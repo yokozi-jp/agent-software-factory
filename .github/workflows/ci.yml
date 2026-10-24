@@ -81,7 +81,7 @@ jobs:
       - name: Duplicate code (jscpd)
         run: pnpm lint:dup
 
-      # Unused files, exports and dependencies in every workspace project and the root (knip.jsonc, docs/adr/0015).
+      # Unused files, exports and dependencies in every workspace project and the root (knip.jsonc, docs/adr/0016).
       - name: Unused code and dependencies (Knip)
         run: pnpm lint:unused
 

@@ -50,7 +50,7 @@ reset
 sed -i.bak 's|"apps/api": {|"apps/api": { "ignoreDependencies": ["hono"],|' "$copy/knip.jsonc"
 expect_exit 0 "reports an ignoreDependencies entry for a dependency that is used" reports hono
 
-# An export tagged @public is kept on purpose (docs/adr/0015).
+# An export tagged @public is kept on purpose (docs/adr/0016).
 reset
 printf '/** @public */\nexport const keptValue = 1;\n' >>"$copy/apps/api/src/app.ts"
 expect_exit 0 "passes an unused export tagged @public" knip
