@@ -30,6 +30,37 @@ for cmd in \
   "git log --format=%f"; do
   expect_hook 0 "block-force-push allows: $cmd" "$force" shell "$cmd"
 done
+# A force push in command position is refused in every shape a command can take: wrapped, in a string given to
+# a shell, in a subshell, and in a heredoc that a shell reads. Text that only mentions it is allowed.
+for cmd in \
+  'bash -c "git push --force"' \
+  "sh -c 'git push -f origin x'" \
+  'eval "git push --force"' \
+  "FOO=1 git push -f" \
+  "(git push -f)" \
+  "echo \$(git push -f)" \
+  "sudo git push -f" \
+  "env git push --force" \
+  "echo x | xargs git push -f" \
+  "time git push -f" \
+  "command git push -f" \
+  "if true; then git push -f; fi" \
+  "$(printf 'bash <<EOF\ngit push --force\nEOF')" \
+  "$(printf 'cat <<EOF | sh\ngit push -f\nEOF')" \
+  "$(printf 'cat <<EOF > f; git push -f\nbody\nEOF')" \
+  "$(printf 'echo "<<X"\ngit push --force\nX')" \
+  "$(printf 'cat <<< x\ngit push --force')" \
+  "$(printf 'cat <<EOF\ngit push --force')"; do
+  expect_hook 2 "block-force-push refuses: $cmd" "$force" shell "$cmd"
+done
+for cmd in \
+  'git commit -m "docs: block git push --force"' \
+  'gh pr create --body "git push --force is refused"' \
+  'echo "git push -f"' \
+  "$(printf "cat > f <<'EOF'\ngit push --force\nEOF")" \
+  "$(printf 'cat <<-EOF > f\n\tgit push -f\n\tEOF')"; do
+  expect_hook 0 "block-force-push allows: $cmd" "$force" shell "$cmd"
+done
 expect_exit 0 "block-force-push override" sh -c "printf '%s' '{\"tool_input\":{\"command\":\"git push -f\"}}' | KIRO_ALLOW_FORCE_PUSH=1 sh '$force'"
 expect_exit 0 "block-force-push fails open on garbage" sh -c "printf 'not json' | sh '$force'"
 
