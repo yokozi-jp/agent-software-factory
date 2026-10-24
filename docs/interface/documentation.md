@@ -57,7 +57,7 @@ I/F一覧は必ず作成し、常に最新に維持管理してブラックボ�
 > [!NOTE]
 > **参考**
 >
-> 記載すべき項目のイメージを知りたい場合は [I/F 定義書 | Markdown設計ドキュメント規約](https://future-architect.github.io/arch-guidelines/documents/forMarkdown/markdown_design_document.html) を参考にすると良い。
+> 記載すべき項目のイメージを知りたい場合は [I/F 定義書 | Markdown設計ドキュメント規約](../markdown-design-docs/index.md) を参考にすると良い。
 
 <!-- 前の注記と分ける -->
 

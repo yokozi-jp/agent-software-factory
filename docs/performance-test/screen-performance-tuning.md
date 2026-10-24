@@ -39,13 +39,13 @@ HTML/CSS/JavaScript/画像などの静的リソースを圧縮して送信する
 JPEGやPNGの代わりに、より圧縮率の高いWebPやAVIFを使用する。  
 また、デバイス（スマホ・PC）に合わせて適切なサイズの画像を出し分ける（`<picture>` タグや `srcset` 属性の活用）。
 
-詳細は「[Webフロントエンド設計ガイドライン \- 画像](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#%E7%94%BB%E5%83%8F)」を参照されたい。
+詳細は「[Webフロントエンド設計ガイドライン \- 画像](../web-frontend/image.md)」を参照されたい。
 
 #### コードのMinify
 
 Minifyによりファイルサイズを縮小する。Minifyでは、CSSやJavaScriptから不要な改行、スペース、コメントを削除し、変数名や関数名を短く置き換える。
 
-詳細は「[Webフロントエンド設計ガイドライン \- Minify](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#minify)」を参照されたい。
+詳細は「[Webフロントエンド設計ガイドライン \- Minify](../web-frontend/minify.md)」を参照されたい。
 
 ### キャッシュの活用
 
@@ -59,7 +59,7 @@ HTTPヘッダーの `Cache-Control` を適切に設定し、静的ファイル�
 
 `ETag` や `Last-Modified` を用いて、ファイルに変更がない場合は「304 Not Modified」を返し、ダウンロードをスキップさせる。
 
-詳細は「[Webフロントエンド設計ガイドライン \- キャッシュ](https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5)」を参照されたい。
+詳細は「[Webフロントエンド設計ガイドライン \- キャッシュ](../web-frontend/cache.md)」を参照されたい。
 
 ### ネットワーク通信の最適化
 

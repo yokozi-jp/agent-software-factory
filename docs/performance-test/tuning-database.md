@@ -31,7 +31,7 @@ CPU・メモリ・ディスクI/Oがボトルネックとなっている場合�
 
 ただし、レプリケーション遅延による読み取り不整合が許容できるかは機能ごとに判断が必要である。一時的な不整合が許容できない場合は、書き込み直後の参照（例. 登録後の登録内容確認）はプライマリーに向けるなどのルーティング設計を組み込むアプローチもある。
 
-詳細については「[PostgreSQL設計ガイドライン \- リードレプリカ](https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html#%E3%83%AA%E3%83%BC%E3%83%88%E3%82%99%E3%83%AC%E3%83%95%E3%82%9A%E3%83%AA%E3%82%AB)」を参照されたい。
+詳細については「[PostgreSQL設計ガイドライン \- リードレプリカ](../db/postgresql-dblink-replica.md#リードレプリカ)」を参照されたい。
 
 ### パラメータ
 
@@ -44,7 +44,7 @@ DBエンジンに応じたパラメータを最適化する。PostgreSQLのチ�
 | work_mem        | ソートやハッシュ処理などの中間データを保持する作業用メモリのサイズ                           |
 | plan_cache_mode | プリペアド文において、汎用プランとカスタムプランのどちらを使用するかの制御                   |
 
-詳細については「[PostgreSQL設計ガイドライン \- パラメータ](https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html#%E3%83%8F%E3%82%9A%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF)」を参照されたい。
+詳細については「[PostgreSQL設計ガイドライン \- パラメータ](../db/postgresql-parameters.md#パラメータ)」を参照されたい。
 
 ### VACUUM / ANALYZE の調整
 
@@ -83,13 +83,13 @@ PostgreSQLでは次のパラメータを設定することで一定時間を超�
 
 `WHERE` 句、`JOIN` 条件、`ORDER BY`、`GROUP BY` で利用されるカラムなどにインデックスを作成することで参照時の性能を向上できる。ただしインデックスは更新時のオーバーヘッドを伴うため、更新頻度の高いテーブルに過剰なインデックスを張るのは避ける。
 
-詳細については「[PostgreSQL設計ガイドライン \- インデックス設計](https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html#%E3%82%A4%E3%83%B3%E3%83%86%E3%82%99%E3%83%83%E3%82%AF%E3%82%B9)」を参照されたい。
+詳細については「[PostgreSQL設計ガイドライン \- インデックス設計](../db/postgresql-index.md#インデックス)」を参照されたい。
 
 ### パーティショニング
 
 データ量が巨大（数百万レコード以上）かつデータ改廃が必要になるトランザクションテーブルはパーティション化することが望ましい。
 
-詳細については「[PostgreSQL設計ガイドライン \- パーティション設計](https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html#%E3%83%8F%E3%82%9A%E3%83%BC%E3%83%86%E3%82%A3%E3%82%B7%E3%83%A7%E3%83%B3%E8%A8%AD%E8%A8%88)」を参照されたい。
+詳細については「[PostgreSQL設計ガイドライン \- パーティション設計](../db/postgresql-partitioning.md#パーティション設計)」を参照されたい。
 
 ### バッチインサートとバルクインサート
 
@@ -125,4 +125,4 @@ PostgreSQLでは次のパラメータを設定することで一定時間を超�
 
 ヒント句はあくまで最終手段であり、まずは統計情報の更新やインデックスの見直し、クエリそのものの書き換えで解消できないかを検討すべきである。ヒント句による固定化は、将来的なデータ量や分布の変化に追従できなくなるリスクを伴うためである。
 
-詳細については「[PostgreSQL設計ガイドライン \- SQLチューニング](https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html#sql%E3%83%81%E3%83%A5%E3%83%BC%E3%83%8B%E3%83%B3%E3%82%AF%E3%82%99%E6%96%B9%E9%87%9D)」を参照されたい。
+詳細については「[PostgreSQL設計ガイドライン \- SQLチューニング](../db/postgresql-client.md#sqlチューニング方針)」を参照されたい。

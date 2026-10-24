@@ -217,4 +217,4 @@ DLQ運用一覧例:
 > [!NOTE]
 > **参考**
 >
-> - [プログラム設計書 | Markdown設計ドキュメント規約](https://future-architect.github.io/arch-guidelines/documents/forMarkdown/markdown_design_document.html#%E3%83%95%E3%82%9A%E3%83%AD%E3%82%AF%E3%82%99%E3%83%A9%E3%83%A0%E8%A8%AD%E8%A8%88%E6%9B%B8-%E3%83%8F%E3%82%99%E3%83%83%E3%83%81%E3%80%81%E9%9D%9E%E5%90%8C%E6%9C%9F%E3%82%BF%E3%82%B9%E3%82%AF%E3%81%AA%E3%81%A8%E3%82%99)
+> - [プログラム設計書 | Markdown設計ドキュメント規約](../markdown-design-docs/program-design-batch.md#プログラム設計書バッチ非同期タスクなど)

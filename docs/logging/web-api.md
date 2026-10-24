@@ -35,7 +35,7 @@ Web APIアクセスに対して適切にログ出力することで、不具合�
 > [!TIP]
 > **OPTIONSのログは出すべきか？**
 >
-> Web API設計ガイドライン > [機能配置](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html#機能配置aws)では、CORS対応のためのOPTIONSメソッドはAPIゲートウェイなどで対応させることが推奨である。もし、アプリケーション側でOPTIONSメソッドを実装する場合は、トラブルシューティングやセキュリティ上の監視に役立つため、特にHTTPメソッドで絞らずそのままログを出しておく方が良い。
+> Web API設計ガイドライン > [機能配置](../web-api/aws-feature-placement-and-release.md#機能配置aws)では、CORS対応のためのOPTIONSメソッドはAPIゲートウェイなどで対応させることが推奨である。もし、アプリケーション側でOPTIONSメソッドを実装する場合は、トラブルシューティングやセキュリティ上の監視に役立つため、特にHTTPメソッドで絞らずそのままログを出しておく方が良い。
 
 <!-- 前の注記と分ける -->
 

@@ -31,7 +31,7 @@ sources:
 > [!NOTE]
 > **参考**
 >
-> 処理方式や注意点は[Web API設計ガイドライン \> 非同期](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html#%E9%9D%9E%E5%90%8C%E6%9C%9F)に記載している。
+> 処理方式や注意点は[Web API設計ガイドライン \> 非同期](../web-api/async-and-api-gateway.md#非同期)に記載している。
 
 ### ワークフローエンジンから非同期ジョブ呼び出し
 

@@ -83,4 +83,4 @@ graph LR
 
 ## バッチから非同期呼び出し
 
-非同期処理の呼び出しは、ユーザーの操作イベント経由だけではなく、バッチ処理から呼び出される場合もありえる。[バッチ設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forBatch/batch_guidelines.html#%E9%9D%9E%E5%90%8C%E6%9C%9F%E3%82%BF%E3%82%B9%E3%82%AF) を参照すること。
+非同期処理の呼び出しは、ユーザーの操作イベント経由だけではなく、バッチ処理から呼び出される場合もありえる。[バッチ設計ガイドライン](../batch/async-tasks.md#非同期タスク) を参照すること。

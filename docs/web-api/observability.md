@@ -105,7 +105,7 @@ sources:
 > [!TIP]
 > **ヘルスチェックのアクセスログは出力させない。**
 >
-> ログ設計ガイドライン > [アクセスログ](https://future-architect.github.io/arch-guidelines/documents/forLog/log_guidelines.html#web-apiのログ出力) を参考。
+> ログ設計ガイドライン > [アクセスログ](../logging/web-api.md) を参考。
 
 <!-- 前の注記と分ける -->
 
@@ -116,4 +116,4 @@ sources:
 
 ## ロギング
 
-ログ設計ガイドライン > [Web APIのログ出力](https://future-architect.github.io/arch-guidelines/documents/forLog/log_guidelines.html#web-api%E3%81%AE%E3%83%AD%E3%82%AF%E3%82%99%E5%87%BA%E5%8A%9B) に従うこと。
+ログ設計ガイドライン > [Web APIのログ出力](../logging/web-api.md) に従うこと。

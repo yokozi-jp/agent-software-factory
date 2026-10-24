@@ -19,4 +19,4 @@ sources:
 > [!NOTE]
 > **参考**
 >
-> [Web API設計ガイドラインの区分値取得APIの是非](https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html#区分値取得apiの是非) 章に記載がある。
+> [Web API設計ガイドラインの区分値取得APIの是非](../web-api/validation-and-code-values.md#区分値取得apiの是非) 章に記載がある。

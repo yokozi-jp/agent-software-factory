@@ -17,11 +17,11 @@ API Gateway は薄い Gateway を基本とし、構成は単一型から検討�
 
 ## 非同期
 
-Web APIの非同期化については[非同期設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forAsync/async_guidelines.html)に従う。次のような観点がある。
+Web APIの非同期化については[非同期設計ガイドライン](../async/index.md)に従う。次のような観点がある。
 
-- [非同期化の判断基準](https://future-architect.github.io/arch-guidelines/documents/forAsync/async_guidelines.html#非同期化の判断基準)
-- [非同期の予約](https://future-architect.github.io/arch-guidelines/documents/forAsync/async_guidelines.html#予約)
-- [非同期終了時の通知](https://future-architect.github.io/arch-guidelines/documents/forAsync/async_guidelines.html#通知)
+- [非同期化の判断基準](../async/when-to-use-async.md#非同期化の判断基準)
+- [非同期の予約](../async/scheduling.md#予約)
+- [非同期終了時の通知](../async/notification.md#通知)
 
 ## API Gatewayパターン
 

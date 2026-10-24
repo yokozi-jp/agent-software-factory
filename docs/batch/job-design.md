@@ -51,7 +51,7 @@ PostgreSQLの場合、パーティション・プルーニングを有効にす�
   - アプリロジックとして存在しないため、単体テストは不要
   - ただし、ワークフローエンジン上で環境変数を切り替えるものは入力チェックする
 - 入力ファイル
-  - [I/F設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forIF/if_guidelines.html) を参照
+  - [I/F設計ガイドライン](../interface/index.md) を参照
 - 処理対象データ
   - 前ジョブや自システムが作成したトラン、マスタ、中間テーブルを指す
   - 基本的に自システム側のデータは正しいという前提でアプリケーションを組むため、ジョブ起動時に積極的なデータ不整合チェックは行わない
@@ -63,7 +63,7 @@ PostgreSQLの場合、パーティション・プルーニングを有効にす�
 
 ### ログ出力
 
-ログ設計ガイドライン > [バッチ実行時のログ出力](https://future-architect.github.io/arch-guidelines/documents/forLog/log_guidelines.html#バッチ実行時のログ出力) 参照。
+ログ設計ガイドライン > [バッチ実行時のログ出力](../logging/batch.md) 参照。
 
 ### 性能
 

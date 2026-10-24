@@ -204,4 +204,4 @@ sequenceDiagram
 
 #### オンライン中バッチ
 
-[バッチ設計ガイドライン](https://future-architect.github.io/arch-guidelines/documents/forBatch/batch_guidelines.html#%E3%82%AA%E3%83%B3%E3%83%A9%E3%82%A4%E3%83%B3%E3%81%A8%E3%81%AE%E6%8E%92%E4%BB%96%E5%88%B6%E5%BE%A1) を参照すること。
+[バッチ設計ガイドライン](../batch/exclusive-control.md#オンラインとの排他制御) を参照すること。
