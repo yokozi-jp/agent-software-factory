@@ -1,0 +1,53 @@
+// Renovate (docs/adr/0016, docs/tooling/renovate.md). Updates the versions this repository pins:
+// mise.toml and mise.lock, the commit SHAs of GitHub Actions, and the pnpm-workspace.yaml catalog.
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  // PR titles become commits on main and must pass commitlint (docs/adr/0004).
+  // Renovate only detects Conventional Commits from the history of main, so state it.
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "packageRules": [
+    {
+      // ADR 0003: stay on betterleaks v1 until v2 is stable and the ADR is revisited.
+      "description": "Do not update betterleaks to a new major version",
+      "matchDepNames": ["betterleaks"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+    },
+    {
+      // scripts/check-repo-policy.sh requires betterleaksMinVersion to equal the version in mise.toml.
+      "description": "Update betterleaks in mise.toml, mise.lock and .betterleaks.toml in one PR",
+      "matchDepNames": ["betterleaks"],
+      "groupName": "betterleaks",
+    },
+    {
+      // ADR 0013: one Node.js major version, set by .node-version. A major update changes the Lambda runtime,
+      // the API build target and engines.node, so a person does it.
+      "description": "Do not update Node.js or @types/node to a new major version",
+      "matchDepNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+    },
+    {
+      // The runner image is a platform choice (ubuntu-24.04), not a pinned tool version.
+      "description": "Do not update the runs-on image",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["github-runner"],
+      "enabled": false,
+    },
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "betterleaksMinVersion in .betterleaks.toml",
+      "managerFilePatterns": ["/^\\.betterleaks\\.toml$/"],
+      "matchStrings": ["betterleaksMinVersion\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "betterleaks",
+      "packageNameTemplate": "betterleaks/betterleaks",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.+)$",
+    },
+  ],
+}

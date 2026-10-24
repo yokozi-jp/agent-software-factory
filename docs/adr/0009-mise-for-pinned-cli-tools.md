@@ -21,4 +21,4 @@ betterleaks ([ADR 0003](0003-pin-betterleaks-v1.md)) と shellcheck ([ADR 0008](
 - CI は `MISE_LOCKED=1` で lock にない道具を拒否し、mise-action のキャッシュを使いません。復元したキャッシュは lock と照合されないためです。
 - `mise.lock` には `linux-x64` だけを記録します。開発環境は WSL です。ほかの platform で開発する人が来たら、`mise lock --platform` に足します。
 - 開発者は mise を、署名された apt リポジトリから入れます。
-- 版の自動更新 (Renovate) はまだ入れていません (#14)。
+- 版の自動更新は Renovate が行います ([ADR 0016](0016-renovate-for-pinned-versions.md))。

@@ -7,7 +7,7 @@ tags: [tooling, reference, ci, github-actions]
 
 # CI
 
-workflow は `.github/workflows/` にあり、全ての Action は commit SHA で固定しています。
+workflow は `.github/workflows/` にあり、全ての Action は commit SHA で固定し、更新は Renovate の PR で行います ([Renovate](renovate.md))。
 必須チェックにする job が対象外の PR で pending にならないよう、検証は path で絞らずに実行します。
 
 ## workflow
