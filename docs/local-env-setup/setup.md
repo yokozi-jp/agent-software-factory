@@ -3,7 +3,21 @@ type: Runbook
 title: 開発環境の構築
 description: Windows 11 の WSL2 (Ubuntu 26.04) に、clone してから hook が動き、check、test、build が通るまでの環境を作る手順。新しく開発に参加するとき、マシンを作り直したときに読む。
 tags:
-  [setup, runbook, wsl, docker, github-cli, node, pnpm, vite-plus, mise, betterleaks, shellcheck]
+  [
+    setup,
+    runbook,
+    wsl,
+    docker,
+    github-cli,
+    node,
+    pnpm,
+    vite-plus,
+    mise,
+    betterleaks,
+    shellcheck,
+    actionlint,
+    zizmor,
+  ]
 ---
 
 # 開発環境の構築

@@ -29,7 +29,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 - `scripts/test/run.sh`: スクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `scripts/shellcheck.sh`: git で管理しているシェルスクリプト (`.agents/` を除く) を shellcheck で検査します。版は `mise.toml` と `mise.lock` で固定し、CI は `jdx/mise-action` で lock のとおりに入れます ([ADR 0008](../adr/0008-pin-shellcheck.md)、[ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 - `scripts/lint-workflows.sh`: git で管理している `.github/workflows/` の workflow を actionlint と zizmor で検査します ([ADR 0011](../adr/0011-lint-workflows.md))。actionlint は構文、式の型、参照の誤りを、zizmor は script injection、過大な権限、`persist-credentials` の書き忘れなどを見つけます。actionlint は `run:` のスクリプトも固定した shellcheck で検査します。
-  zizmor は `--offline` で動かすので、GitHub API を使う audit は実行しません。版は shellcheck と同じく mise で固定します。指摘を抑制するときは、その場所に理由を書きます (`# zizmor: ignore[<audit>]`、`# shellcheck disable=SCxxxx`)。
+  zizmor は `--offline` で動かすので、GitHub API を使う audit は実行しません ([zizmor の Usage](https://docs.zizmor.sh/usage/))。版は shellcheck と同じく mise で固定します。指摘を抑制するときは、その場所に理由を書きます (`# zizmor: ignore[<audit>]`、`# shellcheck disable=SCxxxx`)。
 - `scripts/verify-skills-lock.mjs`: `.agents/skills` が `skills-lock.json` の記録と一致し、`.kiro/skills` に各 skill への symlink があることを確認します。skill は upstream からインストールしたものなので、手で編集しません。
 - `pnpm lint:md`: 全ての Markdown を markdownlint-cli2 で検査します。
 - `scripts/docs-check.sh`: `docs/` を OKF v0.2 バンドルとして検査します ([docs の書き方](../knowledge/documentation-authoring.md))。CI は `staged` を付けずに実行するので、`about.md` の記録の検査は pre-commit だけで行います。
