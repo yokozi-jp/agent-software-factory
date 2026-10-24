@@ -31,6 +31,9 @@ tags: [adr, tooling, security, sast, dependencies, github]
 
 - CodeQL と dependency review は、public のリポジトリでは無料ですが、private のリポジトリでは GitHub Advanced Security (GitHub Code Security) が要ります。GHAS のない private の派生プロジェクトでは、OSV-Scanner をゲートに格上げし、Semgrep を SAST のゲートにします。
 - Semgrep の Registry の規則は、自分の業務の中では使えますが配布できません。規則をリポジトリに複製せず、実行のたびに取り寄せます。そのため CI と pre-push の hook はネットワークを使い、規則の版は固定できません。比べるのは差分だけなので、規則が変わったときの影響は小さくなります。
-- Semgrep CE は mise の `pypi:semgrep` でしか入らず、`mise.lock` で固定して検証できるかは未確認です ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。入れる前に [Issue #129](https://github.com/yokozi-jp/agent-software-factory/issues/129) で確かめます。
+- Semgrep CE は PyPI にしかなく、mise の `pypi` backend が uv で入れます。2026-10-24 に、Semgrep 1.182.1、uv 0.13.5、Python 3.13.17 (python-build-standalone) を `mise.toml` で固定し、`mise lock` が依存のグラフ (wheel の hash、`.mise/locks/pypi-semgrep/1.182.1/uv.lock`) と、その digest を `mise.lock` に記録することを確かめました。sidecar の hash を1つ書き換えると、`mise install --locked` は `digest mismatch` で失敗します。Python は Semgrep の tool option (`python = "3.13.17"`) ではなく、ふつうの tool として固定しました。mise 2026.10.17 では tool option にすると、`mise lock` が呼ぶ uv がその Python を見つけられずに失敗したためです ([Issue #129](https://github.com/yokozi-jp/agent-software-factory/issues/129))。
+- Registry の `p/typescript` の ERROR の規則は 24 個で、`require` で読み込んだ `jsonwebtoken` を使う書き方など、ライブラリを特定した規則が多くを占めます。`eval` のような一般の書き方は WARNING 以下なので、Semgrep の ERROR で止まるものは少なく、広い検出は CodeQL が担います。
+- dependency review は、既定の runtime の依存だけでなく development の依存 (`fail-on-scopes: runtime, development`) でも止めます。Nx、Vite+、lint の道具は CI と開発者の手元で動くためです (判断)。
+- 導入時の OSV-Scanner の警告は、development の依存の `undici@7.29.0` (Nx の依存、13 件) と `katex@0.16.47` (1 件) です。Renovate の PR か手で上げます。
 - 保証カタログに、CodeQL、dependency review、Semgrep の3行と、警告だけのセンサーとして OSV-Scanner の1行を足します。
-- この ADR は、実装より前に書いた決定です。実装したら、確かめた版と設定をここに足します。
+- この ADR は、実装より前に書いた決定です。版と設定は上に書いたとおりに実装しました。

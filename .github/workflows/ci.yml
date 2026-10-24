@@ -103,10 +103,19 @@ jobs:
       - name: Lint workflows (actionlint, zizmor)
         run: scripts/lint-workflows.sh
 
+      # Fails only on ERROR findings that this branch adds (docs/adr/0021). Fetches the Registry rules, so it needs the network.
+      # In a pull request, GITHUB_BASE_REF names the base that the findings are compared with.
+      - name: SAST (Semgrep, new findings only)
+        run: scripts/semgrep.sh
+
+      # Warns, never fails: dependency review (dependency-review.yml) is the gate for dependencies (docs/adr/0021).
+      - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
+        run: scripts/osv-scanner.sh
+
       # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh"
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended

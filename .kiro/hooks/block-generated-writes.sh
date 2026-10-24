@@ -3,7 +3,7 @@
 #   apps/web/src/routeTree.gen.ts (any routeTree.gen.ts)  TanStack Router's bundler plugin writes it during dev and build
 #   .agents/skills/**, .kiro/skills/**, skills-lock.json  the skills CLI installs them from upstream
 #   pnpm-lock.yaml                                        pnpm writes it
-#   mise.lock                                             `mise lock` writes it
+#   mise.lock, .mise/locks/**                             `mise lock` writes them (.mise/locks/ holds the dependency graphs of PyPI tools)
 # Only the file tools that create, replace, append or delete are checked; reads always pass.
 # Tool names and path fields, checked against Kiro 2.33.1 (kas/<version>/node_modules/@kiro/agent/dist/server/acp-server.js):
 # tool_name is the tool id, tool_input is the tool's input. fs_write, str_replace and fs_append take `path`;
@@ -74,7 +74,7 @@ case "$rel" in
   pnpm-lock.yaml)
     refuse "pnpm writes it." "change package.json or pnpm-workspace.yaml and run \`pnpm install\` (or \`pnpm add\`)."
     ;;
-  mise.lock)
+  mise.lock | .mise/locks/*)
     refuse "mise writes it (docs/adr/0009)." "change mise.toml and run \`mise lock --platform linux-x64\`."
     ;;
 esac
