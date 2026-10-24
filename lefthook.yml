@@ -5,6 +5,7 @@
 # The secret-scan commands run scripts/secret-scan.sh, which needs `betterleaks` on PATH.
 # It is not an npm package; see docs/local-env-setup/setup.md.
 # The shellcheck job runs scripts/shellcheck.sh, which needs the pinned `shellcheck` on PATH (same doc).
+# The lint-workflows job runs scripts/lint-workflows.sh, which needs the pinned `actionlint` and `zizmor` (same doc).
 
 commit-msg:
   commands:
@@ -44,6 +45,14 @@ pre-commit:
         - "mise.toml"
         - "mise.lock"
       run: scripts/shellcheck.sh
+    # actionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
+    - name: lint-workflows
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - "scripts/lint-workflows.sh"
+        - "mise.toml"
+        - "mise.lock"
+      run: scripts/lint-workflows.sh
     - name: skills-lock
       glob:
         - ".agents/**"
@@ -85,6 +94,15 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/guard-push.test.sh"
       run: sh scripts/test/run.sh scripts/test/guard-push.test.sh
+    - name: lint-workflows-test
+      glob:
+        - "scripts/lint-workflows.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/lint-workflows.test.sh"
+        # The test copies them, and a new linter version can change what it reports.
+        - "mise.toml"
+        - "mise.lock"
+      run: sh scripts/test/run.sh scripts/test/lint-workflows.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"

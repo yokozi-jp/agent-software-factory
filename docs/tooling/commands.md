@@ -47,6 +47,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | format と lint の自動修正                                                                        | `pnpm exec vp check --fix`                                                                                                |
 | Markdown の検査                                                                                  | `pnpm lint:md`                                                                                                            |
 | シェルスクリプトの検査                                                                           | `scripts/shellcheck.sh`                                                                                                   |
+| GitHub Actions の workflow の検査 (actionlint、zizmor)                                           | `scripts/lint-workflows.sh`                                                                                               |
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、孤立文書、index の「いつ読むか」、250行超の警告) | `scripts/docs-check.sh`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
 | スクリプトと Kiro の hook のテスト                                                               | `sh scripts/test/run.sh`                                                                                                  |
 | 依存の追加 (例: api)                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                     |
