@@ -132,6 +132,22 @@ for number in $(git ls-files 'docs/adr/[0-9][0-9][0-9][0-9]-*.md' | sed 's|^docs
   fail "ADR $number is used by more than one file: $(git ls-files "docs/adr/$number-*.md" | tr '\n' ' ')"
 done
 
+# Script tests are listed by hand in the workflows and in lefthook.yml (docs/tooling/ci.md ("スクリプトのテスト")).
+# A new test that is in neither list never runs. Comment lines do not count as running a test.
+workflow_lines="$(grep -hv '^[[:space:]]*#' .github/workflows/*.yml)"
+hook_lines="$(grep -v '^[[:space:]]*#' lefthook.yml)"
+for test in $(git ls-files 'scripts/test/*.test.sh'); do
+  printf '%s\n' "$workflow_lines" | grep -qF "$test" ||
+    fail "$test is not run by any workflow. Add it to the Script tests step of .github/workflows/ci.yml."
+  printf '%s\n' "$hook_lines" | grep -qF "$test" ||
+    fail "$test is not run by the pre-commit hook. Add a job for it to lefthook.yml."
+done
+
+# Hooks, CI and the tests run shell scripts directly, so git must record them as executable (100755).
+for file in $(git ls-files -s -- '*.sh' ':!.agents/' ':!.kiro/skills/' | awk '$1 != "100755" { print $4 }'); do
+  fail "$file is not executable in git. Run \`chmod +x $file\` and stage it again."
+done
+
 # References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
 # docs-check.sh only follows Markdown links inside docs/, so these plain-text paths are checked here.
 #   docs/<path>.md               the file must exist
