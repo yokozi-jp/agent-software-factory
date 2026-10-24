@@ -23,3 +23,7 @@
 ### ドメインドキュメント
 
 シングルコンテキスト構成: リポジトリルートに `GLOSSARY.md` 1 つと `docs/adr/` を置く。`docs/agents/domain.md` を参照。
+
+### 振り返り
+
+タスクの区切り (PR を作った後、Issue を閉じる前など) では、頼まれなくても `retro` skill を実行する。区切りの定義と実行の仕方は `docs/agents/retro.md` を参照。

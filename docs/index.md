@@ -9,7 +9,7 @@ okf_version: "0.2"
 - [リポジトリ運用](repository/index.md)：コミットや PR を書くとき、リリースするとき、GitHub の設定を変えるとき
 - [Architecture Decision Records](adr/index.md)：ツールや構成を追加、変更する前に既存の決定を確かめるとき、ADR を書くとき
 - [ナレッジ管理](knowledge/index.md)：docs、steering、AGENTS.md を追加、変更するとき、知識をどこに書くか迷ったとき
-- [エージェント設定](agents/index.md)：Issue tracker、triage ラベル、ドメイン文書の配置を確かめるとき、Matt Pocock の skill を使うとき
+- [エージェント設定](agents/index.md)：Issue tracker、triage ラベル、ドメイン文書の配置を確かめるとき、Matt Pocock の skill を使うとき、タスクの区切りで振り返るとき
 - [ログ設計](logging/index.md)：アプリケーションのログを設計、実装、レビューするとき、ログ基盤の設定や費用を見直すとき
 - [I/F設計](interface/index.md)：システム間のデータ連携（ファイル連携、Web API、メッセージングなど）を設計、実装、レビューするとき
 - [メール設計と SMS](mail/index.md)：メールや SMS の送信を設計、実装するとき、到達性・レピュテーション・コンプライアンスを設計するとき
