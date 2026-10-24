@@ -76,7 +76,7 @@ Markdown記法を活用することで、Descriptionやレビューコメント�
 
 ## マージはレビュイーが実施する
 
-ブランチ運用は [ADR 0010](../adr/0010-trunk-based-development.md) (トランクベース開発)、merge の方式は [ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md) (squash merge だけ) に従う。チームの自律性と生産性を重視するのであれば、レビュイーがマージすべきである。ブランチを2日以内に merge する目安 (ADR 0010) を守るためにも、承認を受けたら待たずにマージする。
+ブランチ運用は [ADR 0010](../adr/0010-trunk-based-development.md) (トランクベース開発)、merge の方式は [ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md) (squash merge だけ) に従う。チームの自律性と生産性を重視するのであれば、レビュイーがマージすべきである。ブランチを2日以内に merge する目安 (ADR 0010) を守るためにも、承認を受けたら待たずにマージする。coding agent が書いたプルリクエストは、人がマージする ([coding agent が書いたプルリクエストのレビュー](agent-pull-requests.md))。
 
 信頼関係が構築できていれば、以下のようなやり取りが可能となり、スピード感が上がるためである。
 
