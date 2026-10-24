@@ -27,21 +27,24 @@ if [ -z "$prs" ]; then
 fi
 
 # "<number> <who>" for every ADR outside this branch.
+main_adrs="$(mktemp)"
+trap 'rm -f "$main_adrs"' EXIT
+git ls-tree --name-only origin/main docs/adr/ >"$main_adrs"
 taken="$(
-  git ls-tree --name-only origin/main docs/adr/ | adr_number | sed 's/$/ origin\/main/'
+  adr_number <"$main_adrs" | sed 's/$/ origin\/main/'
   printf '%s' "$prs" | jq -r --arg branch "$branch" '
     .[] | select(.headRefName != $branch) | .number as $pr | .files[].path
     | select(test("^docs/adr/[0-9]{4}-.*\\.md$")) | "\(.[9:13]) PR #\($pr)"'
 )"
 
 status=0
-# ADRs this branch adds: committed since origin/main, staged, or not yet added.
+# ADRs this branch adds: in the index or untracked now, and not in origin/main. Looking at the files as they are,
+# not at the commits, means a renumbered ADR counts with its new number before the rename is committed.
 added="$(
   {
-    git diff --name-only --diff-filter=AR origin/main...HEAD -- docs/adr/
-    git diff --name-only --diff-filter=AR --cached -- docs/adr/
+    git ls-files -- docs/adr/
     git ls-files --others --exclude-standard -- docs/adr/
-  } | adr_number | sort -u
+  } | sort -u | grep -vxF -f "$main_adrs" | adr_number | sort -u
 )"
 for number in $added; do
   users="$(printf '%s\n' "$taken" | awk -v n="$number" '$1 == n { $1 = ""; sub(/^ /, ""); print }' | sort -u | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
