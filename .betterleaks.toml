@@ -1,7 +1,7 @@
 # betterleaks configuration.
 # Always pass this file explicitly (`betterleaks ... --config .betterleaks.toml`).
 # Auto-discovery of repo configs differs between betterleaks versions (see docs/adr/0003).
-title = "hono-nx-vite-plus"
+title = "agent-software-factory"
 
 # Fail fast on older binaries. Must equal the betterleaks version in mise.toml (checked by scripts/check-repo-policy.sh).
 betterleaksMinVersion = "1.9.0"

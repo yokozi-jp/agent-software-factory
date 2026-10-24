@@ -18,12 +18,12 @@ Kiro の hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツ�
 
 ## worktree を作る
 
-worktree は、リポジトリの外の兄弟ディレクトリ `../hono-nx-vite-plus-worktrees/<ブランチ名>` に作ります。
+worktree は、リポジトリの外の兄弟ディレクトリ `../agent-software-factory-worktrees/<ブランチ名>` に作ります。
 リポジトリの中に置くと、Nx、vp check、IWE がその中のファイルまで拾うためです (この置き場所はこのリポジトリで決めたもので、Git の標準ではありません)。
 
 ```sh
 branch=feat/example
-dir=../hono-nx-vite-plus-worktrees/$branch
+dir=../agent-software-factory-worktrees/$branch
 git fetch origin
 git worktree add -b "$branch" "$dir" origin/main
 cd "$dir"
@@ -37,7 +37,7 @@ pnpm install --frozen-lockfile   # node_modules は worktree ごとに必要。G
 PR が merge されたら、worktree とブランチを消します。
 
 ```sh
-git worktree remove ../hono-nx-vite-plus-worktrees/feat/example
+git worktree remove ../agent-software-factory-worktrees/feat/example
 git branch -d feat/example
 git worktree prune
 ```
