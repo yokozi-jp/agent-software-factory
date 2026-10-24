@@ -18,12 +18,11 @@ sources:
 
 - 開発者向けのデバッグ情報が、一般のユーザーにも見えてしまう可能性があり、情報漏洩のリスクがあるため
 - デバッグ用のconsoleが残っていると、コードが読みにくくなるため
-- ESLintやBiomeのルールでconsoleの使用は警告されるため、そのルールに合わせる
+- `apps/web/src` では Oxlint の `no-console` を error にしており、`vp check` (pre-commit と CI) で止まる。設定はルートの `vite.config.ts` の `lint.overrides` にある
 
 もし、クライアントのエラー状況などを収集したい場合は、Sentryなどのログ基盤の導入を検討すること。
 
 > [!NOTE]
 > **参考**
 >
-> - [noConsole | Biome](https://biomejs.dev/linter/rules/no-console/)
-> - [no-console \- ESLint \- Pluggable JavaScript Linter](https://eslint.org/docs/latest/rules/no-console)
+> - [no-console | Oxlint](https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-console.html)
