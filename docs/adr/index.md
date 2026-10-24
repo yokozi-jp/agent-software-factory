@@ -20,3 +20,4 @@
 - [ADR 0018: 固定した版の更新は Renovate に任せる](0018-renovate-for-pinned-versions.md)：Renovate の設定や対象を変えるとき、Renovate の PR が想定と違うとき、Dependabot や手作業に戻したくなったとき
 - [ADR 0019: XSS の入口になる書き方は、メッセージを指定できる自作の Oxlint plugin で止める](0019-custom-oxlint-plugin-for-xss.md)：XSS の lint で止まったとき、禁止する書き方を足すとき、組み込みの Oxlint のルールに戻したくなったとき
 - [ADR 0020: TypeScript の型検査は vp check だけを正とし、tsconfig はルートに置いて noUncheckedIndexedAccess と exactOptionalPropertyTypes まで厳しくする](0020-typescript-strictness.md)：tsconfig のフラグや Oxlint の型情報を使う規則を足す、外すとき、型の規則や警告で止まったとき、tsc --noEmit を足したくなったとき
+- [ADR 0021: SAST と依存の脆弱性は、PR が新しく持ち込んだ指摘だけで止め、ゲートは CodeQL と dependency review、ローカルの写しは Semgrep と OSV-Scanner にする](0021-sast-and-dependency-scan.md)：SAST や依存のスキャンの道具、閾値、抑制の仕方を変えるとき、CodeQL と Semgrep のどちらかを外したくなったとき、Trivy や pnpm audit を足したくなったとき、private のリポジトリで使うとき
