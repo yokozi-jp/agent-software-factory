@@ -43,6 +43,10 @@ expect_exit 0 "repo-policy: a heading is matched without its number" policy
 reset
 echo "# docs/adr/9999" >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: cited ADR number must exist" policy
+reset
+# Two branches each took the next free number; both ADRs reached main.
+cp "$copy/docs/adr/0001-lefthook-for-git-hooks.md" "$copy/docs/adr/0001-duplicate.md" && stage
+expect_exit 1 "repo-policy: two ADRs cannot share a number" policy
 
 # check-repo-policy staged: only what is staged counts.
 reset

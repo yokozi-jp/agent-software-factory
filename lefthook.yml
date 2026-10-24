@@ -2,10 +2,8 @@
 # Docs: https://lefthook.dev/configuration/
 # Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
 
-# The secret-scan commands run scripts/secret-scan.sh, which needs `betterleaks` on PATH.
-# It is not an npm package; see docs/local-env-setup/setup.md.
-# The shellcheck job runs scripts/shellcheck.sh, which needs the pinned `shellcheck` on PATH (same doc).
-# The lint-workflows job runs scripts/lint-workflows.sh, which needs the pinned `actionlint` and `zizmor` (same doc).
+# scripts/secret-scan.sh, scripts/shellcheck.sh and scripts/lint-workflows.sh run their linters through `mise exec`,
+# so the tools pinned in mise.toml must be installed (`mise install --locked`, docs/local-env-setup/setup.md).
 
 commit-msg:
   commands:
