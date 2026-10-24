@@ -26,4 +26,4 @@
 
 ### 振り返り
 
-タスクの区切り (PR を作った後、Issue を閉じる前など) では、頼まれなくても `retro` skill を実行する。区切りの定義と実行の仕方は `docs/agents/retro.md` を参照。
+タスクの区切りでは、完了を報告する前に `retro` skill を実行する。区切りは、PR を作って CI の結果が出たとき、PR を作らずに Issue を閉じる前、Issue のない作業を commit し終えたときの 3 つ。手順は `docs/agents/retro.md` を読む。
