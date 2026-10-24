@@ -37,7 +37,7 @@ pre-commit:
         - "docs/**"
         - "scripts/docs-check.sh"
         - "scripts/docs-links.mjs"
-      run: scripts/docs-check.sh
+      run: scripts/docs-check.sh staged
     - name: shellcheck
       glob:
         - "*.sh"
