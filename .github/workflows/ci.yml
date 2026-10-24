@@ -25,7 +25,7 @@ jobs:
   # The jobs run in parallel. `main` at the end is the required status check (.github/rulesets/protect-main.json),
   # so a job added here must also be listed in the `needs` of `main`, or it will not block a merge.
 
-  # Checks that need the repository and node_modules only.
+  # Checks that do not need the tools from mise.lock.
   checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -81,6 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The same as before the split. Nothing here is known to need the history.
           fetch-depth: 0
           persist-credentials: false
 
@@ -114,7 +115,7 @@ jobs:
   # The projects (apps/ and packages/): check, test and build the ones that the change affects.
   nx:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

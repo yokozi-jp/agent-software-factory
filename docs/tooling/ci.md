@@ -12,26 +12,26 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 ## workflow
 
-| workflow          | 実行タイミング     | 内容                                                             |
-| ----------------- | ------------------ | ---------------------------------------------------------------- |
-| `ci.yml`          | PR、main への push | 下の検証と `nx affected -t check test build` (並列の 4 つの job) |
-| `commitlint.yml`  | PR                 | PR タイトルと PR 内の全コミットを検証                            |
-| `secret-scan.yml` | PR、main への push | PR は PR のコミットを、main は全履歴を betterleaks で scan       |
-| `release.yml`     | 手動               | `nx release` ([リリース](../repository/release.md))              |
+| workflow          | 実行タイミング     | 内容                                                                                        |
+| ----------------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| `ci.yml`          | PR、main への push | 下の検証と `nx affected -t check test build` (3 つの job を並列に実行し、`main` でまとめる) |
+| `commitlint.yml`  | PR                 | PR タイトルと PR 内の全コミットを検証                                                       |
+| `secret-scan.yml` | PR、main への push | PR は PR のコミットを、main は全履歴を betterleaks で scan                                  |
+| `release.yml`     | 手動               | `nx release` ([リリース](../repository/release.md))                                         |
 
 ## ci.yml の job
 
-`ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。どれも `setup-vp` で依存を入れます。
+`ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                              |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`  | リポジトリと node_modules だけで済む検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip |
-| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、actionlint と zizmor、Script tests。いちばん時間がかかる             |
-| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                            |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す            |
+| job       | 内容                                                                                                                                                     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、Markdown、docs、root、jscpd、Knip                                       |
+| `scripts` | mise で入れた道具を使う検査とスクリプトのテスト: shellcheck、actionlint と zizmor、Script tests。テストを 1 つずつ順に実行するので、いちばん時間がかかる |
+| `nx`      | `nx affected -t check test build` と、build の後に生成ファイルが commit 済みであること                                                                   |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                   |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
-`main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと `main` は skip され、必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
+`main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
 
 ## ci.yml の検証
 
