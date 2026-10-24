@@ -36,3 +36,6 @@ dist-ssr
 .nx/cache
 .nx/workspace-data
 .nx/migrate-runs
+
+# TanStack Router: temporary files of the route tree generator (atomic writes). TanStack/router ignores it too.
+.tanstack/

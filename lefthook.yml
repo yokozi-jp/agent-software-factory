@@ -119,6 +119,12 @@ pre-commit:
         # A new jscpd version (pinned in the catalog) can change what it reports.
         - "pnpm-workspace.yaml"
       run: sh scripts/test/run.sh scripts/test/duplicate-code.test.sh
+    - name: adr-number-test
+      glob:
+        - "scripts/check-adr-number.sh"
+        - "scripts/test/lib.sh"
+        - "scripts/test/adr-number.test.sh"
+      run: sh scripts/test/run.sh scripts/test/adr-number.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"

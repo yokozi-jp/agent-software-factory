@@ -71,18 +71,72 @@ reset
 printf 'no frontmatter\n' > "$copy/.kiro/steering/broken.md"
 expect_exit 1 "repo-policy: steering frontmatter is required" policy
 
-# check-repo-policy: git on another repository only from tests isolated by lib.sh.
+# check-repo-policy: one Node.js major version (ADR 0013). .node-version decides; the others must agree.
+node_major="$(sed -n 's/^v\{0,1\}\([0-9][0-9]*\).*/\1/p' "$repo_root/.node-version" | head -n 1)"
+other_major=$((node_major + 1))
 reset
-printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && stage
+printf 'v%s.1.2\n' "$node_major" > "$copy/.node-version" && stage
+expect_exit 0 "repo-policy: .node-version may be an exact version with a v" policy
+reset
+printf '%s\n' "$other_major" > "$copy/.node-version" && stage
+expect_exit 1 "repo-policy: .node-version moving alone is refused (ADR 0013)" policy
+reset
+printf 'lts\n' > "$copy/.node-version" && stage
+expect_exit 1 "repo-policy: .node-version must start with a version (ADR 0013)" policy
+reset
+sed -i.bak "s/\"node\": \"[^\"]*\"/\"node\": \">=$other_major\"/" "$copy/package.json" && stage
+expect_exit 1 "repo-policy: engines.node must follow .node-version (ADR 0013)" policy
+reset
+sed -i.bak "s/\"@types\/node\": [^ ]*/\"@types\/node\": ^$other_major/" "$copy/pnpm-workspace.yaml" && stage
+expect_exit 1 "repo-policy: the @types/node catalog must follow .node-version (ADR 0013)" policy
+reset
+sed -i.bak "s/target: \"node[0-9]*\"/target: \"node$other_major\"/" "$copy/apps/api/vite.config.ts" && stage
+expect_exit 1 "repo-policy: the API build target must follow .node-version (ADR 0013)" policy
+
+# check-repo-policy: git on another repository only from tests isolated by lib.sh.
+# Each new script is executable, and the new test is listed, so only the git rule can fail the case.
+reset
+printf '#!/bin/sh\ngit init -q /tmp/x\n' > "$copy/scripts/make-repo.sh" && chmod +x "$copy/scripts/make-repo.sh" && stage
 expect_exit 1 "repo-policy: git init outside scripts/test is refused" policy
 reset
 # $1 belongs to the generated script.
 # shellcheck disable=SC2016
-printf '#!/bin/sh\ngit -C "$1" commit -m x\n' > "$copy/.kiro/hooks/other.sh" && stage
+printf '#!/bin/sh\ngit -C "$1" commit -m x\n' > "$copy/.kiro/hooks/other.sh" && chmod +x "$copy/.kiro/hooks/other.sh" && stage
 expect_exit 1 "repo-policy: git -C outside scripts/test is refused" policy
 reset
-printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.sh" && stage
+printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.sh" && chmod +x "$copy/scripts/test/bare.test.sh"
+sed -i.bak 's|tests="|tests="scripts/test/bare.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    - name: bare\n      run: sh scripts/test/run.sh scripts/test/bare.test.sh\n' >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: a test that does not source lib.sh is refused" policy
+
+# check-repo-policy: every script test runs in a workflow and in the pre-commit hook.
+listed_test() {
+  printf '#!/bin/sh\n' > "$copy/scripts/test/new.test.sh" && chmod +x "$copy/scripts/test/new.test.sh"
+}
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    - name: new\n      run: sh scripts/test/run.sh scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 0 "repo-policy: a test listed in ci.yml and lefthook.yml passes" policy
+reset
+listed_test
+printf '    - name: new\n      run: sh scripts/test/run.sh scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: a test that no workflow runs is refused" policy
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml" && stage
+expect_exit 1 "repo-policy: a test that the pre-commit hook does not run is refused" policy
+reset
+listed_test
+sed -i.bak 's|tests="|tests="scripts/test/new.test.sh |' "$copy/.github/workflows/ci.yml"
+printf '    # scripts/test/new.test.sh\n' >> "$copy/lefthook.yml" && stage
+expect_exit 1 "repo-policy: a test named only in a comment is refused" policy
+
+# check-repo-policy: shell scripts are executable in git. The staged mode counts, not the file on disk.
+reset
+chmod -x "$copy/scripts/guard-push.sh" && stage
+expect_exit 1 "repo-policy: a non-executable shell script is refused" policy
+expect_exit 1 "repo-policy staged: a non-executable shell script is refused" staged_policy
 
 # docs-check against a small docs/ fixture: the repo's schemas and scripts, and a few documents.
 #   tooling/index.md -> a.md (Reference), b.md (has "## 見出し")

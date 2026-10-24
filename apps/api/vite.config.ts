@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     // Node server bundle. Dependencies stay external and are resolved from node_modules at runtime.
     ssr: "src/server.ts",
-    target: "node26",
+    target: "node24",
   },
   test: {
     include: ["src/**/*.test.ts"],
