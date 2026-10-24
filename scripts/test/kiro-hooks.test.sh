@@ -7,6 +7,7 @@ set -u
 
 force="$repo_root/.kiro/hooks/block-force-push.sh"
 normalize="$repo_root/.kiro/hooks/block-iwe-normalize.sh"
+generated="$repo_root/.kiro/hooks/block-generated-writes.sh"
 sessions="$repo_root/.kiro/hooks/warn-concurrent-sessions.sh"
 
 # block-force-push: refuse rewriting pushes, allow ordinary ones.
@@ -44,6 +45,50 @@ for cmd in "pnpm exec iwe find normalize" "iwe stats" "iwe schema validate"; do
   expect_hook 0 "block-iwe-normalize allows: $cmd" "$normalize" shell "$cmd"
 done
 expect_exit 0 "block-iwe-normalize override" sh -c "printf '%s' '{\"tool_input\":{\"command\":\"iwe normalize\"}}' | IWE_ALLOW_NORMALIZE=1 sh '$normalize'"
+
+# block-generated-writes: refuse file tools that write generated files, allow other files and every read.
+# POSIX sh has no `local`; the rf_ and rw_ prefixes keep the helpers' variables from clobbering lib.sh's.
+# run_file_hook <tool name> <tool_input JSON> [cwd]: feed a PreToolUse event for a file tool. stderr goes to stdout.
+run_file_hook() {
+  rf_cwd="${3:-$repo_root}"
+  jq -cn --arg tool "$1" --argjson input "$2" --arg cwd "$rf_cwd" \
+    '{hook_event_name: "PreToolUse", cwd: $cwd, tool_name: $tool, tool_input: $input}' \
+    | (cd "$rf_cwd" && sh "$generated" 2>&1)
+}
+# refuses_with <text> <run_file_hook arguments...>: exit 2 and stderr mentions <text>.
+refuses_with() {
+  rw_text="$1"
+  shift
+  rw_out="$(run_file_hook "$@")"
+  rw_status=$?
+  printf '%s\n' "$rw_out"
+  [ "$rw_status" -eq 2 ] || return "$rw_status"
+  case "$rw_out" in *"$rw_text"*) return 0 ;; *) return 1 ;; esac
+}
+expect_exit 0 "block-generated-writes refuses fs_write to pnpm-lock.yaml" refuses_with "pnpm install" fs_write '{"path":"pnpm-lock.yaml","text":"x"}'
+expect_exit 0 "block-generated-writes refuses fs_append to mise.lock" refuses_with "mise lock" fs_append '{"path":"mise.lock","text":"x"}'
+expect_exit 0 "block-generated-writes refuses str_replace in routeTree.gen.ts (absolute path)" refuses_with "nx build web" str_replace "{\"path\":\"$repo_root/apps/web/src/routeTree.gen.ts\",\"oldStr\":\"a\",\"newStr\":\"b\"}"
+expect_exit 0 "block-generated-writes refuses delete_file of skills-lock.json" refuses_with "skills update" delete_file '{"targetFile":"skills-lock.json","explanation":"x"}'
+expect_exit 0 "block-generated-writes refuses fs_write to an upstream skill" refuses_with "skills update" fs_write '{"path":".agents/skills/tdd/SKILL.md","text":"x"}'
+expect_exit 0 "block-generated-writes refuses a skill through the .kiro/skills symlink" refuses_with "skills update" str_replace '{"path":".kiro/skills/tdd/SKILL.md","oldStr":"a","newStr":"b"}'
+expect_exit 0 "block-generated-writes refuses a new file in an upstream skill" refuses_with "skills update" fs_write '{"path":".agents/skills/tdd/new/notes.md","text":"x"}'
+expect_exit 0 "block-generated-writes refuses a path with . and .." refuses_with "nx build web" fs_write '{"path":"./apps/api/../web/src/routeTree.gen.ts","text":"x"}'
+expect_exit 0 "block-generated-writes refuses a path relative to the session cwd" refuses_with "nx build web" fs_write '{"path":"src/routeTree.gen.ts","text":"x"}' "$repo_root/apps/web"
+for input in \
+  '{"path":"README.md","text":"x"}' \
+  '{"path":"pnpm-lock.yaml.bak","text":"x"}' \
+  '{"path":"docs/mise.lock.md","text":"x"}' \
+  '{"path":".agents/skills-notes.md","text":"x"}' \
+  '{"path":"/tmp/pnpm-lock.yaml","text":"x"}'; do
+  expect_exit 0 "block-generated-writes allows fs_write: $input" run_file_hook fs_write "$input"
+done
+expect_exit 0 "block-generated-writes allows delete_file of another file" run_file_hook delete_file '{"targetFile":"apps/web/src/main.tsx","explanation":"x"}'
+expect_exit 0 "block-generated-writes allows read_file of pnpm-lock.yaml" run_file_hook read_file '{"path":"pnpm-lock.yaml"}'
+expect_exit 0 "block-generated-writes allows reading a skill" run_file_hook read_file '{"path":".agents/skills/tdd/SKILL.md"}'
+expect_hook 0 "block-generated-writes allows shell (not checked)" "$generated" execute_bash "cat pnpm-lock.yaml"
+expect_exit 0 "block-generated-writes fails open on a missing path" run_file_hook fs_write '{"text":"x"}'
+expect_exit 0 "block-generated-writes fails open on garbage" sh -c "printf 'not json' | sh '$generated'"
+expect_exit 0 "block-generated-writes override" sh -c "printf '%s' '{\"tool_name\":\"fs_write\",\"tool_input\":{\"path\":\"pnpm-lock.yaml\"}}' | KIRO_ALLOW_GENERATED_WRITE=1 sh '$generated'"
 
 # warn-concurrent-sessions: warn only for a live kiro process in the same directory.
 make_sandbox
