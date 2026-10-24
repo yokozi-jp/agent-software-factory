@@ -9,7 +9,7 @@ tags: [tooling, runbook, git, worktree, kiro]
 
 同じ作業ツリーで2つのセッションが動くと、index とファイルを上書きし合います。
 並行して作業するときは、セッションごとに `git worktree` で作業ツリーを分けます。
-Kiro の SessionStart hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツリーで別の Kiro セッションが動いていると警告します。
+Kiro の hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツリーで別の Kiro セッションが動いていると、セッションの開始時に警告します。後から始まったセッションも見つけられるよう、ファイルの書き込みと shell の前にも確かめ、見つけたら利用者に確認を求めます。
 
 ## 警告が出たとき
 

@@ -9,6 +9,17 @@
         "type": "command",
         "command": "sh .kiro/hooks/warn-concurrent-sessions.sh"
       }
+    },
+    {
+      "name": "warn-concurrent-sessions-before-write",
+      "trigger": "PreToolUse",
+      "description": "Ask the user once before a write or shell tool when another live Kiro session uses the same working tree, including sessions that started later (docs/tooling/worktrees.md).",
+      "matcher": "write|fs_write|fsWrite|str_replace|strReplace|fs_append|fsAppend|delete_file|deleteFile|shell|execute_bash",
+      "action": {
+        "type": "command",
+        "command": "sh .kiro/hooks/warn-concurrent-sessions.sh --pre-tool-use"
+      },
+      "timeout": 5
     }
   ]
 }

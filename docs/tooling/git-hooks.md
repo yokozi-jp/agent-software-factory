@@ -41,12 +41,12 @@ pnpm exec lefthook run pre-commit   # hook を手動で実行
 
 ## Kiro の hook
 
-`.kiro/hooks/` には、エージェントの shell の実行を止める Kiro の PreToolUse hook と、セッションの開始時に警告を出す SessionStart hook があります。Git hook とは別のものです。
+`.kiro/hooks/` には、エージェントの操作の前に動く Kiro の PreToolUse hook と、セッションの開始時に警告を出す SessionStart hook があります。Git hook とは別のものです。
 
-| hook                       | 止めるもの                                                                                                                       | 一時的に許すとき          |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `block-force-push`         | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>`                                                                | `KIRO_ALLOW_FORCE_PUSH=1` |
-| `block-iwe-normalize`      | `iwe normalize` ([ADR 0006](../adr/0006-no-iwe-rewrites.md))                                                                     | `IWE_ALLOW_NORMALIZE=1`   |
-| `warn-concurrent-sessions` | 止めない。セッションの開始時に、同じ作業ツリーで別の Kiro セッションが動いていれば警告する ([並行作業と worktree](worktrees.md)) | 不要                      |
+| hook                       | 止めるもの                                                                                                                                                                                                                                 | 一時的に許すとき          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| `block-force-push`         | `git push` の `--force`、`--force-with-lease`、`-f`、`+<refspec>`                                                                                                                                                                          | `KIRO_ALLOW_FORCE_PUSH=1` |
+| `block-iwe-normalize`      | `iwe normalize` ([ADR 0006](../adr/0006-no-iwe-rewrites.md))                                                                                                                                                                               | `IWE_ALLOW_NORMALIZE=1`   |
+| `warn-concurrent-sessions` | 止めない。同じ作業ツリーで別の Kiro セッションが動いていれば、セッションの開始時に警告し、ファイルの書き込みと shell の前に利用者へ確認を求める。確認は、別のセッションの組み合わせごとに1回だけ出す ([並行作業と worktree](worktrees.md)) | 不要                      |
 
 force push が必要なときは、履歴を確かめてから利用者が自分で実行します。PR は squash merge なので、main を取り込むための rebase は要りません ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md))。

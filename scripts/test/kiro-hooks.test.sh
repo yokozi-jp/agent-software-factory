@@ -76,8 +76,21 @@ write_session other-dir "$live" /somewhere/else
 write_session stale 999999 "$repo_root"
 write_session not-kiro "$not_kiro" "$repo_root"
 expect_exit 1 "warn-concurrent-sessions is silent without a live kiro session here" warns
+# --pre-tool-use: before a write, ask the user once for each set of other sessions (stdout is a permissionDecision).
+asks() {
+  out="$(cd "$repo_root" && printf '{}' | KIRO_SESSIONS_DIR="$tmp" KIRO_SESSION_ID=self KIRO_HOOK_STATE_DIR="$tmp/state" sh "$sessions" --pre-tool-use)" || return 2
+  case "$out" in *'"permissionDecision":"ask"'*) return 0 ;; "") return 1 ;; *) return 3 ;; esac
+}
+expect_exit 1 "warn-concurrent-sessions --pre-tool-use is silent without a live kiro session here" asks
 write_session live "$live" "$repo_root"
 expect_exit 0 "warn-concurrent-sessions warns for a live kiro session here" warns
+expect_exit 0 "warn-concurrent-sessions --pre-tool-use asks for a live kiro session here" asks
+expect_exit 1 "warn-concurrent-sessions --pre-tool-use asks only once for the same sessions" asks
+"$tmp/kiro-fake" 60 &
+live2=$!
+write_session live2 "$live2" "$repo_root"
+expect_exit 0 "warn-concurrent-sessions --pre-tool-use asks again when another session joins" asks
+kill "$live2" 2>/dev/null
 expect_exit 0 "warn-concurrent-sessions exits 0 without a sessions dir" sh -c "KIRO_SESSIONS_DIR=/nonexistent sh '$sessions'"
 kill "$not_kiro" 2>/dev/null
 
