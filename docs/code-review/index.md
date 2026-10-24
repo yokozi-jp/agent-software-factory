@@ -8,4 +8,5 @@
 - [レビュイーのレビュー依頼とマージ](reviewee-review-request.md)：レビューを依頼するとき、マージするとき
 - [レビュアーの姿勢と進め方](reviewer-mindset.md)：レビューを始めるときの心構えや進め方を確かめるとき
 - [レビュアーのコメントの書き方](reviewer-comments.md)：レビューコメントを書くとき、ラベルや指摘の粒度を確かめるとき
+- [coding agent が書いたプルリクエストのレビュー](agent-pull-requests.md)：coding agent の PR をレビューするとき、マージするとき、ゲート、agent のレビュー、人の役割を変えるとき
 - [レビュアーの確認範囲と質問](reviewer-judgment.md)：確認範囲に迷うとき、不明点や指摘が多いとき

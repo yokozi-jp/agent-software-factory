@@ -24,6 +24,13 @@ export default defineConfig({
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     options: { typeAware: true, typeCheck: true },
     overrides: [
+      // Agent-written tests: block .only (runs a subset) and .skip (hides a failing test).
+      // See docs/code-review/agent-pull-requests.md.
+      {
+        files: ["**/*.test.ts", "**/*.test.tsx"],
+        plugins: ["vitest"],
+        rules: { "vitest/no-focused-tests": "error", "vitest/no-disabled-tests": "error" },
+      },
       // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
       // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
       {
