@@ -1,0 +1,11 @@
+{
+  "path": ["."],
+  "pattern": "{apps,packages}/**",
+  "format": ["javascript", "jsx", "typescript", "tsx", "css"],
+  "ignore": ["**/routeTree.gen.ts", "**/.tanstack/**", "**/fixtures/**", "**/__fixtures__/**"],
+  "gitignore": true,
+  "threshold": 0,
+  "reporters": ["console"],
+  "failOnEmpty": true,
+  "noColors": true
+}
