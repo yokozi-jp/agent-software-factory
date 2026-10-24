@@ -77,6 +77,10 @@ jobs:
       - name: Check root files
         run: pnpm check:root
 
+      # Duplicate code in apps/ and packages/ (.jscpd.json). Fails above the threshold in docs/adr/0013.
+      - name: Duplicate code (jscpd)
+        run: pnpm lint:dup
+
       - run: pnpm exec nx affected -t check test build
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
