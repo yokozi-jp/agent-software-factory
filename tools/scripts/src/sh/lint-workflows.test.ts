@@ -49,8 +49,9 @@ describe("lint-workflows.sh", () => {
         ".github/workflows/ci.yml",
         ".github/workflows/deploy.yaml",
         ".github/workflows/my flow.yml",
-        // Not workflows: another directory, another extension.
+        // Not workflows: another directory, a subdirectory of workflows/ (GitHub does not read it), another extension.
         ".github/other/ci.yml",
+        ".github/workflows/nested/ci.yml",
         ".github/workflows/README.md",
       ])
         write(path);

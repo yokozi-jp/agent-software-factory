@@ -23,14 +23,14 @@ tags: [adr, tooling, knip, ci, quality, dependencies]
 
 設定のない Knip は、次の 8 件を報告しました。
 
-| 指摘                                                                                  | 対応                                                      |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 未使用のファイル `apps/api/src/server.ts` と、それだけが使う `@hono/node-server`      | `entry` に足す (production の入口)                        |
-| 未使用のファイル `scripts/docs-links.mjs`                                             | `entry` に足す (`scripts/docs-check.sh` が `node` で呼ぶ) |
-| 未使用のファイル `.agents/skills/setup-ts-deep-modules/dependency-cruiser.config.cjs` | `project` から `.agents/` を外す                          |
-| `apps/api` の未使用の devDependency `vite`                                            | 削除する                                                  |
-| ルートの未使用の devDependency `@iwe-org/iwe` と `@nx/js`                             | `ignoreDependencies` に足す                               |
-| `apps/api/src/app.ts` の未使用の export の型 `AppType`                                | 削除する                                                  |
+| 指摘                                                                                  | 対応                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 未使用のファイル `apps/api/src/server.ts` と、それだけが使う `@hono/node-server`      | `entry` に足す (production の入口)                                                                                                                                                         |
+| 未使用のファイル `scripts/docs-links.mjs`                                             | `entry` に足した (`scripts/docs-check.sh` が `node` で呼ぶため)。その後 TypeScript に移し ([Issue #165](https://github.com/yokozi-jp/agent-software-factory/issues/165))、この例外は外した |
+| 未使用のファイル `.agents/skills/setup-ts-deep-modules/dependency-cruiser.config.cjs` | `project` から `.agents/` を外す                                                                                                                                                           |
+| `apps/api` の未使用の devDependency `vite`                                            | 削除する                                                                                                                                                                                   |
+| ルートの未使用の devDependency `@iwe-org/iwe` と `@nx/js`                             | `ignoreDependencies` に足す                                                                                                                                                                |
+| `apps/api/src/app.ts` の未使用の export の型 `AppType`                                | 削除する                                                                                                                                                                                   |
 
 `apps/api` の `vite` は、本当に使われていませんでした。`apps/api` のコードは `vite-plus` からだけ import し、`@hono/vite-dev-server` の実行時のコードも `vite` を import しません。Vite+ の migration の規則も、`vite-plus` だけを使う pnpm のパッケージには `vite` の entry が要らないとしています。削除した後も `api` の check、build、test が通ることを確かめました。`apps/web` の `vite` は、`tsconfig.json` の `types: ["vite/client"]` で使うので残ります。
 ただ、`@hono/vite-dev-server` の型定義 (`.d.mts`) は、依存に書いていない `vite` から型を import します。この import は、pnpm が既定で `node_modules/.pnpm/node_modules` に置く `vite` (`vite-plus-core` への alias) で解決されます。
