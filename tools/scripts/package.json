@@ -50,12 +50,10 @@
           "{workspaceRoot}/.kiro/settings/mcp.json",
           "{workspaceRoot}/.markdownlint-cli2.yaml",
           "{workspaceRoot}/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}",
-          "{workspaceRoot}/apps/**/*",
           "{workspaceRoot}/knip.jsonc",
           "{workspaceRoot}/lefthook.yml",
           "{workspaceRoot}/nx.json",
           "{workspaceRoot}/package.json",
-          "{workspaceRoot}/packages/**/*",
           "{workspaceRoot}/pnpm-lock.yaml",
           "{workspaceRoot}/renovate.jsonc"
         ]

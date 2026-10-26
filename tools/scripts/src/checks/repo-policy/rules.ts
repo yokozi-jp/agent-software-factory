@@ -231,18 +231,16 @@ function gitOnOtherRepositories(tree: Tree): string[] {
 // (docs/tooling/ci.md ("スクリプトのテスト")). The two lists are compared as strings: Nx and lefthook
 // write globs differently, so a pattern cannot be matched against the other list.
 const toolsInput = "{workspaceRoot}/";
-// Inputs left out of the hook on purpose: the Knip and commitlint tests read them (and apps/), and a commit
+// Inputs left out of the hook on purpose: the Knip and commitlint tests read them, and a commit
 // that changes one of them must not start the slow tools tests. CI runs the target for every change
 // (docs/tooling/git-hooks.md).
 const notInHook: ReadonlySet<string> = new Set([
   ".github/workflows/*.{yml,yaml}",
   ".kiro/settings/mcp.json",
   "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}",
-  "apps/**/*",
   "lefthook.yml",
   "nx.json",
   "package.json",
-  "packages/**/*",
   "pnpm-lock.yaml",
 ]);
 
