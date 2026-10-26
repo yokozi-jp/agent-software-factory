@@ -21,3 +21,4 @@
 - [ADR 0019: XSS の入口になる書き方は、メッセージを指定できる自作の Oxlint plugin で止める](0019-custom-oxlint-plugin-for-xss.md)：XSS の lint で止まったとき、禁止する書き方を足すとき、組み込みの Oxlint のルールに戻したくなったとき
 - [ADR 0020: TypeScript の型検査は vp check だけを正とし、tsconfig はルートに置いて noUncheckedIndexedAccess と exactOptionalPropertyTypes まで厳しくする](0020-typescript-strictness.md)：tsconfig のフラグや Oxlint の型情報を使う規則を足す、外すとき、型の規則や警告で止まったとき、tsc --noEmit を足したくなったとき
 - [ADR 0021: SAST と依存の脆弱性は、PR が新しく持ち込んだ指摘だけで止め、ゲートは CodeQL と dependency review、ローカルの写しは Semgrep と OSV-Scanner にする](0021-sast-and-dependency-scan.md)：SAST や依存のスキャンの道具、閾値、抑制の仕方を変えるとき、CodeQL と Semgrep のどちらかを外したくなったとき、Trivy や pnpm audit を足したくなったとき、private のリポジトリで使うとき
+- [ADR 0022: 認証は Better Auth の Cookie の BFF にし、役割とテナントはアプリの DB が持ち、IdP は OIDC で差し替える](0022-better-auth-cookie-bff.md)：認証やセッションの方式、Cookie や CSRF の設定を変えるとき、Better Auth の表や DB のロールを触るとき、IdP を足す、替えるとき、トークンを SPA に持たせたくなったとき、Authorization ヘッダーで認証したくなったとき

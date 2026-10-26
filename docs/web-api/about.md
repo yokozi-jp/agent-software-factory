@@ -34,6 +34,8 @@ sources:
 - status-codes.md の HTTP ステータスコードの出典を、RFC 7231 から RFC 9110 (Section 15) にした。RFC 9110 (7231 を obsolete)。
 - http-methods.md の HTTP メソッドの出典を RFC 7231 から RFC 9110 (Section 9) に、リクエストライン長 (8000 オクテット) の出典を RFC 7230 から RFC 9112 (Section 3) にした。RFC 9110・RFC 9112 (7231・7230 の該当部分を obsolete)。
 - security.md の Strict-Transport-Security の推奨値で閉じ忘れていたバッククォートを足した (`max-age=63072000; includeSubDomains`)。値は変えていない。
+- security.md の Cookie の `SameSite` を、`Lax` を既定にする推奨から、BFF の Cookie のセッションでは `Strict` を勧める推奨に変えた。RFC 10017 6.1.3.2 (BFF の Cookie は `SameSite=Strict`)、NIST SP 800-63B-4 (`Lax` か `Strict`)。
+- authentication-and-authorization.md の推奨 (2) に、Web Functions の OAC が `Authorization` ヘッダーを署名に使うため Bearer と両立しない理由を足し、JWT のアクセストークンは JWKS で手元で検証できる旨の注記を足した。RFC 9068、RFC 8725。
 
 ## 位置づけ
 

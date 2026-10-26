@@ -32,6 +32,7 @@ sources:
 - validation-message.md のエラーメッセージの記述に、`aria-errormessage` は `aria-invalid="true"` とともに設定しないと支援技術に露出しない旨を足した。MDN aria-errormessage。
 - image.md の画像形式の表で、AVIF のブラウザ対応を ⚠️ から対応済みの印 (✅️) に変え、PNG のアニメーションは APNG である旨を注記した。MDN Image file type and format guide。
 - dark-mode.md の状態の保持の表で、Cookie の有効期限「最大で約68年」を、Chrome M104 以降は最大400日である旨に直し、一次情報を参考に足した。Chrome for Developers「Cookie Expires and Max-Age attributes now have upper limit」。
+- auth.md の方式1 (フロントエンドだけ) に、業務アプリには勧めない旨の警告を、方式2 に、BFF として strongly recommended で、このリポジトリが採る旨の注記を足した。RFC 10017 6.1、6.3.4.3。
 - favicon.md の形式比較の表で、SVG のブラウザ対応を Safari 26 以降で対応済みに直した。WebKit Blog「WebKit Features in Safari 26.0」。
 
 ## 位置づけ
