@@ -1,0 +1,41 @@
+name: Issue tracker
+
+# Weekly: an open issue that names a removed path, a decision ticket of a wayfinder map closed without its
+# implementation issue, or a "Blocked by:" line without a native edge (docs/agents/issue-tracker.md ("検査")).
+# Not a required check: the issues change outside pull requests. A failed run is mailed to whoever last
+# changed the schedule (GitHub's notifications for scheduled workflows).
+on:
+  schedule:
+    # Monday 00:30 UTC (09:30 JST), before the week's work starts.
+    - cron: "30 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # gh reads the issues, the sub-issues of the maps and the dependencies.
+  issues: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  issue-tracker:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The removed paths come from the whole history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .node-version
+          cache: false
+
+      - name: Check the issues
+        run: node tools/scripts/src/checks/issue-tracker/cli.ts
+        env:
+          GH_TOKEN: ${{ github.token }}
