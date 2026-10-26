@@ -103,7 +103,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - `src/sh/<名前>.tools.test.ts` は、同じラッパーを本物の道具で動かします (shellcheck、jactionlint と zizmor、OSV-Scanner、Renovate)。`src/configs/*.tools.test.ts` は、ラッパーを持たない道具 (jscpd、Knip、markdownlint-cli2、commitlint) と、`ci.yml` の step を、このリポジトリの本物の設定で確かめます。Knip のテストは、設定が読む root のファイルと `tools/` を sandbox にコピーし、`apps/` はテストの中に書いた小さなアプリで置き換えて動かします。本物のアプリを読むと、アプリだけを変えた PR で `scripts` が affected になり、`tools/scripts` のテストが走ってしまうためです。
 - `runIn` は `HOME` を sandbox にします。mise のディレクトリの既定は `HOME` の下なので ([mise の Directories](https://mise.jdx.dev/directories.html))、そのままだと `mise exec` は sandbox の中に道具をすべて入れ直します (2026-10-26 に mise 2026.10.17 で確かめ、約 70 秒かかりました)。`*.tools.test.ts` は `miseDirs()` (`src/test/sandbox.ts`) を `runIn` に渡し、`mise install --locked` で入れた道具を使います。
 - Stryker は、変更する対象を import するテストを project に関係なく sandbox のコピーで走らせます。本物のワークスペースを読む `tools` と `isolation-tools` の project は、Stryker の実行中 (`STRYKER_MUTATOR_WORKER`) は `include` を空にして外します (`vite.config.ts`)。
-- アプリだけを変えた PR では、`tools/scripts` のテストは走りません。
+- アプリだけを変えた PR では、`tools/scripts` のテストは走りません。`ci.yml` の `nx` の job の「An app change does not affect tools/scripts」の step が、`apps/api` と `apps/web` のファイルを変えたときに `scripts` が affected にならないことを確かめます。`tools/scripts` の target が、アプリのコードに及ぶ `inputs` を宣言すると、この step が失敗します。
 
 git を使うテストは、このリポジトリを触らないように次の規則を守ります。
 
