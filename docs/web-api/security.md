@@ -163,17 +163,21 @@ Web APIは基本的にステートレスであるべきである。そのため�
 - `Set-Cookie` には以下の属性を設定する
   - `Secure` 属性: 有効にする。HTTPSリクエストでのみ送信するようにするため
   - `HttpOnly`属性: 有効にする。XSSリスクを軽減させるため
-  - `SameSite` 属性: `Strict` を設定する。BFF の Cookie のセッションには `Strict` を勧める（[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1.3.2）。別サイトからのリンクでログイン済みの状態を保てないなど、`Strict` が要件上、充足できない場合だけ `Lax` にする。`None` は禁止する。`SameSite` は CSRF 対策の一つで、これだけに頼らない（RFC 10017 6.1.3.3）
+  - `SameSite` 属性: `Strict` を設定する。BFF の Cookie のセッションには `Strict` を勧める（[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1.3.2）。別サイトからのリンクでログイン済みの状態を保てないなど、`Strict` が要件上、充足できない場合だけ `Lax` にする。`None` は禁止する。`SameSite` は CSRF 対策の一つで、これだけに頼らない。同じサイト（eTLD+1）の別のサブドメインからの攻撃は防げない（RFC 10017 6.1.3.3.1）
   - `Path` 属性: `/` を指定する。`__Host-` プレフィックスを利用したいため
   - `Domain` 属性: 原則、省略（発行元のホスト名に限定）する。サブドメイン間で共有は行わせないため
   - `Max-Age` 属性: 合意されたセッション有効期間を指定する
   - `Expires` 属性: `Max-Age` を用いるため、利用しない
-  - `__Host-` プレフィックスを利用する。送信スコープより、設定値の保護を優先する方がリスクは低いと考えるため
+  - `__Host-` プレフィックスを利用する。送信スコープより、設定値の保護を優先する方がリスクは低いと考えるため。RFC 10017 6.1.3.2 は、HTTP で設定した Cookie であることを示す `__Host-Http-` を SHOULD とする。ブラウザとライブラリが対応していれば `__Host-Http-` にし、対応していなければ `__Host-` にする
+- CSRF 対策を実装する（MUST。RFC 10017 6.1.3.3）。`SameSite` に加えて、次のいずれかを組み合わせる
+  - CORS を防御にする場合は、プリフライトを必ず起こすために、独自のリクエストヘッダー（静的な値でよい）を必須にし、全てのリクエストで確認する。ボディのない POST などは、プリフライトなしで送られる（6.1.3.3.2）。ブラウザのアプリを BFF と同一オリジンに置けば、正規のリクエストにプリフライトは起きない
+  - フレームワークが備える anti-forgery（double-submit）Cookie を使う（6.1.3.3.3）
 - ログイン時は常に新しいセッションIDを再生成する（既存の値を流用しない）
 - ログアウト時に、サーバーのセッション情報の破棄とともに、クライアント側のCookieも `Max-Age=0` を指定して削除する
 
 > [!NOTE]
 > **参考**
 >
+> - [RFC 10017 OAuth 2.0 for Browser-Based Applications](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1.3.2 Cookie Security、6.1.3.3 CSRF Protections
 > - [HTTP Cookie の使用 - HTTP | MDN](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Cookies)
 > - [Set-Cookie - HTTP | MDN](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Headers/Set-Cookie)
