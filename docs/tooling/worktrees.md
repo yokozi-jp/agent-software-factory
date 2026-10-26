@@ -50,7 +50,7 @@ Kiro の file tool (読む、書く、編集する) は、相対 path を worktr
 
 worktree を作った後も、別の PR が main に入り続けます。番号を振るもの (ADR の `NNNN`) は、ほかの PR と同じ番号を取りやすい箇所です。
 
-1. push の前に `git fetch origin` し、`scripts/check-adr-number.sh` を実行します。このブランチで足した ADR の番号が、`origin/main` とほかの open な PR で使われていないかを確かめ、次の空いている番号を表示します。使われていたら (exit 1)、表示された番号に付け替え、その番号を参照している箇所も直します。pre-push hook も同じ検査を実行し、番号が重なっていれば push を止めます (`gh` が読めないときは止めません)。`gh` で PR の一覧を取れないと exit 2 で止まるので、`gh auth status` を確かめてもう一度実行します。
+1. push の前に `git fetch origin` し、`node tools/scripts/src/checks/check-adr-number/cli.ts` を実行します。このブランチで足した ADR の番号が、`origin/main` とほかの open な PR で使われていないかを確かめ、次の空いている番号を表示します。使われていたら (exit 1)、表示された番号に付け替え、その番号を参照している箇所も直します。pre-push hook も同じ検査を実行し、番号が重なっていれば push を止めます (`gh` が読めないときは止めません)。`gh` で PR の一覧を取れないと exit 2 で止まるので、`gh auth status` を確かめてもう一度実行します。
    番号を決めるとき (ADR を書き始めるとき) にも実行します。同じ main の上でも、open な PR が先に番号を取っていることがあります。merge された後の重複は repo-policy (`tools/scripts/src/checks/repo-policy/cli.ts`) でも止まります。
 2. PR を作った後、`gh pr checks` が `no checks reported` のままなら、`gh pr view --json mergeable,mergeStateStatus` を見ます。`CONFLICTING` の PR では、`pull_request` の workflow が始まりません。main を merge して衝突を直し、push します。PR は squash merge なので、rebase や force push は要りません。
 

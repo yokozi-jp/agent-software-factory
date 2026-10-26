@@ -6,7 +6,7 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --project unit --project isolation --coverage",
-    "test-tools": "vp test run --project tools --passWithNoTests",
+    "test-tools": "vp test run --project tools --project isolation-tools",
     "mutation": "stryker run"
   },
   "dependencies": {
@@ -35,8 +35,10 @@
         "cache": true,
         "inputs": [
           "default",
+          "{workspaceRoot}/.betterleaks.toml",
           "{workspaceRoot}/mise.toml",
           "{workspaceRoot}/mise.lock",
+          "{workspaceRoot}/.mise/locks/**/*",
           "{workspaceRoot}/docs/.iwe/config.toml",
           "{workspaceRoot}/docs/.iwe/schemas/okf.yaml",
           "{workspaceRoot}/docs/.iwe/schemas/okf-index.yaml",

@@ -4,20 +4,23 @@ import { defineConfig } from "vite-plus";
 const exclude = ["**/node_modules/**", "**/fixtures/**"];
 
 const isolationTest = "src/test/isolation.test.ts";
+const isolationToolsTest = "src/test/isolation.tools.test.ts";
 
-// Tests for the scripts and hooks in src/ (docs/tooling/ci.md ("スクリプトのテスト")), in three projects:
-//   unit       `test` target: reads only the files of this project (fixtures), so Nx can cache it.
-//   isolation  `test` target: runs the unit project in a child process under Git hook variables. Its own
-//              project, so that the child, which runs only `unit`, cannot start it again.
-//   tools      `test-tools` target (*.tools.test.ts): runs a real tool on a real config of this repository.
-//              Each file it reads is an input of the target in package.json; CI runs it where mise is.
+// Tests for the scripts and hooks in src/ (docs/tooling/ci.md ("スクリプトのテスト")), in four projects:
+//   unit             `test` target: reads only the files of this project (fixtures), so Nx can cache it.
+//   isolation        `test` target: runs the unit project in a child process under Git hook variables. Its
+//                    own project, so that the child, which runs only `unit`, cannot start it again.
+//   tools            `test-tools` target (*.tools.test.ts): runs a real tool on a real config of this
+//                    repository. Each file it reads is an input of the target in package.json; CI runs it
+//                    where mise is.
+//   isolation-tools  `test-tools` target: the isolation test for the tools project.
 export default defineConfig({
   test: {
     // Clears the git variables a Git hook exports, before any test file loads (src/test/setup.ts).
     setupFiles: ["src/test/setup.ts"],
-    // The process tests (cli.test.ts) start Node.js and git. In the pre-commit hook, which runs its jobs in
-    // parallel, a case took 6 to 10 s, over the 5 s default (measured for #164).
-    testTimeout: 30_000,
+    // The process tests start node and git several times each. Vitest's default of 5 s was too short on a
+    // loaded machine: on 2026-10-26, with a load average of 20, a test of check-adr-number took 7.2 s.
+    testTimeout: 60_000,
     projects: [
       {
         extends: true,
@@ -28,7 +31,15 @@ export default defineConfig({
         },
       },
       { extends: true, test: { name: "isolation", include: [isolationTest] } },
-      { extends: true, test: { name: "tools", include: ["src/**/*.tools.test.ts"], exclude } },
+      {
+        extends: true,
+        test: {
+          name: "tools",
+          include: ["src/**/*.tools.test.ts"],
+          exclude: [...exclude, isolationToolsTest],
+        },
+      },
+      { extends: true, test: { name: "isolation-tools", include: [isolationToolsTest] } },
     ],
     coverage: {
       provider: "v8",

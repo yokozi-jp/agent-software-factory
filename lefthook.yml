@@ -2,8 +2,8 @@
 # Docs: https://lefthook.dev/configuration/
 # Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
 
-# scripts/secret-scan.sh, scripts/shellcheck.sh and scripts/lint-workflows.sh run their linters through `mise exec`,
-# so the tools pinned in mise.toml must be installed (`mise install --locked`, docs/local-env-setup/setup.md).
+# secret-scan, semgrep (tools/scripts/src/checks/), scripts/shellcheck.sh and scripts/lint-workflows.sh run their
+# linters through `mise exec`, so the tools pinned in mise.toml must be installed (`mise install --locked`, docs/local-env-setup/setup.md).
 
 commit-msg:
   commands:
@@ -14,7 +14,7 @@ pre-commit:
   parallel: true
   jobs:
     - name: secret-scan
-      run: scripts/secret-scan.sh staged
+      run: node tools/scripts/src/checks/secret-scan/cli.ts staged
     # Lint Markdown only after the formatter has rewritten the staged files.
     - name: format-and-lint
       group:
@@ -89,12 +89,6 @@ pre-commit:
         - "tools/scripts/src/checks/json.ts"
       run: node tools/scripts/src/checks/skills-lock/cli.ts
     # Behaviour tests (scripts/test/) for the scripts that changed.
-    - name: secret-scan-test
-      glob:
-        - "scripts/secret-scan.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/secret-scan.test.sh"
-      run: sh scripts/test/run.sh scripts/test/secret-scan.test.sh
     # Tests run from this hook with GIT_DIR set; isolation.test.sh proves they still stay in their sandbox.
     # Only lib.sh decides isolation, so this runs when it changes. CI runs it for every change.
     - name: isolation-test
@@ -127,12 +121,6 @@ pre-commit:
         # A new jscpd version (pinned in the catalog) can change what it reports.
         - "pnpm-workspace.yaml"
       run: sh scripts/test/run.sh scripts/test/duplicate-code.test.sh
-    - name: adr-number-test
-      glob:
-        - "scripts/check-adr-number.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/adr-number.test.sh"
-      run: sh scripts/test/run.sh scripts/test/adr-number.test.sh
     # Both run Renovate through `pnpm dlx` (the version is pinned in scripts/renovate.sh) and need the network.
     - name: renovate-config
       glob:
@@ -174,16 +162,34 @@ pre-commit:
         - ".node-version"
         - ".kiro/hooks/*.json"
       run: pnpm exec nx test scripts
-    - name: semgrep-test
+    # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). They take minutes, so
+    # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)
+    # that are not the project (a new betterleaks or Semgrep version, or Semgrep's dependency graph in
+    # .mise/locks/, can change what they report), the tools tests, the checks that have them, the test
+    # helpers and the config that run them, and `sharedGlobals`. CI (`nx affected -t test-tools`) still
+    # runs them for every change to the project.
+    - name: scripts-test-tools
       glob:
-        - "scripts/semgrep.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/semgrep.test.sh"
-        # A new Semgrep version (or its dependency graph in .mise/locks/) can change what it reports.
+        - ".betterleaks.toml"
         - "mise.toml"
         - "mise.lock"
         - ".mise/locks/**"
-      run: sh scripts/test/run.sh scripts/test/semgrep.test.sh
+        - "tools/scripts/src/**/*.tools.test.ts"
+        - "tools/scripts/src/checks/secret-scan/**"
+        - "tools/scripts/src/checks/semgrep/**"
+        - "tools/scripts/src/checks/docs-check/**"
+        - "docs/.iwe/config.toml"
+        - "docs/.iwe/schemas/*.yaml"
+        - "tools/scripts/src/test/isolation.ts"
+        - "tools/scripts/src/test/sandbox.ts"
+        - "tools/scripts/src/test/setup.ts"
+        - "tools/scripts/vite.config.ts"
+        - "tools/scripts/package.json"
+        - "pnpm-workspace.yaml"
+        - "vite.config.ts"
+        - "tsconfig.json"
+        - ".node-version"
+      run: pnpm exec nx test-tools scripts
     - name: osv-scanner-test
       glob:
         - "scripts/osv-scanner.sh"
@@ -222,7 +228,7 @@ pre-push:
       use_stdin: true
     secret-scan:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
-      run: scripts/secret-scan.sh pre-push
+      run: node tools/scripts/src/checks/secret-scan/cli.ts pre-push
       use_stdin: true
     # Warns only (docs/adr/0016). Silence it with ADR_ACK=1 for a change that needs no ADR.
     adr-check:
@@ -231,12 +237,12 @@ pre-push:
     # Two open PRs can take the same ADR number (docs/tooling/worktrees.md ("PR を出す")).
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
     adr-number:
-      run: scripts/check-adr-number.sh || [ $? -ne 1 ]
+      run: node tools/scripts/src/checks/check-adr-number/cli.ts || [ $? -ne 1 ]
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
     semgrep:
-      run: scripts/semgrep.sh || [ $? -ne 1 ]
+      run: node tools/scripts/src/checks/semgrep/cli.ts || [ $? -ne 1 ]
     # Warns only. dependency review in CI is the gate for dependencies (docs/adr/0021).
     osv-scanner:
       run: scripts/osv-scanner.sh
