@@ -95,6 +95,13 @@ AWSの場合、API Gatewayの機能でOPTIONSメソッドを提供できる。OP
 - ただし、API Gatewayを利用していないのであれば、これを目的にあえてAPI Gatewayを追加する必要はない
 
 > [!NOTE]
+> **このリポジトリの構成**
+>
+> 同一オリジン構成を採用し、CORS の middleware は入れない。本番は CloudFront が web と `/api/*` を1つのオリジンにまとめ ([ADR 0013](../adr/0013-api-on-ecs-and-lambda-web-functions.md))、認証は同じオリジンの Cookie のセッションで行う ([ADR 0022](../adr/0022-better-auth-cookie-bff.md))。ローカル開発は `apps/web` の Vite の proxy が `/api` を API へ転送する (パスは書き換えない)。
+
+<!-- 前の注記と分ける -->
+
+> [!NOTE]
 > **ローカル環境におけるCORS対応**
 >
 > [Webフロントエンド設計ガイドライン > CORS対応のローカル開発サーバー](../web-frontend/local-dev-cors.md) を参考する。
