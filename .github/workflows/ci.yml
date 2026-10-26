@@ -49,7 +49,7 @@ jobs:
         run: scripts/renovate.sh validate
 
       - name: Agent skills match skills-lock.json
-        run: node scripts/verify-skills-lock.mjs
+        run: node tools/scripts/src/checks/skills-lock/cli.ts
 
       # Warns, never fails: a change to a file that tends to carry a decision should add an ADR (docs/adr/0016).
       # In a pull request, GITHUB_BASE_REF names the base that the diff is taken from.
@@ -60,7 +60,7 @@ jobs:
         run: pnpm lint:md
 
       - name: Docs bundle (OKF, links, orphans)
-        run: scripts/docs-check.sh
+        run: node tools/scripts/src/checks/docs-check/cli.ts
 
       # Files outside apps/ and packages/ (root configs, scripts/, docs/, .github/). Nx checks the projects.
       - name: Check root files
@@ -136,7 +136,7 @@ jobs:
       # Behaviour tests for the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
+          tests="scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended
