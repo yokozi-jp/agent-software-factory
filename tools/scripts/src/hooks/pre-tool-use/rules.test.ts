@@ -12,36 +12,18 @@ const write = (tool: string, path: string) => ({
   tool_input: { path, text: "x" },
 });
 
-interface Calls {
-  targets: string[];
-  concurrent: number;
-  asked: string[];
-}
-// Deps that record what was asked of them. <generated> are the paths writeTarget reports as written.
-function deps(
-  options: { ask?: { key: string; reason: string }; asked?: string[] } = {},
-): PreToolUseDeps & { calls: Calls } {
-  const calls: Calls = { targets: [], concurrent: 0, asked: [] };
-  const seen = new Set(options.asked ?? []);
+// Deps that record the tools whose write target was asked for. The target is the path in the input.
+function deps(): PreToolUseDeps & { targets: string[] } {
+  const targets: string[] = [];
   return {
-    calls,
+    targets,
     writeTarget(tool, input) {
-      calls.targets.push(tool);
+      targets.push(tool);
       const path: unknown = Reflect.get(
         Object(input),
         tool === "delete_file" ? "targetFile" : "path",
       );
       return typeof path === "string" ? path : undefined;
-    },
-    concurrentSessionsAsk() {
-      calls.concurrent += 1;
-      return options.ask;
-    },
-    askedBefore(key) {
-      calls.asked.push(key);
-      const before = seen.has(key);
-      seen.add(key);
-      return before;
     },
   };
 }
@@ -50,11 +32,6 @@ const forcePushMessage =
   "block-force-push: refused. Force push rewrites the remote branch. Ask the user to run it, or merge without rewriting history (PRs are squash merged, docs/adr/0004).";
 const iweNormalizeMessage =
   "block-iwe-normalize: refused. `iwe normalize` rewrites every document under docs/ (docs/adr/0006). Edit files directly instead; see docs/knowledge/documentation-authoring.md.";
-const ask = { key: "self a", reason: "Other Kiro sessions are running" };
-const askOutput = `${JSON.stringify({
-  hookSpecificOutput: { permissionDecision: "ask", permissionDecisionReason: ask.reason },
-})}\n`;
-
 describe("preToolUse: force push", () => {
   it.each(["execute_bash", "shell"])(
     "refuses a force push from %s with exit 2 and the reason on stderr",
@@ -147,53 +124,7 @@ describe("preToolUse: generated files", () => {
     preToolUse(write("read_file", "pnpm-lock.yaml"), {}, d);
     preToolUse(write("fs_write2", "pnpm-lock.yaml"), {}, d);
     preToolUse(write("xfs_write", "pnpm-lock.yaml"), {}, d);
-    expect(d.calls.targets).toEqual([]);
-  });
-});
-
-describe("preToolUse: concurrent sessions", () => {
-  it.each([
-    "execute_bash",
-    "shell",
-    "fs_write",
-    "fsWrite",
-    "str_replace",
-    "strReplace",
-    "fs_append",
-    "fsAppend",
-    "delete_file",
-    "deleteFile",
-    "write",
-  ])("asks the user before %s when another session works here", (tool) => {
-    expect(preToolUse({ tool_name: tool, tool_input: {} }, {}, deps({ ask }))).toEqual({
-      status: 0,
-      stdout: askOutput,
-      stderr: "",
-    });
-  });
-
-  it("asks once for the same key", () => {
-    const d = deps({ ask, asked: [ask.key] });
-    expect(preToolUse(shell("ls"), {}, d)).toEqual(allow);
-    expect(d.calls.asked).toEqual([ask.key]);
-  });
-
-  it("is silent when no other session works here", () => {
-    const d = deps();
-    expect(preToolUse(shell("ls"), {}, d)).toEqual(allow);
-    expect(d.calls.asked).toEqual([]);
-  });
-
-  it("does not look for sessions before a tool outside its matcher", () => {
-    const d = deps({ ask });
-    expect(preToolUse({ tool_name: "@iwe/iwe_find" }, {}, d)).toEqual(allow);
-    expect(d.calls.concurrent).toBe(0);
-  });
-
-  it("does not spend the question on a tool call that is refused anyway", () => {
-    const d = deps({ ask });
-    expect(preToolUse(shell("git push -f"), {}, d).status).toBe(2);
-    expect(d.calls.concurrent).toBe(0);
+    expect(d.targets).toEqual([]);
   });
 });
 
@@ -204,24 +135,28 @@ describe("preToolUseMatcher", () => {
     "execute_bash",
     "@iwe/iwe_normalize",
     "fs_write",
-    "fsWrite",
     "str_replace",
-    "strReplace",
     "fs_append",
-    "fsAppend",
     "delete_file",
-    "deleteFile",
-    "write",
   ])("starts the hook for %s, which a check looks at", (tool) => {
     expect(matcher.test(tool)).toBe(true);
   });
 
-  it.each(["read_file", "grep_search", "list_directory", "code", "web_fetch"])(
-    "does not start it for %s",
-    (tool) => {
-      expect(matcher.test(tool)).toBe(false);
-    },
-  );
+  // fsWrite, write and the other names only the concurrent-sessions ask looked at (removed in #191).
+  it.each([
+    "read_file",
+    "grep_search",
+    "list_directory",
+    "code",
+    "web_fetch",
+    "fsWrite",
+    "strReplace",
+    "fsAppend",
+    "deleteFile",
+    "write",
+  ])("does not start it for %s", (tool) => {
+    expect(matcher.test(tool)).toBe(false);
+  });
 });
 
 describe("preToolUse: an event it cannot read", () => {

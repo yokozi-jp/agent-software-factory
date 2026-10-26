@@ -1,7 +1,7 @@
 // warn-concurrent-sessions: find other live Kiro sessions that work in this working tree. Two sessions
 // sharing one working tree overwrite each other's index and files; use a worktree instead
-// (docs/tooling/worktrees.md). SessionStart prints a warning; PreToolUse asks the user once per set of
-// other sessions, which also catches the sessions that started after this one.
+// (docs/tooling/worktrees.md). SessionStart prints a warning. PreToolUse does not ask (#191), so a session
+// that starts after this one is not detected.
 //
 // Session records are not a documented interface. Two layouts are read (checked against Kiro 2.34.0):
 // - V3: <root>/<workspace hash>/sess_<id>/. An interactive session writes .lock with its pid;
@@ -12,8 +12,7 @@
 // This session is found by its id ($KIRO_SESSION_ID). When its record is in neither layout, the layout
 // has probably changed and no session would be detected, so the hook says so instead of staying silent.
 // Stale locks (pid not running, or not a kiro process) and sessions in this process are skipped.
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // The variables this hook reads.
@@ -23,9 +22,6 @@ export interface SessionsVariables {
   readonly KIRO_SESSIONS_DIR?: string | undefined;
   // Kiro sets it for a hook command (acp-server.js, the env of the hook's process).
   readonly KIRO_SESSION_ID?: string | undefined;
-  readonly KIRO_HOOK_STATE_DIR?: string | undefined;
-  readonly XDG_RUNTIME_DIR?: string | undefined;
-  readonly TMPDIR?: string | undefined;
 }
 
 export function sessionsEnv(vars: SessionsVariables, home: string, here: string): SessionsEnv {
@@ -36,31 +32,6 @@ export function sessionsEnv(vars: SessionsVariables, home: string, here: string)
     self: vars.KIRO_SESSION_ID ?? "",
     here,
   };
-}
-
-// Where the PreToolUse hook remembers what it asked about.
-export function stateDirectory(vars: SessionsVariables): string {
-  return (
-    vars.KIRO_HOOK_STATE_DIR || join(vars.XDG_RUNTIME_DIR || vars.TMPDIR || "/tmp", "kiro-hooks")
-  );
-}
-
-// Whether <key> was asked about before; records it as a marker file in <state>. When the marker cannot be
-// written, it asks again rather than never.
-export function askedBefore(state: string, key: string): boolean {
-  const marker = join(
-    state,
-    // Stryker disable next-line StringLiteral: any encoding names the same marker for the same key.
-    `concurrent-sessions-${createHash("sha256").update(key).digest("hex")}`,
-  );
-  try {
-    mkdirSync(state, { recursive: true });
-    // Stryker disable next-line StringLiteral: only the marker's existence is read, not its content.
-    writeFileSync(marker, "", { flag: "wx" });
-    return false;
-  } catch {
-    return existsSync(marker);
-  }
 }
 
 export interface SessionsEnv {
@@ -182,17 +153,4 @@ export function concurrentSessionsWarning(finding: Finding, here: string): strin
     "so pass them absolute paths inside the worktree.",
     "",
   ].join("\n");
-}
-
-// The PreToolUse question, and the key under which it is asked only once.
-export function concurrentSessionsAsk(
-  finding: Finding,
-  self: string,
-  here: string,
-): { readonly key: string; readonly reason: string } {
-  if (finding.kind === "unreadable") return { key: `unreadable ${self}`, reason: finding.note };
-  return {
-    key: [self || "unknown", ...finding.others.map(({ id }) => id)].join(" "),
-    reason: `Other Kiro sessions are running in this working tree (${here}):\n${list(finding.others)}They share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md). File tools resolve a relative path against this working tree, not the worktree: pass absolute paths.`,
-  };
 }

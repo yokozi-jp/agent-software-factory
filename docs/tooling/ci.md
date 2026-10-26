@@ -96,7 +96,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 | `test-tools` | `tools` の Vitest の project (`*.tools.test.ts`): mise の道具を本物の設定で動かすテスト。今は空                        | CI の `scripts` の job (`nx affected -t test-tools`)                                                                                                                   |
 
 - 規則は純粋な関数 (`src/checks/<名前>/rules.ts`) にし、その場で呼ぶテスト (`rules.test.ts`) で確かめます。入口 (`cli.ts`) は、argv、標準入力、環境変数、git を読んで出力するだけにし、少数のプロセスのテスト (`cli.test.ts`) で、sandbox の中の git を使って確かめます。入口は子プロセスで動き coverage が見えないので、coverage と Stryker の対象から外しています。
-- Kiro の hook も同じ形です。検査ごとの規則は `src/hooks/<検査>.ts`、入口は trigger ごとに `src/hooks/pre-tool-use/cli.ts` と `src/hooks/session-start/cli.ts` です。入口のプロセスのテストは、Kiro が送る形の event の JSON を標準入力に入れ、exit コード (0 か 2)、stderr、stdout の `permissionDecision` を確かめます。
+- Kiro の hook も同じ形です。検査ごとの規則は `src/hooks/<検査>.ts`、入口は trigger ごとに `src/hooks/pre-tool-use/cli.ts` と `src/hooks/session-start/cli.ts` です。入口のプロセスのテストは、Kiro が送る形の event の JSON を標準入力に入れ、exit コード (0 か 2)、stderr、stdout を確かめます。
 - テストは宣言していない入力を読みません。`test` のテストは project の中のファイル (fixture) だけを読みます。例外の `.kiro/hooks/*.json` (`src/hooks/kiro-hooks.test.ts` が入口のパスと `matcher` を確かめる) は、`test` の `inputs` に書いてあります。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定ファイルを `tools/scripts/package.json` の `test-tools` の `inputs` に `{workspaceRoot}/…` でファイルごとに書きます。書かないと、その設定を変えても `nx affected` がテストを走らせず、cache が古い結果を返します。
 - アプリだけを変えた PR では、`tools/scripts` のテストは走りません。
 

@@ -3,12 +3,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { sandbox, type Sandbox } from "../test/sandbox.ts";
 import {
-  askedBefore,
   concurrentSessions,
-  concurrentSessionsAsk,
   concurrentSessionsWarning,
   sessionsEnv,
-  stateDirectory,
   type SessionsEnv,
 } from "./concurrent-sessions.ts";
 
@@ -206,34 +203,6 @@ describe("sessionsEnv", () => {
   });
 });
 
-describe("askedBefore", () => {
-  it("is false the first time for a key and true after, in a state directory it creates", () => {
-    const state = join(box.root, "state", "kiro-hooks");
-    expect(askedBefore(state, "self a")).toBe(false);
-    expect(askedBefore(state, "self a")).toBe(true);
-    expect(askedBefore(state, "self a b")).toBe(false);
-  });
-
-  it("asks every time when it cannot record the question", () => {
-    const file = join(box.root, "file");
-    writeFileSync(file, "");
-    expect(askedBefore(join(file, "state"), "k")).toBe(false);
-    expect(askedBefore(join(file, "state"), "k")).toBe(false);
-  });
-});
-
-describe("stateDirectory", () => {
-  it.each([
-    [{ KIRO_HOOK_STATE_DIR: "/s", XDG_RUNTIME_DIR: "/x", TMPDIR: "/t" }, "/s"],
-    [{ XDG_RUNTIME_DIR: "/x", TMPDIR: "/t" }, "/x/kiro-hooks"],
-    [{ TMPDIR: "/t" }, "/t/kiro-hooks"],
-    [{}, "/tmp/kiro-hooks"],
-    [{ KIRO_HOOK_STATE_DIR: "", XDG_RUNTIME_DIR: "", TMPDIR: "" }, "/tmp/kiro-hooks"],
-  ])("is %j → %s", (vars, dir) => {
-    expect(stateDirectory(vars)).toBe(dir);
-  });
-});
-
 describe("concurrentSessionsWarning", () => {
   it("lists the other sessions and says to work in a worktree", () => {
     expect(concurrentSessionsWarning(others, here)).toBe(
@@ -252,30 +221,5 @@ describe("concurrentSessionsWarning", () => {
 
   it("passes on the note about a missing record", () => {
     expect(concurrentSessionsWarning({ kind: "unreadable", note: "n" }, here)).toBe("NOTE: n\n");
-  });
-});
-
-describe("concurrentSessionsAsk", () => {
-  it("asks about the set of other sessions", () => {
-    expect(concurrentSessionsAsk(others, "self", here)).toEqual({
-      key: "self a b",
-      reason: [
-        "Other Kiro sessions are running in this working tree (/work/tree):",
-        "- session a (pid 1): first",
-        "- session b (pid 2): ",
-        "They share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md). File tools resolve a relative path against this working tree, not the worktree: pass absolute paths.",
-      ].join("\n"),
-    });
-  });
-
-  it("keys the set by an unknown session when the id is not set", () => {
-    expect(concurrentSessionsAsk(others, "", here).key).toBe("unknown a b");
-  });
-
-  it("asks once about a missing record", () => {
-    expect(concurrentSessionsAsk({ kind: "unreadable", note: "n" }, "self", here)).toEqual({
-      key: "unreadable self",
-      reason: "n",
-    });
   });
 });

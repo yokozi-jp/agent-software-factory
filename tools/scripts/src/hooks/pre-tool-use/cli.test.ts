@@ -1,5 +1,5 @@
 // Process tests for the PreToolUse entry point: the event JSON Kiro writes to stdin, to the exit code,
-// stderr and the permissionDecision on stdout. Which commands and files are refused is in the tests of
+// stderr and stdout. Which commands and files are refused is in the tests of
 // the rule modules (../*.test.ts) and rules.test.ts.
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +20,6 @@ const processTimeout = 30_000;
 let box: Sandbox;
 let repo: string;
 let sessions: string;
-let state = 0;
 let kiro: Background;
 
 // The event in the shape Kiro 2.34.0 sends (acp-server.js): session_id, hook_event_name, cwd, tool_name,
@@ -34,10 +33,9 @@ const event = (tool: string, input: unknown, cwd = repo) =>
     tool_input: input,
   });
 
-// The hook with no other session, no override, and a fresh state directory unless one is given.
-const hook = (input: string, env: Record<string, string> = {}, cwd = repo) => {
-  state += 1;
-  return runIn(cwd, process.execPath, [cli], {
+// The hook with no other session and no override unless <env> gives them.
+const hook = (input: string, env: Record<string, string> = {}, cwd = repo) =>
+  runIn(cwd, process.execPath, [cli], {
     input,
     env: {
       KIRO_ALLOW_FORCE_PUSH: "",
@@ -46,11 +44,9 @@ const hook = (input: string, env: Record<string, string> = {}, cwd = repo) => {
       KIRO_SESSIONS_ROOT: join(box.root, "no-sessions"),
       KIRO_SESSIONS_DIR: join(box.root, "no-sessions"),
       KIRO_SESSION_ID: "",
-      KIRO_HOOK_STATE_DIR: join(box.root, `state-${state}`),
       ...env,
     },
   });
-};
 
 beforeAll(() => {
   box = sandbox();
@@ -151,68 +147,24 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
 });
 
 describe("pre-tool-use: other sessions in this working tree", { timeout: processTimeout }, () => {
-  // V3 layout: <root>/<workspace hash>/sess_<id>/.lock.
-  const v3 = (workspace: string, id: string, pid: number) => {
-    mkdirSync(join(sessions, workspace, id), { recursive: true });
-    writeFileSync(join(sessions, workspace, id, ".lock"), JSON.stringify({ pid }));
-    writeFileSync(join(sessions, workspace, id, "session.json"), '{"title":"peer"}');
-  };
-  const env = (self: string, stateDir: string) => ({
-    KIRO_SESSIONS_ROOT: sessions,
-    KIRO_SESSIONS_DIR: join(sessions, "cli"),
-    KIRO_SESSION_ID: self,
-    KIRO_HOOK_STATE_DIR: stateDir,
-  });
-  const decision = (stdout: string): unknown => (stdout === "" ? undefined : JSON.parse(stdout));
-
-  it("asks once per set of sessions with a permissionDecision on stdout and exit 0", async () => {
-    v3("hashA", "sess_me", process.pid);
-    const stateDir = join(box.root, "asks");
-    const shellCall = event("execute_bash", { command: "ls" });
-    expect(hook(shellCall, env("sess_me", stateDir)).stdout).toBe("");
-
-    v3("hashA", "sess_peer", kiro.pid);
-    const first = hook(shellCall, env("sess_me", stateDir));
-    expect(first.status).toBe(0);
-    expect(decision(first.stdout)).toEqual({
-      hookSpecificOutput: {
-        permissionDecision: "ask",
-        permissionDecisionReason: `Other Kiro sessions are running in this working tree (${repo}):\n- session sess_peer (pid ${kiro.pid}): peer\nThey share this index and these files. Work in a separate git worktree (docs/tooling/worktrees.md). File tools resolve a relative path against this working tree, not the worktree: pass absolute paths.`,
-      },
-    });
-    expect(hook(event("fs_write", { path: "a" }), env("sess_me", stateDir)).stdout).toBe("");
-
-    const another = startIn(box.root, process.execPath, [
-      "-e",
-      "setInterval(() => {}, 1000)",
-      "kiro-2",
-    ]);
-    v3("hashA", "sess_late", another.pid);
-    expect(decision(hook(shellCall, env("sess_me", stateDir)).stdout)).toMatchObject({
-      hookSpecificOutput: { permissionDecision: "ask" },
-    });
-    await another.stop();
-  });
-
-  it("asks once when it cannot find its own record", () => {
-    const stateDir = join(box.root, "missing");
-    const shellCall = event("execute_bash", { command: "ls" });
-    const first = hook(shellCall, env("sess_missing", stateDir));
-    expect(decision(first.stdout)).toEqual({
-      hookSpecificOutput: {
-        permissionDecision: "ask",
-        permissionDecisionReason: `warn-concurrent-sessions could not find this session's record (sess_missing) in ${sessions}/<workspace>/sess_<id>/.lock or ${sessions}/cli/<id>.lock. The Kiro session file layout may have changed, so concurrent sessions are not detected. Fix tools/scripts/src/hooks/concurrent-sessions.ts.`,
-      },
-    });
-    expect(hook(shellCall, env("sess_missing", stateDir)).stdout).toBe("");
-  });
-
-  it("refuses a force push without asking", () => {
-    const result = hook(
-      event("execute_bash", { command: "git push -f" }),
-      env("sess_me", join(box.root, "refused")),
+  // Only SessionStart warns about them; the PreToolUse entry does not ask (#191).
+  it("does not ask before a shell call or a write when another live session works here", () => {
+    mkdirSync(join(sessions, "hashA", "sess_me"), { recursive: true });
+    writeFileSync(
+      join(sessions, "hashA", "sess_me", ".lock"),
+      JSON.stringify({ pid: process.pid }),
     );
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe("");
+    mkdirSync(join(sessions, "hashA", "sess_peer"), { recursive: true });
+    writeFileSync(join(sessions, "hashA", "sess_peer", ".lock"), JSON.stringify({ pid: kiro.pid }));
+    const env = {
+      KIRO_SESSIONS_ROOT: sessions,
+      KIRO_SESSIONS_DIR: join(sessions, "cli"),
+      KIRO_SESSION_ID: "sess_me",
+    };
+    for (const call of [
+      event("execute_bash", { command: "ls" }),
+      event("fs_write", { path: "a", text: "x" }),
+    ])
+      expect(hook(call, env)).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 });
