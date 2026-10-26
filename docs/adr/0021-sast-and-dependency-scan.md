@@ -36,5 +36,5 @@ tags: [adr, tooling, security, sast, dependencies, github]
 - Registry の `p/typescript` の ERROR の規則は 24 個で、`require` で読み込んだ `jsonwebtoken` を使う書き方など、ライブラリを特定した規則が多くを占めます。`eval` のような一般の書き方は WARNING 以下なので、Semgrep の ERROR で止まるものは少なく、広い検出は CodeQL が担います。
 - dependency review は、既定の runtime の依存だけでなく development の依存 (`fail-on-scopes: runtime, development`) でも止めます。Nx、Vite+、lint の道具は CI と開発者の手元で動くためです (判断)。
 - 導入時の OSV-Scanner の警告は、development の依存の `undici@7.29.0` (Nx の依存、13 件) と `katex@0.16.47` (1 件) です。Renovate の PR か手で上げます。
-- 保証カタログに、CodeQL、dependency review、Semgrep の3行と、警告だけのセンサーとして OSV-Scanner の1行を足します。
+- [保証カタログ](../tooling/assurance-catalog.md) に、CodeQL、dependency review、Semgrep の3行と、警告だけのセンサーとして OSV-Scanner の1行を足します。
 - この ADR は、実装より前に書いた決定です。版と設定は上に書いたとおりに実装しました。

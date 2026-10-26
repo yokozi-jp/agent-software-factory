@@ -32,7 +32,7 @@ sources:
 - 原文が前提にしていた Git ブランチフローのガイドライン (Lite GitLab Flow と GitLab Flow、取り込んでいない) を、このリポジトリのトランクベース開発 (ADR 0010) に書き換えた。前提条件 (`prerequisites.md`) のブランチ戦略と GitHub の設定の表、マージの担当 (`reviewee-review-request.md`) の参照先が対象。
 - レビュアーの姿勢と進め方 (`reviewer-mindset.md`) の「hotfix の場合はマージ先のブランチを確認する」節 (develop/hotfix ブランチ前提) を、このリポジトリのトランクベース開発 (ADR 0010) に合わないため削除した。ADR 0010。
 - レビュアーの姿勢と進め方 (`reviewer-mindset.md`) の「暗黙知を形式知にする」に、このリポジトリの形式知の落とし先として `docs/`、`AGENTS.md`、`.kiro/skills/` 配下のスキルを含める旨を足した。リポジトリの構成。
-- 原文にない文書として、coding agent が書いたプルリクエストのレビュー (`agent-pull-requests.md`) を足した。GitHub の Review AI-generated code の確認点を、ゲート、agent のレビュー、人の判断に振り分けている。あわせて、ローカルでの動作確認 (`reviewer-judgment.md`)、プルリクエストの単位 (`reviewee-pull-request.md`)、マージの担当 (`reviewee-review-request.md`)、GitHub の設定の表 (`prerequisites.md`) から、この文書を参照するようにした。
+- 原文にない文書として、coding agent が書いたプルリクエストのレビュー (`agent-pull-requests.md`) を足した。GitHub の Review AI-generated code の確認点を、ゲート、agent のレビュー、人の判断に振り分けている。あわせて、ローカルでの動作確認 (`reviewer-judgment.md`)、プルリクエストの単位 (`reviewee-pull-request.md`)、マージの担当 (`reviewee-review-request.md`)、GitHub の設定の表 (`prerequisites.md`) から、この文書を参照するようにした。その「ゲートで止めるもの」の表は、ほかの docs の一覧とずれていたので、保証カタログ (`docs/tooling/assurance-catalog.md`) へのリンクに替えた。#139。
 - GitHub の設定の表 (`prerequisites.md`) の CODEOWNERS の行に、このリポジトリの設定 (全てのファイルの所有者を `@yokozi-jp` にし、承認は必須にしない) と、その手順 (`docs/repository/github-settings.md`) への参照を足した。#52。
 
 ## 位置づけ

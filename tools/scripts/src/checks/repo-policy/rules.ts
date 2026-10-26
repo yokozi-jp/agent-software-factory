@@ -341,6 +341,236 @@ function mainNeedsEveryJob(tree: Tree): string[] {
     );
 }
 
+const ruleset = ".github/rulesets/protect-main.json";
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const text = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() !== "" ? value : undefined;
+const rules = (tree: Tree): Record<string, unknown>[] =>
+  list(record(tree.parsed(ruleset)).rules).map(record);
+// The contexts of a required_status_checks rule. An entry without one is skipped.
+const contexts = (rule: Record<string, unknown>): string[] =>
+  list(record(rule.parameters).required_status_checks).flatMap(
+    (check) => text(record(check).context) ?? [],
+  );
+const requiredChecks = (tree: Tree): string[] =>
+  rules(tree)
+    .filter((rule) => rule.type === "required_status_checks")
+    .flatMap(contexts);
+
+// Whether a workflow runs on pull_request. `on` is an event, a list of them, or a map with one key per event
+// (GitHub Docs, workflow syntax, `on`).
+const onPullRequest = (on: unknown): boolean =>
+  on === "pull_request" ||
+  list(on).includes("pull_request") ||
+  (isRecord(on) && "pull_request" in on);
+
+// Each required check is reported by a job of a workflow that runs on pull_request, or every pull request
+// waits for it. GitHub names the check of a job by its `name`, or by its id when it has none.
+function requiredChecksRun(tree: Tree): string[] {
+  const jobs = new Set<string>();
+  for (const path of tree.paths.filter((p) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(p))) {
+    const workflow = record(tree.parsed(path));
+    if (!onPullRequest(workflow.on)) continue;
+    for (const [id, job] of Object.entries(record(workflow.jobs)))
+      jobs.add(text(record(job).name) ?? id);
+  }
+  return requiredChecks(tree)
+    .filter((check) => !jobs.has(check))
+    .map(
+      (check) =>
+        `${ruleset} requires the check "${check}", but no job of a workflow that runs on pull_request has that name, so a pull request waits for it forever (docs/tooling/ci.md ("ci.yml の job")).`,
+    );
+}
+
+// The assurance catalog: one row per sensor, named as the configs name it (docs/tooling/assurance-catalog.md).
+// A sensor is written as a code span with the config it comes from:
+//   `ci.yml: <step>`             a step of ci.yml that runs a command, outside the main job (main is the
+//                                required check `main`, a sensor of the ruleset)
+//   `ruleset: <rule>`            a rule of the ruleset by its type; a required check by its context, and a
+//                                code scanning tool by its name
+//   `lefthook: <hook>/<job>`     a job or command of lefthook.yml; the jobs of a group, not the group
+//   `kiro: <hook>/<check>`       a check of a hook of .kiro/hooks/*.json. The checks are code inside the one
+//                                entry point of the hook (docs/adr/0024), so only the hook is compared
+// ci.yml and the ruleset are the gates: each of their sensors is a row of its own. lefthook and Kiro are local
+// copies, so one of their sensors is either a row (when no gate has it) or named in the ローカルの写し
+// column of the row it copies.
+const catalog = "docs/tooling/assurance-catalog.md";
+const columns = { sensor: "センサー", copies: "ローカルの写し", detection: "検出力の確かめ方" };
+// Each source, and where its sensors are.
+const sources = {
+  "ci.yml": ".github/workflows/ci.yml",
+  ruleset,
+  lefthook: "lefthook.yml",
+  kiro: "a hook of .kiro/hooks/*.json, written `kiro: <hook>/<check>`",
+};
+const isSensor = (span: string): boolean =>
+  Object.keys(sources).some((source) => span.startsWith(`${source}: `));
+
+const unnamed = (where: string): string => `${where} Name it, so that ${catalog} can list it.`;
+
+interface Sensors {
+  // The sensors of the configs. For Kiro, `kiro: <hook>`: a row names one of its checks.
+  readonly gates: string[];
+  readonly copies: string[];
+  readonly problems: string[];
+}
+
+function configSensors(tree: Tree): Sensors {
+  const gates: string[] = [];
+  const copies: string[] = [];
+  const problems: string[] = [];
+  const ci = sources["ci.yml"];
+  for (const [id, job] of Object.entries(record(record(tree.parsed(ci)).jobs))) {
+    if (id === "main") continue;
+    for (const step of list(record(job).steps).map(record)) {
+      if (!("run" in step)) continue;
+      const name = text(step.name);
+      if (name === undefined)
+        problems.push(unnamed(`${ci}: a step of the job \`${id}\` runs a command without a name.`));
+      else gates.push(`ci.yml: ${name}`);
+    }
+  }
+  for (const rule of rules(tree)) {
+    if (rule.type === "required_status_checks")
+      gates.push(...contexts(rule).map((check) => `ruleset: ${check}`));
+    else if (rule.type === "code_scanning")
+      for (const tool of list(record(rule.parameters).code_scanning_tools))
+        gates.push(`ruleset: ${String(record(tool).tool)}`);
+    else gates.push(`ruleset: ${String(rule.type)}`);
+  }
+  for (const [hook, value] of Object.entries(record(tree.parsed("lefthook.yml")))) {
+    const jobs = (entries: unknown): void => {
+      for (const job of list(entries).map(record)) {
+        const name = text(job.name);
+        if (isRecord(job.group)) jobs(job.group.jobs);
+        else if (name === undefined)
+          problems.push(unnamed(`lefthook.yml: a job of ${hook} has no name.`));
+        else copies.push(`lefthook: ${hook}/${name}`);
+      }
+    };
+    jobs(record(value).jobs);
+    for (const command of Object.keys(record(record(value).commands)))
+      copies.push(`lefthook: ${hook}/${command}`);
+  }
+  for (const path of tree.paths.filter((p) => /^\.kiro\/hooks\/[^/]+\.json$/.test(p)))
+    for (const hook of list(record(tree.parsed(path)).hooks).map(record)) {
+      const name = text(hook.name);
+      if (name === undefined) problems.push(unnamed(`${path}: a hook has no name.`));
+      else copies.push(`kiro: ${name}`);
+    }
+  return { gates, copies, problems };
+}
+
+// Whether the code span `named` of the catalog is the sensor `sensor` of the configs.
+// A Kiro hook is named by one of its checks: `kiro: <hook>/<check>`.
+const names = (named: string, sensor: string): boolean =>
+  sensor.startsWith("kiro: ")
+    ? named.startsWith(`${sensor}/`) && named.length > sensor.length + 1
+    : named === sensor;
+
+// The cells of a table row, split at the pipes that are not escaped as \| (GitHub Flavored Markdown,
+// "Tables"). The header and the rows start with a pipe, so both have the same empty first cell.
+const cells = (line: string): string[] => line.split(/(?<!\\)\|/).map((cell) => cell.trim());
+// The sensors in a cell: its code spans, the odd pieces between backticks, that name a source.
+const spans = (cell: string): string[] =>
+  cell
+    .split("`")
+    .filter((_, index) => index % 2 === 1)
+    .filter(isSensor);
+
+interface Row {
+  readonly sensor: string | undefined;
+  readonly cell: string;
+  readonly copies: string[];
+  readonly detection: string;
+}
+
+// The rows of the first table that has the three columns, or undefined when the catalog has none.
+function catalogRows(markdown: string): Row[] | undefined {
+  const lines = markdown.split("\n");
+  for (const [index, line] of lines.entries()) {
+    const header = cells(line);
+    const sensor = header.indexOf(columns.sensor);
+    const copies = header.indexOf(columns.copies);
+    const detection = header.indexOf(columns.detection);
+    if (sensor === -1 || copies === -1 || detection === -1) continue;
+    const rows: Row[] = [];
+    // The line after the header is the delimiter row.
+    for (const body of lines.slice(index + 2)) {
+      if (!body.startsWith("|")) break;
+      const row = cells(body);
+      const cell = row[sensor] ?? "";
+      const named = spans(cell);
+      rows.push({
+        sensor: named.length === 1 ? named[0] : undefined,
+        cell,
+        // Stryker disable next-line StringLiteral: equivalent, any text without a code span names no sensor.
+        copies: spans(row[copies] ?? ""),
+        detection: row[detection] ?? "",
+      });
+    }
+    return rows;
+  }
+  return undefined;
+}
+
+// The catalog and the configs list the same sensors: no sensor without a row, no row for a sensor that is
+// gone, one row per sensor, and every row says how its detection is verified (docs/tooling/ci.md
+// ("検査を足すとき")).
+function catalogMatchesConfigs(tree: Tree): string[] {
+  const markdown = tree.repo.read(catalog);
+  if (markdown === undefined)
+    return [
+      `${catalog} does not exist. It lists every sensor of the gates, and repo-policy compares it with the configs.`,
+    ];
+  const rows = catalogRows(markdown);
+  if (rows === undefined)
+    return [
+      `${catalog} has no table with the columns ${columns.sensor}, ${columns.copies} and ${columns.detection}.`,
+    ];
+  const { gates, copies, problems } = configSensors(tree);
+  const failures = [...problems];
+  // The sensor of each row.
+  // Stryker disable next-line ArrayDeclaration: equivalent, an entry that is not a sensor matches nothing.
+  const keys: string[] = [];
+  for (const row of rows) {
+    if (row.sensor === undefined) {
+      failures.push(
+        `${catalog}: the row "${row.cell}" must name one sensor in its ${columns.sensor} column, such as \`ci.yml: Lint Markdown\`.`,
+      );
+      continue;
+    }
+    if (keys.includes(row.sensor))
+      failures.push(`${catalog} has more than one row for \`${row.sensor}\`.`);
+    keys.push(row.sensor);
+    if (row.detection === "")
+      failures.push(
+        `${catalog}: the row for \`${row.sensor}\` must fill in ${columns.detection} (docs/tooling/ci.md ("検査を足すとき")).`,
+      );
+  }
+  const named = new Set([...keys, ...rows.flatMap((row) => row.copies)]);
+  // Without ci.yml, mainNeedsEveryJob reports it; its rows are not compared.
+  const hasCi = tree.repo.read(sources["ci.yml"]) !== undefined;
+  const sensors = [...gates, ...copies];
+  for (const [source, where] of Object.entries(sources)) {
+    if (source === "ci.yml" && !hasCi) continue;
+    for (const span of named)
+      if (span.startsWith(`${source}: `) && !sensors.some((sensor) => names(span, sensor)))
+        failures.push(`${catalog} names \`${span}\`, which is not in ${where}.`);
+  }
+  for (const gate of gates)
+    if (!keys.includes(gate))
+      failures.push(`\`${gate}\` has no row in ${catalog}. A gate is a row of its own; add one.`);
+  for (const copy of copies)
+    if (![...named].some((span) => names(span, copy)))
+      failures.push(
+        copy.startsWith("kiro: ")
+          ? `\`${copy}\` has no row in ${catalog}. Add a row \`${copy}/<check>\` for each check of the hook.`
+          : `\`${copy}\` has no row in ${catalog}. Add a row for it, or name it in the ${columns.copies} column of the row it copies.`,
+      );
+  return failures;
+}
+
 // Hooks, CI and the tests run shell scripts directly, so git must record them as executable (100755).
 function executableScripts(tree: Tree): string[] {
   return shellScripts(tree)
@@ -414,6 +644,8 @@ export function violations(repo: Repo): string[] {
     ...toolsInputsInHook(tree),
     ...uniqueAdrNumbers(tree),
     ...mainNeedsEveryJob(tree),
+    ...requiredChecksRun(tree),
+    ...catalogMatchesConfigs(tree),
     ...executableScripts(tree),
     ...docsReferences(tree),
   ];
