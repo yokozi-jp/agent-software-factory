@@ -55,7 +55,7 @@ function regenerate(rel: string): readonly [string, string] | undefined {
   if (rel === "skills-lock.json" || /^\.(agents|kiro)\/skills(\/|$)/.test(rel))
     return [
       "Agent skills are installed from upstream by the skills CLI and must match skills-lock.json.",
-      "run `pnpm dlx skills update` (or `pnpm dlx skills add <source>`), then check with `node scripts/verify-skills-lock.mjs`.",
+      "run `pnpm dlx skills update` (or `pnpm dlx skills add <source>`), then check with `node tools/scripts/src/checks/skills-lock/cli.ts`.",
     ];
   if (rel === "pnpm-lock.yaml")
     return [
