@@ -685,12 +685,19 @@ describe("references to docs/ from outside docs/", () => {
     "docs/tooling/a.md",
     ".agents/skills/a/SKILL.md",
     ".kiro/skills/a/SKILL.md",
+    "research/a.md",
     "tools/scripts/src/checks/adr-check/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/passing-repo.ts",
     "pnpm-lock.yaml",
   ])("does not check %s, which may cite missing docs on purpose", (path) => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([]);
+  });
+
+  it("checks a path that only has research/ inside it", () => {
+    expect(violations(repo({ "apps/research/a.md": "docs/adr/9999\n" }))).toEqual([
+      "apps/research/a.md cites docs/adr/9999, which does not exist.",
+    ]);
   });
 
   it("does not read binary files", () => {
