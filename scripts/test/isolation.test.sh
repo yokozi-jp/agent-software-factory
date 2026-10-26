@@ -35,8 +35,8 @@ fingerprint() {
 }
 before="$(fingerprint)"
 
-# The test files to run under hook variables. Each CI job passes the ones it can run: repo-checks.test.sh
-# needs node_modules, secret-scan.test.sh needs betterleaks. Without arguments, every other test file runs.
+# The test files to run under hook variables. Each CI job passes the ones it can run: secret-scan.test.sh
+# needs betterleaks. Without arguments, every other test file runs.
 if [ $# -gt 0 ]; then
   tests="$*"
 else

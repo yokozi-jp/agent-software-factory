@@ -89,12 +89,6 @@ pre-commit:
         - "tools/scripts/src/checks/json.ts"
       run: node tools/scripts/src/checks/skills-lock/cli.ts
     # Behaviour tests (scripts/test/) for the scripts that changed.
-    - name: repo-checks-test
-      glob:
-        - "scripts/check-repo-policy.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/repo-checks.test.sh"
-      run: sh scripts/test/run.sh scripts/test/repo-checks.test.sh
     - name: secret-scan-test
       glob:
         - "scripts/secret-scan.sh"
@@ -206,7 +200,10 @@ pre-commit:
         - ".betterleaks.toml"
         - "mise.toml"
         - ".kiro/steering/**"
-        - "scripts/check-repo-policy.sh"
+        - "tools/scripts/src/checks/repo-policy/**"
+        # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
+        - ".node-version"
+        - "pnpm-workspace.yaml"
         # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
         - "*.md"
         - "lefthook.yml"
@@ -216,7 +213,7 @@ pre-commit:
         - "docs/**"
         - "**/*.ts"
       # Check what is staged, so unstaged edits to other files cannot fail the commit.
-      run: scripts/check-repo-policy.sh staged
+      run: node tools/scripts/src/checks/repo-policy/cli.ts staged
 
 pre-push:
   commands:

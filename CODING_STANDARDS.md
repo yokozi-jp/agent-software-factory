@@ -1,7 +1,7 @@
 # Coding standards
 
 レビューの agent (`code-review` skill の Standards の観点) が読む、判断の規則です。
-機械で判定できる規則は、ここに書かずに検査にします。`vp check`、docs-check (`tools/scripts/src/checks/docs-check/`)、`scripts/check-repo-policy.sh`、markdownlint が止めるものは、レビューで指摘しません。
+機械で判定できる規則は、ここに書かずに検査にします。`vp check`、docs-check (`tools/scripts/src/checks/docs-check/`)、repo-policy (`tools/scripts/src/checks/repo-policy/`)、markdownlint が止めるものは、レビューで指摘しません。
 
 ## docs の事実と出典
 

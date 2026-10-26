@@ -251,6 +251,9 @@ catalogs:
     react-dom:
       specifier: ^19.3.1
       version: 19.3.1
+    smol-toml:
+      specifier: 1.9.1
+      version: 1.9.1
     testcontainers:
       specifier: ^12.2.1
       version: 12.2.1
@@ -263,6 +266,9 @@ catalogs:
     vite-plus:
       specifier: 1.4.0
       version: 1.4.0
+    yaml:
+      specifier: 2.9.1
+      version: 2.9.1
 
 overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.4.0
@@ -383,6 +389,13 @@ importers:
         version: 1.4.0(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
 
   tools/scripts:
+    dependencies:
+      smol-toml:
+        specifier: 'catalog:'
+        version: 1.9.1
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
     devDependencies:
       '@stryker-mutator/core':
         specifier: 'catalog:'

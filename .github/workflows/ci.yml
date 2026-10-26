@@ -42,7 +42,7 @@ jobs:
           cache: true
 
       - name: Repo policy (docs/adr)
-        run: scripts/check-repo-policy.sh
+        run: node tools/scripts/src/checks/repo-policy/cli.ts
 
       # Runs the Renovate pinned in scripts/renovate.sh through pnpm dlx, so it needs the network.
       - name: Validate Renovate config
@@ -136,7 +136,7 @@ jobs:
       # Behaviour tests for the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
+          tests="scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended

@@ -3,7 +3,7 @@
 # After changing a version, run `mise lock --platform linux-x64` and commit mise.lock.
 [tools]
 "aqua:jdx/jactionlint" = "2.3.0"
-# Must equal betterleaksMinVersion in .betterleaks.toml (checked by scripts/check-repo-policy.sh). v1 only (docs/adr/0003).
+# Must equal betterleaksMinVersion in .betterleaks.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts). v1 only (docs/adr/0003).
 betterleaks = "1.9.0"
 osv-scanner = "2.7.0"
 # Semgrep CE is only on PyPI. uv installs it from the dependency graph that mise.lock records (wheel hashes),
