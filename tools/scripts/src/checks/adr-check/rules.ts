@@ -77,7 +77,7 @@ export interface Output {
 const inCi = (env: Env): boolean => env.GITHUB_ACTIONS === "true";
 const lines = (...text: string[]): string => text.map((line) => `${line}\n`).join("");
 // A workflow command ends at a newline, and % starts an escape (Workflow commands for GitHub Actions).
-const annotationText = (text: string): string =>
+export const annotationText = (text: string): string =>
   text.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
 
 export function warning(paths: readonly string[], env: Env): Output {

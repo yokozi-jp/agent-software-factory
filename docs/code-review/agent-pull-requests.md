@@ -22,6 +22,8 @@ agent の PR は、機械で判定できるものをゲートで止め、agent �
 | 存在しない API を呼んでいない                                         | `vp check` の型チェック (tsgolint)                                                                                                                                    |
 | 型エラーを `any`、`!`、絞り込みの `as`、`@ts-ignore` で黙らせていない | Oxlint の `typescript/no-explicit-any`、`no-non-null-assertion`、`no-unsafe-type-assertion`、`ban-ts-comment` など ([ADR 0020](../adr/0020-typescript-strictness.md)) |
 | テストを直さずにスキップした、一部だけを実行するようにした            | Oxlint の `vitest/no-disabled-tests` と `vitest/no-focused-tests` (`*.test.ts` と `*.test.tsx`)                                                                       |
+| 何も確かめずに通るテストを書いた                                      | Oxlint の `vitest/expect-expect`、`vitest/no-conditional-expect`、`vitest/valid-expect` (`*.test.ts` と `*.test.tsx`)                                                 |
+| 実装だけを足した、テストを消して coverage を下げた                    | coverage のファイルごとの下限と全体の値のラチェット (`apps/api`、`tools/scripts`。[CI](../tooling/ci.md#coverage-の下限))                                             |
 | 秘密情報を commit していない                                          | betterleaks (pre-commit、pre-push、CI)                                                                                                                                |
 | 公開されたばかりの版の依存を入れていない                              | pnpm の `minimumReleaseAge` (pnpm 11 以降の既定は 1440 分)                                                                                                            |
 | コミットと PR のタイトルの形式                                        | commitlint                                                                                                                                                            |
@@ -51,6 +53,7 @@ GitHub Copilot code review も、既定ではプルリクエストの必須の�
 - ADR、`AGENTS.md`、`.kiro/` の skill、steering、hook を変える
 - `.github/` の workflow と ruleset、`lefthook.yml`、`tools/scripts/` のゲートを変える
 - 依存を足す
+- CI の test-weakening が警告した (テストファイルを消した、テストケースの数を減らした。[CI](../tooling/ci.md#ciyml-の検証))
 
 それ以外の PR は、ゲートが通っていれば、本文の Summary と Evidence を確かめてマージしてよい。
 マージは人が行う。

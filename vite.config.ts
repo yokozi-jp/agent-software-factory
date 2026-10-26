@@ -67,12 +67,22 @@ export default defineConfig({
       reportUnusedDisableDirectives: "error",
     },
     overrides: [
-      // Agent-written tests: block .only (runs a subset) and .skip (hides a failing test).
+      // Agent-written tests: block .only (runs a subset) and .skip (hides a failing test), and a test that
+      // passes without checking anything: no expect, an expect that runs only on one branch, or an expect
+      // that asserts nothing (#30). The last three are in Oxlint's correctness category, which listing the plugin
+      // already turns on as warnings; they are named here so that they stay errors whatever the defaults.
+      // tools/scripts/src/test/fixtures/expect.test.ts fails `vp check` if one is turned off.
       // See docs/code-review/agent-pull-requests.md.
       {
         files: ["**/*.test.ts", "**/*.test.tsx"],
         plugins: ["vitest"],
-        rules: { "vitest/no-focused-tests": "error", "vitest/no-disabled-tests": "error" },
+        rules: {
+          "vitest/no-focused-tests": "error",
+          "vitest/no-disabled-tests": "error",
+          "vitest/expect-expect": "error",
+          "vitest/no-conditional-expect": "error",
+          "vitest/valid-expect": "error",
+        },
       },
       // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
       // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
