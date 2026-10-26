@@ -23,7 +23,7 @@ PR は squash merge だけを使い、破壊的変更は PR タイトルの `!` 
   - Nx のプロジェクト名: `api`、`web` (プロジェクトを足すと自動で増えます)
   - `docs`: `docs/` の文書
   - `ci`: `.github/` の workflow と ruleset
-  - `hooks`: Git hook (`lefthook.yml`、`scripts/`) と Kiro の hook (`.kiro/hooks/`)
+  - `hooks`: Git hook (`lefthook.yml`、`scripts/`) と Kiro の hook (`.kiro/hooks/`、`tools/scripts/src/hooks/`)
   - `deps`: 依存の追加と更新 (`package.json`、`pnpm-workspace.yaml` の catalog、lockfile)
 - **subject**: 日本語でも英語でも構いません。先頭は大文字の英単語にしません (`subject-case`)。ファイル名や略語 (`CODEOWNERS`、`README`、`API`) で始めると拒否されるので、日本語の語を前に置きます (例: `docs: コミュニティの文書 (CODEOWNERS …) を置く`)。
 - **本文と footer**: 1行は 100 文字以内にします (`body-max-line-length`、`footer-max-line-length`)。最初の段落以外で、`PR #96` のように行頭の語に続けて `#番号` を書くと、その行は footer として検査されます。どちらの規則でも、長い行は拒否されるので、短い行に折り返します。
