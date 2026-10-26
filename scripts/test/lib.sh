@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 # Shared helpers for scripts/test/*.test.sh. Source this file; call `finish` at the end of each test.
 # expect_exit <code> <description> <command...>   run a command and compare its exit code
-# expect_hook <code> <description> <hook script> <tool name> <shell command>   feed a PreToolUse event to a Kiro hook
 # make_sandbox                                     create $sandbox, a temp dir that git commands cannot escape
 #
 # Isolation (docs/tooling/ci.md ("スクリプトのテスト")). Tests run from Git hooks too, where git exports
@@ -69,18 +68,6 @@ expect_exit() {
     failures=$((failures + 1))
   fi
   rm -f "$output"
-}
-
-hook_event() {
-  jq -cn --arg tool "$1" --arg command "$2" '{hook_event_name: "PreToolUse", tool_name: $tool, tool_input: {command: $command}}'
-}
-
-run_hook() {
-  hook_event "$2" "$3" | sh "$1"
-}
-
-expect_hook() {
-  expect_exit "$1" "$2" run_hook "$3" "$4" "$5"
 }
 
 finish() {

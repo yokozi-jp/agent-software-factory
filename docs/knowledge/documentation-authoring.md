@@ -59,7 +59,7 @@ tags: [knowledge, convention, documentation, iwe, okf]
 `iwe create` は、カレントディレクトリにある `.iwe/` の設定で動きます。`docs/` の外 (リポジトリのルートなど) で実行すると、`docs/.iwe/` を読まずに、そのディレクトリにファイルを作り、リンクから `.md` を外し、行末の改行を空白に変えました (iwe 0.29.0)。`docs/` に移ってから実行します。
 
 使わない操作は、MCP では `.kiro/settings/mcp.json` の `disabledTools` で無効にしています。
-CLI の `iwe normalize` は、Kiro の hook (`.kiro/hooks/block-iwe-normalize.sh`) が拒否します。
+CLI の `iwe normalize` は、Kiro の hook (`tools/scripts/src/hooks/iwe-normalize.ts`) が拒否します。
 
 ## ADR
 

@@ -18,8 +18,9 @@
       ],
     },
     "tools/scripts": {
-      // scripts/renovate.sh preview runs it with node. Knip does not read shell scripts.
-      "entry": ["src/checks/renovate-preview/cli.ts"],
+      // scripts/renovate.sh preview runs the renovate-preview entry with node, and .kiro/hooks/*.json
+      // runs the Kiro hook entries with node. Knip does not read shell scripts or those files.
+      "entry": ["src/checks/renovate-preview/cli.ts", "src/hooks/*/cli.ts"],
     },
     "apps/api": {
       "entry": [

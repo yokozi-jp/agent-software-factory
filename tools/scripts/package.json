@@ -20,6 +20,13 @@
   "nx": {
     "name": "scripts",
     "targets": {
+      "test": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/.kiro/hooks/*.json"
+        ]
+      },
       "test-tools": {
         "cache": true,
         "inputs": [
