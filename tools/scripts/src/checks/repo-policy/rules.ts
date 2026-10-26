@@ -357,11 +357,14 @@ function executableScripts(tree: Tree): string[] {
 //                                               without its number; \" in a JSON string counts as ")
 //   docs/adr/ and a four-digit number           an ADR with that number must exist
 // .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check. The tests and
-// fixtures of adr-check and repo-policy cite missing ADRs on purpose.
+// fixtures of adr-check and repo-policy cite missing ADRs on purpose. research/ holds the notes of
+// wayfinder research tickets, which live on throwaway branches and are never merged; they quote paths
+// of other commits and of upstream repositories.
 const unchecked = [
   /^docs\//,
   /^\.agents\//,
   /^\.kiro\/skills\//,
+  /^research\//,
   /^tools\/scripts\/src\/checks\/(adr-check|repo-policy)\/([^/]*\.test\.ts$|fixtures\/)/,
   /^pnpm-lock\.yaml$/,
 ];

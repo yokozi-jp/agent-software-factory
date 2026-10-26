@@ -600,6 +600,7 @@ describe("references to docs/ from outside docs/", () => {
     "docs/tooling/a.md",
     ".agents/skills/a/SKILL.md",
     ".kiro/skills/a/SKILL.md",
+    "research/a.md",
     "tools/scripts/src/checks/adr-check/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/passing-repo.ts",
