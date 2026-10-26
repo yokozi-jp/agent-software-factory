@@ -14,19 +14,9 @@ agent の PR は、機械で判定できるものをゲートで止め、agent �
 
 ## ゲートで止めるもの
 
-次のものは、人が見る前に CI と Git hook のゲートで止まる。人はこれらを目で確かめなくてよい。
-
-| 確認点                                                                | このリポジトリのセンサー                                                                                                                                              |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ビルドとテストが通り、新しい警告がない                                | CI の `nx affected -t check test build`。`vp check` は警告も失敗にする (`denyWarnings`、[ADR 0020](../adr/0020-typescript-strictness.md))                             |
-| 存在しない API を呼んでいない                                         | `vp check` の型チェック (tsgolint)                                                                                                                                    |
-| 型エラーを `any`、`!`、絞り込みの `as`、`@ts-ignore` で黙らせていない | Oxlint の `typescript/no-explicit-any`、`no-non-null-assertion`、`no-unsafe-type-assertion`、`ban-ts-comment` など ([ADR 0020](../adr/0020-typescript-strictness.md)) |
-| テストを直さずにスキップした、一部だけを実行するようにした            | Oxlint の `vitest/no-disabled-tests` と `vitest/no-focused-tests` (`*.test.ts` と `*.test.tsx`)                                                                       |
-| 何も確かめずに通るテストを書いた                                      | Oxlint の `vitest/expect-expect`、`vitest/no-conditional-expect`、`vitest/valid-expect` (`*.test.ts` と `*.test.tsx`)                                                 |
-| 実装だけを足した、テストを消して coverage を下げた                    | coverage のファイルごとの下限と全体の値のラチェット (`apps/api`、`tools/scripts`。[CI](../tooling/ci.md#coverage-の下限))                                             |
-| 秘密情報を commit していない                                          | betterleaks (pre-commit、pre-push、CI)                                                                                                                                |
-| 公開されたばかりの版の依存を入れていない                              | pnpm の `minimumReleaseAge` (pnpm 11 以降の既定は 1440 分)                                                                                                            |
-| コミットと PR のタイトルの形式                                        | commitlint                                                                                                                                                            |
+人が見る前に、merge のゲート (ruleset と、その必須チェック) が止めるものは、[保証カタログ](../tooling/assurance-catalog.md) にある。カタログでゲートが「なし」でない行は、人が目で確かめなくてよい。
+GitHub の Review AI-generated code の確認点のうち、ビルドとテストが通り新しい警告がないこと、存在しない API を呼んでいないこと、型エラーを `any` などで黙らせていないこと、テストをスキップしていないこと、何も確かめずに通るテストを書いていないこと、テストを消して coverage を下げていないことは `ci.yml: Check, test, build and mutation (nx affected)` の行、秘密情報は `ruleset: betterleaks` の行、コミットと PR のタイトルの形式は `ruleset: commitlint` の行が受け持つ。
+Git hook と Kiro の hook は飛ばせるので、ゲートには数えない。
 
 ゲートが止められない誤りを見つけたら、レビューで指摘するだけでなく、ゲートに足せないかを考える。
 

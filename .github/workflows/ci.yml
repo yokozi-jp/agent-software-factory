@@ -169,7 +169,9 @@ jobs:
           done
 
       # mutation: Stryker on the pure functions of tools/scripts (stryker.config.mjs).
-      - run: pnpm exec nx affected -t check test build mutation
+      # The name is the row of the assurance catalog (docs/tooling/assurance-catalog.md).
+      - name: Check, test, build and mutation (nx affected)
+        run: pnpm exec nx affected -t check test build mutation
 
       # Builds regenerate files such as apps/web/src/routeTree.gen.ts. They must be committed.
       - name: Generated files are committed

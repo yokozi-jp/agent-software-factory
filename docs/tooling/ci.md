@@ -9,6 +9,7 @@ tags: [tooling, reference, ci, github-actions]
 
 workflow は `.github/workflows/` にあり、全ての Action は commit SHA で固定し、更新は Renovate の PR で行います ([Renovate](renovate.md))。
 必須チェックにする job が対象外の PR で pending にならないよう、検証は path で絞らずに実行します。
+どの検証が何を保証し、どのゲートが強制し、検出力をどう確かめるかは [保証カタログ](assurance-catalog.md) を正とします。この文書には、実行のしかたと、止まったときの扱いを書きます。
 
 ## workflow
 
@@ -39,7 +40,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 ## ci.yml の検証
 
-どれも、対応するファイルを変えたときに pre-commit hook でも実行します (adr-check と test-weakening は pre-push hook で実行し、そのテストは `tools/scripts` を変えた commit の pre-commit hook で `nx test scripts` として実行します)。
+どれも、対応するファイルを変えたときに pre-commit hook でも実行します (adr-check と test-weakening は pre-push hook で実行し、そのテストは `tools/scripts` を変えた commit の pre-commit hook で `nx test scripts` として実行します)。どの hook の job がどの検証の写しかは、[保証カタログ](assurance-catalog.md) の「ローカルの写し」の列にあります。
 
 - `node tools/scripts/src/checks/repo-policy/cli.ts` (repo-policy): ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない、Node.js のメジャー版が `.node-version`・`engines.node`・`@types/node` の catalog・`vite.config.ts` の build target でそろっている、`ci.yml` の `main` 以外の全ての job が `main` の `needs` に入っている)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
@@ -48,6 +49,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   `tools/scripts/sh/*.sh` の mode が `100755` であることも確認します。
   `packages/` の `shared` 以外の package が、ルートの `vite.config.ts` の `modules` にあること (ないと、その package の import を止める規則がありません)、各 package の `src/` と各モジュールの各層 (`vite.config.ts` の `layers`) の `__fixtures__/` に、`oxlint-disable-next-line no-restricted-imports` を書いた fixture があることも確認します ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
   `tools/scripts/package.json` の `test-tools` の `inputs` のうち `{workspaceRoot}/…` のものが、`lefthook.yml` の `scripts-test-tools` の `glob` に同じ文字列で入っていることも確認します。Nx と lefthook では glob の書き方が違うので、パターンの照合はしません。意図して外すものは、repo-policy の `rules.ts` の `notInHook` に理由を添えて書きます。
+  [保証カタログ](assurance-catalog.md) の表と、`ci.yml` の step、ruleset の規則、`lefthook.yml` の job、`.kiro/hooks/` の hook と `tools/scripts/src/hooks/` の検査が対応していること (行のない名前、設定にない名前、2 回出る名前、「検出力の確かめ方」が空の行がない) と、ruleset の必須チェックがどれも `pull_request` で動く workflow の job の名前であることも確認します。照合の決まりはカタログの「表と設定のずれの検査」にあります。
   設定ファイル (workflow、`pnpm-workspace.yaml`、`mise.toml`、`.betterleaks.toml`、`package.json`、steering の frontmatter) は、catalog で固定したパーサー (`yaml`、`smol-toml`) と `JSON.parse` で読みます。値を取り出す検査は、引用符、コメント、1 行か複数行かで結果が変わりません。例外は steering の `fileMatchPattern` で、1 行の配列 (`["a", "b"]`) で書くことを求めます。読めないファイルは、パーサーのエラーを添えて失敗します。`vite.config.ts` は文字列として読みます。
 - `tools/scripts` の Nx の target: `test` (`nx` の job) は TypeScript の検査と hook のテスト、`mutation` (`nx` の job) はその純粋な関数への Stryker、`test-tools` (`scripts` の job) は本物の道具と設定を使うテストです ([スクリプトのテスト](#スクリプトのテスト))。
 - `node tools/scripts/src/checks/adr-check/cli.ts` (adr-check): 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定 (対象は `tools/scripts/src/checks/adr-check/rules.ts` の `isDecisionPath`) を変えたのに、PR の base との差分に ADR (`docs/adr/NNNN-*.md`) の追加がないと、`::warning::` を出します。job は失敗させません ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。テストと fixture の変更は対象外です。base と比べられない (浅い clone など) ときは、理由を `::notice::` に出して通します。pre-push hook でも実行します ([Git hook](git-hooks.md))。
@@ -96,9 +98,10 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 1. コマンド: リポジトリ全体を見る検査は、`tools/scripts/src/checks/<name>/` の TypeScript (`node tools/scripts/src/checks/<name>/cli.ts` で実行) か、ルートの `package.json` の script にします。1 つの CLI に引数を渡すだけなら、`tools/scripts/sh/<name>.sh` の sh でも構いません ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。プロジェクトごとの検査は、そのプロジェクトの `package.json` の script にし、Nx の target として動かします。どちらも `vp run` は使いません ([ADR 0002](../adr/0002-nx-orchestrates-vite-plus.md))。道具の版は、npm で配られるものは `pnpm-workspace.yaml` の catalog で、それ以外は `mise.toml` で固定します ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 2. `ci.yml` の job に step を足します。mise の道具を使う検査と `test-tools` は `scripts` に、それ以外でリポジトリ全体を見る検査は `checks` に、プロジェクトごとの検査は `nx` に入れます。新しい job を作るなら `main` の `needs` に足します。
 3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
-4. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にし、一覧に載せる必要はありません。sh のラッパーは `tools/scripts/src/sh/<name>.test.ts` に、止める入力と通す入力を stub の道具 (`src/test/stubs.ts`) で確かめるプロセスのテストを書きます。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定を `test-tools` の `inputs` に書きます。どちらも一覧に載せる必要はありません。実行権限の付け忘れは repo-policy が止めます。
-5. docs: この文書の「ci.yml の検証」、[開発コマンド](commands.md) の構成とコマンドの表、[Git hook](git-hooks.md) の `pre-commit` の行。
-6. 道具や設定を選んだ理由は ADR に書きます。番号は `node tools/scripts/src/checks/check-adr-number/cli.ts` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
+4. [保証カタログ](assurance-catalog.md) に行を足します。名前の列は設定の名前 (`ci.yml: <step の name>` など) にし、lefthook の job は写す行の「ローカルの写し」の列に書きます。Kiro の hook の検査は、ファイルの 1 行目を `// block-<名前>:` か `// warn-<名前>:` で始め、`kiro: <hook>/<名前>` の行を足します。行を書き忘れると repo-policy が止めます。「検出力の確かめ方」には、下の 5 で書くテストのファイルを書きます。GitHub の上でだけ動くもの (ruleset の規則、必須チェック) は、repo-policy の静的な検査と、その PR で手で一度止まることを確かめたことを書きます。
+5. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にします。sh のラッパーは `tools/scripts/src/sh/<name>.test.ts` に、止める入力と通す入力を stub の道具 (`src/test/stubs.ts`) で確かめるプロセスのテストを書きます。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定を `test-tools` の `inputs` に書きます。実行権限の付け忘れは repo-policy が止めます。
+6. docs: この文書の「ci.yml の検証」に実行のしかたを、[開発コマンド](commands.md) の構成とコマンドの表に、手で実行するコマンドを書きます。
+7. 道具や設定を選んだ理由は ADR に書きます。番号は `node tools/scripts/src/checks/check-adr-number/cli.ts` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
 ## スクリプトのテスト
 
