@@ -62,6 +62,7 @@ docs/      ドキュメント (入口は docs/index.md)
 
 ## 補足
 
+- api の test は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
 - `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。

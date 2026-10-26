@@ -11,5 +11,9 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts"],
+    // Keycloak の起動に時間がかかる。PostgreSQL と Keycloak のコンテナは全テストで共有する。
+    globalSetup: ["./test/global-setup.ts"],
+    hookTimeout: 240_000,
+    testTimeout: 60_000,
   },
 });
