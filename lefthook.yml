@@ -115,7 +115,8 @@ pre-commit:
     # .mise/locks/, can change what they report), the tools tests, the checks and shell wrappers that have
     # them, the configs they try (the Knip test also reads apps/ and the other root files, which CI covers
     # with `nx affected -t test-tools`), the test helpers and the config that run them, and `sharedGlobals`.
-    # CI still runs them for every change to the project.
+    # CI still runs them for every change to the project. Each input of the target in tools/scripts/package.json
+    # is a glob here too, written the same way; repo-policy checks it (inputs left out on purpose are in its notInHook).
     - name: scripts-test-tools
       glob:
         - ".betterleaks.toml"
@@ -130,13 +131,15 @@ pre-commit:
         - "tools/scripts/sh/**"
         - "mise.toml"
         - "mise.lock"
-        - ".mise/locks/**"
+        - ".mise/locks/**/*"
         - "tools/scripts/src/**/*.tools.test.ts"
         - "tools/scripts/src/checks/secret-scan/**"
         - "tools/scripts/src/checks/semgrep/**"
         - "tools/scripts/src/checks/docs-check/**"
         - "docs/.iwe/config.toml"
-        - "docs/.iwe/schemas/*.yaml"
+        - "docs/.iwe/schemas/okf.yaml"
+        - "docs/.iwe/schemas/okf-index.yaml"
+        - "docs/.iwe/schemas/okf-log.yaml"
         - "tools/scripts/src/test/isolation.ts"
         - "tools/scripts/src/test/sandbox.ts"
         - "tools/scripts/src/test/setup.ts"
