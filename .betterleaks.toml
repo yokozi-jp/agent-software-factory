@@ -3,7 +3,7 @@
 # Auto-discovery of repo configs differs between betterleaks versions (see docs/adr/0003).
 title = "agent-software-factory"
 
-# Fail fast on older binaries. Must equal the betterleaks version in mise.toml (checked by scripts/check-repo-policy.sh).
+# Fail fast on older binaries. Must equal the betterleaks version in mise.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts).
 betterleaksMinVersion = "1.9.0"
 
 [extend]

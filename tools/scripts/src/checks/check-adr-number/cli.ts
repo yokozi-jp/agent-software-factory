@@ -1,7 +1,7 @@
 // Before a PR: is each ADR number this branch adds still free? Prints the next free number.
 //   node tools/scripts/src/checks/check-adr-number/cli.ts
 // Numbers are taken by origin/main and by the other open PRs (gh). Run `git fetch origin` first.
-// check-repo-policy.sh only sees the numbers in one tree, so two open PRs can pick the same number
+// repo-policy only sees the numbers in one tree, so two open PRs can pick the same number
 // (docs/tooling/worktrees.md ("PR を出す")).
 //   exit 0  every ADR the branch adds has a free number
 //   exit 1  an added ADR uses a number that origin/main or another open PR uses
