@@ -11,7 +11,7 @@ tags: [adr, tooling, knip, ci, quality, dependencies]
 
 - **道具**: Knip 6.42.1 です。版は `pnpm-workspace.yaml` の catalog で固定し、ルートの devDependencies に入れます。導入した 2026-10-24 の最新版は 6.43.0 でしたが、その日に公開されたもので、pnpm の `minimumReleaseAge` (v11 からの既定値は 1440 分) より新しい版でした。`pnpm add knip@6.43.0` を実行すると、pnpm 12.15.0 は `minimumReleaseAgeExclude` に `knip@6.43.0` を書き足しました。例外の要らない 1 つ前の 6.42.1 にしました。
 - **実行の経路**: ルートの `package.json` の `lint:unused` (`knip`) を、CI の `ci.yml` の `checks` job と、Knip が読むファイルを変えた commit の pre-commit hook から呼びます。設定はすべて `knip.jsonc` に書くので、どちらも同じ検査です。[ADR 0002](0002-nx-orchestrates-vite-plus.md) に従い、`pnpm lint:dup` ([ADR 0014](0014-jscpd-duplication-threshold.md)) と同じ形にしました。
-- **対象**: `pnpm-workspace.yaml` の全てのプロジェクト (今は `apps/api` と `apps/web`) とルートです。Knip は `pnpm-workspace.yaml` を読み、workspace ごとに entry を決めます。Knip の plugin が、`package.json` の scripts と、GitHub Actions の workflow、`lefthook.yml`、Vite+、Vite、Vitest、TanStack Router、Nx、mise、commitlint、markdownlint などの設定から、entry と使っている依存を読みます。今動いている plugin は `knip --debug` の `Enabled plugins` で分かります。
+- **対象**: `pnpm-workspace.yaml` の全てのプロジェクト (今は `apps/api`、`apps/web`、`tools/scripts`) とルートです。Knip は `pnpm-workspace.yaml` を読み、workspace ごとに entry を決めます。Knip の plugin が、`package.json` の scripts と、GitHub Actions の workflow、`lefthook.yml`、Vite+、Vite、Vitest、TanStack Router、Nx、mise、commitlint、markdownlint などの設定から、entry と使っている依存を読みます。今動いている plugin は `knip --debug` の `Enabled plugins` で分かります。
 - **例外の書き方**: Knip の docs に従い、一括の `ignore` を使わず、例外を 1 つずつ書きます。理由は `knip.jsonc` のその行のそばに書きます。
   - `entry`: Knip が読まない場所から呼ばれるファイル。`scripts/docs-links.mjs` はシェルスクリプトから、`apps/api/src/server.ts` は `vite.config.ts` の `build.ssr` から呼ばれます。
   - `project`: 検査の対象から外すもの。`.agents/` は upstream から入れた skill で、このリポジトリのコードではありません。

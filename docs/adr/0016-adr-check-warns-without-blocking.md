@@ -1,16 +1,16 @@
 ---
 type: ADR
 title: "ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）"
-description: 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに、同じ変更で docs/adr/ に ADR が増えていないと scripts/adr-check.sh が警告する決定。失敗させない理由、pre-commit ではなく pre-push と CI に置く理由、対象の範囲、比較の起点がないときの扱いも書く。adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったときに読む。
+description: 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに、同じ変更で docs/adr/ に ADR が増えていないと adr-check (tools/scripts/src/checks/adr-check/) が警告する決定。失敗させない理由、pre-commit ではなく pre-push と CI に置く理由、対象の範囲、比較の起点がないときの扱いも書く。adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったときに読む。
 tags: [adr, tooling, ci, git-hooks, adr-check]
 ---
 
 # ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）
 
-決定が絡みやすいファイル (依存、ツールの設定、workflow、ruleset、Kiro の hook など) を変える変更が、ADR を書くかどうかを考えないまま通ることがありえます。変更を出す人も、レビューする人も、変更したファイルの名前から ADR を連想するとは限らないためです。そこで `scripts/adr-check.sh` で、そのような変更に ADR (`docs/adr/NNNN-*.md`) の追加がなければ、書くかどうかを考え直す合図を出します。
+決定が絡みやすいファイル (依存、ツールの設定、workflow、ruleset、Kiro の hook など) を変える変更が、ADR を書くかどうかを考えないまま通ることがありえます。変更を出す人も、レビューする人も、変更したファイルの名前から ADR を連想するとは限らないためです。そこで adr-check (`tools/scripts/src/checks/adr-check/`) で、そのような変更に ADR (`docs/adr/NNNN-*.md`) の追加がなければ、書くかどうかを考え直す合図を出します。
 
 - **警告だけで、失敗させない**: 終了コードは常に 0 です。対象のファイルの変更の多くは、ADR が要らないためです (依存の版を上げる、workflow の step を直す、など)。ADR は「戻しにくい」「文脈なしには意外」「本当の trade-off の結果」の 3 つがそろうときだけ書きます ([docs の書き方](../knowledge/documentation-authoring.md#adr-を書くかどうか))。この 3 つはファイルの名前からは分からないので、機械は判断できません。止めると、判断が要らない変更で必ず抜け道 (空の ADR を足す、hook を飛ばす) を探すことになります。
-- **対象**: 1 か所 (`scripts/adr-check.sh` の `decision_path`) に書いた path の一覧です。正は `decision_path` で、ここには種類だけを挙げます。依存の宣言 (`package.json`、`pnpm-workspace.yaml`、`mise.toml`)、ツールの設定 (`nx.json`、`lefthook.yml`、`vite.config.ts`、`commitlint.config.ts`、`.node-version`、`.betterleaks.toml`、`.jscpd.json`、`.markdownlint-cli2.yaml`)、`.github/workflows/` と `.github/rulesets/`、`.kiro/hooks/` と `.kiro/settings/` です。`test/`、`tests/`、`__tests__/`、`fixtures/`、`__fixtures__/` の下 (どの深さでも) と、`*.test.*`、`*.spec.*` は、名前が一覧に合っても対象外です。lockfile (`pnpm-lock.yaml`、`mise.lock`) は、`package.json` と `mise.toml` に従って生成されるので対象にしません。
+- **対象**: 1 か所 (`tools/scripts/src/checks/adr-check/rules.ts` の `isDecisionPath`) に書いた path の一覧です。正は `isDecisionPath` で、ここには種類だけを挙げます。依存の宣言 (`package.json`、`pnpm-workspace.yaml`、`mise.toml`)、ツールの設定 (`nx.json`、`lefthook.yml`、`vite.config.ts`、`commitlint.config.ts`、`.node-version`、`.betterleaks.toml`、`.jscpd.json`、`.markdownlint-cli2.yaml`)、`.github/workflows/` と `.github/rulesets/`、`.kiro/hooks/` と `.kiro/settings/` です。`test/`、`tests/`、`__tests__/`、`fixtures/`、`__fixtures__/` の下 (どの深さでも) と、`*.test.*`、`*.spec.*` は、名前が一覧に合っても対象外です。lockfile (`pnpm-lock.yaml`、`mise.lock`) は、`package.json` と `mise.toml` に従って生成されるので対象にしません。
 - **ADR があるとみなす条件**: 比べる範囲に、`docs/adr/NNNN-*.md` が新しく追加されていることです。既にある ADR を直しただけでは、ADR を増やしたとはみなしません。
 - **比べる範囲**: 起点との merge base から、変更の先頭までです。起点は、pull request では `origin/$GITHUB_BASE_REF`、それ以外では `origin/main` です。CI は PR の base との差分を、pre-push hook は push するコミットを、同じ式で比べます。pre-push hook は、Git が標準入力に渡す ref ごとのコミットを、ref ごとに別々に比べます (ある ref に ADR があっても、別の ref の警告は消えません)。`git push origin other:branch` のように HEAD 以外を push する場合も、push するコミットを見ます。
 - **出し方**: GitHub Actions (`GITHUB_ACTIONS=true`) では、変更の一覧と判断基準へのリンクをログに出し、同じ内容を `::warning title=adr-check::` の annotation にします。ローカルでは標準エラーに出します。警告には、ADR が要らない変更なら `ADR_ACK=1` で警告を抑えられることも書きます。
@@ -26,10 +26,10 @@ tags: [adr, tooling, ci, git-hooks, adr-check]
 
 ## Consequences
 
-- 対象の一覧は、このリポジトリのファイルの構成に合わせた判断です。新しい種類の設定ファイルを足したら、`scripts/adr-check.sh` の `decision_path` に足すかどうかを考えます。
+- 対象の一覧は、このリポジトリのファイルの構成に合わせた判断です。新しい種類の設定ファイルを足したら、`tools/scripts/src/checks/adr-check/rules.ts` の `isDecisionPath` に足すかどうかを考えます。
 - 警告は commit も push も止めません。pre-push hook の警告は、lefthook の出力に表示されます。
 - ADR を書かずに `ADR_ACK=1` で抑えられるのはローカルの pre-push hook だけです。CI では `ADR_ACK` を渡さないので、ADR が要らない変更の PR には警告 (annotation) が残ります。
-- `scripts/test/adr-check.test.sh` が、警告が出る場合、出ない場合、`ADR_ACK=1` の場合、CI の annotation、pre-push の入力、起点がない場合 (ref がない、浅い clone) を確かめます。
+- `rules.test.ts` が対象の一覧、ADR があるとみなす条件、ref ごとの判断、警告と annotation の文面を、`cli.test.ts` が sandbox の中の git で、警告が出る場合、出ない場合、`ADR_ACK=1` の場合、CI の annotation、pre-push の入力、起点がない場合 (ref がない、浅い clone) を確かめます (どちらも `tools/scripts/src/checks/adr-check/`)。2026-10 に sh から TypeScript に移しました ([ADR 0024](0024-scripts-and-hooks-in-typescript.md))。振る舞いは変えていません。
 
 ## 出典
 

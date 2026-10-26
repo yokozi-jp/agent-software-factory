@@ -172,12 +172,12 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/worktree.test.sh"
       run: sh scripts/test/run.sh scripts/test/worktree.test.sh
-    - name: adr-check-test
+    # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
+    # still holds. The tests read only the files of the project, so a change elsewhere cannot change them.
+    - name: scripts-test
       glob:
-        - "scripts/adr-check.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/adr-check.test.sh"
-      run: sh scripts/test/run.sh scripts/test/adr-check.test.sh
+        - "tools/scripts/**"
+      run: pnpm exec nx test scripts
     - name: semgrep-test
       glob:
         - "scripts/semgrep.sh"
@@ -227,7 +227,7 @@ pre-push:
       use_stdin: true
     # Warns only (docs/adr/0016). Silence it with ADR_ACK=1 for a change that needs no ADR.
     adr-check:
-      run: scripts/adr-check.sh pre-push
+      run: node tools/scripts/src/checks/adr-check/cli.ts pre-push
       use_stdin: true
     # Two open PRs can take the same ADR number (docs/tooling/worktrees.md ("PR を出す")).
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
