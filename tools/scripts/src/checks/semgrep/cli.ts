@@ -6,7 +6,8 @@
 // Silence a finding with `nosemgrep: <rule-id>` followed by the reason, on the line of the finding.
 //   exit 0  no new ERROR finding
 //   exit 1  a new finding
-//   exit 2 or more  the scan could not run (no mise, no base, no network, a Semgrep error: Semgrep's code)
+//   exit 2 or more  the scan could not run (no mise, no base, no network, a Semgrep error: Semgrep's code;
+//                   git failed, not a repository: 2)
 // Run by the pre-push hook (which stops only on exit 1, so being offline does not block a push) and by CI
 // (which fails on both). The rules are in rules.ts; this file runs git and Semgrep.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -45,4 +46,11 @@ function main(): number {
   return run.status ?? 2;
 }
 
-process.exitCode = main();
+try {
+  process.exitCode = main();
+} catch (error) {
+  // git failed (not a repository): git has said why on stderr. Not 1, which a push would take for a finding.
+  process.exitCode = cannotScan(
+    error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error),
+  );
+}

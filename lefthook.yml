@@ -173,16 +173,26 @@ pre-commit:
         - "tsconfig.json"
         - ".node-version"
       run: pnpm exec nx test scripts
-    # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). The glob is the
-    # inputs of the test-tools target (tools/scripts/package.json) and `sharedGlobals`: a new betterleaks
-    # or Semgrep version (or Semgrep's dependency graph in .mise/locks/) can change what they report.
+    # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). They take minutes, so
+    # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)
+    # that are not the project (a new betterleaks or Semgrep version, or Semgrep's dependency graph in
+    # .mise/locks/, can change what they report), the tools tests, the checks that have them, the test
+    # helpers and the config that run them, and `sharedGlobals`. CI (`nx affected -t test-tools`) still
+    # runs them for every change to the project.
     - name: scripts-test-tools
       glob:
-        - "tools/scripts/**"
         - ".betterleaks.toml"
         - "mise.toml"
         - "mise.lock"
         - ".mise/locks/**"
+        - "tools/scripts/src/**/*.tools.test.ts"
+        - "tools/scripts/src/checks/secret-scan/**"
+        - "tools/scripts/src/checks/semgrep/**"
+        - "tools/scripts/src/test/isolation.ts"
+        - "tools/scripts/src/test/sandbox.ts"
+        - "tools/scripts/src/test/setup.ts"
+        - "tools/scripts/vite.config.ts"
+        - "tools/scripts/package.json"
         - "pnpm-workspace.yaml"
         - "vite.config.ts"
         - "tsconfig.json"

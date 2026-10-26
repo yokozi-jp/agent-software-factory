@@ -114,6 +114,16 @@ describe("semgrep", () => {
     expect(recorded()).toEqual([]);
   });
 
+  it("exits 2 (could not scan), not 1 (a finding), outside a git repository", () => {
+    const outside = join(box.root, "outside");
+    mkdirSync(outside);
+    const result = scan({}, outside);
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("semgrep: Command failed: git rev-parse --show-toplevel");
+    expect(recorded()).toEqual([]);
+  });
+
   it("exits 2 without mise, so CI fails instead of passing unchecked", () => {
     const noMise = join(box.root, "no-mise");
     mkdirSync(noMise);

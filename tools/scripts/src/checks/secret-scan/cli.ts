@@ -6,14 +6,19 @@
 //   exit 0  no secret found (or nothing to scan)
 //   exit 1  betterleaks found a secret, mise is missing, or a pushed ref cannot be compared
 //   exit 2  usage error
-// The rules are in rules.ts; this file reads argv and stdin, runs git and betterleaks, and prints.
+//   exit 128 or more  git failed (not a repository, a bad revision in range): git's code
+// The rules are in rules.ts; this file reads argv, stdin and git, runs betterleaks, and prints.
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { betterleaks, parseTarget, pushedRefs, usage } from "./rules.ts";
-
-const say = (line: string): void => {
-  process.stdout.write(`secret-scan: ${line}\n`);
-};
+import {
+  betterleaks,
+  exitStatus,
+  gitFailed,
+  parseTarget,
+  plan,
+  pushedRefs,
+  usage,
+} from "./rules.ts";
 
 function main(): number {
   const target = parseTarget(process.argv.slice(2));
@@ -32,59 +37,32 @@ function main(): number {
   const top = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
   const git = (args: readonly string[]): string =>
     execFileSync("git", args, { cwd: top, encoding: "utf8" }).trim();
-  // The only place betterleaks runs. Its findings go straight to the terminal.
-  const run = (mode: "git" | "dir", options: readonly string[]): number =>
-    spawnSync("mise", betterleaks(mode, options), { cwd: top, stdio: "inherit" }).status ?? 1;
-  // The commits that rev-list selects with revs ("base..head", "sha --not --remotes").
-  const scanCommits = (label: string, revs: readonly string[]): number => {
-    const count = Number(git(["rev-list", "--count", ...revs]));
-    if (count === 0) {
-      say(`${label}: 0 commits, skipped (nothing new to scan)`);
-      return 0;
+  const steps = plan(target, refs, {
+    hasCommit: (sha) =>
+      spawnSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: top }).status === 0,
+    countCommits: (revs) => Number(git(["rev-list", "--count", ...revs])),
+    countStaged: () => git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean).length,
+  });
+  const statuses = steps.map((step) => {
+    process.stdout.write(step.stdout);
+    if (step.kind === "report") {
+      process.stderr.write(step.stderr);
+      return step.status;
     }
-    say(`${label}: scanning ${count} commit(s) (${revs.join(" ")})`);
-    return run("git", [`--log-opts=${revs.join(" ")}`]);
-  };
-
-  switch (target.name) {
-    case "staged": {
-      const count = git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean).length;
-      if (count === 0) {
-        say("staged: 0 files, skipped (nothing staged)");
-        return 0;
-      }
-      say(`staged: scanning ${count} file(s)`);
-      return run("git", ["--staged"]);
-    }
-    case "pre-push": {
-      let status = 0;
-      for (const ref of refs) {
-        if (ref.kind === "deleted") {
-          say(`${ref.remoteRef}: branch deletion, nothing to scan`);
-        } else if (
-          ref.remote !== undefined &&
-          spawnSync("git", ["cat-file", "-e", `${ref.remote}^{commit}`], { cwd: top }).status !== 0
-        ) {
-          process.stderr.write(
-            `secret-scan: ${ref.remoteRef} is at ${ref.remote}, which is not in this clone.\n` +
-              "Run `git fetch` and push again, so the scan can tell which commits are new.\n",
-          );
-          status = 1;
-        } else if (scanCommits(ref.label, ref.revs) !== 0) {
-          status = 1;
-        }
-      }
-      return status;
-    }
-    case "range":
-      return scanCommits("range", [`${target.base}..${target.head}`]);
-    case "all":
-      say(`all: scanning ${git(["rev-list", "--count", "--all"])} commit(s) (full history)`);
-      return run("git", []);
-    case "worktree":
-      say("worktree: scanning working tree files");
-      return run("dir", []);
-  }
+    // The only place betterleaks runs. Its findings go straight to the terminal.
+    return spawnSync("mise", betterleaks(step.mode, step.options), { cwd: top, stdio: "inherit" })
+      .status;
+  });
+  return exitStatus(target, statuses);
 }
 
-process.exitCode = main();
+try {
+  process.exitCode = main();
+} catch (error) {
+  // git failed: git has said why on stderr.
+  const status = error instanceof Error && "status" in error ? error.status : undefined;
+  process.stderr.write(
+    `secret-scan: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}\n`,
+  );
+  process.exitCode = gitFailed(typeof status === "number" ? status : undefined);
+}

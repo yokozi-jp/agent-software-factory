@@ -27,8 +27,12 @@ const vitest = join(
   "vitest.mjs",
 );
 
-// Registers the test for the Vitest project `name` (vite.config.ts) in the calling test file.
-export function leavesTheRepositoryUntouched(name: "unit" | "tools"): void {
+// Registers the test for the Vitest project `name` (vite.config.ts) in the calling test file. filters are
+// Vitest's file filters for the child: only the test files whose path contains one run (all when empty).
+export function leavesTheRepositoryUntouched(
+  name: "unit" | "tools",
+  filters: readonly string[],
+): void {
   let box: Sandbox;
   let decoy: string;
   let remote: string;
@@ -73,7 +77,7 @@ export function leavesTheRepositoryUntouched(name: "unit" | "tools"): void {
     const run = runIn(
       decoy,
       process.execPath,
-      [vitest, "run", "--root", project, "--project", name, "--coverage.enabled=false"],
+      [vitest, "run", "--root", project, "--project", name, "--coverage.enabled=false", ...filters],
       { env: hook },
     );
     // On failure the diff shows the output of the child.

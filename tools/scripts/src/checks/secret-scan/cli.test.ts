@@ -161,6 +161,23 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([]);
   });
 
+  it("exits with git's code, not 1 (a finding), when git cannot read the range", () => {
+    const result = scan(["range", "nope", head]);
+    expect(result.status).toBe(128);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("secret-scan: Command failed: git rev-list --count nope..");
+    expect(recorded()).toEqual([]);
+  });
+
+  it("exits with git's code, not 1 (a finding), outside a git repository", () => {
+    const outside = join(box.root, "outside");
+    mkdirSync(outside, { recursive: true });
+    const result = scan(["all"], { dir: outside });
+    expect(result.status).toBe(128);
+    expect(result.stderr).toContain("secret-scan: Command failed: git rev-parse --show-toplevel");
+    expect(recorded()).toEqual([]);
+  });
+
   it.each([[[]], [["nonsense"]], [["range", "x"]], [["all", "--config", "x.toml"]]])(
     "prints the usage and exits 2 for %j",
     (args) => {

@@ -8,7 +8,7 @@ tags: [tooling, reference, lefthook, git-hooks]
 # Git hook
 
 hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定されます ([ADR 0001](../adr/0001-lefthook-for-git-hooks.md))。
-型チェックとテストは hook では実行せず、CI に任せます。例外は `tools/scripts` のテストで、`tools/scripts/**` か Nx の `sharedGlobals` のファイルを変えた commit の pre-commit が `nx test scripts` を実行します (Nx の cache が効くので、変わっていなければすぐ終わります)。本物の道具を使うテストは、その `inputs` (`.betterleaks.toml`、`mise.toml`、`mise.lock`、`.mise/locks/**`) も変えた commit で `nx test-tools scripts` として実行します。
+型チェックとテストは hook では実行せず、CI に任せます。例外は `tools/scripts` のテストで、`tools/scripts/**` か Nx の `sharedGlobals` のファイルを変えた commit の pre-commit が `nx test scripts` を実行します (Nx の cache が効くので、変わっていなければすぐ終わります)。本物の道具を使うテストは数分かかるので、それに関わるファイルを変えた commit でだけ `nx test-tools scripts` として実行します。その `inputs` のうち project の外のもの (`.betterleaks.toml`、`mise.toml`、`mise.lock`、`.mise/locks/**`)、`*.tools.test.ts`、それを持つ検査のディレクトリ (`src/checks/secret-scan/`、`src/checks/semgrep/`)、それが使うテストの helper (`src/test/` の `isolation.ts`、`sandbox.ts`、`setup.ts`)、`tools/scripts` の `vite.config.ts` と `package.json`、Nx の `sharedGlobals` のファイルです。CI はこの project を変えたすべての PR で実行します。
 
 ## 実行内容
 

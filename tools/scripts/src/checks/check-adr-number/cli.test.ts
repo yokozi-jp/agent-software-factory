@@ -110,12 +110,15 @@ describe("check-adr-number", () => {
     });
   });
 
-  it("exits 2 without checking when origin/main does not exist", () => {
-    prs([]);
+  it("carries on without origin/main, with the numbers of the open PRs, after git says why", () => {
     git("update-ref", "-d", "refs/remotes/origin/main");
+    prs([]);
+    expect(check()).toMatchObject({ status: 0, stdout: "next free ADR number: 0004\n" });
+    prs([{ number: 7, headRefName: "docs/other", files: [{ path: adr("0003-other") }] }]);
     const result = check();
-    expect(result.status).toBe(2);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("check-adr-number: Command failed: git ls-tree");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("next free ADR number: 0004\n");
+    expect(result.stderr).toMatch(/^fatal: Not a valid object name origin\/main\n/);
+    expect(result.stderr).toContain("ADR 0003 is also used by PR #7.");
   });
 });
