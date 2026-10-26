@@ -38,7 +38,7 @@ url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/63225
 version = "1.182.1"
 backend = "pypi:semgrep"
 specifiers = ["1.182.1"]
-uv = { path = ".mise/locks/pypi-semgrep/1.182.1", digest = "sha256:081e0facb7d81b026fa2797895bdbf093925e727f74383269da7c95dc85429f1" }
+uv = { path = ".mise/locks/pypi-semgrep/1.182.1", digest = "sha256:0391817b064aca72461e314e4b049728c4404fd1797f0cd0acdeb44948452a0e" }
 
 [[tools.python]]
 version = "3.13.17"
