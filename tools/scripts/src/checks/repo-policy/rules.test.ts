@@ -609,6 +609,12 @@ describe("references to docs/ from outside docs/", () => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([]);
   });
 
+  it("checks a path that only has research/ inside it", () => {
+    expect(violations(repo({ "apps/research/a.md": "docs/adr/9999\n" }))).toEqual([
+      "apps/research/a.md cites docs/adr/9999, which does not exist.",
+    ]);
+  });
+
   it("does not read binary files", () => {
     expect(violations(repo({ "assets/a.png": "\0docs/adr/9999\n" }))).toEqual([]);
   });
