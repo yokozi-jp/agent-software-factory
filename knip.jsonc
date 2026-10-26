@@ -7,6 +7,9 @@
   "treatConfigHintsAsErrors": true,
   // Installed outside npm (docs/adr/0009). secret-scan and semgrep in tools/scripts run `mise exec`.
   "ignoreBinaries": ["mise"],
+  // Detection-power fixtures of the module boundaries (#43): each breaks a lint rule on purpose, and nothing
+  // imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not checked.
+  "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**"],
   "workspaces": {
     ".": {
       // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).

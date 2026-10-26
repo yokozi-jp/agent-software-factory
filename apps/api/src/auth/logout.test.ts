@@ -52,6 +52,18 @@ describe("ログアウト (ADR 0022)", () => {
     expect(res.headers.has("clear-site-data")).toBe(false);
   });
 
+  it("ログアウトが失敗したときは、ブラウザにデータを捨てさせないこと", async () => {
+    // CSRF の検査は通り、Better Auth が本文の検証で 400 を返す。
+    const res = await fixture.app.request("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: appOrigin },
+      body: JSON.stringify({ disableRedirect: "yes" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.headers.has("clear-site-data")).toBe(false);
+  });
+
   it("IdP のセッションも終わらせ、次のログインでパスワードを聞き直すこと", async () => {
     const browser = fixture.newBrowser();
     await browser.login(users.sato);

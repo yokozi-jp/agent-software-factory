@@ -20,7 +20,7 @@ Hono が Bun 上で速いのは主にサーバー部分で、Node.js では `@ho
 
 - `apps/api/src` では、Node.js の組み込みモジュール、`bun` と `bun:*`、ランタイム用の adapter (`@hono/node-server`、`@hono/aws-lambda`、`@hono/node-ws`) を import しません。グローバルの `process`、`Bun`、`Buffer`、`__dirname`、`__filename`、`require` も使いません。環境変数は `c.env` で受け取ります。
 - ランタイム固有のコードは入口のファイル (今は `server.ts`) にだけ置きます。入口のファイル名は、`server.ts` のようにランタイムやデプロイ先が分かる名前にします。
-- ルールはルートの `vite.config.ts` の `lint.overrides` で設定していて、`vp check` (pre-commit と CI) で止まります。入口のファイルとテスト (`*.test.ts`) は対象から外しています。
+- ルールはルートの `vite.config.ts` の `lint.overrides` で設定していて、`vp check` (pre-commit と CI) で止まります。入口のファイルとテスト (`*.test.ts`) は対象から外しています。外すのはこのランタイムの制限だけで、モジュールの深い import を止める `no-restricted-imports` の制限は、入口のファイルとテストにも残ります ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。
 
 ## Considered Options
 

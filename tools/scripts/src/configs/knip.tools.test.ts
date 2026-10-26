@@ -82,6 +82,9 @@ const apps: Record<string, string> = {
     2,
   ),
   "apps/web/src/main.ts": 'export const title = "web";\n',
+  // A detection-power fixture of the module boundaries, which nothing imports (ignoreFiles in knip.jsonc).
+  "apps/api/src/__fixtures__/boundaries.ts":
+    '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
 };
 
 let box: Sandbox;

@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: "Issue tracker: GitHub"
-description: How skills create, read, label and link GitHub issues with the gh CLI. Read when a skill touches the issue tracker.
+description: How skills create, read, label and link GitHub issues with the gh CLI, and how a wayfinder research ticket is handed to a subagent. Read when a skill touches the issue tracker, or when you hand a research ticket to a subagent.
 tags: [agents, skills, github, issues]
 ---
 
@@ -75,6 +75,28 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
 - **Edit the map body**: `gh issue edit <map> --body-file` replaces the whole body, and other sessions edit the same map concurrently. Re-read the body (`gh issue view <map> --json body --jq .body`) right before writing; if it differs from the copy you edited, reapply your change on top of the fresh body, so another session's lines survive.
+
+## 調査チケットをサブエージェントに解かせる
+
+`/wayfinder` の `research` チケットは、チケットごとにサブエージェントに渡します。成果物は、merge しない `research/<名前>` ブランチの `research/<名前>.md` 1 つです。親は、サブエージェントを起動する前にチケットを claim します (`gh issue edit <n> --add-assignee @me`)。
+
+親が先に worktree を作ります。調査の worktree は docs だけなので、`pnpm install` まで行う `worktree.sh add` ではなく `git worktree add` を使います。
+
+```sh
+git fetch origin
+git worktree add -b research/<名前> /home/projects/agent-software-factory-worktrees/research/<名前> origin/main
+```
+
+サブエージェントへの指示に書くこと:
+
+- チケットの番号、worktree の絶対パス、成果物のファイル名。ファイルは絶対パスで読み書きし、shell は `cwd` に worktree を指定する。体裁は `git show research/verification-env-cd:research/verification-env-cd.md` に合わせる。
+- 一次情報を正とし、確かめた事実とサブエージェントの判断を分けて書く。決定は下さず、比較表と決めるべき論点で終える。`node_modules` はリポジトリの中に作らず、`/tmp` で試す。
+- `git add`、`git commit`、`git push` は、1 つ成功してから次を実行する。commit が失敗したら、直して新しい commit にしてから push する (失敗した commit のまま push すると、main と同じ commit が空のブランチとして公開される)。`--no-verify` と `--amend` は使わない。
+- commit の件名は [コミットと PR の規約](../repository/commit-conventions.md) に従う。先頭が `Hono` や `UI` のような大文字の英単語や略語だと `subject-case` で拒否されるので、日本語の語を前に置く (例: `docs: Hono CLI の調査を足す`)。
+- PR は作らない。Issue は変更しない (コメントと close は親が行う)。`retro` は実行しない ([タスクの区切りでの振り返り](retro.md))。
+- 最後の返答は、ブランチ名、ファイルのパス、commit SHA、push の成否、結論の要点 5 行以内、確かめられなかった点にする。
+
+親は、サブエージェントの返答で足ります。成果物のファイルを読み戻しません。解決コメントには、ブランチ上のファイルへのリンクと commit SHA、要点、確かめられなかった点を書きます。サブエージェントが終わったら、worktree を `git worktree remove` で消します (ブランチは残す)。生成物の `.nx` が残って消せないときは、ディレクトリを中身ごと消します。
 
 ## 検査
 

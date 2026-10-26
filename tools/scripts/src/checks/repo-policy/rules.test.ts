@@ -2,7 +2,7 @@
 // a repository that passes, and expects the message that names the problem. Reading git and the
 // working tree (and the staged mode) is in cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
-import { passingRepo } from "./fixtures/passing-repo.ts";
+import { moduleFixture, passingRepo } from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
 const base = passingRepo;
@@ -157,6 +157,91 @@ describe("ADR 0007: apps/api/src uses Web standard APIs only", () => {
     expect(violations(repo({ "vite.config.ts": later }))).toEqual([
       "vite.config.ts must set no-restricted-globals to error for apps/api/src (docs/adr/0007).",
     ]);
+  });
+});
+
+describe("ADR 0026: every package under packages/ has its boundaries and their fixtures", () => {
+  const config = base["vite.config.ts"] ?? "";
+  const notInModules = (name: string) =>
+    `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`;
+  const noFixture = (name: string, dir: string) =>
+    `packages/${name}/${dir}/__fixtures__/ has no fixture with \`oxlint-disable-next-line no-restricted-imports\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`;
+  const module = (name: string, dirs: readonly string[]) => ({
+    [`packages/${name}/package.json`]: "{}",
+    ...Object.fromEntries(
+      dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
+    ),
+  });
+
+  it("refuses a module that vite.config.ts does not list", () => {
+    expect(violations(repo(module("approval", ["src", "src/domain", "src/http"])))).toEqual([
+      notInModules("approval"),
+    ]);
+  });
+
+  it("refuses a module without the fixture of src/ or of a layer", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([noFixture("claim", "src"), noFixture("claim", "src/http")]);
+  });
+
+  it("refuses a fixture without the disable comment of no-restricted-imports", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/boundaries.ts":
+            '// oxlint-disable-next-line no-console -- fixture\nimport "@x/other";\n',
+        }),
+      ),
+    ).toEqual([noFixture("claim", "src/domain")]);
+  });
+
+  it("refuses a fixture that is outside __fixtures__/ of its directory", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/domain/boundaries.ts": moduleFixture,
+          "packages/claim/src/domain/deeper/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([noFixture("claim", "src/domain")]);
+  });
+
+  it("asks shared for the fixture of src/ only, and not for an entry in modules", () => {
+    expect(
+      violations(repo({ "packages/shared/src/__fixtures__/boundaries.ts": undefined })),
+    ).toEqual([noFixture("shared", "src")]);
+  });
+
+  it("follows the layers that vite.config.ts lists", () => {
+    const threeLayers = config.replace('  http: ["domain"],', '  http: ["domain"],\n  infra: [],');
+    expect(violations(repo({ "vite.config.ts": threeLayers }))).toEqual([
+      noFixture("claim", "src/infra"),
+    ]);
+  });
+
+  it("refuses every module when vite.config.ts has no modules object", () => {
+    const none = config.replace("const modules", "const packages");
+    expect(violations(repo({ "vite.config.ts": none }))).toEqual([notInModules("claim")]);
+  });
+
+  it("asks a module for the fixture of src/ only when vite.config.ts has no layers object", () => {
+    const none = config.replace("const layers", "const tiers");
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": none,
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -600,12 +685,19 @@ describe("references to docs/ from outside docs/", () => {
     "docs/tooling/a.md",
     ".agents/skills/a/SKILL.md",
     ".kiro/skills/a/SKILL.md",
+    "research/a.md",
     "tools/scripts/src/checks/adr-check/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/passing-repo.ts",
     "pnpm-lock.yaml",
   ])("does not check %s, which may cite missing docs on purpose", (path) => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([]);
+  });
+
+  it("checks a path that only has research/ inside it", () => {
+    expect(violations(repo({ "apps/research/a.md": "docs/adr/9999\n" }))).toEqual([
+      "apps/research/a.md cites docs/adr/9999, which does not exist.",
+    ]);
   });
 
   it("does not read binary files", () => {
@@ -659,6 +751,51 @@ describe("ADR 0002: the edges", () => {
   it("passes a run key nested deeper in the config", () => {
     const nested = "export default {\n  test: {\n    run: 1,\n  },\n};\n";
     expect(violations(repo({ "apps/web/vite.config.ts": nested }))).toEqual([]);
+  });
+});
+
+describe("ADR 0026: the edges", () => {
+  const notInModules = (name: string) =>
+    `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`;
+  const config = base["vite.config.ts"] ?? "";
+  const noLayers = config.replace('{\n  domain: [],\n  http: ["domain"],\n}', "{}");
+  // The vite.config.ts that passes, with `body` in its modules object, no layers, and a line before modules.
+  const modulesConfig = (body: string) =>
+    `const scope = "x";\n${noLayers.replace("{\n  claim: [],\n}", `{${body}}`)}`;
+  const onlyPackage = (name: string, body: string) =>
+    repo({
+      "packages/claim/package.json": undefined,
+      [`packages/${name}/package.json`]: "{}",
+      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+      "vite.config.ts": modulesConfig(body),
+    });
+
+  it.each([
+    ["a quoted key", "foo-bar", '\n  "foo-bar": [],\n'],
+    ["a key of digits and an underscore", "a_2", "\n  a_2: [],\n"],
+    ["keys on one line", "b", ' a: ["b"], b: [] '],
+    ["a space before the colon", "c", "\n  c : [],\n"],
+  ])("reads %s", (_, name, body) => {
+    expect(violations(onlyPackage(name, body))).toEqual([]);
+  });
+
+  it("does not take a module that another module may import for a key", () => {
+    expect(violations(onlyPackage("claim", '\n  approval: ["claim"],\n'))).toEqual([
+      notInModules("claim"),
+    ]);
+  });
+
+  it("reads only a top-level `const modules`, not one indented or of a longer name", () => {
+    const others = `const modules2 = { claim: [] };\n${noLayers.replace("const modules", "  const modules")}`;
+    expect(violations(repo({ "vite.config.ts": others }))).toEqual([notInModules("claim")]);
+  });
+
+  it.each([
+    "apps/packages/approval/package.json",
+    "packages/approval/package.json.orig",
+    "packages/claim/nested/package.json",
+  ])("passes %s, which is not the manifest of a package under packages/", (path) => {
+    expect(violations(repo({ [path]: "{}" }))).toEqual([]);
   });
 });
 

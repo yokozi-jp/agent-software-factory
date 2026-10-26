@@ -25,8 +25,10 @@ tester.run("japanese-title", japaneseTitle, {
     // テスト名ではない呼び出し。
     'items.it("english", () => {});',
     'expect("english").toBe("english");',
+    'items.it.each([1, 2])("english", () => {});',
     // 名前が文字列でないものは、検査できないので通す。
     "it(title, () => {});",
+    "it();",
   ],
   invalid: [
     {
