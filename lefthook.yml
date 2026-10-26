@@ -36,6 +36,7 @@ pre-commit:
       glob:
         - "docs/**"
         - "tools/scripts/src/checks/docs-check/*.ts"
+        - "tools/scripts/src/checks/json.ts"
         - "pnpm-workspace.yaml"
       run: node tools/scripts/src/checks/docs-check/cli.ts staged
     - name: shellcheck
@@ -85,6 +86,7 @@ pre-commit:
         - ".kiro/skills/**"
         - "skills-lock.json"
         - "tools/scripts/src/checks/skills-lock/*.ts"
+        - "tools/scripts/src/checks/json.ts"
       run: node tools/scripts/src/checks/skills-lock/cli.ts
     # Behaviour tests (scripts/test/) for the scripts and Kiro hooks that changed.
     - name: kiro-hooks-test

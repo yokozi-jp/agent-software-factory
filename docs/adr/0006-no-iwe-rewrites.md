@@ -7,7 +7,7 @@ tags: [adr, documentation, iwe, oxfmt]
 
 # ADR 0006: IWE の書き換え操作を使わず、Markdown の書式は oxfmt に任せる
 
-このリポジトリの Markdown の書式は oxfmt (`vp fmt`) が決めています。IWE の `normalize`、`rename`、`update`、`extract`、`inline` は、対象の文書とリンク元の文書を IWE の書式で書き直すので、oxfmt の書式と衝突し、内容と関係のない差分が出ます。そこで IWE は、新しい文書の作成 (`iwe_create`) と、検索、リンクの追跡、検査だけに使います。作成時にリンク切れ、孤立、類似の文書の警告が返るので、作成だけは IWE を通します。既存の文書はファイルを直接編集し、移動は `git mv` で行ってリンクを手で直し、`scripts/docs-check.sh` で確かめます。
+このリポジトリの Markdown の書式は oxfmt (`vp fmt`) が決めています。IWE の `normalize`、`rename`、`update`、`extract`、`inline` は、対象の文書とリンク元の文書を IWE の書式で書き直すので、oxfmt の書式と衝突し、内容と関係のない差分が出ます。そこで IWE は、新しい文書の作成 (`iwe_create`) と、検索、リンクの追跡、検査だけに使います。作成時にリンク切れ、孤立、類似の文書の警告が返るので、作成だけは IWE を通します。既存の文書はファイルを直接編集し、移動は `git mv` で行ってリンクを手で直し、`node tools/scripts/src/checks/docs-check/cli.ts` で確かめます。
 
 ## Consequences
 

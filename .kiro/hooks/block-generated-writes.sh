@@ -69,7 +69,7 @@ case "$rel" in
     refuse "TanStack Router generates it from the route files." "change the route files under apps/web/src/routes/ and run the build (\`pnpm exec nx build web\`), then commit the regenerated file."
     ;;
   skills-lock.json | .agents/skills | .agents/skills/* | .kiro/skills | .kiro/skills/*)
-    refuse "Agent skills are installed from upstream by the skills CLI and must match skills-lock.json." "run \`pnpm dlx skills update\` (or \`pnpm dlx skills add <source>\`), then check with \`node scripts/verify-skills-lock.mjs\`."
+    refuse "Agent skills are installed from upstream by the skills CLI and must match skills-lock.json." "run \`pnpm dlx skills update\` (or \`pnpm dlx skills add <source>\`), then check with \`node tools/scripts/src/checks/skills-lock/cli.ts\`."
     ;;
   pnpm-lock.yaml)
     refuse "pnpm writes it." "change package.json or pnpm-workspace.yaml and run \`pnpm install\` (or \`pnpm add\`)."

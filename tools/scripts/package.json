@@ -26,7 +26,10 @@
           "default",
           "{workspaceRoot}/mise.toml",
           "{workspaceRoot}/mise.lock",
-          "{workspaceRoot}/docs/.iwe/**"
+          "{workspaceRoot}/docs/.iwe/config.toml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf.yaml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf-index.yaml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf-log.yaml"
         ]
       },
       "mutation": {
