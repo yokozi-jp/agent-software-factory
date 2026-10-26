@@ -34,7 +34,7 @@ packages/  サンプル機能のモジュール (claim、approval、closing) と
   <module>/src/  index.ts (公開 API) と層 (domain/、application/、infrastructure/、http/)
 tools/
   scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
-    src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
+    src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、工場の成果の指標の集計 (metrics/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
     sh/      CLI を呼ぶだけの sh のラッパー
 docs/      ドキュメント (入口は docs/index.md)
 ```
@@ -65,6 +65,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `tools/scripts/sh/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                                        |
 | 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `node tools/scripts/src/checks/adr-check/cli.ts`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
 | テストファイルの削除とテストケースの数の減少の確認 (警告だけ)                                                    | `node tools/scripts/src/checks/test-weakening/cli.ts`。意図した変更は `TESTS_ACK=1` で抑える ([CI](ci.md#ciyml-の検証))                             |
+| 工場の成果の指標の集計 (期間か、境目の PR の前後)                                                                | `node tools/scripts/src/metrics/cli.ts --since <YYYY-MM-DD>` ([工場の成果の指標](../agents/factory-metrics.md))                                     |
 | 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                                               |
 
 ## 補足

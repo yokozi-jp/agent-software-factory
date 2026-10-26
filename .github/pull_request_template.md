@@ -26,3 +26,7 @@ squash merge でタイトルが main のコミットになり、リリースの�
 <!-- 関連 Issue があれば書く。merge 時に自動で close される。 -->
 
 Closes #
+
+<!-- merge 済みの PR の誤りを直すか revert する PR なら、その PR の番号を書く (複数は `#12, #34`)。手戻りの指標に使う (docs/agents/factory-metrics.md)。 -->
+
+直す PR: #
