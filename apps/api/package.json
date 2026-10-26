@@ -11,6 +11,9 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@agent-software-factory/approval": "workspace:*",
+    "@agent-software-factory/claim": "workspace:*",
+    "@agent-software-factory/closing": "workspace:*",
     "@hono/node-server": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
