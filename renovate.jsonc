@@ -48,7 +48,7 @@
     {
       "customType": "regex",
       "description": "The Renovate version in tools/scripts/sh/renovate.sh",
-      "managerFilePatterns": ["/^scripts\\/renovate\\.sh$/"],
+      "managerFilePatterns": ["/^tools\\/scripts\\/sh\\/renovate\\.sh$/"],
       "matchStrings": ["renovate_version=\"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "renovate",
       "datasourceTemplate": "npm",

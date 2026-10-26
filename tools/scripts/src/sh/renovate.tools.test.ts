@@ -2,7 +2,7 @@
 // renovate.jsonc of this repository and on configurations that Renovate refuses.
 // Reads renovate.jsonc of the workspace, an input of the test-tools target (tools/scripts/package.json).
 // How the script calls pnpm is in renovate.test.ts.
-import { copyFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
@@ -30,6 +30,33 @@ beforeAll(() => {
 });
 afterAll(() => {
   box.remove();
+});
+
+// The custom manager of renovate.jsonc keeps the Renovate version in renovate.sh up to date. If the path it names
+// is not the script's, Renovate stops updating that version without any error.
+describe("the custom manager that updates renovate_version", () => {
+  const config = readFileSync(join(workspace, "renovate.jsonc"), "utf8");
+  const manager =
+    /"managerFilePatterns": \["\/(?<file>[^"]+)\/"\],\s*"matchStrings": \["(?<version>renovate_version.*?)"\],\s*"depNameTemplate"/.exec(
+      config,
+    )?.groups;
+  // The strings in renovate.jsonc are JSON strings, so a backslash is written twice.
+  const unescape = (text: string | undefined): RegExp => {
+    const value: unknown = JSON.parse(`"${text}"`);
+    return new RegExp(String(value));
+  };
+
+  it("matches the path of renovate.sh, and no other script", () => {
+    const file = unescape(manager?.file);
+    expect(file.test("tools/scripts/sh/renovate.sh")).toBe(true);
+    expect(file.test("scripts/renovate.sh")).toBe(false);
+    expect(file.test("tools/scripts/sh/shellcheck.sh")).toBe(false);
+  });
+
+  it("finds the version in renovate.sh", () => {
+    const text = readFileSync(script, "utf8");
+    expect(unescape(manager?.version).exec(text)?.groups?.currentValue).toMatch(/^\d+\.\d+\.\d+$/);
+  });
 });
 
 describe("renovate.sh validate with the real renovate-config-validator", () => {
