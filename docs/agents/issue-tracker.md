@@ -62,6 +62,7 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
 - **Child ticket**: an issue linked to the map as a GitHub sub-issue (see **Make an issue a sub-issue of a parent**). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
 - **Blocking**: GitHub's **native issue dependencies**, the canonical, UI-visible representation. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric **database id** (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`, _not_ the `#number` or `node_id`). GitHub reports `issue_dependencies_summary.blocked_by` (open blockers only, the live gate). Where dependencies aren't available, fall back to a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
+  - 本文の先頭に `Blocked by:` の行を書いたら (地図の子でも作業の Issue でも)、その行の Issue ごとにネイティブの辺も張る。本文の行だけでは、frontier の問い合わせにも GitHub の画面にも出ない。本文に「X の後」と前提を書いたときも、辺にするか、前提ではないと書き分ける。経緯を示すだけの Issue は、`（決定は [#75](…)）` のように全角の括弧に入れる (検査が blocker に数えない)。
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins. 実行するコマンドは次のとおり。`--paginate` を付けないと、子の最初の 30 件で切れて、後ろの open の子を見落とす。`api.github.com` が `EOF` で失敗したら、同じコマンドを繰り返す。
 
   ```sh
@@ -74,3 +75,13 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
 - **Edit the map body**: `gh issue edit <map> --body-file` replaces the whole body, and other sessions edit the same map concurrently. Re-read the body (`gh issue view <map> --json body --jq .body`) right before writing; if it differs from the copy you edited, reapply your change on top of the fresh body, so another session's lines survive.
+
+## 検査
+
+`node tools/scripts/src/checks/issue-tracker/cli.ts` が、Issue のずれのうち機械的に見つかる 3 つを報告します (exit 1)。`.github/workflows/issue-tracker.yml` が毎週月曜に実行し、失敗はメールで届きます。Issue は PR の外で変わるので、必須チェックにはしません。`/implement` で Issue を取る前と、ファイルを移す PR を merge した後にも手で実行します。
+
+- **消えたパス**: open な Issue のインラインコードに、git の履歴で消えたパスがある。ファイルを移す PR ([Issue #158](https://github.com/yokozi-jp/agent-software-factory/issues/158) の `scripts/`) の後、古いパスを指したままの Issue をエージェントが古い形で作るのを防ぎます。履歴の全部が要るので、shallow clone では exit 2 で止まります。
+- **実施の Issue の漏れ**: 地図の判断のチケット (`wayfinder:grilling`、`wayfinder:prototype`) が completed で閉じたのに、Decisions so far の行にも解決コメントにも「実施」がない。地図の Notes の「実施の Issue を漏らさない」の規則を確かめます。地図 #23 の、この規則より前に閉じた 11 件は `cli.ts` の `closedBeforeTheRule` で外しています。
+- **張り忘れた辺**: 本文の `Blocked by:` の行が名指しする Issue に、ネイティブの辺がない (上の「Wayfinding operations」の **Blocking**)。
+
+規則は `tools/scripts/src/checks/issue-tracker/rules.ts` にあります。

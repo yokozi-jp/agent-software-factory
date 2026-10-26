@@ -18,6 +18,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 | `commitlint.yml`        | PR                 | PR タイトルと PR 内の全コミットを検証                                                                                                                                                      |
 | `secret-scan.yml`       | PR、main への push | secret-scan の `*.tools.test.ts` (本物の betterleaks のテスト) とその隔離の後、PR は PR のコミットを、main は全履歴を betterleaks で scan                                                  |
 | `dependency-review.yml` | PR                 | PR が足した依存に、重大度 high 以上の既知の脆弱性があれば失敗する (`actions/dependency-review-action`、runtime と development の両方。[ADR 0021](../adr/0021-sast-and-dependency-scan.md)) |
+| `issue-tracker.yml`     | 毎週月曜、手動     | open な Issue の消えたパス、地図の実施の Issue の漏れ、`Blocked by:` の張り忘れた辺を報告する。必須チェックではない ([Issue tracker](../agents/issue-tracker.md#検査))                     |
 | `release.yml`           | 手動               | `nx release` ([リリース](../repository/release.md))                                                                                                                                        |
 
 CodeQL は workflow のファイルを持たない default setup で、GitHub が PR と main を解析します。merge を止めるのは ruleset の `code_scanning` の規則です ([GitHub リポジトリの設定](../repository/github-settings.md))。
