@@ -18,14 +18,14 @@ PR は squash merge し、タイトルは `chore(deps): ...` です。
 
 ## 更新の対象
 
-| ファイル                                        | 更新するもの                                                                                   |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `mise.toml`、`mise.lock`                        | actionlint、betterleaks、shellcheck、zizmor。Renovate が `mise lock` で `mise.lock` も更新する |
-| `.betterleaks.toml`                             | `betterleaksMinVersion`。betterleaks の PR で、`mise.toml` と一緒に更新する                    |
-| `.github/workflows/*.yml`                       | Action の commit SHA と、同じ行の `# v1.2.3` のコメント。`jdx/mise-action` の `version`        |
-| `pnpm-workspace.yaml`、`pnpm-lock.yaml`         | catalog の依存。nx と vite-plus と tanstack router は monorepo ごとに1つの PR にまとまる       |
-| `.node-version`、`package.json` の `devEngines` | Node.js (メジャー版を除く) と pnpm                                                             |
-| `scripts/renovate.sh`                           | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する |
+| ファイル                                        | 更新するもの                                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `mise.toml`、`mise.lock`                        | jactionlint、betterleaks、shellcheck、zizmor。Renovate が `mise lock` で `mise.lock` も更新する |
+| `.betterleaks.toml`                             | `betterleaksMinVersion`。betterleaks の PR で、`mise.toml` と一緒に更新する                     |
+| `.github/workflows/*.yml`                       | Action の commit SHA と、同じ行の `# v1.2.3` のコメント。`jdx/mise-action` の `version`         |
+| `pnpm-workspace.yaml`、`pnpm-lock.yaml`         | catalog の依存。nx と vite-plus と tanstack router は monorepo ごとに1つの PR にまとまる        |
+| `.node-version`、`package.json` の `devEngines` | Node.js (メジャー版を除く) と pnpm                                                              |
+| `scripts/renovate.sh`                           | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する  |
 
 `config:best-practices` により、npm のパッケージは公開から3日たつまで PR を出しません。
 lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新します。`mise.toml` の版は固定しているので、`mise.lock` の週次の更新では版が変わりません。
@@ -36,13 +36,13 @@ lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新�
 | ----------------------------------- | --------------------------------------------------------------------------------------------- |
 | betterleaks のメジャー版            | v1 に留める ([ADR 0003](../adr/0003-pin-betterleaks-v1.md))                                   |
 | Node.js、`@types/node` のメジャー版 | Lambda の runtime とそろえる ([ADR 0013](../adr/0013-api-on-ecs-and-lambda-web-functions.md)) |
-| `runs-on` の image (`ubuntu-24.04`) | runner の OS を変えるのは、別の判断                                                           |
+| `runs-on` の image (`ubuntu-26.04`) | runner の OS を変えるのは、別の判断                                                           |
 
 ## PR を merge する前に
 
 CI (`main`、`commitlint`、`betterleaks`) が通ったことを確かめます。そのうえで、PR ごとに次を見ます。
 
-- **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えていないこと。zizmor や actionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
+- **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えていないこと。zizmor や jactionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
 - **betterleaks**: `mise.toml`、`mise.lock`、`.betterleaks.toml` の3つが同じ版に変わっていること。`check-repo-policy.sh` が落ちたら、そろっていないファイルを直します。
 - **Action**: SHA が変わり、同じ行のコメントの版も変わっていること。リリースノートで権限や入力の変更がないか見ます。
 - **catalog**: `pnpm-lock.yaml` が変わっていること。

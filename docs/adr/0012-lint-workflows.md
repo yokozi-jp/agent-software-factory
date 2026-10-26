@@ -1,20 +1,29 @@
 ---
 type: ADR
-title: "ADR 0012: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する"
-description: git で管理している workflow を actionlint 1.7.12 と zizmor 1.31.1 で検査し、mise で固定した版を pre-commit hook と CI の同じスクリプトから使う決定。zizmor はオフラインで動かし、fork の jactionlint はまだ使わない。workflow の検査を変えるとき、二つの道具の版や設定を変えるとき、jactionlint への移行を考えるときに読む。
-tags: [adr, tooling, actionlint, zizmor, github-actions, ci, security]
+title: "ADR 0012: GitHub Actions の workflow は版を固定した jactionlint と zizmor で検査する"
+description: git で管理している workflow を jactionlint 2.3.0 (actionlint の fork、correctness profile) と zizmor 1.31.1 で検査し、mise で固定した版を pre-commit hook と CI の同じスクリプトから使う決定。zizmor はオフラインで動かす。最初は upstream の actionlint を使い、upstream が ubuntu-26.04 の runner label に対応しないので 2026-10-24 に jactionlint に移した。workflow の検査を変えるとき、二つの道具の版や設定を変えるとき、upstream の actionlint に戻したくなったときに読む。
+tags: [adr, tooling, actionlint, jactionlint, zizmor, github-actions, ci, security]
 ---
 
-# ADR 0012: GitHub Actions の workflow は版を固定した actionlint と zizmor で検査する
+# ADR 0012: GitHub Actions の workflow は版を固定した jactionlint と zizmor で検査する
 
 `.github/workflows/` の workflow を検査するものは、`vp check` の書式の検査しかありませんでした。式の型の誤りや存在しない step の参照は、PR で workflow が動くまで分かりません。script injection、過大な権限、`persist-credentials` の書き忘れは、動いても分かりません。そこで二つの道具で検査します。
 
-- **actionlint**: workflow の構文、式の型、`needs` や `steps` の参照、Action の入力を検査します。`PATH` に shellcheck があれば、`run:` のスクリプトも shellcheck で検査します。`mise exec` は `mise.toml` の道具をすべて `PATH` に入れるので、固定した shellcheck ([ADR 0008](0008-pin-shellcheck.md)) で検査します。
+- **jactionlint**: actionlint の fork です ([jdx/jactionlint](https://github.com/jdx/jactionlint))。`.github/jactionlint.yaml` で `profile: correctness` を選び、actionlint と同じ範囲の検査にします。workflow の構文、式の型、`needs` や `steps` の参照、Action の入力を検査します。`PATH` に shellcheck があれば、`run:` のスクリプトも shellcheck で検査します。`mise exec` は `mise.toml` の道具をすべて `PATH` に入れるので、固定した shellcheck ([ADR 0008](0008-pin-shellcheck.md)) で検査します。
 - **zizmor**: workflow のセキュリティの問題を検査します。template injection、`persist-credentials` の書き忘れ (artipacked)、過大な権限、commit SHA で固定していない Action などです。
 
-二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (actionlint 1.7.12、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`scripts/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `scripts` job と、workflow を変えた commit の pre-commit hook から呼びます。
+二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (jactionlint 2.3.0、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`scripts/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `scripts` job と、workflow を変えた commit の pre-commit hook から呼びます。
 
 zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TOKEN` があると、GitHub API を使う online audit (impostor-commit、known-vulnerable-actions、ref-confusion、stale-action-refs など) も実行します。トークンの有無で結果が変わると、ローカルの hook と CI の結果がずれます。API の一時的な失敗で hook や CI が落ちることもあります。
+
+## upstream の actionlint から jactionlint に移した経緯
+
+最初 (2026-10-23) は upstream の actionlint 1.7.12 を使い、jactionlint は下の「Considered Options」の理由で採りませんでした。2026-10-24 に、すべての workflow の runner を環境構築の手順と同じ `ubuntu-26.04` にしたところ、actionlint 1.7.12 が `label "ubuntu-26.04" is unknown` と報告しました。`ubuntu-26.04` は 2026-09-17 に GA になった GitHub-hosted runner です ([GitHub changelog](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/))。upstream の main もこの label を知らず、対応を求める Issue (#682) と PR (#683、#723、#743) は 2026-06 から閉じられていません。最後の commit は 2026-04-19、最後の release は 2026-03-30 の v1.7.12 です。下の Consequences に書いていた「upstream の actionlint が、使いたい runner label で誤った指摘を出し、直らない」に当たるので、jactionlint に移しました。
+
+- `.github/actionlint.yaml` の `self-hosted-runner.labels` に `ubuntu-26.04` を足す回避も考えました。1行で済みますが、self-hosted runner のための設定を GitHub-hosted runner に流用することになり、upstream が休止したままなので外す時期も来ません。
+- jactionlint 2.3.0 の `correctness` profile で今の workflow を検査し、指摘がないことを確かめました。`scripts/test/lint-workflows.test.sh` の、わざと誤りを入れた workflow は、actionlint のときと同じく失敗します。
+- 入れ方は upstream と同じ aqua backend (`"aqua:jdx/jactionlint"`) で、`mise.lock` に checksum と github-attestations の provenance が記録されます。mise の registry の短い名前 `jactionlint` は github backend を指すので使いません。
+- zizmor は併用を続けます。jactionlint の `default` profile の security と policy の規則は使いません。
 
 ## Considered Options
 
@@ -22,7 +31,8 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 - **CI だけトークンを渡して online audit を実行する**: 検査は増えますが、ローカルと CI の結果がずれます。入れるなら別の Issue にします。
 - **jactionlint (`jdx/jactionlint`)**: mise の作者の jdx が 2026-10-05 に作った actionlint の fork です。upstream で merge されていない修正、新しい構文 (parallel steps など)、zizmor の audit に倣った security と policy の規則を足しています。mise は同じ日の v2026.10.3 で `actionlint` を非推奨にし、jactionlint を勧めています。ただし、registry にこの推奨を入れたのは jdx 本人です。jactionlint は 2026-10-07 から aqua registry にも入っているので、upstream と同じく aqua backend で入れられ、`mise.lock` に attestation の検証を記録できます。
   upstream の `rhysd/actionlint` は archive されておらず、保守の終了も宣言されていません。ただし main への commit は 2026-04-19 が最後で、作者の不在を尋ねた Issue #719 にも作者の rhysd は返信していません。事実上休止している、と判断します。
-  それでも今は upstream を使います。これは判断です。jactionlint は作られて 3 週間で、作って 4 日後の 2026-10-09 に v2.0.0 を出しています。`--profile` を指定しないと security と policy の規則も動き、v2.0.0 から v2.2.0 までの minor の版ごとに規則が足されています。fork 後の commit のほとんどは jdx 一人のものです。lint の版を上げるたびに指摘が変わると、hook と CI で同じスクリプトを使うこの構成では、版を上げる作業が重くなります。一方で、今の workflow は jactionlint 2.3.0 で検査しても指摘がないことを確かめました (actionlint 1.7.12 でも同じです)。upstream の休止で困ることは、まだ起きていません。jactionlint は zizmor の audit をすべて持つと主張していますが、これは jactionlint 自身の比較で、自分で欠けを挙げてもいます。そのため zizmor の代わりにもしません。
+  2026-10-23 の時点では upstream を使いました。これは判断でした。jactionlint は作られて 3 週間で、作って 4 日後の 2026-10-09 に v2.0.0 を出しています。`--profile` を指定しないと security と policy の規則も動き、v2.0.0 から v2.2.0 までの minor の版ごとに規則が足されています。fork 後の commit のほとんどは jdx 一人のものです。lint の版を上げるたびに指摘が変わると、hook と CI で同じスクリプトを使うこの構成では、版を上げる作業が重くなります。一方で、今の workflow は jactionlint 2.3.0 で検査しても指摘がないことを確かめました (actionlint 1.7.12 でも同じです)。upstream の休止で困ることは、まだ起きていません。jactionlint は zizmor の audit をすべて持つと主張していますが、これは jactionlint 自身の比較で、自分で欠けを挙げてもいます。そのため zizmor の代わりにもしません。
+- **upstream の actionlint に `.github/actionlint.yaml` で label を足して使い続ける**: 上の経緯のとおり採りませんでした。
 - **pip や uvx で zizmor を入れる**: Python の環境が要ります。mise の aqua backend は、registry の定義に従って checksum や attestation を検証して入れるので、ほかの道具と入れ方を揃えられます。
 
 ## Consequences
@@ -32,13 +42,9 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 - 意図して書いた箇所の指摘は、その場所に理由を書いて止めます。zizmor は `# zizmor: ignore[<audit>]`、`run:` の中の shellcheck は `# shellcheck disable=SCxxxx` です。例えば `release.yml` の checkout は、`nx release` が push するので `persist-credentials` を残します。
 - zizmor の persona は既定の regular です。pedantic の指摘 (permissions の説明のコメントなど) は扱いません。
 - 版を上げるときは、`mise.toml` の版を変えて `mise lock --platform linux-x64` を実行し、`mise.lock` と一緒に commit します。新しい版で指摘が増えたら、同じ PR で直します。
-- mise 2026.10.17 で、`mise install` が actionlint は非推奨だという警告を出し、`mise exec` は警告を出さないことを確かめました。
-- 次のどれかが起きたら、jactionlint への移行を検討し直します。
-  - upstream の actionlint が、使いたい構文や runner label で誤った指摘を出し、直らない。
-  - upstream が archive されるか、保守の終了が宣言される。
-  - jactionlint が 2〜3 か月 major を上げずに落ち着き、jdx 以外の継続的な contributor や、第三者の採用が出てくる。
-
-  移るときは、`mise.toml` に `"aqua:jdx/jactionlint"` を完全な版で書き、`.github/jactionlint.yaml` に `profile: correctness` を書いて、actionlint と同じ範囲から始めます。zizmor はしばらく併用して、両方の指摘を比べます。これも判断です。
+- jactionlint は minor の版ごとに規則を足しています。版を上げる Renovate の PR で指摘が増えたら、同じ PR で直すか、`.github/jactionlint.yaml` で規則を外します。`correctness` profile を選んでいるので、`default` profile に足された規則は増えません。
+- `scripts/test/lint-workflows.test.sh` は `.github/jactionlint.yaml` を sandbox にコピーします。設定がないと `default` profile が動き、`concurrency-limits` や `missing-timeout` が報告されるためです。
+- upstream の actionlint が保守を再開し、runner label にも追いついたら、戻すかどうかを検討し直します。jactionlint は actionlint の設定ファイルも読むので、戻すときは `mise.toml` の名前と `scripts/lint-workflows.sh` のコマンドを変えるだけです。これは判断です。
 
 ## 出典
 
@@ -53,5 +59,7 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 - jactionlint の v2 の変更と既定の profile: [jactionlint の CHANGELOG](https://github.com/jdx/jactionlint/blob/main/CHANGELOG.md)、[Coming from actionlint](https://github.com/jdx/jactionlint/blob/main/docs/actionlint.md)
 - jactionlint の zizmor との比較と、自分で挙げた欠け: [jactionlint and zizmor](https://github.com/jdx/jactionlint/blob/main/docs/zizmor-parity.md)
 - jactionlint が aqua registry に入ったこと: [aqua-registry#62034](https://github.com/aquaproj/aqua-registry/pull/62034) (2026-10-07)
-- upstream の状態: [rhysd/actionlint の commits](https://github.com/rhysd/actionlint/commits/main)、[Issue #719](https://github.com/rhysd/actionlint/issues/719)
+- upstream の状態: [rhysd/actionlint の commits](https://github.com/rhysd/actionlint/commits/main)、[Issue #719](https://github.com/rhysd/actionlint/issues/719)、ubuntu-26.04 の Issue [#682](https://github.com/rhysd/actionlint/issues/682) と PR [#683](https://github.com/rhysd/actionlint/pull/683)、[#743](https://github.com/rhysd/actionlint/pull/743)
+- `correctness` profile と、actionlint の設定ファイルを読むこと: [jactionlint の Coming from actionlint](https://github.com/jdx/jactionlint/blob/main/docs/actionlint.md)
+- `ubuntu-26.04` の runner: [actions/runner-images の README](https://github.com/actions/runner-images)
 - 各版の公開日: [rhysd/actionlint の Releases](https://github.com/rhysd/actionlint/releases)、[jdx/jactionlint の Releases](https://github.com/jdx/jactionlint/releases)、[zizmorcore/zizmor の Releases](https://github.com/zizmorcore/zizmor/releases)

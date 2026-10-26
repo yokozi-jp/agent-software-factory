@@ -99,6 +99,7 @@ refuses_with() {
 }
 expect_exit 0 "block-generated-writes refuses fs_write to pnpm-lock.yaml" refuses_with "pnpm install" fs_write '{"path":"pnpm-lock.yaml","text":"x"}'
 expect_exit 0 "block-generated-writes refuses fs_append to mise.lock" refuses_with "mise lock" fs_append '{"path":"mise.lock","text":"x"}'
+expect_exit 0 "block-generated-writes refuses str_replace in a dependency graph under .mise/locks/" refuses_with "mise lock" str_replace '{"path":".mise/locks/pypi-semgrep/1.182.1/uv.lock","oldStr":"a","newStr":"b"}'
 expect_exit 0 "block-generated-writes refuses str_replace in routeTree.gen.ts (absolute path)" refuses_with "nx build web" str_replace "{\"path\":\"$repo_root/apps/web/src/routeTree.gen.ts\",\"oldStr\":\"a\",\"newStr\":\"b\"}"
 expect_exit 0 "block-generated-writes refuses delete_file of skills-lock.json" refuses_with "skills update" delete_file '{"targetFile":"skills-lock.json","explanation":"x"}'
 expect_exit 0 "block-generated-writes refuses fs_write to an upstream skill" refuses_with "skills update" fs_write '{"path":".agents/skills/tdd/SKILL.md","text":"x"}'
@@ -126,7 +127,11 @@ expect_exit 0 "block-generated-writes override" sh -c "printf '%s' '{\"tool_name
 make_sandbox
 tmp="$sandbox"
 trap 'kill "$live" 2>/dev/null; rm -rf "$sandbox"' EXIT
-cp "$(command -v sleep)" "$tmp/kiro-fake"
+# A live process whose command line contains "kiro". A shell script, not a renamed copy of sleep: on Ubuntu 26.04
+# sleep is the Rust coreutils multicall binary, which picks the program from its name and refuses "kiro-fake".
+# shellcheck disable=SC2016 # "$1" belongs to the generated script, so it must not expand here
+printf '#!/bin/sh\nsleep "$1"\n' >"$tmp/kiro-fake"
+chmod +x "$tmp/kiro-fake"
 "$tmp/kiro-fake" 60 &
 live=$!
 sleep 30 &

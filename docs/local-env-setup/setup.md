@@ -15,7 +15,7 @@ tags:
     mise,
     betterleaks,
     shellcheck,
-    actionlint,
+    jactionlint,
     zizmor,
   ]
 ---
@@ -143,7 +143,7 @@ cd /home/projects
 [ -d agent-software-factory ] || git clone https://github.com/yokozi-jp/agent-software-factory.git
 cd agent-software-factory
 
-mise install --locked   # mise.toml の道具を、mise.lock の版と checksum で検証して入れる (actionlint の非推奨の警告は docs/adr/0012)
+mise install --locked   # mise.toml の道具を、mise.lock の版と checksum で検証して入れる
 vp env install          # .node-version の Node.js と、package.json の pnpm
 pnpm install            # 依存と、prepare スクリプトで lefthook の hook
 

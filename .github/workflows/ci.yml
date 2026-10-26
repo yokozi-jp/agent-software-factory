@@ -27,7 +27,7 @@ jobs:
 
   # Checks that do not need the tools from mise.lock.
   checks:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,7 +76,7 @@ jobs:
 
   # The scripts and their tests. This is the slowest job: the tests run one after another.
   scripts:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,19 +94,28 @@ jobs:
       # not the runner image's. No cache: a restored cache is not checked against the lock.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
-          version: 2026.10.18
+          version: 2026.10.19
           cache: false
 
       - name: Lint shell scripts
         run: scripts/shellcheck.sh
 
-      - name: Lint workflows (actionlint, zizmor)
+      - name: Lint workflows (jactionlint, zizmor)
         run: scripts/lint-workflows.sh
+
+      # Fails only on ERROR findings that this branch adds (docs/adr/0021). Fetches the Registry rules, so it needs the network.
+      # In a pull request, GITHUB_BASE_REF names the base that the findings are compared with.
+      - name: SAST (Semgrep, new findings only)
+        run: scripts/semgrep.sh
+
+      # Warns, never fails: dependency review (dependency-review.yml) is the gate for dependencies (docs/adr/0021).
+      - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
+        run: scripts/osv-scanner.sh
 
       # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/). secret-scan.test.sh runs in secret-scan.yml.
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh"
+          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/adr-number.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/adr-check.test.sh scripts/test/renovate.test.sh scripts/test/semgrep.test.sh scripts/test/osv-scanner.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended
@@ -114,7 +123,7 @@ jobs:
 
   # The projects (apps/ and packages/): check, test and build the ones that the change affects.
   nx:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -148,7 +157,7 @@ jobs:
   main:
     needs: [checks, scripts, nx]
     if: ${{ always() }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: A job that main needs did not succeed
