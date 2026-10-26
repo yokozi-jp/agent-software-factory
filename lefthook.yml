@@ -173,10 +173,17 @@ pre-commit:
         - "scripts/test/worktree.test.sh"
       run: sh scripts/test/run.sh scripts/test/worktree.test.sh
     # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
-    # still holds. The tests read only the files of the project, so a change elsewhere cannot change them.
+    # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
+    # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
+    # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
+    # compiler and the runtime. Keep this list in step with `sharedGlobals`.
     - name: scripts-test
       glob:
         - "tools/scripts/**"
+        - "pnpm-workspace.yaml"
+        - "vite.config.ts"
+        - "tsconfig.json"
+        - ".node-version"
       run: pnpm exec nx test scripts
     - name: semgrep-test
       glob:

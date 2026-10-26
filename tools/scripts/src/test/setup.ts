@@ -3,8 +3,9 @@
 // Isolation (docs/tooling/ci.md ("スクリプトのテスト")). Tests also run from Git hooks, where git exports
 // GIT_DIR, GIT_INDEX_FILE and the like. Left set, they make every git command a test starts act on the
 // repository that runs the hook, whatever its working directory: on 2026-10-23 a test committed into this
-// repository and pushed main that way. githooks(5) says to unset them before running git in another
-// repository, and the pre-commit framework does the same (`no_git_env`). So this file:
+// repository and pushed main that way (PR #10, commit 575c03a, describes it). githooks(5) says to unset
+// them before running git in another repository, and the pre-commit framework does the same
+// (`no_git_env`). So this file:
 //   1. unsets every repository-local git variable (`git rev-parse --local-env-vars`),
 //   2. ignores the user's and the system's git config, and allows only local transports,
 //   3. gives git an identity, since there is no user config to read one from.

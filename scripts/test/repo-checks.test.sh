@@ -113,11 +113,12 @@ reset
 printf '// git -C dir, git init, GIT_DIR=x\nexport const x = 1;\n' > "$copy/tools/scripts/src/checks/other.ts" && stage
 expect_exit 0 "repo-policy: the git pattern does not apply to the TypeScript in tools/scripts/src" policy
 reset
-# Tests and fixtures name docs that do not exist on purpose, as the sh tests in scripts/test/ do.
-printf '// docs/tooling/missing.md\n' > "$copy/tools/scripts/src/checks/other.test.ts"
-mkdir -p "$copy/tools/scripts/src/checks/fixtures"
-printf 'docs/adr/9999\n' > "$copy/tools/scripts/src/checks/fixtures/doc.md" && stage
-expect_exit 0 "repo-policy: docs cited by the tests and fixtures of tools/scripts are not checked" policy
+# The tests of adr-check name ADRs that do not exist on purpose, as the sh tests in scripts/test/ do.
+printf '// docs/adr/9999\n' > "$copy/tools/scripts/src/checks/adr-check/other.test.ts" && stage
+expect_exit 0 "repo-policy: docs cited by the tests of adr-check are not checked" policy
+reset
+printf '// docs/adr/9999\n' > "$copy/tools/scripts/src/checks/other.test.ts" && stage
+expect_exit 1 "repo-policy: docs cited by the other tests of tools/scripts must exist" policy
 reset
 printf '// docs/tooling/missing.md\nexport const x = 1;\n' > "$copy/tools/scripts/src/checks/other.ts" && stage
 expect_exit 1 "repo-policy: docs cited by the other code of tools/scripts must exist" policy

@@ -1,13 +1,16 @@
 // Regression test for test isolation (docs/tooling/ci.md ("スクリプトのテスト")).
 // Git hooks run with GIT_DIR and GIT_INDEX_FILE exported, and from the working tree of the repository.
 // A test that acts on either one changes the repository that runs the hook: on 2026-10-23 a test run from
-// a pre-commit hook committed into this repository and pushed main. This test reproduces that environment
-// against a decoy repository with its own remote: it runs the other test files of this project with the
-// hook variables pointing at the decoy and the decoy as the working directory, then checks that the
-// decoy's refs, index, config and remote did not change. The child runs only the `unit` project
-// (vite.config.ts), so it cannot start this test again. A broken setup.ts or sandbox.ts damages only
-// the sandbox. The child runs Vitest directly, the runner that `vp test` re-exports, because `vp` only
-// starts inside a pnpm workspace and the working directory here is the decoy.
+// a pre-commit hook committed into this repository and pushed main (PR #10, commit 575c03a, describes it).
+// This test reproduces that environment against a decoy repository with its own remote: it runs the
+// other test files of this project with the hook variables pointing at the decoy and the decoy as the
+// working directory, then checks that the decoy's refs, index, config and remote did not change. It
+// fingerprints only the decoy, so a test that names another repository by absolute path (for example
+// `git -C <this repository>` after a dynamic import of child_process) is not detected here; the lint
+// rule on static imports and review guard that case (ADR 0024, "隔離"). The child runs only the `unit`
+// project (vite.config.ts), so it cannot start this test again. A broken setup.ts or sandbox.ts damages
+// only the sandbox. The child runs Vitest directly, the runner that `vp test` re-exports, because `vp`
+// only starts inside a pnpm workspace and the working directory here is the decoy.
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";

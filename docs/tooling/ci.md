@@ -89,11 +89,11 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `tools/scripts` は Nx の project (`scripts`) で、テストは Vitest です。
 
-| target       | 実行するもの                                                                                                           | 走る場所                                                                                                |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `test`       | `unit` と `isolation` の Vitest の project。coverage の下限 (ファイルごとに lines と branches が 90%) とラチェットつき | CI の `nx` の job (`nx affected`)、`tools/scripts/**` を変えた commit の pre-commit (`nx test scripts`) |
-| `mutation`   | `src/` の純粋な関数への Stryker (`--incremental`、`stryker.config.mjs`)。score が `break` (100) を下回ると失敗         | CI の `nx` の job (`nx affected`)                                                                       |
-| `test-tools` | `tools` の Vitest の project (`*.tools.test.ts`): mise の道具を本物の設定で動かすテスト。今は空                        | CI の `scripts` の job (`nx affected -t test-tools`)                                                    |
+| target       | 実行するもの                                                                                                           | 走る場所                                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test`       | `unit` と `isolation` の Vitest の project。coverage の下限 (ファイルごとに lines と branches が 90%) とラチェットつき | CI の `nx` の job (`nx affected`)、`tools/scripts/**` か Nx の `sharedGlobals` のファイルを変えた commit の pre-commit (`nx test scripts`) |
+| `mutation`   | `src/` の純粋な関数への Stryker (`--incremental`、`stryker.config.mjs`)。score が `break` (100) を下回ると失敗         | CI の `nx` の job (`nx affected`)                                                                                                          |
+| `test-tools` | `tools` の Vitest の project (`*.tools.test.ts`): mise の道具を本物の設定で動かすテスト。今は空                        | CI の `scripts` の job (`nx affected -t test-tools`)                                                                                       |
 
 - 規則は純粋な関数 (`src/checks/<名前>/rules.ts`) にし、その場で呼ぶテスト (`rules.test.ts`) で確かめます。入口 (`cli.ts`) は、argv、標準入力、環境変数、git を読んで出力するだけにし、少数のプロセスのテスト (`cli.test.ts`) で、sandbox の中の git を使って確かめます。入口は子プロセスで動き coverage が見えないので、coverage と Stryker の対象から外しています。
 - テストは宣言していない入力を読みません。`test` のテストは project の中のファイル (fixture) だけを読みます。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定ファイルを `tools/scripts/package.json` の `test-tools` の `inputs` に `{workspaceRoot}/…` でファイルごとに書きます。書かないと、その設定を変えても `nx affected` がテストを走らせず、cache が古い結果を返します。
@@ -104,7 +104,7 @@ git を使うテストは、このリポジトリを触らないように次の�
 - 一時的なリポジトリは `sandbox()` (`src/test/sandbox.ts`) の中に作ります。git は `gitIn(dir, args)` で、ほかのコマンドは `runIn(dir, command, args)` で起動します。どちらも `dir` が sandbox の外なら例外にし、`HOME` を sandbox にします。
 - テストのファイルは `node:child_process` を import できません (ルートの `vite.config.ts` の `no-restricted-imports`)。この規則が効いていることは、`src/test/fixtures/child-process.test.ts` の `oxlint-disable-next-line` が確かめます。規則が外れると、使われない disable のコメントで `vp check` が失敗します。
 - Vitest の `setupFiles` (`src/test/setup.ts`) が、git が hook の中で設定する `GIT_DIR`、`GIT_INDEX_FILE` など (`git rev-parse --local-env-vars`) を消し、ユーザーとシステムの git の設定を読まないようにし、`GIT_ALLOW_PROTOCOL=file` でネットワーク越しの git を禁じます。
-- `src/test/isolation.test.ts` は、decoy のリポジトリを指す hook の変数を設定し、decoy を作業ディレクトリにして `unit` のテストを子プロセスで動かし、decoy が変わらないことを確かめます。`gitIn` を通さずに作業ディレクトリのリポジトリや hook の変数が指すリポジトリを変えるテストを足すと、このテストが失敗します。
+- `src/test/isolation.test.ts` は、decoy のリポジトリを指す hook の変数を設定し、decoy を作業ディレクトリにして `unit` のテストを子プロセスで動かし、decoy が変わらないことを確かめます。`gitIn` を通さずに作業ディレクトリのリポジトリや hook の変数が指すリポジトリを変えるテストを足すと、このテストが失敗します。fingerprint を取るのは decoy だけなので、動的な `import()` で `node:child_process` を読み込み、`git -C <このリポジトリの絶対パス>` のように別のリポジトリをパスで指定するテストは見つかりません。この場合は、静的な import を止める `no-restricted-imports` と、レビューで守ります ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md) の「隔離」)。
 
 ### sh のテスト
 
@@ -118,6 +118,6 @@ git を使うテストは、このリポジトリを触らないように次の�
 - push と fetch の宛先は、`origin` などの名前ではなく、`$sandbox` の中のパスにします。
 
 `lib.sh` は、git が hook の中で設定する `GIT_DIR`、`GIT_INDEX_FILE` などを消し、`GIT_CEILING_DIRECTORIES` でリポジトリの探索を `$sandbox` で止め、`GIT_ALLOW_PROTOCOL=file` でネットワーク越しの git を禁じます。
-これらがないと、pre-commit hook から実行したテストが、このリポジトリに commit して main に push します (2026-10-23 に実際に起きました)。
+これらがないと、pre-commit hook から実行したテストが、このリポジトリに commit して main に push します (2026-10-23 に実際に起きました。[PR #10](https://github.com/yokozi-jp/agent-software-factory/pull/10))。
 `isolation.test.sh` は hook と同じ変数を設定して他のテストを実行し、その変数が指すリポジトリが変わらないことを確かめます。
 テストが失敗すると、失敗したコマンドの出力の最後の20行を表示します。

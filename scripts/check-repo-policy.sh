@@ -176,9 +176,10 @@ done
 #   docs/<path>.md ("Heading")   the file must have a heading with that text (cite headings without numbers)
 #   docs/adr/NNNN                an ADR with that number must exist
 # .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check.sh;
-# scripts/test/ and the tests and fixtures in tools/scripts/src cite missing docs on purpose.
-refs="$(git ls-files -- ':!docs/' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/' ':!tools/scripts/src/*.test.ts' \
-  ':!tools/scripts/src/fixtures/' ':!tools/scripts/src/*/fixtures/*' ':!pnpm-lock.yaml' |
+# scripts/test/ and the tests of adr-check (tools/scripts/src/checks/adr-check/{cli,rules}.test.ts) cite
+# missing ADRs on purpose.
+refs="$(git ls-files -- ':!docs/' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/' \
+  ':!tools/scripts/src/checks/adr-check/*.test.ts' ':!pnpm-lock.yaml' |
   xargs grep -HoE '(^|[^A-Za-z0-9_./-])docs/([A-Za-z0-9_./-]+\.md( \(\\?"[^"\\]+\\?"\))?|adr/[0-9]{4}([^0-9-]|$))' 2>/dev/null || true)"
 printf '%s\n' "$refs" | while IFS= read -r ref; do
   [ -n "$ref" ] || continue
