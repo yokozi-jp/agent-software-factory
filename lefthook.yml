@@ -186,6 +186,10 @@ pre-push:
     adr-check:
       run: node tools/scripts/src/checks/adr-check/cli.ts pre-push
       use_stdin: true
+    # Warns only, like adr-check. Silence it with TESTS_ACK=1 when deleting or merging tests is intended.
+    test-weakening:
+      run: node tools/scripts/src/checks/test-weakening/cli.ts pre-push
+      use_stdin: true
     # Two open PRs can take the same ADR number (docs/tooling/worktrees.md ("PR を出す")).
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
     adr-number:
