@@ -83,10 +83,10 @@ describe("repo-policy", () => {
 
   it("reads the mode of a shell script from the index in both modes", () => {
     const message =
-      "repo-policy: scripts/guard-push.sh is not executable in git. Run `chmod +x scripts/guard-push.sh` and stage it again.\n";
-    chmodSync(join(repo, "scripts/guard-push.sh"), 0o644);
+      "repo-policy: tools/scripts/sh/guard-push.sh is not executable in git. Run `chmod +x tools/scripts/sh/guard-push.sh` and stage it again.\n";
+    chmodSync(join(repo, "tools/scripts/sh/guard-push.sh"), 0o644);
     git("add", "-A");
-    chmodSync(join(repo, "scripts/guard-push.sh"), 0o755);
+    chmodSync(join(repo, "tools/scripts/sh/guard-push.sh"), 0o755);
     expect(policy()).toEqual({ status: 1, stdout: "", stderr: message });
     expect(policy(["staged"])).toEqual({ status: 1, stdout: "", stderr: message });
   });

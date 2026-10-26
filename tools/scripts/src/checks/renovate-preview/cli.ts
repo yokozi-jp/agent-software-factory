@@ -1,4 +1,4 @@
-// Prints the PRs that a Renovate local run (scripts/renovate.sh preview) would open.
+// Prints the PRs that a Renovate local run (tools/scripts/sh/renovate.sh preview) would open.
 //   node tools/scripts/src/checks/renovate-preview/cli.ts <renovate log file>
 // The log is the JSON log of `renovate --platform=local` at trace level. Exit 2 without a file, 1 when the
 // log has no branch list. What is listed is in rules.ts.

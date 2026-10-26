@@ -251,9 +251,10 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
   });
 });
 
-describe("git on another repository, only from sh tests isolated by lib.sh", () => {
+describe("git on another repository, never from a shell wrapper", () => {
+  const wrapper = "tools/scripts/sh/other.sh";
   const anywhere = (path: string) =>
-    `${path} runs git on another repository. Move that code into a scripts/test/*.test.sh that sources lib.sh, or run git only on this repository.`;
+    `${path} runs git on another repository. A shell wrapper runs git only on the repository it runs in; write a test that needs another repository in TypeScript, with gitIn (docs/adr/0024).`;
 
   it.each([
     ["git init", "git init -q /tmp/x"],
@@ -262,10 +263,8 @@ describe("git on another repository, only from sh tests isolated by lib.sh", () 
     ["--git-dir", "git --git-dir=/tmp/x/.git log"],
     ["GIT_DIR=", "GIT_DIR=/tmp/x git log"],
     ["git init at the end of a line", "cd /tmp/x && git init"],
-  ])("refuses %s in a script outside scripts/test", (_, line) => {
-    expect(violations(repo({ ".kiro/hooks/other.sh": `#!/bin/sh\n${line}\n` }))).toEqual([
-      anywhere(".kiro/hooks/other.sh"),
-    ]);
+  ])("refuses %s in a shell wrapper", (_, line) => {
+    expect(violations(repo({ [wrapper]: `#!/bin/sh\n${line}\n` }))).toEqual([anywhere(wrapper)]);
   });
 
   it.each([
@@ -273,37 +272,19 @@ describe("git on another repository, only from sh tests isolated by lib.sh", () 
     ["git with another command", "git initialize"],
     ["a git command on this repository", "git rev-parse --show-toplevel"],
   ])("passes %s", (_, line) => {
-    expect(violations(repo({ "scripts/other.sh": `#!/bin/sh\n${line}\n` }))).toEqual([]);
+    expect(violations(repo({ [wrapper]: `#!/bin/sh\n${line}\n` }))).toEqual([]);
   });
 
-  it("refuses a test that does not source lib.sh", () => {
-    expect(
-      violations(repo({ "scripts/test/guard-push.test.sh": "#!/bin/sh\ngit clone -q a b\n" })),
-    ).toEqual([
-      "scripts/test/guard-push.test.sh runs git on another repository but does not source scripts/test/lib.sh.",
-    ]);
-  });
-
-  it("does not count a test that only names lib.sh in a comment", () => {
-    const text = '#!/bin/sh\n# . "$(dirname "$0")/lib.sh"\ngit init -q x\n';
-    expect(violations(repo({ "scripts/test/guard-push.test.sh": text }))).toEqual([
-      "scripts/test/guard-push.test.sh runs git on another repository but does not source scripts/test/lib.sh.",
-    ]);
-  });
-
-  it("refuses a script that sources lib.sh outside scripts/test", () => {
-    const text = '#!/bin/sh\n. "$(dirname "$0")/lib.sh"\ngit init -q x\n';
-    expect(violations(repo({ "scripts/test/nested/a.test.sh": text }))).toEqual([
-      anywhere("scripts/test/nested/a.test.sh"),
-    ]);
-  });
-
-  it("applies only to shell scripts, and not to the upstream skills", () => {
+  it("applies only to tools/scripts/sh/*.sh, and not to the upstream skills", () => {
     expect(
       violations(
         repo({
           "tools/scripts/src/checks/other.ts": "// git -C dir, git init, GIT_DIR=x\n",
-          "scripts/docs-links.mjs": "// git init x\n",
+          "tools/scripts/sh/nested/a.sh": "git init x\n",
+          "tools/scripts/sh/other.txt": "git init x\n",
+          "tools/scripts/sh/other.sh.bak": "git init x\n",
+          "apps/tools/scripts/sh/other.sh": "git init x\n",
+          "other/run.sh": "git init x\n",
           ".agents/skills/a/run.sh": "git init x\n",
           ".kiro/skills/a/run.sh": "git init x\n",
         }),
@@ -314,16 +295,17 @@ describe("git on another repository, only from sh tests isolated by lib.sh", () 
 
 describe("shell scripts are executable in git", () => {
   it("refuses a shell script whose index mode is not 100755", () => {
-    expect(violations(repo({}, { modes: { "scripts/guard-push.sh": "100644" } }))).toEqual([
-      "scripts/guard-push.sh is not executable in git. Run `chmod +x scripts/guard-push.sh` and stage it again.",
+    const path = "tools/scripts/sh/guard-push.sh";
+    expect(violations(repo({}, { modes: { [path]: "100644" } }))).toEqual([
+      `${path} is not executable in git. Run \`chmod +x ${path}\` and stage it again.`,
     ]);
   });
 
-  it("does not check the upstream skills", () => {
-    const modes = { ".agents/skills/a/x.sh": "100644", ".kiro/skills/a/x.sh": "100644" };
-    expect(
-      violations(repo({ ".agents/skills/a/x.sh": "x\n", ".kiro/skills/a/x.sh": "x\n" }, { modes })),
-    ).toEqual([]);
+  it("checks only tools/scripts/sh/*.sh, so not the upstream skills", () => {
+    const paths = [".agents/skills/a/x.sh", ".kiro/skills/a/x.sh", "other/x.sh"];
+    const files = Object.fromEntries(paths.map((path) => [path, "x\n"]));
+    const modes = Object.fromEntries(paths.map((path) => [path, "100644"]));
+    expect(violations(repo(files, { modes }))).toEqual([]);
   });
 });
 
@@ -399,58 +381,6 @@ describe("ADR numbers are unique", () => {
   });
 });
 
-describe("every sh test runs in a workflow and in the pre-commit hook", () => {
-  const test = "scripts/test/new.test.sh";
-  const ci = base[".github/workflows/ci.yml"] ?? "";
-  const lefthook = base["lefthook.yml"] ?? "";
-  const inCi = ci.replace(
-    "scripts/test/guard-push.test.sh",
-    `scripts/test/guard-push.test.sh ${test}`,
-  );
-  const inHook = `${lefthook}    - name: new\n      run: sh scripts/test/run.sh ${test}\n`;
-  const notInCi = `${test} is not run by any workflow. Add it to the Script tests step of .github/workflows/ci.yml.`;
-  const notInHook = `${test} is not run by the pre-commit hook. Add a job for it to lefthook.yml.`;
-  const files = (extra: Record<string, string>) => ({ [test]: "#!/bin/sh\n", ...extra });
-
-  it("passes a test that a workflow and lefthook.yml run", () => {
-    expect(
-      violations(repo(files({ ".github/workflows/ci.yml": inCi, "lefthook.yml": inHook }))),
-    ).toEqual([]);
-  });
-
-  it("counts a run in any workflow, and in a nested lefthook group or command", () => {
-    const other = `jobs:\n  scan:\n    steps:\n      - run: |\n          sh scripts/test/run.sh ${test}\n`;
-    const group = `pre-commit:\n  jobs:\n    - group:\n        jobs:\n          - run: sh ${test}\ncommit-msg:\n  commands:\n    x:\n      run: sh scripts/test/run.sh scripts/test/guard-push.test.sh\n`;
-    expect(
-      violations(repo(files({ ".github/workflows/scan.yaml": other, "lefthook.yml": group }))),
-    ).toEqual([]);
-  });
-
-  it("refuses a test that no workflow runs", () => {
-    expect(violations(repo(files({ "lefthook.yml": inHook })))).toEqual([notInCi]);
-  });
-
-  it("refuses a test that the pre-commit hook does not run", () => {
-    expect(violations(repo(files({ ".github/workflows/ci.yml": inCi })))).toEqual([notInHook]);
-  });
-
-  it("does not count a test named only in a comment, a name or a glob", () => {
-    const comment = `${lefthook}    # ${test}\n    - name: ${test}\n      glob: ${test}\n      run: "true"\n`;
-    const workflowComment = `${ci}# ${test}\n`;
-    expect(
-      violations(
-        repo(files({ ".github/workflows/ci.yml": workflowComment, "lefthook.yml": comment })),
-      ),
-    ).toEqual([notInCi, notInHook]);
-  });
-
-  it("does not count a workflow outside .github/workflows", () => {
-    expect(
-      violations(repo(files({ ".github/other/ci.yml": inCi, "lefthook.yml": inHook }))),
-    ).toEqual([notInCi]);
-  });
-});
-
 describe("every job of ci.yml is in the needs of main", () => {
   const ci = base[".github/workflows/ci.yml"] ?? "";
   const extra = `${ci}  extra:\n    runs-on: ubuntu-26.04\n    steps: []\n`;
@@ -470,27 +400,21 @@ describe("every job of ci.yml is in the needs of main", () => {
     expect(violations(repo({ ".github/workflows/ci.yml": ci }))).toEqual([]);
   });
 
-  // Another workflow runs the sh test, so that only the jobs of ci.yml can fail these cases.
-  const tests = {
-    ".github/workflows/tests.yml":
-      "jobs:\n  t:\n    steps:\n      - run: sh scripts/test/guard-push.test.sh\n",
-  };
-
   it("reads needs written as a single job", () => {
     const single = "jobs:\n  build:\n    steps: []\n  main:\n    needs: build\n    steps: []\n";
-    expect(violations(repo({ ".github/workflows/ci.yml": single, ...tests }))).toEqual([]);
+    expect(violations(repo({ ".github/workflows/ci.yml": single }))).toEqual([]);
   });
 
   it("refuses every job when there is no main", () => {
     const none = "jobs:\n  build:\n    steps: []\n";
-    expect(violations(repo({ ".github/workflows/ci.yml": none, ...tests }))).toEqual([
+    expect(violations(repo({ ".github/workflows/ci.yml": none }))).toEqual([
       '.github/workflows/ci.yml: the main job must list `build` in its needs, or a failure of `build` will not block a merge (docs/tooling/ci.md ("ci.yml の検証")).',
     ]);
   });
 
   // check-repo-policy.sh stopped with an error from awk.
   it("refuses a repository without ci.yml", () => {
-    expect(violations(repo({ ".github/workflows/ci.yml": undefined, ...tests }))).toEqual([
+    expect(violations(repo({ ".github/workflows/ci.yml": undefined }))).toEqual([
       '.github/workflows/ci.yml does not exist. Its main job is the required status check (docs/tooling/ci.md ("ci.yml の検証")).',
     ]);
   });
@@ -499,7 +423,6 @@ describe("every job of ci.yml is in the needs of main", () => {
 describe("configuration files that cannot be parsed", () => {
   it.each([
     [".github/workflows/ci.yml", "jobs: [\n"],
-    ["lefthook.yml", "pre-commit: {\n"],
     ["pnpm-workspace.yaml", "catalog: [\n"],
   ])("names %s and the parser error", (path, text) => {
     const failures = violations(repo({ [path]: text }));
@@ -604,7 +527,6 @@ describe("references to docs/ from outside docs/", () => {
     "docs/tooling/a.md",
     ".agents/skills/a/SKILL.md",
     ".kiro/skills/a/SKILL.md",
-    "scripts/test/run.sh",
     "tools/scripts/src/checks/adr-check/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/passing-repo.ts",
@@ -704,8 +626,9 @@ describe("steering frontmatter: the edges", () => {
 });
 
 describe("git on another repository: the edges", () => {
+  const wrapper = "tools/scripts/sh/other.sh";
   const anywhere = (path: string) =>
-    `${path} runs git on another repository. Move that code into a scripts/test/*.test.sh that sources lib.sh, or run git only on this repository.`;
+    `${path} runs git on another repository. A shell wrapper runs git only on the repository it runs in; write a test that needs another repository in TypeScript, with gitIn (docs/adr/0024).`;
 
   it.each([
     ["git and init apart", "#!/bin/sh\ngit  init x\n"],
@@ -713,25 +636,7 @@ describe("git on another repository: the edges", () => {
     ["git at the start of the file", "git clone a b\n"],
     ["git init at the end of the file", "#!/bin/sh\ngit init"],
   ])("refuses %s", (_, text) => {
-    expect(violations(repo({ ".kiro/hooks/other.sh": text }))).toEqual([
-      anywhere(".kiro/hooks/other.sh"),
-    ]);
-  });
-
-  // check-repo-policy.sh anchored the line that sources lib.sh at its start only.
-  it.each([
-    ["a comment", '. "$(dirname "$0")/lib.sh" # isolation'],
-    ["a carriage return", '. "$(dirname "$0")/lib.sh"\r'],
-  ])("counts a line that sources lib.sh and ends in %s", (_, line) => {
-    const text = `#!/bin/sh\n${line}\ngit init -q x\n`;
-    expect(violations(repo({ "scripts/test/guard-push.test.sh": text }))).toEqual([]);
-  });
-
-  it("does not count a line that sources lib.sh after something else", () => {
-    const text = '#!/bin/sh\ntrue; . "$(dirname "$0")/lib.sh"\ngit init -q x\n';
-    expect(violations(repo({ "scripts/test/guard-push.test.sh": text }))).toEqual([
-      "scripts/test/guard-push.test.sh runs git on another repository but does not source scripts/test/lib.sh.",
-    ]);
+    expect(violations(repo({ [wrapper]: text }))).toEqual([anywhere(wrapper)]);
   });
 
   // check-repo-policy.sh grepped line by line, so a match never spans two lines.
@@ -740,14 +645,7 @@ describe("git on another repository: the edges", () => {
     ["git and -C", "echo git\n-C x\n"],
     ["-C and its argument", "git -C\nx\n"],
   ])("passes %s on separate lines", (_, text) => {
-    expect(violations(repo({ "scripts/other.sh": `#!/bin/sh\n${text}` }))).toEqual([]);
-  });
-
-  it("refuses a test outside scripts/test that sources lib.sh", () => {
-    const text = '#!/bin/sh\n. "$(dirname "$0")/lib.sh"\ngit init -q x\n';
-    expect(violations(repo({ "tools/scripts/test/a.test.sh": text }))).toEqual([
-      anywhere("tools/scripts/test/a.test.sh"),
-    ]);
+    expect(violations(repo({ [wrapper]: `#!/bin/sh\n${text}` }))).toEqual([]);
   });
 });
 
@@ -789,49 +687,6 @@ describe("ADR numbers: the edges", () => {
   });
 });
 
-describe("sh test lists: the edges", () => {
-  const test = "scripts/test/new.test.sh";
-  const ci = base[".github/workflows/ci.yml"] ?? "";
-  const inCi = ci.replace(
-    "scripts/test/guard-push.test.sh",
-    `scripts/test/guard-push.test.sh ${test}`,
-  );
-  const inHook = `${base["lefthook.yml"] ?? ""}    - name: new\n      run: sh scripts/test/run.sh ${test}\n`;
-
-  it.each(["apps/web/.github/workflows/ci.yml", ".github/workflows/ci.yml.bak"])(
-    "does not count %s as a workflow",
-    (path) => {
-      expect(
-        violations(repo({ [test]: "#!/bin/sh\n", [path]: inCi, "lefthook.yml": inHook })),
-      ).toEqual([
-        `${test} is not run by any workflow. Add it to the Script tests step of .github/workflows/ci.yml.`,
-      ]);
-    },
-  );
-
-  it("skips a run key that holds settings", () => {
-    // Before the jobs, so that the check meets the settings first.
-    const defaults = `defaults:\n  run:\n    shell: bash\n${inCi}`;
-    expect(
-      violations(
-        repo({
-          [test]: "#!/bin/sh\n",
-          ".github/workflows/ci.yml": defaults,
-          "lefthook.yml": inHook,
-        }),
-      ),
-    ).toEqual([]);
-  });
-
-  it("lists only the sh tests directly in scripts/test", () => {
-    expect(
-      violations(
-        repo({ "scripts/test/notes.test.sh.txt": "x\n", "tools/scripts/test/a.test.sh": "x\n" }),
-      ),
-    ).toEqual([]);
-  });
-});
-
 describe("configuration files that cannot be parsed: the messages", () => {
   it.each([
     [
@@ -867,7 +722,6 @@ describe("references to docs/: the edges", () => {
     "apps/docs/a.md",
     "apps/.agents/a.sh",
     "apps/.kiro/skills/a.md",
-    "apps/scripts/test/a.ts",
     "apps/tools/scripts/src/checks/adr-check/a.test.ts",
     "tools/scripts/src/checks/adr-check/a.test.ts.bak",
     "apps/pnpm-lock.yaml",

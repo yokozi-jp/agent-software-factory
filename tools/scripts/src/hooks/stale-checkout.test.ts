@@ -49,7 +49,7 @@ describe("staleCheckoutWarning", () => {
       [
         `WARNING: this working tree (${clone}) is on main, 2 commit(s) behind origin/main.`,
         "The files here are out of date. Before you research or decide on anything, read them from origin/main",
-        "(git show origin/main:<path>, git diff --stat HEAD origin/main), or work in a worktree made by scripts/worktree.sh add,",
+        "(git show origin/main:<path>, git diff --stat HEAD origin/main), or work in a worktree made by tools/scripts/sh/worktree.sh add,",
         "which starts from origin/main (docs/tooling/worktrees.md).",
         "Do not run git pull or git merge in this tree without telling the user: other sessions may be using its files.",
         "Files that differ from origin/main (first 10):",

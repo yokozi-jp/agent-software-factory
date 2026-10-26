@@ -38,8 +38,8 @@
       "enabled": false,
     },
     {
-      // Renovate releases almost daily. One PR a week is enough for the copy that scripts/renovate.sh runs.
-      "description": "Update the Renovate in scripts/renovate.sh once a week",
+      // Renovate releases almost daily. One PR a week is enough for the copy that tools/scripts/sh/renovate.sh runs.
+      "description": "Update the Renovate in tools/scripts/sh/renovate.sh once a week",
       "matchDepNames": ["renovate"],
       "schedule": ["before 4am on monday"],
     },
@@ -47,8 +47,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "The Renovate version in scripts/renovate.sh",
-      "managerFilePatterns": ["/^scripts\\/renovate\\.sh$/"],
+      "description": "The Renovate version in tools/scripts/sh/renovate.sh",
+      "managerFilePatterns": ["/^tools\\/scripts\\/sh\\/renovate\\.sh$/"],
       "matchStrings": ["renovate_version=\"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "renovate",
       "datasourceTemplate": "npm",

@@ -6,7 +6,7 @@
   "scripts": {
     "prepare": "lefthook install",
     "check": "nx run-many -t check",
-    "check:root": "scripts/check-root-files.sh",
+    "check:root": "tools/scripts/sh/check-root-files.sh",
     "test": "nx run-many -t test",
     "build": "nx run-many -t build",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",

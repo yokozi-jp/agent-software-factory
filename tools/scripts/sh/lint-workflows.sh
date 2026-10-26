@@ -17,7 +17,7 @@ if ! command -v mise >/dev/null 2>&1; then
 fi
 
 workflows() {
-  git ls-files -z -- '.github/workflows/*.yml' '.github/workflows/*.yaml'
+  git ls-files -z -- ':(glob).github/workflows/*.yml' ':(glob).github/workflows/*.yaml'
 }
 
 if [ -z "$(workflows | tr -d '\000')" ]; then

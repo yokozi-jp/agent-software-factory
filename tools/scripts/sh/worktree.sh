@@ -3,16 +3,16 @@
 # Worktrees go in the sibling directory <main checkout>-worktrees/<branch>, outside the repository, so Nx,
 # vp check and IWE do not pick up their files. The main checkout is found from git's common directory, so the
 # path is the same from the main checkout, from another worktree, and from any subdirectory of either.
-#   scripts/worktree.sh path <branch>                print the worktree's absolute path
-#   scripts/worktree.sh add <branch> [--no-install]  fetch origin, add <branch> from origin/main, pnpm install
-# `add` prints only the path on stdout (progress goes to stderr), so `cd "$(scripts/worktree.sh add x)"` works.
+#   tools/scripts/sh/worktree.sh path <branch>                print the worktree's absolute path
+#   tools/scripts/sh/worktree.sh add <branch> [--no-install]  fetch origin, add <branch> from origin/main, pnpm install
+# `add` prints only the path on stdout (progress goes to stderr), so `cd "$(tools/scripts/sh/worktree.sh add x)"` works.
 #   exit 0  done
 #   exit 1  the worktree directory already exists, or a git or pnpm command failed
 #   exit 2  wrong arguments
 set -eu
 
 usage() {
-  echo "usage: scripts/worktree.sh path <branch> | add <branch> [--no-install]" >&2
+  echo "usage: tools/scripts/sh/worktree.sh path <branch> | add <branch> [--no-install]" >&2
   exit 2
 }
 [ $# -ge 2 ] || usage

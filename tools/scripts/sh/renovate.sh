@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # Renovate checks for renovate.jsonc (docs/adr/0018, docs/tooling/renovate.md). Both run Renovate through
 # `pnpm dlx`, so they need the network. Run `validate` from the Git hook and CI, `preview` by hand.
-#   scripts/renovate.sh validate   renovate-config-validator --strict: unknown options and bad values fail
-#   scripts/renovate.sh preview    run Renovate in local mode and print the PRs it would open
+#   tools/scripts/sh/renovate.sh validate   renovate-config-validator --strict: unknown options and bad values fail
+#   tools/scripts/sh/renovate.sh preview    run Renovate in local mode and print the PRs it would open
 #                                  (GITHUB_COM_TOKEN, or a logged-in `gh`, avoids GitHub's rate limit)
 set -eu
 
@@ -38,7 +38,7 @@ case "${1:-}" in
     node tools/scripts/src/checks/renovate-preview/cli.ts "$log"
     ;;
   *)
-    echo "usage: scripts/renovate.sh validate|preview" >&2
+    echo "usage: tools/scripts/sh/renovate.sh validate|preview" >&2
     exit 2
     ;;
 esac

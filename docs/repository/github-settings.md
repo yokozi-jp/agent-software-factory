@@ -51,7 +51,7 @@ ruleset の内容:
 
 bypass は、リポジトリの管理者に `pull_request` モードだけを許しています。管理者は、チェックが壊れたときなどに PR の merge で ruleset を飛ばせますが、main への直接の push はできません。
 エージェントは利用者の認証情報で push するので、管理者に直接の push を許すと、エージェントの誤った push も通るためです。
-ローカルでは、pre-push hook (`scripts/guard-push.sh`) も main への push を拒否します ([Git hook](../tooling/git-hooks.md))。
+ローカルでは、pre-push hook (`tools/scripts/sh/guard-push.sh`) も main への push を拒否します ([Git hook](../tooling/git-hooks.md))。
 
 ## 3. 脆弱性の報告 (private vulnerability reporting)
 

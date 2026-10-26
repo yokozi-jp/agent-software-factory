@@ -49,7 +49,7 @@ GitHub Copilot code review も、既定ではプルリクエストの必須の�
 
 - PR の本文の Merge Danger の Door が one-way (データの移行、公開している API の変更、削除など)
 - ADR、`AGENTS.md`、`.kiro/` の skill、steering、hook を変える
-- `.github/` の workflow と ruleset、`lefthook.yml`、`scripts/` のゲートを変える
+- `.github/` の workflow と ruleset、`lefthook.yml`、`tools/scripts/` のゲートを変える
 - 依存を足す
 
 それ以外の PR は、ゲートが通っていれば、本文の Summary と Evidence を確かめてマージしてよい。

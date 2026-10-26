@@ -13,7 +13,7 @@ tags: [adr, tooling, knip, ci, quality, dependencies]
 - **実行の経路**: ルートの `package.json` の `lint:unused` (`knip`) を、CI の `ci.yml` の `checks` job と、Knip が読むファイルを変えた commit の pre-commit hook から呼びます。設定はすべて `knip.jsonc` に書くので、どちらも同じ検査です。[ADR 0002](0002-nx-orchestrates-vite-plus.md) に従い、`pnpm lint:dup` ([ADR 0014](0014-jscpd-duplication-threshold.md)) と同じ形にしました。
 - **対象**: `pnpm-workspace.yaml` の全てのプロジェクト (今は `apps/api`、`apps/web`、`tools/scripts`) とルートです。Knip は `pnpm-workspace.yaml` を読み、workspace ごとに entry を決めます。Knip の plugin が、`package.json` の scripts と、GitHub Actions の workflow、`lefthook.yml`、Vite+、Vite、Vitest、TanStack Router、Nx、mise、commitlint、markdownlint などの設定から、entry と使っている依存を読みます。今動いている plugin は `knip --debug` の `Enabled plugins` で分かります。
 - **例外の書き方**: Knip の docs に従い、一括の `ignore` を使わず、例外を 1 つずつ書きます。理由は `knip.jsonc` のその行のそばに書きます。
-  - `entry`: Knip が読まない場所から呼ばれるファイル。`tools/scripts/src/checks/renovate-preview/cli.ts` はシェルスクリプト (`scripts/renovate.sh`) から、`apps/api/src/server.ts` は `vite.config.ts` の `build.ssr` から呼ばれます。
+  - `entry`: Knip が読まない場所から呼ばれるファイル。`tools/scripts/src/checks/renovate-preview/cli.ts` はシェルスクリプト (`tools/scripts/sh/renovate.sh`) から、`apps/api/src/server.ts` は `vite.config.ts` の `build.ssr` から呼ばれます。
   - `project`: 検査の対象から外すもの。`.agents/` は upstream から入れた skill で、このリポジトリのコードではありません。
   - `ignoreDependencies`: コードや Knip が読む設定から使われない依存。`@iwe-org/iwe` は docs-check の入口 (`tools/scripts/src/checks/docs-check/cli.ts`) がパスで呼ぶ実行ファイルと、Kiro の MCP の設定から、`@nx/js` は `nx release` から読み込まれます。
   - export の例外は、その export に `/** @public */` を付け、理由のコメントを添えます。今はありません。
@@ -23,21 +23,21 @@ tags: [adr, tooling, knip, ci, quality, dependencies]
 
 設定のない Knip は、次の 8 件を報告しました。
 
-| 指摘                                                                                  | 対応                                                      |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 未使用のファイル `apps/api/src/server.ts` と、それだけが使う `@hono/node-server`      | `entry` に足す (production の入口)                        |
-| 未使用のファイル `scripts/docs-links.mjs`                                             | `entry` に足す (`scripts/docs-check.sh` が `node` で呼ぶ) |
-| 未使用のファイル `.agents/skills/setup-ts-deep-modules/dependency-cruiser.config.cjs` | `project` から `.agents/` を外す                          |
-| `apps/api` の未使用の devDependency `vite`                                            | 削除する                                                  |
-| ルートの未使用の devDependency `@iwe-org/iwe` と `@nx/js`                             | `ignoreDependencies` に足す                               |
-| `apps/api/src/app.ts` の未使用の export の型 `AppType`                                | 削除する                                                  |
+| 指摘                                                                                  | 対応                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 未使用のファイル `apps/api/src/server.ts` と、それだけが使う `@hono/node-server`      | `entry` に足す (production の入口)                                                                                                                                                         |
+| 未使用のファイル `scripts/docs-links.mjs`                                             | `entry` に足した (`scripts/docs-check.sh` が `node` で呼ぶため)。その後 TypeScript に移し ([Issue #165](https://github.com/yokozi-jp/agent-software-factory/issues/165))、この例外は外した |
+| 未使用のファイル `.agents/skills/setup-ts-deep-modules/dependency-cruiser.config.cjs` | `project` から `.agents/` を外す                                                                                                                                                           |
+| `apps/api` の未使用の devDependency `vite`                                            | 削除する                                                                                                                                                                                   |
+| ルートの未使用の devDependency `@iwe-org/iwe` と `@nx/js`                             | `ignoreDependencies` に足す                                                                                                                                                                |
+| `apps/api/src/app.ts` の未使用の export の型 `AppType`                                | 削除する                                                                                                                                                                                   |
 
 `apps/api` の `vite` は、本当に使われていませんでした。`apps/api` のコードは `vite-plus` からだけ import し、`@hono/vite-dev-server` の実行時のコードも `vite` を import しません。Vite+ の migration の規則も、`vite-plus` だけを使う pnpm のパッケージには `vite` の entry が要らないとしています。削除した後も `api` の check、build、test が通ることを確かめました。`apps/web` の `vite` は、`tsconfig.json` の `types: ["vite/client"]` で使うので残ります。
 ただ、`@hono/vite-dev-server` の型定義 (`.d.mts`) は、依存に書いていない `vite` から型を import します。この import は、pnpm が既定で `node_modules/.pnpm/node_modules` に置く `vite` (`vite-plus-core` への alias) で解決されます。
 
 `AppType` は Hono の RPC client (`hc<AppType>`) が API の型を受け取るための型ですが、使う client がまだありません。web から API を呼ぶ PR で足し直します。
 
-設定を書いた後、`scripts/test/unused-code.test.sh` で次を確かめました。
+設定を書いた後、`tools/scripts/src/configs/knip.tools.test.ts` (当時は `scripts/test/unused-code.test.sh`) で次を確かめました。
 
 - Knip が失敗し、そのものを報告すること: 未使用の export、未使用のファイル、使わない依存を足したとき。使っている依存を `ignoreDependencies` に書いたとき。
 - 通ること: `@public` を付けた export、`.agents/` の下のファイル。

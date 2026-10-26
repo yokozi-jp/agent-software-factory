@@ -28,10 +28,10 @@ main の作業ツリーが origin/main より遅れていると、そこにあ�
 
 worktree は、リポジトリの外の兄弟ディレクトリ `<main の作業ツリー>-worktrees/<ブランチ名>` (このマシンでは `/home/projects/agent-software-factory-worktrees/<ブランチ名>`) に作ります。
 リポジトリの中に置くと、Nx、vp check、IWE がその中のファイルまで拾うためです (この置き場所はこのリポジトリで決めたもので、Git の標準ではありません)。
-`scripts/worktree.sh` が、main の作業ツリーを git の共通のディレクトリから求めて置き場所を決めるので、main の作業ツリー、別の worktree、そのどのサブディレクトリから実行しても、同じ場所に作ります。
+`tools/scripts/sh/worktree.sh` が、main の作業ツリーを git の共通のディレクトリから求めて置き場所を決めるので、main の作業ツリー、別の worktree、そのどのサブディレクトリから実行しても、同じ場所に作ります。
 
 ```sh
-cd "$(scripts/worktree.sh add feat/example)"   # origin/main からブランチを作り、pnpm install --frozen-lockfile まで行う
+cd "$(tools/scripts/sh/worktree.sh add feat/example)"   # origin/main からブランチを作り、pnpm install --frozen-lockfile まで行う
 ```
 
 `add` は、標準出力に worktree の絶対 path だけを出します。node_modules は worktree ごとに入れ、Git hook は全ての worktree で共有されます。
@@ -61,7 +61,7 @@ PR が merge されたら、worktree とブランチを消します。
 ```sh
 branch=feat/example
 gh pr view "$branch" --json state --jq .state   # MERGED であることを確かめる
-git worktree remove "$(scripts/worktree.sh path "$branch")"
+git worktree remove "$(tools/scripts/sh/worktree.sh path "$branch")"
 git fetch origin
 files=$(git diff --name-only "$(git merge-base "$branch" origin/main)" "$branch")
 git diff --quiet "$branch" origin/main -- $files && git branch -D "$branch"

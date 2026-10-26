@@ -7,7 +7,6 @@ fileMatchPattern:
     "mise.toml",
     "**/vite.config.ts",
     "tools/scripts/**",
-    "scripts/**",
     ".betterleaks.toml",
     "pnpm-workspace.yaml",
   ]

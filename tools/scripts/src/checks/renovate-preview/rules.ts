@@ -1,4 +1,4 @@
-// The PRs that a Renovate local run would open (scripts/renovate.sh preview, docs/tooling/renovate.md).
+// The PRs that a Renovate local run would open (tools/scripts/sh/renovate.sh preview, docs/tooling/renovate.md).
 // Pure function; cli.ts reads the log file and prints what this returns.
 import { isObject, objects } from "../json.ts";
 

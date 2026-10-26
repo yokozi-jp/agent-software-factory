@@ -2,7 +2,7 @@
 # Docs: https://lefthook.dev/configuration/
 # Why lefthook instead of Vite+ hooks: docs/adr/0001-lefthook-for-git-hooks.md
 
-# secret-scan, semgrep (tools/scripts/src/checks/), scripts/shellcheck.sh and scripts/lint-workflows.sh run their
+# secret-scan, semgrep (tools/scripts/src/checks/), tools/scripts/sh/shellcheck.sh and tools/scripts/sh/lint-workflows.sh run their
 # linters through `mise exec`, so the tools pinned in mise.toml must be installed (`mise install --locked`, docs/local-env-setup/setup.md).
 
 commit-msg:
@@ -44,16 +44,16 @@ pre-commit:
         - "*.sh"
         - "mise.toml"
         - "mise.lock"
-      run: scripts/shellcheck.sh
+      run: tools/scripts/sh/shellcheck.sh
     # jactionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
     - name: lint-workflows
       glob:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/jactionlint.yaml"
-        - "scripts/lint-workflows.sh"
+        - "tools/scripts/sh/lint-workflows.sh"
         - "mise.toml"
         - "mise.lock"
-      run: scripts/lint-workflows.sh
+      run: tools/scripts/sh/lint-workflows.sh
     # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
     # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
     - name: duplicate-code
@@ -88,65 +88,12 @@ pre-commit:
         - "tools/scripts/src/checks/skills-lock/*.ts"
         - "tools/scripts/src/checks/json.ts"
       run: node tools/scripts/src/checks/skills-lock/cli.ts
-    # Behaviour tests (scripts/test/) for the scripts that changed.
-    # Tests run from this hook with GIT_DIR set; isolation.test.sh proves they still stay in their sandbox.
-    # Only lib.sh decides isolation, so this runs when it changes. CI runs it for every change.
-    - name: isolation-test
-      glob:
-        - "scripts/test/lib.sh"
-        - "scripts/test/isolation.test.sh"
-      run: sh scripts/test/run.sh scripts/test/isolation.test.sh
-    - name: guard-push-test
-      glob:
-        - "scripts/guard-push.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/guard-push.test.sh"
-      run: sh scripts/test/run.sh scripts/test/guard-push.test.sh
-    - name: lint-workflows-test
-      glob:
-        - "scripts/lint-workflows.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/lint-workflows.test.sh"
-        # The test copies them, and a new linter version or profile can change what it reports.
-        - ".github/jactionlint.yaml"
-        - "mise.toml"
-        - "mise.lock"
-      run: sh scripts/test/run.sh scripts/test/lint-workflows.test.sh
-    - name: duplicate-code-test
-      glob:
-        - ".jscpd.json"
-        - ".gitignore"
-        - "scripts/test/lib.sh"
-        - "scripts/test/duplicate-code.test.sh"
-        # A new jscpd version (pinned in the catalog) can change what it reports.
-        - "pnpm-workspace.yaml"
-      run: sh scripts/test/run.sh scripts/test/duplicate-code.test.sh
-    # Both run Renovate through `pnpm dlx` (the version is pinned in scripts/renovate.sh) and need the network.
+    # Runs the Renovate pinned in tools/scripts/sh/renovate.sh through `pnpm dlx`, so it needs the network.
     - name: renovate-config
       glob:
         - "renovate.jsonc"
-        - "scripts/renovate.sh"
-      run: scripts/renovate.sh validate
-    - name: renovate-test
-      glob:
-        - "scripts/renovate.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/renovate.test.sh"
-      run: sh scripts/test/run.sh scripts/test/renovate.test.sh
-    - name: unused-code-test
-      glob:
-        - "knip.jsonc"
-        - "scripts/test/lib.sh"
-        - "scripts/test/unused-code.test.sh"
-        # A new Knip version (pinned in the catalog) can change what it reports.
-        - "pnpm-workspace.yaml"
-      run: sh scripts/test/run.sh scripts/test/unused-code.test.sh
-    - name: worktree-test
-      glob:
-        - "scripts/worktree.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/worktree.test.sh"
-      run: sh scripts/test/run.sh scripts/test/worktree.test.sh
+        - "tools/scripts/sh/renovate.sh"
+      run: tools/scripts/sh/renovate.sh validate
     # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
     # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
     # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
@@ -165,12 +112,22 @@ pre-commit:
     # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). They take minutes, so
     # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)
     # that are not the project (a new betterleaks or Semgrep version, or Semgrep's dependency graph in
-    # .mise/locks/, can change what they report), the tools tests, the checks that have them, the test
-    # helpers and the config that run them, and `sharedGlobals`. CI (`nx affected -t test-tools`) still
-    # runs them for every change to the project.
+    # .mise/locks/, can change what they report), the tools tests, the checks and shell wrappers that have
+    # them, the configs they try (the Knip test also reads apps/ and the other root files, which CI covers
+    # with `nx affected -t test-tools`), the test helpers and the config that run them, and `sharedGlobals`.
+    # CI still runs them for every change to the project.
     - name: scripts-test-tools
       glob:
         - ".betterleaks.toml"
+        - ".github/jactionlint.yaml"
+        - ".github/workflows/ci.yml"
+        - ".gitignore"
+        - ".jscpd.json"
+        - ".markdownlint-cli2.yaml"
+        - "commitlint.config.ts"
+        - "knip.jsonc"
+        - "renovate.jsonc"
+        - "tools/scripts/sh/**"
         - "mise.toml"
         - "mise.lock"
         - ".mise/locks/**"
@@ -190,14 +147,6 @@ pre-commit:
         - "tsconfig.json"
         - ".node-version"
       run: pnpm exec nx test-tools scripts
-    - name: osv-scanner-test
-      glob:
-        - "scripts/osv-scanner.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/osv-scanner.test.sh"
-        - "mise.toml"
-        - "mise.lock"
-      run: sh scripts/test/run.sh scripts/test/osv-scanner.test.sh
     - name: repo-policy
       glob:
         - "**/package.json"
@@ -215,7 +164,7 @@ pre-commit:
         - "lefthook.yml"
         - ".github/**"
         - ".kiro/hooks/**"
-        - "scripts/**"
+        - "tools/scripts/sh/**"
         - "docs/**"
         - "**/*.ts"
       # Check what is staged, so unstaged edits to other files cannot fail the commit.
@@ -224,7 +173,7 @@ pre-commit:
 pre-push:
   commands:
     guard-push:
-      run: scripts/guard-push.sh
+      run: tools/scripts/sh/guard-push.sh
       use_stdin: true
     secret-scan:
       # Scan only the commits being pushed. Git passes "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
@@ -245,4 +194,4 @@ pre-push:
       run: node tools/scripts/src/checks/semgrep/cli.ts || [ $? -ne 1 ]
     # Warns only. dependency review in CI is the gate for dependencies (docs/adr/0021).
     osv-scanner:
-      run: scripts/osv-scanner.sh
+      run: tools/scripts/sh/osv-scanner.sh
