@@ -1,6 +1,9 @@
 import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite-plus";
 
+// テストは 2 つの project に分ける。
+//   lint         Oxlint の自作 plugin の規則のテスト。コンテナを使わないので速い。
+//   integration  src/ のテスト。PostgreSQL と Keycloak のコンテナを、全テストで共有して一度だけ起動する。
 export default defineConfig({
   plugins: [devServer({ entry: "./src/index.ts" })],
   server: { port: 3000 },
@@ -10,6 +13,19 @@ export default defineConfig({
     target: "node24",
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    projects: [
+      { extends: true, test: { name: "lint", include: ["lint/**/*.test.ts"] } },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          include: ["src/**/*.test.ts"],
+          // Keycloak の起動に時間がかかる。
+          globalSetup: ["./test/global-setup.ts"],
+          hookTimeout: 240_000,
+          testTimeout: 60_000,
+        },
+      },
+    ],
   },
 });

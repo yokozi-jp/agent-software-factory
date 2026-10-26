@@ -1,0 +1,39 @@
+{
+  "realm": "factory",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "api",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "test-client-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["https://app.example.test/*"],
+      "attributes": { "post.logout.redirect.uris": "https://app.example.test/*" }
+    }
+  ],
+  "users": [
+    {
+      "username": "yamada",
+      "email": "yamada@example.com",
+      "emailVerified": true,
+      "firstName": "Taro",
+      "lastName": "Yamada",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "yamada-password", "temporary": false }]
+    },
+    {
+      "username": "sato",
+      "email": "sato@example.com",
+      "emailVerified": true,
+      "firstName": "Hanako",
+      "lastName": "Sato",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "sato-password", "temporary": false }]
+    }
+  ]
+}

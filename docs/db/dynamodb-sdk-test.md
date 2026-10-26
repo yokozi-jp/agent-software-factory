@@ -7,6 +7,15 @@ sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forDB/dynamodb_guidelines.html
     title: DynamoDB設計ガイドライン
     author: フューチャー株式会社
+  - resource: https://www.localstack.cloud/pricing
+    title: LocalStack Pricing (Hobby プランの条件、CI での利用)
+    author: LocalStack
+  - resource: https://docs.localstack.cloud/aws/getting-started/auth-token/
+    title: Auth Token - LocalStack Docs
+    author: LocalStack
+  - resource: https://github.com/localstack/localstack
+    title: localstack/localstack (archived)
+    author: LocalStack
 ---
 
 # DynamoDB の SDK とテスト
@@ -61,11 +70,20 @@ GoでDynamoDBを操作する選択肢は、大別すると以下3つがある。
 | TTL                          | ❌ 非サポート                                                                                       | ✅ サポート                                                      |
 | GUI                          | ❌ 提供なし（[dynamodb-admin](https://github.com/aaronshaf/dynamodb-admin)等のGUIと組み合わせ可能） | ✅ 提供                                                          |
 
+LocalStackを使うには、次の条件がある。
+
+- 2026年3月23日から、LocalStack for AWS は1つのイメージにまとまり、アカウントのプランで機能が決まる。起動には auth token（`LOCALSTACK_AUTH_TOKEN`）が要り、CI でも要る。無効なら LocalStack は起動せずに終了する
+- 無料の Hobby プランは非商用の利用に限る。規約は商用目的の利用を禁じる。商用のソフトウェア開発では、有料の Base、Ultimate、Enterprise のプランを使う
+- 従来の OSS 版（Community イメージ）は、更新が止まった。`localstack/localstack` リポジトリは archived になった
+- CI での利用は、プランの規約と Fair Usage ポリシーに従う。商用の CI やチームで共有するパイプラインでは、有料のプランを選ぶ
+
+DynamoDB local にはこの条件がなく、アカウントも auth token も要らない。
+
 推奨は以下の通り。
 
 - ユニットテストでは、テスト効率の観点から実物のDynamoDBへ接続せず、原則、ローカルモックを使用する
 - 第一に公式のDynamoDB localの使用を検討する
-- ただし他のAWSサービス（例. S3 、SQS、Lambda）のエミュレータとしてLocalStackを使用する場合、ツール統合の観点から LocalStackの利用を推奨する
+- 他のAWSサービス（例. S3 、SQS、Lambda）のエミュレータとしてLocalStackを使うかは、上の条件を満たせるかで決める。auth token を CI とチームに配れ、商用の利用に合うプランを契約できる場合は、ツール統合の観点から LocalStackの利用を検討できる。満たせない場合は、DynamoDB local と、各サービスの公式または別のエミュレータを組み合わせる
 
 ### DynamoDB Streamsとの統合
 
@@ -78,4 +96,4 @@ DynamoDB local および LocalStackはDynamoDB Streamsをサポートしてい�
 
 推奨は以下の通り。
 
-- DynamoDB Streamsを多用するアーキテクチャにおいては、LocalStack Lambda / LocalStack Dynamo をはじめ、LocalStackを中心的なモックツールとすること
+- DynamoDB Streamsを多用するアーキテクチャにおいては、上の条件（auth token、商用での利用に合うプラン）を満たせるなら、LocalStack Lambda / LocalStack Dynamo をはじめ、LocalStackを中心的なモックツールとすること

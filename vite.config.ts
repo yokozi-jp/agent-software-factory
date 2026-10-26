@@ -133,6 +133,14 @@ export default defineConfig({
           ],
         },
       },
+      // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
+      // list of what the code guarantees. The rule is in apps/api/lint/test-title-plugin.ts. Tests of the tools
+      // and of the lint plugins themselves are outside this rule.
+      {
+        files: ["apps/*/src/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
+        jsPlugins: [{ name: "test-title", specifier: "./apps/api/lint/test-title-plugin.ts" }],
+        rules: { "test-title/japanese-title": "error" },
+      },
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).
       // Collect client errors with an error tracking service instead.
       {
