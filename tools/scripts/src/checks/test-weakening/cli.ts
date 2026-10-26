@@ -67,13 +67,15 @@ function main(): Output | undefined {
     ]);
     if (diff === undefined) continue;
     compared += 1;
+    const show = (rev: string, path: string): string => git(top, ["show", `${rev}:${path}`]) ?? "";
     for (const change of testChanges(diff)) {
-      const show = (rev: string, path: string): string =>
-        git(top, ["show", `${rev}:${path}`]) ?? "";
-      const before = change.to === undefined ? "" : show(mergeBase, change.from);
-      const after = change.to === undefined ? "" : show(commit, change.to);
-      const found = finding(change, before, after);
-      if (found !== undefined) findings.push(found);
+      // A deleted file has nothing to count.
+      const [before, after] =
+        change.to === undefined
+          ? ["", ""]
+          : [show(mergeBase, change.from), show(commit, change.to)];
+      const lost = finding(change, before, after);
+      if (lost !== undefined) findings.push(lost);
     }
   }
   if (compared === 0) {
@@ -82,8 +84,8 @@ function main(): Output | undefined {
       env,
     );
   }
-  const found = findingLines(findings);
-  return found.length === 0 ? undefined : warning(found, env);
+  const report = findingLines(findings);
+  return report.length === 0 ? undefined : warning(report, env);
 }
 
 try {

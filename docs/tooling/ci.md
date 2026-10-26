@@ -81,7 +81,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - ファイルごとの下限: lines と branches が 90% (`coverage.thresholds.perFile`)。`include` が全てのソースファイルを数えるので、テストのない新しいファイルを足すと止まります。
 - 全体の値のラチェット: `thresholds.autoUpdate` に `Math.floor` で丸める関数を渡しているので、全体の値が下限を上回った実行は、その値を `vite.config.ts` に書き戻します。テストを消して全体の値が下がると止まります。
 
-対象から外すのは、生成物 (`routeTree.gen.ts`)、実行環境ごとの入口 (`apps/api/src/server.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`)、テストファイルです。`apps/web` は、最初の component test を足すときに `--passWithNoTests` を外し、同じ基準を入れます。
+対象から外すのは、実行環境ごとの入口 (`apps/api/src/server.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`) とテストファイルです。`apps/web` にはまだ coverage がなく、最初の component test を足すときに `--passWithNoTests` を外して同じ基準を入れます。そのときは、生成物 (`routeTree.gen.ts`) と入口 (`main.tsx`) を対象から外します。
 
 ファイルごとの下限で止まったら、そのファイルの、通っていない行と分岐を確かめるテストを足します。下限を下げたり、ファイルを `exclude` に足したりはしません。テストで通せない分岐 (型のためだけの `??` など) には、理由を添えて `/* v8 ignore next -- <理由> */` を書きます。
 

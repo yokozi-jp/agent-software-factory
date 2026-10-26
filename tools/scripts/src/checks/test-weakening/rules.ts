@@ -94,21 +94,21 @@ const inCi = (env: Env): boolean => env.GITHUB_ACTIONS === "true";
 const lines = (...text: string[]): string => text.map((line) => `${line}\n`).join("");
 
 const header = "deletes test files or declares fewer test cases than before:";
-const fix =
+const whatToDo =
   "If a test failed after your change, fix the code or the test instead of removing it. If the test is no longer needed, say why in the pull request body: a reviewer reads this pull request before merging it.";
 
-export function warning(found: readonly string[], env: Env): Output {
-  const list = found.map((line) => `  - ${line}`);
+export function warning(report: readonly string[], env: Env): Output {
+  const list = report.map((line) => `  - ${line}`);
   if (inCi(env)) {
     const server = env.GITHUB_SERVER_URL ?? "https://github.com";
     const repository = env.GITHUB_REPOSITORY ?? "yokozi-jp/agent-software-factory";
     const guideUrl = `${server}/${repository}/blob/main/docs/code-review/agent-pull-requests.md#人が判断するもの`;
-    const annotation = `Deleted test files or fewer test cases: ${found.join(", ")}. ${fix}`;
+    const annotation = `Deleted test files or fewer test cases: ${report.join(", ")}. ${whatToDo}`;
     return {
       stdout: lines(
         `This change ${header}`,
         ...list,
-        fix,
+        whatToDo,
         `What a reviewer checks: ${guideUrl}`,
         `::warning title=test-weakening::${annotationText(annotation)} What a reviewer checks: ${guideUrl}`,
       ),
@@ -121,7 +121,7 @@ export function warning(found: readonly string[], env: Env): Output {
     stderr: lines(
       `test-weakening: warning: this change ${header}`,
       ...list,
-      `${fix} See ${guide}.`,
+      `${whatToDo} See ${guide}.`,
       "If the change is intended, silence the warning with TESTS_ACK=1 (for example: TESTS_ACK=1 git push).",
     ),
   };
