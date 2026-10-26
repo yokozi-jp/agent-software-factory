@@ -10,7 +10,11 @@ describe("generatedWriteRefusal", () => {
     ["routeTree.gen.ts", "TanStack Router generates it", "pnpm exec nx build web"],
     ["skills-lock.json", "skills CLI", "pnpm dlx skills update"],
     [".agents/skills", "skills CLI", "pnpm dlx skills update"],
-    [".agents/skills/tdd/SKILL.md", "skills CLI", "node scripts/verify-skills-lock.mjs"],
+    [
+      ".agents/skills/tdd/SKILL.md",
+      "skills CLI",
+      "node tools/scripts/src/checks/skills-lock/cli.ts",
+    ],
     [".kiro/skills", "skills CLI", "pnpm dlx skills update"],
     [".kiro/skills/tdd/SKILL.md", "skills CLI", "pnpm dlx skills update"],
     ["pnpm-lock.yaml", "pnpm writes it.", "pnpm install"],

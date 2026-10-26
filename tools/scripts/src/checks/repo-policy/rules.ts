@@ -338,12 +338,12 @@ function executableScripts(tree: Tree): string[] {
 }
 
 // References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
-// docs-check.sh only follows Markdown links inside docs/, so these plain-text paths are checked here:
+// docs-check (tools/scripts/src/checks/docs-check/) only follows Markdown links inside docs/, so these plain-text paths are checked here:
 //   a path to a Markdown file under docs/       the file must exist
 //   the same path, then ("Heading")             the file must have a heading with that text (cited
 //                                               without its number; \" in a JSON string counts as ")
 //   docs/adr/ and a four-digit number           an ADR with that number must exist
-// .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check.sh. The sh tests
+// .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check. The sh tests
 // (scripts/test/) and the tests and fixtures of adr-check and repo-policy cite missing ADRs on purpose.
 const unchecked = [
   /^docs\//,

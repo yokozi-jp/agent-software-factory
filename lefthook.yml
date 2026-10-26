@@ -31,12 +31,14 @@ pre-commit:
           - name: markdownlint
             glob: "*.md"
             run: pnpm exec markdownlint-cli2 {staged_files}
+    # pnpm-workspace.yaml pins iwe, so an upgrade re-checks docs/.
     - name: docs-check
       glob:
         - "docs/**"
-        - "scripts/docs-check.sh"
-        - "scripts/docs-links.mjs"
-      run: scripts/docs-check.sh staged
+        - "tools/scripts/src/checks/docs-check/*.ts"
+        - "tools/scripts/src/checks/json.ts"
+        - "pnpm-workspace.yaml"
+      run: node tools/scripts/src/checks/docs-check/cli.ts staged
     - name: shellcheck
       glob:
         - "*.sh"
@@ -76,7 +78,6 @@ pre-commit:
         - "nx.json"
         - "mise.toml"
         - ".markdownlint-cli2.yaml"
-        - "scripts/docs-check.sh"
         - ".kiro/settings/mcp.json"
       run: pnpm lint:unused
     - name: skills-lock
@@ -84,16 +85,10 @@ pre-commit:
         - ".agents/**"
         - ".kiro/skills/**"
         - "skills-lock.json"
-        - "scripts/verify-skills-lock.mjs"
-      run: node scripts/verify-skills-lock.mjs
+        - "tools/scripts/src/checks/skills-lock/*.ts"
+        - "tools/scripts/src/checks/json.ts"
+      run: node tools/scripts/src/checks/skills-lock/cli.ts
     # Behaviour tests (scripts/test/) for the scripts that changed.
-    - name: repo-checks-test
-      glob:
-        - "scripts/docs-check.sh"
-        - "scripts/docs-links.mjs"
-        - "scripts/test/lib.sh"
-        - "scripts/test/repo-checks.test.sh"
-      run: sh scripts/test/run.sh scripts/test/repo-checks.test.sh
     # Tests run from this hook with GIT_DIR set; isolation.test.sh proves they still stay in their sandbox.
     # Only lib.sh decides isolation, so this runs when it changes. CI runs it for every change.
     - name: isolation-test
@@ -135,7 +130,6 @@ pre-commit:
     - name: renovate-test
       glob:
         - "scripts/renovate.sh"
-        - "scripts/renovate-preview.mjs"
         - "scripts/test/lib.sh"
         - "scripts/test/renovate.test.sh"
       run: sh scripts/test/run.sh scripts/test/renovate.test.sh
@@ -183,6 +177,9 @@ pre-commit:
         - "tools/scripts/src/**/*.tools.test.ts"
         - "tools/scripts/src/checks/secret-scan/**"
         - "tools/scripts/src/checks/semgrep/**"
+        - "tools/scripts/src/checks/docs-check/**"
+        - "docs/.iwe/config.toml"
+        - "docs/.iwe/schemas/*.yaml"
         - "tools/scripts/src/test/isolation.ts"
         - "tools/scripts/src/test/sandbox.ts"
         - "tools/scripts/src/test/setup.ts"

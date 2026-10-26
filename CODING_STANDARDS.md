@@ -1,7 +1,7 @@
 # Coding standards
 
 レビューの agent (`code-review` skill の Standards の観点) が読む、判断の規則です。
-機械で判定できる規則は、ここに書かずに検査にします。`vp check`、`scripts/docs-check.sh`、`tools/scripts/src/checks/repo-policy/cli.ts`、markdownlint が止めるものは、レビューで指摘しません。
+機械で判定できる規則は、ここに書かずに検査にします。`vp check`、docs-check (`tools/scripts/src/checks/docs-check/`)、repo-policy (`tools/scripts/src/checks/repo-policy/`)、markdownlint が止めるものは、レビューで指摘しません。
 
 ## docs の事実と出典
 
@@ -24,7 +24,7 @@ docs の事実を足すか変える文は、一次情報 (仕様、RFC、公式�
 ADR を足すか変える変更は、その決定と食い違う docs を同じ変更で直します。
 
 - ADR が否定する語 (たとえば ADR 0010 なら `develop`、`hotfix`、`release` ブランチ) で `docs/` を探し、残っている記述を指摘します。リンク先だけを見ると、本文の前提が残ります。
-- 取り込んだガイドラインを直したら、その領域の `about.md` の「原文からの変更点」に、何をどの根拠で変えたかが書いてあります。`about.md` も変えたかは pre-commit (`scripts/docs-check.sh staged`) が見ますが、書いた行が変更と合っているかはレビューで見ます。
+- 取り込んだガイドラインを直したら、その領域の `about.md` の「原文からの変更点」に、何をどの根拠で変えたかが書いてあります。`about.md` も変えたかは pre-commit (docs-check の `staged`) が見ますが、書いた行が変更と合っているかはレビューで見ます。
 
 ## 検査を足す変更
 

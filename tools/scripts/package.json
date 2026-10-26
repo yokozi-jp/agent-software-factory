@@ -38,7 +38,11 @@
           "{workspaceRoot}/.betterleaks.toml",
           "{workspaceRoot}/mise.toml",
           "{workspaceRoot}/mise.lock",
-          "{workspaceRoot}/.mise/locks/**/*"
+          "{workspaceRoot}/.mise/locks/**/*",
+          "{workspaceRoot}/docs/.iwe/config.toml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf.yaml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf-index.yaml",
+          "{workspaceRoot}/docs/.iwe/schemas/okf-log.yaml"
         ]
       },
       "mutation": {
