@@ -78,7 +78,7 @@ ADR の事実の主張にも、一次情報の出典を付けます。出典が�
 戻しやすい決定は、戻せばよいので書きません。意外でなければ、疑問を持つ人がいません。選択肢がなければ、「当たり前のことをした」以上に残すことがありません。
 書く価値があるのは、構成の形、ロックインを伴う技術の選択、意図して常識から外れた選択、コードからは見えない制約、理由が自明でない却下した案です。
 
-依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに ADR が増えていないと、`scripts/adr-check.sh` が警告します ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。警告が出たら、この3つに当てはめて判断し、要らなければ `ADR_ACK=1` で抑えます。
+依存、ツールの設定、workflow、ruleset、Kiro の hook や設定を変えたのに ADR が増えていないと、adr-check (`tools/scripts/src/checks/adr-check/`) が警告します ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。警告が出たら、この3つに当てはめて判断し、要らなければ `ADR_ACK=1` で抑えます。
 
 ## 検査
 

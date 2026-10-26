@@ -108,6 +108,20 @@ printf '#!/bin/sh\nset -u\ngit clone -q a b\n' > "$copy/scripts/test/bare.test.s
 sed -i.bak 's|tests="|tests="scripts/test/bare.test.sh |' "$copy/.github/workflows/ci.yml"
 printf '    - name: bare\n      run: sh scripts/test/run.sh scripts/test/bare.test.sh\n' >> "$copy/lefthook.yml" && stage
 expect_exit 1 "repo-policy: a test that does not source lib.sh is refused" policy
+reset
+# TypeScript in tools/scripts is guarded by the lint rule on child_process and by isolation.test.ts instead.
+printf '// git -C dir, git init, GIT_DIR=x\nexport const x = 1;\n' > "$copy/tools/scripts/src/checks/other.ts" && stage
+expect_exit 0 "repo-policy: the git pattern does not apply to the TypeScript in tools/scripts/src" policy
+reset
+# The tests of adr-check name ADRs that do not exist on purpose, as the sh tests in scripts/test/ do.
+printf '// docs/adr/9999\n' > "$copy/tools/scripts/src/checks/adr-check/other.test.ts" && stage
+expect_exit 0 "repo-policy: docs cited by the tests of adr-check are not checked" policy
+reset
+printf '// docs/adr/9999\n' > "$copy/tools/scripts/src/checks/other.test.ts" && stage
+expect_exit 1 "repo-policy: docs cited by the other tests of tools/scripts must exist" policy
+reset
+printf '// docs/tooling/missing.md\nexport const x = 1;\n' > "$copy/tools/scripts/src/checks/other.ts" && stage
+expect_exit 1 "repo-policy: docs cited by the other code of tools/scripts must exist" policy
 
 # check-repo-policy: every script test runs in a workflow and in the pre-commit hook.
 listed_test() {

@@ -13,3 +13,12 @@ python = "3.13.17"
 shellcheck = "0.11.0"
 uv = "0.13.5"
 zizmor = "1.31.1"
+
+[settings]
+# minimum_release_age は供給網リスク対策の cooldown (新しすぎる版を避ける) です (docs/adr/0021)。
+# 既定の "24h" は duration で now を基準にするため、pypi backend が uv に渡す exclude-newer が
+# sidecar の uv.lock を作り直すたびに now-24h の絶対時刻で焼き直され、semgrep の版を固定していても
+# digest が毎回変わり、lock file maintenance の PR が繰り返し作られていました。
+# cooldown は保ったまま lock を決定論にするため、now 基準の duration ではなく固定日時にします。
+# 2026-10-24 は semgrep 1.182.1 を mise.toml で固定した日です。版を上げるときにこの日付も進めます。
+minimum_release_age = "2026-10-24T00:00:00Z"
