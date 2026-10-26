@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "session-start",
+      "trigger": "SessionStart",
+      "description": "Warn the agent when another live Kiro session uses this working tree, and when main here is behind origin/main (docs/tooling/worktrees.md).",
+      "action": {
+        "type": "command",
+        "command": "NODE_COMPILE_CACHE=\"${TMPDIR:-/tmp}/node-compile-cache\" node tools/scripts/src/hooks/session-start/cli.ts"
+      },
+      "timeout": 10
+    }
+  ]
+}

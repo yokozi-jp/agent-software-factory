@@ -86,13 +86,7 @@ pre-commit:
         - "skills-lock.json"
         - "scripts/verify-skills-lock.mjs"
       run: node scripts/verify-skills-lock.mjs
-    # Behaviour tests (scripts/test/) for the scripts and Kiro hooks that changed.
-    - name: kiro-hooks-test
-      glob:
-        - ".kiro/hooks/*.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/kiro-hooks.test.sh"
-      run: sh scripts/test/run.sh scripts/test/kiro-hooks.test.sh
+    # Behaviour tests (scripts/test/) for the scripts that changed.
     - name: repo-checks-test
       glob:
         - "scripts/check-repo-policy.sh"
@@ -164,7 +158,8 @@ pre-commit:
     # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
     # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
     # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
-    # compiler and the runtime. Keep this list in step with `sharedGlobals`.
+    # compiler and the runtime. Keep this list in step with `sharedGlobals`, and with the inputs of the
+    # `test` target in tools/scripts/package.json (.kiro/hooks/*.json, which kiro-hooks.test.ts reads).
     - name: scripts-test
       glob:
         - "tools/scripts/**"
@@ -172,6 +167,7 @@ pre-commit:
         - "vite.config.ts"
         - "tsconfig.json"
         - ".node-version"
+        - ".kiro/hooks/*.json"
       run: pnpm exec nx test scripts
     # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). They take minutes, so
     # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)

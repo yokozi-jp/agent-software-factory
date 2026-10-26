@@ -9,7 +9,7 @@ tags: [tooling, runbook, git, worktree, kiro]
 
 同じ作業ツリーで2つのセッションが動くと、index とファイルを上書きし合います。
 並行して作業するときは、セッションごとに `git worktree` で作業ツリーを分けます。
-Kiro の hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツリーで別の Kiro セッションが動いていると、セッションの開始時に警告します。後から始まったセッションも見つけられるよう、ファイルの書き込みと shell の前にも確かめ、見つけたら利用者に確認を求めます。
+Kiro の hook (`tools/scripts/src/hooks/concurrent-sessions.ts`) は、同じ作業ツリーで別の Kiro セッションが動いていると、セッションの開始時に警告します。ファイルの書き込みと shell の前には確かめないので、このセッションより後に始まったセッションは見つけません。前は確かめて利用者に確認を求めていましたが、毎回の確認がうるさいので外しました ([PR #191](https://github.com/yokozi-jp/agent-software-factory/pull/191))。
 
 ## 警告が出たとき
 
@@ -18,7 +18,7 @@ Kiro の hook (`.kiro/hooks/warn-concurrent-sessions.sh`) は、同じ作業ツ�
 
 ## 作業ツリーが古いと警告されたとき
 
-main の作業ツリーが origin/main より遅れていると、そこにある docs、ADR、設定は古い内容です。それを読んで調べたり決めたりすると、すでに変わったことを前提にしてしまいます。Kiro の hook (`.kiro/hooks/warn-stale-checkout.sh`) は、セッションの開始時に origin/main を fetch し、main にいて遅れていれば、遅れた commit 数と違いのあるファイルを警告します。feature ブランチは、普段から origin/main より遅れているので警告しません。
+main の作業ツリーが origin/main より遅れていると、そこにある docs、ADR、設定は古い内容です。それを読んで調べたり決めたりすると、すでに変わったことを前提にしてしまいます。Kiro の hook (`tools/scripts/src/hooks/stale-checkout.ts`) は、セッションの開始時に origin/main を fetch し、main にいて遅れていれば、遅れた commit 数と違いのあるファイルを警告します。feature ブランチは、普段から origin/main より遅れているので警告しません。
 
 1. 調べる前に、`git show origin/main:<path>` か `git diff --stat HEAD origin/main` で origin/main の内容を読みます。
 2. 作業は、下の手順で origin/main から worktree を作って行います。

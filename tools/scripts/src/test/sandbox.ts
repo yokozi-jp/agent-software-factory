@@ -2,7 +2,7 @@
 // no-restricted-imports rule in the root vite.config.ts); they go through gitIn and runIn here, which
 // refuse to act outside the sandbox. setup.ts has already cleared the git variables of a Git hook.
 // The design follows git's own t/test-lib.sh: GIT_CEILING_DIRECTORIES, and HOME inside the sandbox.
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, relative, isAbsolute, resolve } from "node:path";
@@ -89,6 +89,32 @@ export function gitIn(dir: string, args: readonly string[], options: GitOptions 
     );
   }
   return run();
+}
+
+export interface Background {
+  readonly pid: number;
+  // Kills the process and waits until it has exited.
+  stop(): Promise<void>;
+}
+
+// <command> <args> in <dir> in the background, only if <dir> is in the sandbox. For a test that needs a
+// live process (another Kiro session, say). Call stop() when done.
+export function startIn(dir: string, command: string, args: readonly string[]): Background {
+  const root = activeSandbox();
+  if (!inside(root, dir))
+    throw new Error(`sandbox.ts: refusing to run in ${dir}, outside the sandbox ${root}`);
+  const child = spawn(command, args, { cwd: dir, env: environment(root), stdio: "ignore" });
+  // A command that cannot start reports it as an error event, and leaves pid undefined.
+  child.once("error", () => {});
+  const exited = new Promise<void>((done) => child.once("exit", () => done()));
+  if (child.pid === undefined) throw new Error(`sandbox.ts: could not start ${command}`);
+  return {
+    pid: child.pid,
+    async stop() {
+      child.kill();
+      await exited;
+    },
+  };
 }
 
 export interface RunOptions {

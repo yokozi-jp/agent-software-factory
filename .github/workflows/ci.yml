@@ -133,10 +133,10 @@ jobs:
       - name: Tool tests (tools/scripts)
         run: pnpm exec nx affected -t test-tools
 
-      # Behaviour tests for the Kiro hooks and the repo checks (scripts/test/).
+      # Behaviour tests for the repo checks (scripts/test/).
       - name: Script tests
         run: |
-          tests="scripts/test/kiro-hooks.test.sh scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/osv-scanner.test.sh"
+          tests="scripts/test/repo-checks.test.sh scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/osv-scanner.test.sh"
           # shellcheck disable=SC2086 # word splitting of $tests is intended
           sh scripts/test/run.sh $tests
           # shellcheck disable=SC2086 # word splitting of $tests is intended

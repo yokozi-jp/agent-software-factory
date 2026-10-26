@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { gitIn, miseDirs, runIn, sandbox, type Sandbox } from "./sandbox.ts";
+import { gitIn, miseDirs, runIn, sandbox, startIn, type Sandbox } from "./sandbox.ts";
 
 let box: Sandbox;
 beforeEach(() => {
@@ -95,5 +95,24 @@ describe("miseDirs", () => {
       process.env.MISE_DATA_DIR ??
         join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local/share"), "mise"),
     );
+  });
+});
+
+describe("startIn", () => {
+  it("refuses a directory outside the sandbox", () => {
+    expect(() => startIn(import.meta.dirname, "sleep", ["1"])).toThrow(/outside the sandbox/);
+  });
+
+  it("throws when the command cannot start", () => {
+    expect(() => startIn(box.root, join(box.root, "no-such-command"), [])).toThrow(
+      /could not start/,
+    );
+  });
+
+  it("starts a process that runs until stop()", async () => {
+    const sleeper = startIn(box.root, "sleep", ["60"]);
+    expect(() => process.kill(sleeper.pid, 0)).not.toThrow();
+    await sleeper.stop();
+    expect(() => process.kill(sleeper.pid, 0)).toThrow(/ESRCH/);
   });
 });
