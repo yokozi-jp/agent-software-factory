@@ -1,7 +1,8 @@
 // The rules of repo-policy: mechanical checks for the decisions recorded in docs/adr/.
 // Pure functions over a Repo; cli.ts reads git and the files (of the working tree, or of the index) into it.
-// Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so the checks do not depend on how
-// a file is laid out. vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
+// Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
+// breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
+// vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
 // fixtures planned in #43 are to check its lint rules.
 import { parse as parseToml } from "smol-toml";
 import { isSeq, parseDocument } from "yaml";
@@ -91,24 +92,25 @@ class Tree {
   }
 }
 
-const dependencyFields = [
-  "dependencies",
-  "devDependencies",
-  "peerDependencies",
-  "optionalDependencies",
-];
+// Whether `key` is a key of the value or of anything in it, at any depth.
+const hasKey = (value: unknown, key: string): boolean =>
+  Array.isArray(value)
+    ? value.some((child) => hasKey(child, key))
+    : isRecord(value) && (key in value || Object.values(value).some((child) => hasKey(child, key)));
 
 // ADR 0002: Nx runs tasks; Vite+ is toolchain only.
+// @nx/vite anywhere in a package.json counts: the dependencies, and also overrides, resolutions and
+// pnpm.overrides.
 function nxRunsTasks(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const manifest of tree.named("package.json")) {
-    const pkg = record(tree.parsed(manifest));
-    if (dependencyFields.some((field) => "@nx/vite" in record(pkg[field])))
+  for (const manifest of tree.named("package.json"))
+    if (hasKey(tree.parsed(manifest), "@nx/vite"))
       failures.push(
         `${manifest} depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).`,
       );
-  }
-  // A `run` key at the top of the config object (two spaces in), as vp fmt writes it.
+  // A `run` key two spaces in: a key of the object passed to defineConfig. This repository formats
+  // vite.config.ts with vp fmt (Oxfmt) and sets no indentation, so it indents by Oxfmt's default of two
+  // spaces (Oxfmt config file reference, `tabWidth`, `useTabs`).
   for (const config of tree.named("vite.config.ts"))
     if (/^ {2}run\s*:/m.test(tree.read(config)))
       failures.push(
@@ -179,14 +181,14 @@ function steeringProblems(path: string, text: string): string[] {
   return problems;
 }
 
-const steeringFile = /^\.kiro\/steering\/[^/]+\.md$/;
+// The paths the pathspec .kiro/steering/*.md matches, as cli.ts asks git for the untracked ones. A pathspec
+// matches with fnmatch(3) without FNM_PATHNAME, so its * matches / too (gitglossary(7), "pathspec").
+const isSteering = (path: string): boolean =>
+  path.startsWith(".kiro/steering/") && path.endsWith(".md");
 
 // docs/knowledge/steering-authoring.md: steering frontmatter.
 function steeringFrontmatter(tree: Tree): string[] {
-  const files = [
-    ...tree.paths.filter((path) => steeringFile.test(path)),
-    ...tree.repo.untrackedSteering,
-  ];
+  const files = [...tree.paths.filter(isSteering), ...tree.repo.untrackedSteering];
   return files.flatMap((path) =>
     steeringProblems(path, tree.read(path)).map(
       (problem) => `${path}: ${problem} (docs/knowledge/steering-authoring.md)`,
@@ -200,8 +202,10 @@ function steeringFrontmatter(tree: Tree): string[] {
 // Shell scripts only: a text pattern misses execFileSync("git", ["-C", ...]), so in TypeScript the
 // no-restricted-imports rule on child_process (root vite.config.ts) and isolation.test.ts guard the same
 // thing (docs/adr/0024).
-const otherRepoGit = /(^|[^A-Za-z0-9_-])git\s+(init|clone)(\s|$)|git\s+-C\s|--git-dir|GIT_DIR=/m;
-const sourcesLib = /^\. "\$\(dirname "\$0"\)\/lib\.sh"$/m;
+// The pattern is tested on each line, so that a match never spans two lines; `\s` would match a newline.
+const otherRepoGit = /(^|[^A-Za-z0-9_-])git\s+(init|clone)(\s|$)|git\s+-C\s|--git-dir|GIT_DIR=/;
+// The start of a line only: a comment or a carriage return may follow.
+const sourcesLib = /^\. "\$\(dirname "\$0"\)\/lib\.sh"/m;
 const shTest = /^scripts\/test\/[^/]+\.test\.sh$/;
 const upstream = (path: string): boolean =>
   path.startsWith(".agents/") || path.startsWith(".kiro/skills/");
@@ -213,7 +217,7 @@ function gitOnOtherRepositories(tree: Tree): string[] {
   for (const path of shellScripts(tree)) {
     if (path === "scripts/test/lib.sh") continue;
     const text = tree.read(path);
-    if (!otherRepoGit.test(text)) continue;
+    if (!text.split("\n").some((line) => otherRepoGit.test(line))) continue;
     if (!shTest.test(path))
       failures.push(
         `${path} runs git on another repository. Move that code into a scripts/test/*.test.sh that sources lib.sh, or run git only on this repository.`,
@@ -234,8 +238,9 @@ const major = (value: unknown): string | undefined =>
 
 // ADR 0013: one Node.js major version. .node-version decides it; the places that repeat it must agree.
 // A change of the major otherwise leaves a stale copy behind (the API build target, the type definitions).
+// The version is on the first line that starts with one; blank and comment lines before it are skipped.
 function oneNodeMajor(tree: Tree): string[] {
-  const node = /^v?([0-9]+)/.exec(tree.read(".node-version"))?.[1];
+  const node = /^v?([0-9]+)/m.exec(tree.read(".node-version"))?.[1];
   if (node === undefined)
     return [
       ".node-version must start with a Node.js version such as 24 or 24.22.1 (docs/adr/0013).",
@@ -308,6 +313,10 @@ function listedShTests(tree: Tree): string[] {
 // `needs` is a job id or a list of them (GitHub Docs, workflow syntax, `jobs.<job_id>.needs`).
 function mainNeedsEveryJob(tree: Tree): string[] {
   const ci = ".github/workflows/ci.yml";
+  if (tree.repo.read(ci) === undefined)
+    return [
+      `${ci} does not exist. Its main job is the required status check (docs/tooling/ci.md ("ci.yml の検証")).`,
+    ];
   const jobs = record(record(tree.parsed(ci)).jobs);
   const needs = record(jobs.main).needs;
   const needed = new Set(Array.isArray(needs) ? needs : [needs]);

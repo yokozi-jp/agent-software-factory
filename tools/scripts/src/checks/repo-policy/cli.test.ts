@@ -112,6 +112,16 @@ describe("repo-policy", () => {
     expect(policy(["staged"])).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
+  it("copies an untracked steering file in a subdirectory into the staged tree", () => {
+    write(".kiro/steering/sub/broken.md", "no frontmatter\n");
+    expect(policy(["staged"])).toEqual({
+      status: 1,
+      stdout: "",
+      stderr:
+        "repo-policy: .kiro/steering/sub/broken.md: must start with a frontmatter block (docs/knowledge/steering-authoring.md)\n",
+    });
+  });
+
   it("refuses an unknown argument", () => {
     expect(policy(["stage"])).toEqual({
       status: 2,

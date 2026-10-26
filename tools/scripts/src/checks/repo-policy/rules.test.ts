@@ -244,7 +244,7 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
     ).toEqual([`.kiro/steering/broken.md: must start with a frontmatter block ${guide}`]);
   });
 
-  it("checks only the Markdown files directly in .kiro/steering", () => {
+  it("checks only the Markdown files in .kiro/steering", () => {
     expect(
       violations(repo({ ".kiro/steering/notes.txt": "x\n", ".kiro/skills/a/SKILL.md": "x\n" })),
     ).toEqual([]);
@@ -328,7 +328,7 @@ describe("shell scripts are executable in git", () => {
 });
 
 describe("ADR 0013: one Node.js major version", () => {
-  it.each(["v24.1.2\n", "24\n", "24.22.1\n\n# comment\n"])(
+  it.each(["v24.1.2\n", "24\n", "24.22.1\n\n# comment\n", "\n# pinned\n24.22.1\n"])(
     "passes a .node-version of %j",
     (version) => {
       expect(violations(repo({ ".node-version": version }))).toEqual([]);
@@ -487,6 +487,13 @@ describe("every job of ci.yml is in the needs of main", () => {
       '.github/workflows/ci.yml: the main job must list `build` in its needs, or a failure of `build` will not block a merge (docs/tooling/ci.md ("ci.yml の検証")).',
     ]);
   });
+
+  // check-repo-policy.sh stopped with an error from awk.
+  it("refuses a repository without ci.yml", () => {
+    expect(violations(repo({ ".github/workflows/ci.yml": undefined, ...tests }))).toEqual([
+      '.github/workflows/ci.yml does not exist. Its main job is the required status check (docs/tooling/ci.md ("ci.yml の検証")).',
+    ]);
+  });
 });
 
 describe("configuration files that cannot be parsed", () => {
@@ -631,6 +638,18 @@ describe("ADR 0002: the edges", () => {
     ]);
   });
 
+  // check-repo-policy.sh grepped the whole package.json for "@nx/vite".
+  it.each([
+    ["overrides", { overrides: { "@nx/vite": "-" } }],
+    ["resolutions", { resolutions: { "@nx/vite": "-" } }],
+    ["pnpm.overrides", { pnpm: { overrides: { "@nx/vite": "-" } } }],
+    ["a list", { pnpm: { packageExtensions: [{}, { x: { "@nx/vite": "-" } }] } }],
+  ])("refuses @nx/vite as a key in %s", (_, manifest) => {
+    expect(violations(repo({ "apps/api/package.json": json(manifest) }))).toEqual([
+      "apps/api/package.json depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).",
+    ]);
+  });
+
   it("passes dependency fields that are null", () => {
     expect(violations(repo({ "apps/api/package.json": json({ dependencies: null }) }))).toEqual([]);
   });
@@ -664,12 +683,19 @@ describe("steering frontmatter: the edges", () => {
     ]);
   });
 
+  // The untracked files come from the pathspec .kiro/steering/*.md, whose * matches / too (gitglossary(7)).
+  it("checks tracked steering files at any depth, as the pathspec does for untracked ones", () => {
+    expect(violations(repo({ ".kiro/steering/sub/y.md": "x\n" }))).toEqual([
+      `.kiro/steering/sub/y.md: must start with a frontmatter block ${guide}`,
+    ]);
+  });
+
   it("does not check other files that look like steering", () => {
     expect(
       violations(
         repo({
           ".kiro/steering/old.md.bak": "x\n",
-          ".kiro/steering/sub/x.md": "x\n",
+          ".kiro/steeringx.md": "x\n",
           "apps/.kiro/steering/x.md": "x\n",
         }),
       ),
@@ -692,11 +718,29 @@ describe("git on another repository: the edges", () => {
     ]);
   });
 
-  it("does not count a line that sources lib.sh and does more", () => {
-    const text = '#!/bin/sh\n. "$(dirname "$0")/lib.sh" || true\ngit init -q x\n';
+  // check-repo-policy.sh anchored the line that sources lib.sh at its start only.
+  it.each([
+    ["a comment", '. "$(dirname "$0")/lib.sh" # isolation'],
+    ["a carriage return", '. "$(dirname "$0")/lib.sh"\r'],
+  ])("counts a line that sources lib.sh and ends in %s", (_, line) => {
+    const text = `#!/bin/sh\n${line}\ngit init -q x\n`;
+    expect(violations(repo({ "scripts/test/guard-push.test.sh": text }))).toEqual([]);
+  });
+
+  it("does not count a line that sources lib.sh after something else", () => {
+    const text = '#!/bin/sh\ntrue; . "$(dirname "$0")/lib.sh"\ngit init -q x\n';
     expect(violations(repo({ "scripts/test/guard-push.test.sh": text }))).toEqual([
       "scripts/test/guard-push.test.sh runs git on another repository but does not source scripts/test/lib.sh.",
     ]);
+  });
+
+  // check-repo-policy.sh grepped line by line, so a match never spans two lines.
+  it.each([
+    ["git and init", "echo git\ninit x\n"],
+    ["git and -C", "echo git\n-C x\n"],
+    ["-C and its argument", "git -C\nx\n"],
+  ])("passes %s on separate lines", (_, text) => {
+    expect(violations(repo({ "scripts/other.sh": `#!/bin/sh\n${text}` }))).toEqual([]);
   });
 
   it("refuses a test outside scripts/test that sources lib.sh", () => {
