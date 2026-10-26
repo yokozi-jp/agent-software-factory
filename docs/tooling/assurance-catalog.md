@@ -12,18 +12,18 @@ tags: [tooling, reference, ci, git-hooks, ruleset, sensor, guardrail]
 
 ## 読み方
 
-保証は、merge のゲート (ruleset と、その必須チェック) が強制するものだけを指します ([用語集](../../GLOSSARY.md))。lefthook と Kiro の hook は `--no-verify` などで飛ばせるので、同じセンサーを早く知らせる写しとして扱い、保証には数えません ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md) と同じ考え方)。
+保証は、merge のゲート (ruleset と、その必須チェック) が強制するものだけを指します ([用語集](../../GLOSSARY.md))。lefthook と Kiro の hook は `--no-verify` などで飛ばせるので、同じセンサーを早く知らせる写しとして扱い、保証には数えません ([ADR 0004](../adr/0004-squash-merge-and-pr-title-lint.md) と同じ考え方)。ガードレールは結果を判定するセンサーとは別のものですが、同じ表に、保証に数えない行として載せます。
 
-- **センサー**: 設定ファイルの中の名前です。`ci.yml: <step>` は `.github/workflows/ci.yml` の step の `name`、`ruleset: <規則>` は `.github/rulesets/protect-main.json` の規則の `type` (必須チェックは `context`、code scanning は `tool`)、`lefthook: <hook>/<job>` は `lefthook.yml` の job か command の名前、`kiro: <hook>/<検査>` は `.kiro/hooks/` の hook の中の検査の名前です。
-- **保証すること**: そのセンサーが通ったと言えること。
+- **名前**: 設定ファイルの中の名前です。`ci.yml: <step>` は `.github/workflows/ci.yml` の step の `name`、`ruleset: <規則>` は `.github/rulesets/protect-main.json` の規則の `type` (必須チェックは `context`、code scanning は `tool`)、`lefthook: <hook>/<job>` は `lefthook.yml` の job か command の名前、`kiro: <hook>/<検査>` は `.kiro/hooks/` の hook と、それが実行する検査の名前 (`tools/scripts/src/hooks/` のファイルの1行目) です。
+- **保証すること**: そのセンサーが通ったと言えること。ガードレールと警告の行は「保証しない」で始め、止めるものか警告するものを書きます。
 - **ゲート**: 強制するもの。`main` は `ci.yml` の `main` の job を指す必須チェック、「必須チェック」はその名前の job を指す必須チェックです。「なし」の行は保証に数えません。理由を続けて書きます。ガードレール (操作を実行の前に止める)、警告だけ (止めない)、ローカルだけ (飛ばせる hook にしかない) のどれかです。
-- **ローカルの写し**: 同じものを手元で早く知らせる lefthook の job と Kiro の hook です。保証には数えません。
+- **ローカルの写し**: 同じものを手元で早く知らせる lefthook の job です。保証には数えません。
 - **証拠**: 実行の証拠は、PR のチェックの結果とログだけです。SARIF は送りません。
-- **検出力の確かめ方**: そのセンサーが外れたら (規則が無効になる、対象に届かない) 失敗することを確かめるテスト、fixture、静的な検査です。パスは `tools/scripts/src/` からの相対です。GitHub の上でだけ動くもの (ruleset、CodeQL、dependency review) は、設定をこの表と repo-policy の静的な検査で確かめ、検出の仕組みは GitHub に任せます。ruleset か `main` の job を変える PR では、止まることを手で一度確かめます。
+- **検出力の確かめ方**: そのセンサーが外れたら (規則が無効になる、対象に届かない) 失敗することを確かめるテスト、fixture、静的な検査です。パスは `tools/scripts/src/` からの相対です。GitHub の上でだけ動くもの (ruleset の規則、CodeQL、dependency review) の行に書いた静的な検査は、設定がこの表と合っていることを確かめるだけで、違反で止まることは確かめません。検出の仕組みは GitHub に任せ、ruleset か `main` の job を変える PR では、止まることを手で一度確かめます ([#43](https://github.com/yokozi-jp/agent-software-factory/issues/43) の決定 4)。「まだない」の行は、確かめる仕組みがまだないセンサーです。
 
 ## カタログ
 
-| センサー                                                                    | 保証すること                                                                                                                                                                                                                                                                    | ゲート                       | ローカルの写し                                                         | 証拠                                                    | 検出力の確かめ方                                                                                                                                                                                                 |
+| 名前                                                                        | 保証すること                                                                                                                                                                                                                                                                    | ゲート                       | ローカルの写し                                                         | 証拠                                                    | 検出力の確かめ方                                                                                                                                                                                                 |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ruleset: pull_request`                                                     | main は PR の squash merge でだけ変わる。承認の数は 0。管理者は PR の merge でだけ ruleset を飛ばせる (`bypass_actors`、[GitHub リポジトリの設定](../repository/github-settings.md))                                                                                            | ruleset                      | `lefthook: pre-push/guard-push` (main への push を止める)              | GitHub が push を拒否するメッセージ、PR の merge の記録 | 静的な検査: repo-policy がこの表と ruleset の規則を突き合わせる (`checks/repo-policy/rules.test.ts`)。手元の写しは `sh/guard-push.test.ts`                                                                       |
 | `ruleset: main`                                                             | `ci.yml` の `main` 以外の job (`checks`、`scripts`、`nx`) がすべて成功した。下の `ci.yml: …` の行は、この必須チェックで強制される                                                                                                                                               | 必須チェック                 |                                                                        | `main` のチェックの結果                                 | 静的な検査: repo-policy が、`main` の `needs` にすべての job があること、必須チェックが `pull_request` で動く job の名前であることを確かめる (`checks/repo-policy/rules.test.ts`)。`if: always()` は手で確かめる |
@@ -63,12 +63,13 @@ tags: [tooling, reference, ci, git-hooks, ruleset, sensor, guardrail]
 repo-policy (`ci.yml: Repo policy (docs/adr)`) が、この表と設定を突き合わせます。規則は `tools/scripts/src/checks/repo-policy/rules.ts` にあります。
 
 - `ci.yml` の step のうちコマンドを実行するもの (`main` の job を除く) と、ruleset の規則、必須チェック、code scanning の道具は、それぞれ自分の行を持ちます。`main` の job は、必須チェックの `ruleset: main` の行が表します。コマンドを実行する step に `name` がなければ失敗します。
-- lefthook の job と command (group の中の job を含む) は、自分の行を持つか、写す行の「ローカルの写し」の列に名前が出ます。Kiro の hook は trigger ごとに入口が1つで、検査はその中のコードです ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。そこで行は検査ごとに置き、repo-policy は `.kiro/hooks/*.json` のそれぞれの hook に1行以上あることだけを確かめます。hook の中に検査を足したときは、行を手で足します。
-- 表のどの名前も設定にあること、1つのセンサーに行が1つであること、「検出力の確かめ方」が空の行がないことも確かめます。
-- ruleset の必須チェックのそれぞれが、`pull_request` で動く workflow の job の名前 (`name` がなければ job の id) であることも確かめます。ない名前の必須チェックは、PR を pending のまま止めます。
+- lefthook の job と command (group の中の job を含む) は、自分の行を持つか、写す行の「ローカルの写し」の列に1回だけ名前が出ます。
+- Kiro の hook は trigger ごとに入口が1つで、検査はその中のコードです ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。行は検査ごとに置きます。検査の名前は、`tools/scripts/src/hooks/` の直下のファイル (テストを除く) の1行目の `// block-…:` か `// warn-…:` です。`.kiro/hooks/*.json` のそれぞれの hook に1行以上あること、それぞれの検査に行があること、行の hook と検査が実在することを確かめます。どの hook がどの検査を実行するかは、確かめません。
+- 表のどの名前も設定にあること、1つの名前が表に1回だけ出ること、「検出力の確かめ方」が空の行がないことも確かめます。
+- ruleset の必須チェックのそれぞれが、`pull_request` で動く workflow の job の名前 (`name`、なければ job の id) であることも確かめます。GitHub は job の `name` を、その job の名前として表示します ([GitHub Docs の workflow syntax の `jobs.<job_id>.name`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。どの job も報告しない名前の必須チェックは、PR を pending のまま止めます。
 
 GitHub の上の ruleset が `.github/rulesets/protect-main.json` と同じかは、この検査では分かりません。
 
 ## 表に載せないもの
 
-道具が自分の設定で効かせるもので、設定ファイルの中にセンサーとしての名前がないものは、行にしません。pnpm の `minimumReleaseAge` (公開されたばかりの版を解決しない。pnpm 11 以降の既定は 1440 分) がその例です。どれかの行の失敗として現れることはありますが、保証の一覧には数えません。
+道具が自分の設定で効かせるもので、設定ファイルの中にセンサーとしての名前がないものは、行にしません。pnpm の `minimumReleaseAge` (公開されたばかりの版を解決しない。[pnpm の settings](https://pnpm.io/settings)、例外は `pnpm-workspace.yaml` の `minimumReleaseAgeExclude`) がその例です。依存を足す人の手元で効きますが、merge のゲートの step ではないので、保証には数えません。

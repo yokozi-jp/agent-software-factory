@@ -87,11 +87,15 @@ export const passingRepo: Readonly<Record<string, string>> = {
   ".kiro/hooks/pre-tool-use.json": JSON.stringify({
     hooks: [{ name: "pre-tool-use", trigger: "PreToolUse" }],
   }),
+  // A check of the Kiro hooks: its first line names it.
+  "tools/scripts/src/hooks/force-push.ts":
+    "// block-force-push: refuse a force push.\nexport {};\n",
+  "tools/scripts/src/hooks/shell-command.ts": "// The words of a shell command.\nexport {};\n",
   // The table that repo-policy compares with the configs above, as docs/tooling/assurance-catalog.md.
   "docs/tooling/assurance-catalog.md": [
     "# 保証カタログ",
     "",
-    "| センサー | 保証すること | ゲート | ローカルの写し | 証拠 | 検出力の確かめ方 |",
+    "| 名前 | 保証すること | ゲート | ローカルの写し | 証拠 | 検出力の確かめ方 |",
     "| --- | --- | --- | --- | --- | --- |",
     "| `ci.yml: Guard push` | x | `main` | `lefthook: pre-commit/scripts-test-tools` | log | `guard-push.test.ts` |",
     "| `ruleset: commitlint` | x | 必須チェック | | log | `commitlint.tools.test.ts` |",

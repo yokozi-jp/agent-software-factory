@@ -510,6 +510,10 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
   const row = (sensor: string, copies = "", detection = "test") =>
     `| ${sensor} | x | g | ${copies} | e | ${detection} |\n`;
   const withRow = (line: string) => ({ [path]: catalog + line });
+  // The row of the Kiro check in the fixture, replaced by `line`.
+  const kiroRow =
+    "| `kiro: pre-tool-use/block-force-push` | x | ガードレール | | stderr | `force-push.test.ts` |\n";
+  const withKiroRow = (line: string) => ({ [path]: catalog.replace(kiroRow, line) });
   const ci = base[".github/workflows/ci.yml"] ?? "";
   const lefthook = base["lefthook.yml"] ?? "";
   const noRow = (sensor: string) =>
@@ -660,9 +664,22 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ["ruleset: gone", ".github/rulesets/protect-main.json"],
     ["lefthook: pre-commit/gone", "lefthook.yml"],
     ["lefthook: scripts-test-tools", "lefthook.yml"],
-    ["kiro: gone/check", "a hook of .kiro/hooks/*.json, written `kiro: <hook>/<check>`"],
-    ["kiro: pre-tool-use", "a hook of .kiro/hooks/*.json, written `kiro: <hook>/<check>`"],
-    ["kiro: pre-tool-use/", "a hook of .kiro/hooks/*.json, written `kiro: <hook>/<check>`"],
+    [
+      "kiro: gone/check",
+      "a hook of .kiro/hooks/*.json and a check of tools/scripts/src/hooks/, written `kiro: <hook>/<check>`",
+    ],
+    [
+      "kiro: pre-tool-use",
+      "a hook of .kiro/hooks/*.json and a check of tools/scripts/src/hooks/, written `kiro: <hook>/<check>`",
+    ],
+    [
+      "kiro: pre-tool-use/",
+      "a hook of .kiro/hooks/*.json and a check of tools/scripts/src/hooks/, written `kiro: <hook>/<check>`",
+    ],
+    [
+      "kiro: pre-tool-use/block-gone",
+      "a hook of .kiro/hooks/*.json and a check of tools/scripts/src/hooks/, written `kiro: <hook>/<check>`",
+    ],
   ])("refuses a row for %s, which the configs do not have", (sensor, where) => {
     expect(violations(repo(withRow(row(`\`${sensor}\``))))).toEqual([
       `${path} names \`${sensor}\`, which is not in ${where}.`,
@@ -670,8 +687,8 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
   });
 
   it("refuses a local copy that the configs do not have", () => {
-    const copy = row("`kiro: pre-tool-use/block-iwe-normalize`", "`lefthook: pre-push/gone`");
-    expect(violations(repo(withRow(copy)))).toEqual([
+    const copy = row("`kiro: pre-tool-use/block-force-push`", "`lefthook: pre-push/gone`");
+    expect(violations(repo(withKiroRow(copy)))).toEqual([
       `${path} names \`lefthook: pre-push/gone\`, which is not in lefthook.yml.`,
     ]);
   });
@@ -685,8 +702,55 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
 
   it("refuses two rows for one sensor", () => {
     expect(violations(repo(withRow(row("`ruleset: deletion`"))))).toEqual([
-      `${path} has more than one row for \`ruleset: deletion\`.`,
+      `${path} names \`ruleset: deletion\` more than once. Each sensor has one row, and each local copy is named in one row.`,
     ]);
+  });
+
+  it("refuses a local copy named in two rows, or as a row and a copy", () => {
+    const twice = row("`ruleset: gone2`", "`lefthook: pre-commit/scripts-test-tools`");
+    const failures = violations(repo(withRow(twice)));
+    expect(failures).toContain(
+      `${path} names \`lefthook: pre-commit/scripts-test-tools\` more than once. Each sensor has one row, and each local copy is named in one row.`,
+    );
+    const both = row("`lefthook: pre-commit/scripts-test-tools`");
+    expect(violations(repo(withRow(both)))).toEqual([
+      `${path} names \`lefthook: pre-commit/scripts-test-tools\` more than once. Each sensor has one row, and each local copy is named in one row.`,
+    ]);
+  });
+
+  it("refuses a check of the Kiro hooks that has no row", () => {
+    const check = { "tools/scripts/src/hooks/iwe-normalize.ts": "// block-iwe-normalize: x\n" };
+    expect(violations(repo(check))).toEqual([
+      `\`block-iwe-normalize\` (tools/scripts/src/hooks/iwe-normalize.ts) has no row in ${path}. Add a row \`kiro: <hook>/block-iwe-normalize\` for the hook that runs it.`,
+    ]);
+    const row2 = row("`kiro: pre-tool-use/block-iwe-normalize`");
+    expect(violations(repo({ ...check, ...withRow(row2) }))).toEqual([]);
+  });
+
+  it("does not count a lefthook job of the same name as the row of a Kiro check", () => {
+    const files = {
+      "tools/scripts/src/hooks/iwe-normalize.ts": "// block-iwe-normalize: x\n",
+      "lefthook.yml": `${lefthook}    - name: block-iwe-normalize\n      run: x\n`,
+      ...withRow(row("`lefthook: pre-commit/block-iwe-normalize`")),
+    };
+    expect(violations(repo(files))).toEqual([
+      `\`block-iwe-normalize\` (tools/scripts/src/hooks/iwe-normalize.ts) has no row in ${path}. Add a row \`kiro: <hook>/block-iwe-normalize\` for the hook that runs it.`,
+    ]);
+  });
+
+  it("names a check only by the first line of a file directly in tools/scripts/src/hooks", () => {
+    expect(
+      violations(
+        repo({
+          "tools/scripts/src/hooks/a.test.ts": "// block-a: x\n",
+          "tools/scripts/src/hooks/pre-tool-use/rules.ts": "// block-b: x\n",
+          "tools/scripts/src/hooks/c.ts": "// see block-c\n// block-c: x\n",
+          "tools/scripts/src/hooks/d.ts": "// kiro-process: x\n",
+          "tools/scripts/src/hooks/e.ts.bak": "// block-e: x\n",
+          "apps/tools/scripts/src/hooks/f.ts": "// block-f: x\n",
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it.each([
@@ -695,29 +759,29 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ["a sensor outside a code span", "ruleset: deletion"],
     ["a code span that only mentions a sensor", "`see ruleset: deletion`"],
     ["two sensors", "`ruleset: deletion` `ruleset: CodeQL`"],
-  ])("refuses a row with %s in its センサー column", (_, sensor) => {
+  ])("refuses a row with %s in its 名前 column", (_, sensor) => {
     expect(violations(repo(withRow(row(sensor))))).toEqual([
-      `${path}: the row "${sensor}" must name one sensor in its センサー column, such as \`ci.yml: Lint Markdown\`.`,
+      `${path}: the row "${sensor}" must have one name in its 名前 column, such as \`ci.yml: Lint Markdown\`.`,
     ]);
   });
 
   it.each(["", " "])("refuses a row whose 検出力の確かめ方 is %j", (detection) => {
-    const sensor = "`kiro: pre-tool-use/block-iwe-normalize`";
-    expect(violations(repo(withRow(row(sensor, "", detection))))).toEqual([
-      `${path}: the row for \`kiro: pre-tool-use/block-iwe-normalize\` must fill in 検出力の確かめ方 (docs/tooling/ci.md ("検査を足すとき")).`,
+    const sensor = "`kiro: pre-tool-use/block-force-push`";
+    expect(violations(repo(withKiroRow(row(sensor, "", detection))))).toEqual([
+      `${path}: the row for \`kiro: pre-tool-use/block-force-push\` must fill in 検出力の確かめ方 (docs/tooling/ci.md ("検査を足すとき")).`,
     ]);
   });
 
   it("reads a cell with an escaped pipe, and stops at the end of the table", () => {
     // Split at the escaped pipe, the row would have an empty 検出力の確かめ方.
-    const pipe = "| `kiro: pre-tool-use/block-iwe-normalize` | x \\| y | g | | | t |\n";
-    const after = "Text after the table |\n\n| センサー |\n| --- |\n| `ruleset: gone` |\n";
-    expect(violations(repo(withRow(pipe + after)))).toEqual([]);
+    const pipe = "| `kiro: pre-tool-use/block-force-push` | x \\| y | g | | | t |\n";
+    const after = "Text after the table |\n\n| 名前 |\n| --- |\n| `ruleset: gone` |\n";
+    expect(violations(repo(withKiroRow(pipe + after)))).toEqual([]);
   });
 
   it("finds the columns by their names, in any order", () => {
     const swapped = [
-      "| 検出力の確かめ方 | ローカルの写し | センサー |",
+      "| 検出力の確かめ方 | ローカルの写し | 名前 |",
       "| --- | --- | --- |",
       "| t | `lefthook: pre-commit/scripts-test-tools` | `ci.yml: Guard push` |",
       "| t | | `ruleset: commitlint` |",
@@ -730,13 +794,13 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
   });
 
   it("reads the cells that a short row leaves out as empty", () => {
-    const short = "| `kiro: pre-tool-use/block-iwe-normalize` |\n";
-    expect(violations(repo(withRow(short)))).toEqual([
-      `${path}: the row for \`kiro: pre-tool-use/block-iwe-normalize\` must fill in 検出力の確かめ方 (docs/tooling/ci.md ("検査を足すとき")).`,
+    const short = "| `kiro: pre-tool-use/block-force-push` |\n";
+    expect(violations(repo(withKiroRow(short)))).toEqual([
+      `${path}: the row for \`kiro: pre-tool-use/block-force-push\` must fill in 検出力の確かめ方 (docs/tooling/ci.md ("検査を足すとき")).`,
     ]);
-    const last = `| 検出力の確かめ方 | ローカルの写し | センサー |\n| --- | --- | --- |\n| t |\n`;
+    const last = `| 検出力の確かめ方 | ローカルの写し | 名前 |\n| --- | --- | --- |\n| t |\n`;
     expect(violations(repo({ [path]: last })).slice(0, 1)).toEqual([
-      `${path}: the row "" must name one sensor in its センサー column, such as \`ci.yml: Lint Markdown\`.`,
+      `${path}: the row "" must have one name in its 名前 column, such as \`ci.yml: Lint Markdown\`.`,
     ]);
   });
 
@@ -747,21 +811,21 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
   });
 
   it.each([
-    ["センサー", "| 表 | ローカルの写し | 検出力の確かめ方 |"],
-    ["ローカルの写し", "| センサー | 写し | 検出力の確かめ方 |"],
-    ["検出力の確かめ方", "| センサー | ローカルの写し | 検出力 |"],
+    ["名前", "| 表 | ローカルの写し | 検出力の確かめ方 |"],
+    ["ローカルの写し", "| 名前 | 写し | 検出力の確かめ方 |"],
+    ["検出力の確かめ方", "| 名前 | ローカルの写し | 検出力 |"],
   ])("refuses a table without the column %s", (_, header) => {
     const other = `${header}\n| --- | --- | --- |\n| \`ruleset: deletion\` | | t |\n`;
     expect(violations(repo({ [path]: other }))).toEqual([
-      `${path} has no table with the columns センサー, ローカルの写し and 検出力の確かめ方.`,
+      `${path} has no table with the columns 名前, ローカルの写し and 検出力の確かめ方.`,
     ]);
   });
 
   it("refuses a catalog without the table", () => {
     const other =
-      "# 保証カタログ\n\n| センサー | ゲート |\n| --- | --- |\n| `ruleset: deletion` | g |\n";
+      "# 保証カタログ\n\n| 名前 | ゲート |\n| --- | --- |\n| `ruleset: deletion` | g |\n";
     expect(violations(repo({ [path]: other }))).toEqual([
-      `${path} has no table with the columns センサー, ローカルの写し and 検出力の確かめ方.`,
+      `${path} has no table with the columns 名前, ローカルの写し and 検出力の確かめ方.`,
     ]);
   });
 });
