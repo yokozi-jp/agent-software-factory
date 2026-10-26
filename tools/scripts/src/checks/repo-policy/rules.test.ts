@@ -381,6 +381,81 @@ describe("ADR numbers are unique", () => {
   });
 });
 
+describe("the test-tools inputs are in the glob of the scripts-test-tools job", () => {
+  const manifest = (inputs: unknown) => json({ nx: { targets: { "test-tools": { inputs } } } });
+  const hook = (glob: unknown, name = "scripts-test-tools") =>
+    `pre-commit:\n  jobs:\n    - name: ${name}\n      glob: ${JSON.stringify(glob)}\n      run: "true"\n`;
+  const files = (inputs: unknown, lefthook: string) => ({
+    "tools/scripts/package.json": manifest(inputs),
+    "lefthook.yml": lefthook,
+  });
+  const missing = (input: string) =>
+    `tools/scripts/package.json: the test-tools input {workspaceRoot}/${input} is not in the glob of the scripts-test-tools job of lefthook.yml. Add it there, or to notInHook in tools/scripts/src/checks/repo-policy/rules.ts with the reason.`;
+
+  it("passes when every input outside the project is a glob of the job", () => {
+    const inputs = ["default", "{workspaceRoot}/mise.toml", "{workspaceRoot}/.mise/locks/**/*"];
+    expect(violations(repo(files(inputs, hook(["mise.toml", ".mise/locks/**/*"]))))).toEqual([]);
+  });
+
+  it("names each input that the job does not have", () => {
+    const inputs = ["{workspaceRoot}/mise.toml", "{workspaceRoot}/.jscpd.json"];
+    expect(violations(repo(files(inputs, hook(["mise.toml"]))))).toEqual([missing(".jscpd.json")]);
+  });
+
+  it("reads a glob written as a single string", () => {
+    expect(violations(repo(files(["{workspaceRoot}/mise.toml"], hook("mise.toml"))))).toEqual([]);
+  });
+
+  it("does not match patterns: the same file written another way is missing", () => {
+    const inputs = ["{workspaceRoot}/docs/.iwe/schemas/okf.yaml"];
+    expect(violations(repo(files(inputs, hook(["docs/.iwe/schemas/*.yaml"]))))).toEqual([
+      missing("docs/.iwe/schemas/okf.yaml"),
+    ]);
+  });
+
+  it.each([
+    "apps/**/*",
+    "packages/**/*",
+    "lefthook.yml",
+    "nx.json",
+    "package.json",
+    "pnpm-lock.yaml",
+    ".kiro/settings/mcp.json",
+    ".github/workflows/*.{yml,yaml}",
+    "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}",
+  ])("lets %s stay out of the hook, on purpose", (input) => {
+    expect(violations(repo(files([`{workspaceRoot}/${input}`], hook(["mise.toml"]))))).toEqual([]);
+  });
+
+  it("ignores inputs that are not in the workspace root, and values that are not strings", () => {
+    const inputs = ["default", "^production", "{projectRoot}/x", 1, null, "mise.toml"];
+    expect(violations(repo(files(inputs, hook(["mise.toml"]))))).toEqual([]);
+  });
+
+  it("refuses inputs when lefthook.yml has no scripts-test-tools job", () => {
+    const failures = violations(
+      repo(files(["{workspaceRoot}/mise.toml"], hook(["mise.toml"], "other"))),
+    );
+    expect(failures).toEqual([
+      "lefthook.yml has no scripts-test-tools job, which runs the test-tools target of tools/scripts.",
+    ]);
+  });
+
+  it("refuses inputs when lefthook.yml has no pre-commit jobs", () => {
+    expect(violations(repo(files(["{workspaceRoot}/mise.toml"], "commit-msg: {}\n")))).toHaveLength(
+      1,
+    );
+  });
+
+  it.each([
+    ["no tools/scripts/package.json", { "tools/scripts/package.json": undefined }],
+    ["no test-tools target", { "tools/scripts/package.json": json({ nx: { targets: {} } }) }],
+    ["inputs that are not a list", { "tools/scripts/package.json": manifest("default") }],
+  ])("has nothing to compare with %s", (_, extra) => {
+    expect(violations(repo(extra))).toEqual([]);
+  });
+});
+
 describe("every job of ci.yml is in the needs of main", () => {
   const ci = base[".github/workflows/ci.yml"] ?? "";
   const extra = `${ci}  extra:\n    runs-on: ubuntu-26.04\n    steps: []\n`;
