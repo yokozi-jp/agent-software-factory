@@ -2,8 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { app } from "./app.ts";
 
-describe("GET /health", () => {
-  it("returns ok", async () => {
+describe("ヘルスチェック (GET /health)", () => {
+  it("ok を返すこと", async () => {
     const res = await app.request("/health");
 
     expect(res.status).toBe(200);
@@ -11,8 +11,8 @@ describe("GET /health", () => {
   });
 });
 
-describe("security headers (docs/web-api/security.md)", () => {
-  it.each(["/health", "/not-found"])("sets the required headers on %s", async (path) => {
+describe("セキュリティヘッダー (docs/web-api/security.md)", () => {
+  it.each(["/health", "/not-found"])("規約が求めるヘッダーを付けること (%s)", async (path) => {
     const res = await app.request(path);
 
     expect(res.headers.get("Content-Security-Policy")).toBe("default-src 'none'");
@@ -22,7 +22,7 @@ describe("security headers (docs/web-api/security.md)", () => {
     );
   });
 
-  it("omits headers the convention deprecates", async () => {
+  it("規約が非推奨とするヘッダーを付けないこと", async () => {
     const res = await app.request("/health");
 
     expect(res.headers.has("X-XSS-Protection")).toBe(false);
@@ -31,7 +31,7 @@ describe("security headers (docs/web-api/security.md)", () => {
 });
 
 describe("CORS", () => {
-  it("does not allow a cross-origin preflight", async () => {
+  it("別のオリジンからのプリフライトを許可しないこと", async () => {
     const res = await app.request("/health", {
       method: "OPTIONS",
       headers: {
@@ -44,7 +44,7 @@ describe("CORS", () => {
     expect(res.headers.has("Access-Control-Allow-Methods")).toBe(false);
   });
 
-  it("does not allow a cross-origin simple request", async () => {
+  it("別のオリジンからの単純なリクエストを許可しないこと", async () => {
     const res = await app.request("/health", { headers: { Origin: "https://evil.example" } });
 
     expect(res.headers.has("Access-Control-Allow-Origin")).toBe(false);

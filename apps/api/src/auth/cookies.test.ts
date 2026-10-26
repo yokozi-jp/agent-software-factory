@@ -7,7 +7,7 @@ import { users } from "../../test/credentials.ts";
 const expectedSameSite = (name: string) =>
   name === "__Host-state" ? "samesite=lax" : "samesite=strict";
 
-describe("cookies the login sets (docs/adr/0022, RFC 10017 6.1.3.2)", () => {
+describe("ログインが返す Cookie (ADR 0022、RFC 10017 6.1.3.2)", () => {
   let fixture: AuthFixture;
   let setCookies: string[];
 
@@ -22,11 +22,11 @@ describe("cookies the login sets (docs/adr/0022, RFC 10017 6.1.3.2)", () => {
     await fixture.close();
   });
 
-  it("sets the session cookie", () => {
+  it("セッションの Cookie を返すこと", () => {
     expect(setCookies.some((line) => line.startsWith("__Host-session_token="))).toBe(true);
   });
 
-  it("gives every cookie the __Host- prefix and the attributes it requires", () => {
+  it("すべての Cookie に __Host- の接頭辞と必須の属性が付くこと", () => {
     const problems: string[] = [];
 
     for (const line of setCookies) {

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
 
-describe("auth schema (docs/adr/0022)", () => {
+describe("auth スキーマの権限 (ADR 0022)", () => {
   let fixture: AuthFixture;
 
   beforeAll(async () => {
@@ -13,7 +13,7 @@ describe("auth schema (docs/adr/0022)", () => {
     await fixture.close();
   });
 
-  it("puts every Better Auth table in the auth schema and none in public", async () => {
+  it("Better Auth の表がすべて auth スキーマにあり、public にはないこと", async () => {
     const tables = await fixture.db.owner.query<{ table_schema: string }>(
       `SELECT table_schema FROM information_schema.tables
        WHERE table_name IN ('user', 'session', 'account', 'organization', 'member')`,
@@ -24,7 +24,7 @@ describe("auth schema (docs/adr/0022)", () => {
   });
 
   it.each(["user", "session", "account", "organization", "member"])(
-    "keeps the app role out of auth.%s",
+    "アプリ用ロールが auth.%s を読めないこと",
     async (table) => {
       await expect(fixture.db.appUser.query(`SELECT 1 FROM auth."${table}"`)).rejects.toThrow(
         /permission denied/,
@@ -32,7 +32,7 @@ describe("auth schema (docs/adr/0022)", () => {
     },
   );
 
-  it("keeps the app role out of tables the auth role creates later", async () => {
+  it("auth 用ロールが後から作る表も、アプリ用ロールが読めないこと", async () => {
     await fixture.db.authService.query(`CREATE TABLE later (id text)`);
 
     await expect(fixture.db.appUser.query(`SELECT id FROM auth.later`)).rejects.toThrow(

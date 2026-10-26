@@ -6,7 +6,7 @@ import { users } from "../../test/credentials.ts";
 const minute = 60_000;
 const hour = 60 * minute;
 
-describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
+describe("セッションの期間 (ADR 0022、OWASP Session Management)", () => {
   let fixture: AuthFixture;
 
   beforeAll(async () => {
@@ -36,7 +36,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     return browser;
   }
 
-  it("ends the session after 30 minutes without activity", async () => {
+  it("無操作が30分続くとセッションが切れること", async () => {
     const browser = await signedInAt(new Date());
     vi.setSystemTime(Date.now() + 31 * minute);
 
@@ -56,7 +56,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     }
   }
 
-  it("keeps the session cookie alive while the user is active", async () => {
+  it("使われている間は Cookie が切れないこと", async () => {
     const browser = await loggedInAt(new Date());
 
     await useEvery20Minutes(browser, 3 * hour);
@@ -66,7 +66,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
 
   // /api/me は業務の API の例、/api/auth/get-session は Better Auth 自身の経路。どちらにも効く。
   it.each(["/api/me", "/api/auth/get-session"])(
-    "ends the session after 8 hours even when the user stays active (%s)",
+    "使われ続けても8時間でセッションが切れること (%s)",
     async (path) => {
       const browser = await signedInAt(new Date());
       await useEvery20Minutes(browser, 8 * hour);
@@ -77,7 +77,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     },
   );
 
-  it("removes the session row once the 8 hour limit is found out", async () => {
+  it("8時間を超えたことが分かった時点で、セッションの行を消すこと", async () => {
     const alone = await createAuthFixture();
     try {
       const browser = await alone.signedIn();

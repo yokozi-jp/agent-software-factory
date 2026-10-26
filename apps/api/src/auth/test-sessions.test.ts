@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
 
-describe("signed-in browsers without the IdP (docs/adr/0022)", () => {
+describe("IdP を通さない認証済みの browser (ADR 0022)", () => {
   let fixture: AuthFixture;
 
   beforeAll(async () => {
@@ -13,7 +13,7 @@ describe("signed-in browsers without the IdP (docs/adr/0022)", () => {
     await fixture.close();
   });
 
-  it("is accepted by the app as a signed-in user", async () => {
+  it("アプリがログイン済みの利用者として受け取ること", async () => {
     const browser = await fixture.signedIn({ email: "tanaka@example.com" });
 
     const res = await browser.request("/api/me");
@@ -22,7 +22,7 @@ describe("signed-in browsers without the IdP (docs/adr/0022)", () => {
     expect(await res.json()).toMatchObject({ email: "tanaka@example.com" });
   });
 
-  it("goes through the same guard as a real login", async () => {
+  it("本物のログインと同じ検査を通ること (ログアウトが効く)", async () => {
     const browser = await fixture.signedIn();
     await browser.request("/api/auth/sign-out", {
       method: "POST",

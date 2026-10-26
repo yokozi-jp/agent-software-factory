@@ -4,7 +4,7 @@ import { appOrigin, createAuthFixture, type AuthFixture } from "../../test/auth-
 import { readUrl } from "../../test/browser.ts";
 import { users } from "../../test/credentials.ts";
 
-describe("logout (docs/adr/0022)", () => {
+describe("ログアウト (ADR 0022)", () => {
   let fixture: AuthFixture;
 
   beforeAll(async () => {
@@ -23,7 +23,7 @@ describe("logout (docs/adr/0022)", () => {
     });
   }
 
-  it("deletes the session row, clears the cookie and asks the browser to drop its data", async () => {
+  it("セッションの行と Cookie を消し、ブラウザにデータを捨てさせること", async () => {
     const browser = fixture.newBrowser();
     await browser.login(users.yamada);
     expect((await fixture.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
@@ -41,7 +41,7 @@ describe("logout (docs/adr/0022)", () => {
     expect((await browser.request("/api/me")).status).toBe(401);
   });
 
-  it("does not ask the browser to drop its data when the request is rejected", async () => {
+  it("リクエストが拒否されたときは、ブラウザにデータを捨てさせないこと", async () => {
     const res = await fixture.app.request("/api/auth/sign-out", {
       method: "POST",
       headers: { "content-type": "application/json", origin: "https://evil.example" },
@@ -52,7 +52,7 @@ describe("logout (docs/adr/0022)", () => {
     expect(res.headers.has("clear-site-data")).toBe(false);
   });
 
-  it("ends the session at the IdP too, so the next login asks for the password again", async () => {
+  it("IdP のセッションも終わらせ、次のログインでパスワードを聞き直すこと", async () => {
     const browser = fixture.newBrowser();
     await browser.login(users.sato);
 

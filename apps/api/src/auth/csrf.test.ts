@@ -8,7 +8,7 @@ const form = { "content-type": "application/x-www-form-urlencoded" };
 // 状態を変える API の入口。業務の API はまだ無いので、テストが足す。
 const stateChangingPath = "/api/orders";
 
-describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
+describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
   let fixture: AuthFixture;
   let app: AuthFixture["app"];
 
@@ -21,7 +21,7 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
     await fixture.close();
   });
 
-  it("lets a same-origin JSON request through", async () => {
+  it("同じオリジンの JSON のリクエストを通すこと", async () => {
     const res = await app.request(stateChangingPath, {
       method: "POST",
       headers: { ...json, origin: appOrigin },
@@ -31,7 +31,7 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects a form post from another origin", async () => {
+  it("別のオリジンからのフォーム送信を 403 で拒否すること", async () => {
     const res = await app.request(stateChangingPath, {
       method: "POST",
       headers: { ...form, origin: "https://evil.example" },
@@ -41,7 +41,7 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("rejects a JSON post from another origin", async () => {
+  it("別のオリジンからの JSON の送信を 403 で拒否すること", async () => {
     const res = await app.request(stateChangingPath, {
       method: "POST",
       headers: { ...json, origin: "https://evil.example" },
@@ -51,7 +51,7 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("rejects a cross-site request that the browser marks with Sec-Fetch-Site", async () => {
+  it("ブラウザが Sec-Fetch-Site で cross-site と示したリクエストを 403 で拒否すること", async () => {
     const res = await app.request(stateChangingPath, {
       method: "POST",
       headers: { ...json, "sec-fetch-site": "cross-site" },
@@ -62,11 +62,11 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
   });
 
   it.each([
-    ["a form body", form],
-    ["a plain text body", { "content-type": "text/plain" }],
-    ["no content type", {}],
+    ["フォーム (application/x-www-form-urlencoded)", form],
+    ["text/plain", { "content-type": "text/plain" }],
+    ["Content-Type なし", {}],
   ])(
-    "rejects a state-changing request with %s even from the same origin",
+    "同じオリジンでも、状態を変えるリクエストの形式が %s なら 415 で拒否すること",
     async (_name, headers) => {
       const res = await app.request(stateChangingPath, {
         method: "POST",
@@ -78,7 +78,7 @@ describe("CSRF protection (docs/adr/0022, RFC 10017 6.1.3.3)", () => {
     },
   );
 
-  it("does not check safe methods", async () => {
+  it("安全なメソッド (GET) は検査しないこと", async () => {
     const res = await app.request("/health", {
       headers: { origin: "https://evil.example" },
     });
