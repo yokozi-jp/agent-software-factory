@@ -18,7 +18,7 @@ Lambda の構成でも DB は VPC の中にあるので、Web Functions は egre
 - 業務の処理は共通のコードにし、実行する場所の違いは入口のファイルで吸収します（ADR 0007 の方針を広げたもの）。入口は、API の `server.ts`（ECS と Web Functions で共通。Web Functions では `AWS_LAMBDA_HTTP_ENDPOINT` を listen する）、ECS のワーカー（SQS を読む繰り返し）、Lambda のワーカー（Event Functions の `handler(event)`。`batchItemFailures` を返す）、締めのバッチです。
 - ECS では、API、ワーカー、バッチを1つのコンテナイメージにします。Lambda では、API（Web Functions）とワーカー（Event Functions、`nodejs24.x`）を zip で置きます。Web Functions の実行環境は Arm64 なので、native のモジュールを含む依存は Linux Arm64 用に作ります。
 - 締めのバッチは ECS のタスク（EventBridge Scheduler → Step Functions → RunTask）だけで動かします。Lambda は1回の実行が15分で切れるためです。
-- 入口は CloudFront 1つにし、web（S3 と OAC）と `/api/*` を同じオリジンにまとめます。`/api/*` の転送先は、ECS なら ALB、Lambda なら Web Functions のエンドポイント（OAC、`IamAuth`、origin request policy は `AllViewerExceptHostHeader`）です。`Authorization` ヘッダーで認証するなら、cache policy にそのヘッダーを入れます。AI のチャットのような応答は SSE の streaming で書き、WebSocket を使う機能は ECS の構成でだけ扱います。
+- 入口は CloudFront 1つにし、web（S3 と OAC）と `/api/*` を同じオリジンにまとめます。`/api/*` の転送先は、ECS なら ALB、Lambda なら Web Functions のエンドポイント（OAC、`IamAuth`、origin request policy は `AllViewerExceptHostHeader`）です。認証は Cookie のセッションで行い（ADR 0022）、`Authorization` ヘッダーは OAC の SigV4 の署名が使うので、アプリでは使いません。`/api/*` の cache policy は `CachingDisabled` にし、Cookie を転送します。AI のチャットのような応答は SSE の streaming で書き、WebSocket を使う機能は ECS の構成でだけ扱います。
 - Web Functions の `timeoutSeconds`（既定 30 秒、最大 900 秒）は stream 全体に効き、CloudFront の origin response timeout（既定 30 秒）はパケットの間に効きます。長い streaming の応答では、`timeoutSeconds` を上げ、30 秒より短い間隔で何かを送ります。
 - DB は Aurora PostgreSQL Serverless v2 を VPC の中に置き、最小を 0 ACU にします。Web Functions は `maxEnvironments`（最小は 2）で実行環境の数を抑えて接続プールを持ち、Event Functions のワーカーは同時実行数に上限を付けて接続プールを1本にします。
 - 非同期処理は、Outbox から SQS の FIFO キュー（DLQ あり）に送ります。Outbox を送る処理は1つの関数にし、ECS ではワーカーが繰り返し呼び、Lambda ではコミットの後に非同期で起動し、取りこぼしに備えて15分ごとにも呼びます。DB を見続けると Aurora が 0 ACU で止まれないためです。FIFO のキューを読む Event Functions は、最初に失敗したメッセージで処理を止め、それ以降のメッセージをすべて `batchItemFailures` に入れます。
@@ -49,7 +49,7 @@ Lambda の構成でも DB は VPC の中にあるので、Web Functions は egre
 
 - Node.js 24 と `nodejs24.x` のサポートは 2028-04-30 に終わります。Web Functions が Node.js 26 に対応したら、リポジトリを 26 に上げます。下げる作業は [Node.js を 26 から 24 に下げる](https://github.com/yokozi-jp/agent-software-factory/issues/90) です。
 - 検証環境は常には置かず、ときどき作って E2E を流して消します。SLO と外形監視は、常に動く環境が要るので後に回します。流れは [使い捨ての検証環境を作り、E2E を流して消す流れ（CD）を決める](https://github.com/yokozi-jp/agent-software-factory/issues/88) で決めます。
-- Web Functions は 2026-10-12 の GA から日が浅く、AWS の上ではまだ動かしていません。connector を通した IPv6 の外向きの通信、Event Functions の dual-stack の外向きの通信、Web Functions の log が CloudWatch Logs に届くこと、CloudFront を通した streaming、connector を通した Aurora への接続は、最初の検証環境で確かめます。IPv6 の外向きの通信が成り立たなければ、Lambda の構成にも NAT Gateway を1台置きます。
+- Web Functions は 2026-10-12 の GA から日が浅く、AWS の上ではまだ動かしていません。connector を通した IPv6 の外向きの通信、Event Functions の dual-stack の外向きの通信、Web Functions の log が CloudWatch Logs に届くこと、CloudFront を通した streaming、connector を通した Aurora への接続、BFF から Cognito の token endpoint と JWKS への IPv6 の接続（DNS は AAAA を返す）は、最初の検証環境で確かめます。IPv6 の外向きの通信が成り立たなければ、Lambda の構成にも NAT Gateway を1台置きます。
 - Lambda の構成の外向きの通信は、ECS の構成（NAT Gateway）と形が違います。宛先を足すたびに IPv6 の対応を確かめる手間が増えます。
 - VPC に入れた Event Functions は、14 日使われないと `Inactive` になり、次の起動が失敗します。Outbox を送る処理を15分ごとに呼ぶので、その関数はこうなりません。ほかの Event Functions では、SQS の再配送が失敗を補います。
 - Aurora は 0 ACU から再開するのに最大15秒かかるので、使っていない時間の後の最初のアクセスが遅れます。

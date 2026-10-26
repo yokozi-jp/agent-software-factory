@@ -19,6 +19,9 @@ sources:
 
 ## 外部のOpenID ConnectのIDプロバイダーを利用し、フロントエンドだけで行う
 
+> [!WARNING]
+> 業務アプリには勧めない。[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.3.4.3 は、悪意のある JavaScript に新しいトークンを取られうるため、業務アプリや機微なデータを扱うアプリでブラウザがトークンを持つ形を not recommended とする。このリポジトリは方式2（BFF の Cookie のセッション）を使う（[ADR 0022](../adr/0022-better-auth-cookie-bff.md)）。
+
 - ウェブサーバーはIdP（Identity Provider）が発行したJWTトークンの検証をきちんと行う必要がある（issuer、期限、署名）
 - 認可などのアプリケーション固有情報はトークンに含まれるユーザーのIDなどを元に、アプリケーション固有のDBを引きに行く実装が必要となる
 - EntraIDの場合はアクセストークンの寿命が短く設定されているため、EntraIDにリクエストを飛ばして行う検証の重要性は低い
@@ -34,6 +37,9 @@ sources:
 > [MSAL.jsを使ってウェブフロントエンドだけでAzureAD認証する](https://future-architect.github.io/articles/20221118a/)
 
 ## 外部のOpenID ConnectなどのIDプロバイダーを利用し、コールバックをサーバーで受け、サーバーがセッションCookieを発行する
+
+> [!NOTE]
+> RFC 10017 6.1 の BFF に当たり、業務アプリに strongly recommended とされる。このリポジトリが採る方式である（[ADR 0022](../adr/0022-better-auth-cookie-bff.md)）。
 
 - 署名用の証明書の管理が必要となる
 - Cookieとしてセッション管理が行えるため、フロントエンドの改ざんでキーを盗まれるリスクが減る

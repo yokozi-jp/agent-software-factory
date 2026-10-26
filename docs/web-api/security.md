@@ -12,7 +12,7 @@ sources:
 # Web API のセキュリティ
 
 CSP や HSTS などのセキュリティヘッダーを一律で付け、CORS は同一オリジン構成を優先しワイルドカードを禁止する。
-Cookie はセッショントークン方式に限り、`Secure`・`HttpOnly`・`SameSite=Lax`・`__Host-` プレフィックスを設定する。
+Cookie はセッショントークン方式に限り、`Secure`・`HttpOnly`・`SameSite`・`__Host-` プレフィックスを設定する。`SameSite` は、BFF の構成では `Strict` にする。
 出典は [Web API設計ガイドライン](about.md) (CC BY 4.0) で、OKF の形式に合わせて分割、変更している。
 
 ## セキュリティ
@@ -119,7 +119,7 @@ Web APIは基本的にステートレスであるべきである。そのため�
 | -------- | ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------- |
 | Secure   | なし              | HTTPSリクエスト時のみ送信されるようになる                                                  | Secure                                |
 | HttpOnly | なし              | JavaScriptからのCookieへのアクセスが禁止される。XSSのリスクを軽減できる                    | HttpOnly                              |
-| SameSite | Strict, Lax, None | Cookieの送信制御のための属性（後述）                                                       | SameSite=Lax                          |
+| SameSite | Strict, Lax, None | Cookieの送信制御のための属性（後述）                                                       | SameSite=Strict                       |
 | Path     | パス              | 送信対象のパスを指定（設定したパスのサブパスにも送信される）                               | Path=/api                             |
 | Domain   | ドメイン名        | 送信先のドメインを指定。省略すると発行元のホスト名に限定され、サブドメイン間で共有されない | (未指定)                              |
 | Expires  | 日付 (GMT)        | 有効期限をGMT形式で指定する                                                                | Expires=Tue, 29 Apr 2025 12:00:00 GMT |
@@ -163,7 +163,7 @@ Web APIは基本的にステートレスであるべきである。そのため�
 - `Set-Cookie` には以下の属性を設定する
   - `Secure` 属性: 有効にする。HTTPSリクエストでのみ送信するようにするため
   - `HttpOnly`属性: 有効にする。XSSリスクを軽減させるため
-  - `SameSite` 属性: `Lax` を設定する（`Strict` で要件上、充足できる場合は `Strict` でも可能。`None` は禁止する）
+  - `SameSite` 属性: `Strict` を設定する。BFF の Cookie のセッションには `Strict` を勧める（[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1.3.2）。別サイトからのリンクでログイン済みの状態を保てないなど、`Strict` が要件上、充足できない場合だけ `Lax` にする。`None` は禁止する。`SameSite` は CSRF 対策の一つで、これだけに頼らない（RFC 10017 6.1.3.3）
   - `Path` 属性: `/` を指定する。`__Host-` プレフィックスを利用したいため
   - `Domain` 属性: 原則、省略（発行元のホスト名に限定）する。サブドメイン間で共有は行わせないため
   - `Max-Age` 属性: 合意されたセッション有効期間を指定する
