@@ -148,6 +148,47 @@ function webStandardApis(tree: Tree): string[] {
     .map((rule) => `vite.config.ts must set ${rule} to error for apps/api/src (docs/adr/0007).`);
 }
 
+// The keys of `const <name> ... = { ... };` in the text: the keys of an object literal that holds no other object.
+function objectKeys(text: string, name: string): string[] {
+  const body = new RegExp(`^const ${name}\\b[^=]*=\\s*\\{([^}]*)\\}`, "m").exec(text)?.[1];
+  if (body === undefined) return [];
+  return Array.from(body.matchAll(/([A-Za-z0-9_-]+)"?\s*:/g), (match) => String(match[1]));
+}
+
+const fixtureAnnotation = "oxlint-disable-next-line no-restricted-imports";
+
+// ADR 0026: the boundaries of each package under packages/. vite.config.ts builds an override of
+// no-restricted-imports for each module in its `modules` object, and for each layer of its `layers` object; a
+// package left out has no boundaries. Each override has a fixture (#43) in <dir>/__fixtures__/ that the rule
+// must report: src/ of every package, and src/<layer>/ of every module. shared has its own override and no layers.
+function moduleBoundaries(tree: Tree): string[] {
+  const config = tree.read("vite.config.ts");
+  const modules = new Set(objectKeys(config, "modules"));
+  const layers = objectKeys(config, "layers");
+  const failures: string[] = [];
+  for (const path of tree.paths) {
+    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
+    if (name === undefined) continue;
+    const isModule = name !== "shared";
+    if (isModule && !modules.has(name))
+      failures.push(
+        `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`,
+      );
+    for (const dir of ["src", ...(isModule ? layers.map((layer) => `src/${layer}`) : [])]) {
+      const fixtures = `packages/${name}/${dir}/__fixtures__/`;
+      if (
+        !tree.paths.some(
+          (file) => file.startsWith(fixtures) && tree.read(file).includes(fixtureAnnotation),
+        )
+      )
+        failures.push(
+          `${fixtures} has no fixture with \`${fixtureAnnotation}\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`,
+        );
+    }
+  }
+  return failures;
+}
+
 const inclusions: ReadonlySet<unknown> = new Set(["always", "fileMatch", "manual", "auto"]);
 
 // The problems of one steering file. Malformed frontmatter is silently loaded as `always`.
@@ -619,11 +660,14 @@ function executableScripts(tree: Tree): string[] {
 //                                               without its number; \" in a JSON string counts as ")
 //   docs/adr/ and a four-digit number           an ADR with that number must exist
 // .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check. The tests and
-// fixtures of adr-check and repo-policy cite missing ADRs on purpose.
+// fixtures of adr-check and repo-policy cite missing ADRs on purpose. research/ holds the notes of
+// wayfinder research tickets, which live on throwaway branches and are never merged; they quote paths
+// of other commits and of upstream repositories.
 const unchecked = [
   /^docs\//,
   /^\.agents\//,
   /^\.kiro\/skills\//,
+  /^research\//,
   /^tools\/scripts\/src\/checks\/(adr-check|repo-policy)\/([^/]*\.test\.ts$|fixtures\/)/,
   /^pnpm-lock\.yaml$/,
 ];
@@ -670,6 +714,7 @@ export function violations(repo: Repo): string[] {
     ...lefthookOwnsHooks(tree),
     ...oneBetterleaks(tree),
     ...webStandardApis(tree),
+    ...moduleBoundaries(tree),
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),

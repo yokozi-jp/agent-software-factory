@@ -34,6 +34,7 @@ sources:
 - dark-mode.md の状態の保持の表で、Cookie の有効期限「最大で約68年」を、Chrome M104 以降は最大400日である旨に直し、一次情報を参考に足した。Chrome for Developers「Cookie Expires and Max-Age attributes now have upper limit」。
 - auth.md の方式1 (フロントエンドだけ) に、業務アプリには勧めない旨の警告を、方式2 に、BFF として strongly recommended で、このリポジトリが採る旨の注記を足した。RFC 10017 6.1、6.3.4.3。
 - favicon.md の形式比較の表で、SVG のブラウザ対応を Safari 26 以降で対応済みに直した。WebKit Blog「WebKit Features in Safari 26.0」。
+- static-analysis.md に、このリポジトリの節として「React と JSX のアクセシビリティの検査」を足した (`apps/web/src` で Oxlint の `react` と `jsx-a11y` の plugin を有効にしたこと、見つけられる範囲と見つけられない範囲)。#239。
 
 ## 位置づけ
 

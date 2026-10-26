@@ -33,6 +33,8 @@ const isTestDeclaration = (callee: AstNode): boolean => {
 const titleText = (node: AstNode): string | undefined => {
   if (node?.type === "Literal" && typeof node.value === "string") return node.value;
   if (node?.type === "TemplateLiteral") {
+    // cooked is null only for an invalid escape, which is a syntax error outside a tagged template.
+    /* v8 ignore next -- the null case cannot be parsed here */
     return node.quasis.map((quasi) => quasi.value.cooked ?? "").join("");
   }
   return undefined;
@@ -52,9 +54,10 @@ const japaneseTitle = defineRule({
     return {
       CallExpression(node) {
         if (!isTestDeclaration(node.callee)) return;
-        const text = titleText(node.arguments[0]);
-        if (text === undefined || japanese.test(text)) return;
-        context.report({ node: node.arguments[0] ?? node, messageId: "notJapanese" });
+        const [title] = node.arguments;
+        const text = titleText(title);
+        if (title === undefined || text === undefined || japanese.test(text)) return;
+        context.report({ node: title, messageId: "notJapanese" });
       },
     };
   },

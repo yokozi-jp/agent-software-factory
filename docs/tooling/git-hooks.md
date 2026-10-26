@@ -16,7 +16,7 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 
 - `commit-msg` はコミットメッセージを、`pre-commit` はステージした変更を、`pre-push` は push するコミットを見ます。
 - `pre-commit` は、staged ファイルに `vp check --fix` を実行して修正を stage してから、Markdown を lint します。`glob` を持つ job は、それに合うファイルを変えたときだけ実行します。
-- `pre-push` の adr-check と OSV-Scanner は警告だけで、止めません。adr-number は `gh` が読めないとき、Semgrep はオフラインなど検査できないときは止めません。
+- `pre-push` の adr-check、test-weakening、OSV-Scanner は警告だけで、止めません。adr-number は `gh` が読めないとき、Semgrep はオフラインなど検査できないときは止めません。
 
 ## hook を一時的に飛ばす
 
@@ -32,6 +32,8 @@ git commit --no-verify ...               # Git 標準の方法
 secret scan を飛ばして秘密情報を push してしまった場合は、[secret scan](secret-scan.md) の手順で対処します。
 
 `pre-push` の adr-check は警告だけで、push を止めません。ADR が要らない変更の警告は、`ADR_ACK=1 git push ...` で抑えます ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。判断の基準は [docs の書き方](../knowledge/documentation-authoring.md#adr-を書くかどうか) にあります。
+
+`pre-push` の test-weakening も警告だけです。テストを消すか減らすのが意図した変更なら、`TESTS_ACK=1 git push ...` で抑え、理由を PR の本文に書きます。
 
 ## hook が動かないとき
 

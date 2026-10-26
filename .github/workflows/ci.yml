@@ -56,6 +56,11 @@ jobs:
       - name: ADR check (warning only)
         run: node tools/scripts/src/checks/adr-check/cli.ts
 
+      # Warns, never fails: a deleted test file or fewer test cases makes this a pull request a person reads
+      # before merging it (#138, docs/code-review/agent-pull-requests.md). The same base as adr-check.
+      - name: Test weakening check (warning only)
+        run: node tools/scripts/src/checks/test-weakening/cli.ts
+
       - name: Lint Markdown
         run: pnpm lint:md
 

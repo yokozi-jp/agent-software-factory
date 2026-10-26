@@ -30,7 +30,8 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 apps/
   api/   Hono (Node.js)。GET /health
   web/   React + TanStack Router
-packages/  共有パッケージ (今はなし)
+packages/  サンプル機能のモジュール (claim、approval、closing) と共有コード (shared)。ADR 0026
+  <module>/src/  index.ts (公開 API) と層 (domain/、application/、infrastructure/、http/)
 tools/
   scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
     src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
@@ -63,11 +64,13 @@ docs/      ドキュメント (入口は docs/index.md)
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                                        | `node tools/scripts/src/checks/check-adr-number/cli.ts`                                                                                             |
 | worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `tools/scripts/sh/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                                        |
 | 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `node tools/scripts/src/checks/adr-check/cli.ts`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
+| テストファイルの削除とテストケースの数の減少の確認 (警告だけ)                                                    | `node tools/scripts/src/checks/test-weakening/cli.ts`。意図した変更は `TESTS_ACK=1` で抑える ([CI](ci.md#ciyml-の検証))                             |
 | 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                                               |
 
 ## 補足
 
 - api の test は 2 つの project に分かれます。`lint` (lint plugin の規則のテスト) はコンテナを使いません。`integration` (`src/` のテスト) は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
+- api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。
 - `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`apps/api/lint/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`apps/*/lint/`) は対象外です。
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。

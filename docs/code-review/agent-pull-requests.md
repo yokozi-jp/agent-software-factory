@@ -15,7 +15,7 @@ agent の PR は、機械で判定できるものをゲートで止め、agent �
 ## ゲートで止めるもの
 
 人が見る前に、merge のゲート (ruleset と、その必須チェック) が止めるものは、[保証カタログ](../tooling/assurance-catalog.md) にある。カタログでゲートが「なし」でない行は、人が目で確かめなくてよい。
-GitHub の Review AI-generated code の確認点のうち、ビルドとテストが通り新しい警告がないこと、存在しない API を呼んでいないこと、型エラーを `any` などで黙らせていないこと、テストをスキップしていないことは `ci.yml: Check, test, build and mutation (nx affected)` の行、秘密情報は `ruleset: betterleaks` の行、コミットと PR のタイトルの形式は `ruleset: commitlint` の行が受け持つ。
+GitHub の Review AI-generated code の確認点のうち、ビルドとテストが通り新しい警告がないこと、存在しない API を呼んでいないこと、型エラーを `any` などで黙らせていないこと、テストをスキップしていないこと、何も確かめずに通るテストを書いていないこと、テストを消して coverage を下げていないことは `ci.yml: Check, test, build and mutation (nx affected)` の行、秘密情報は `ruleset: betterleaks` の行、コミットと PR のタイトルの形式は `ruleset: commitlint` の行が受け持つ。
 Git hook と Kiro の hook は飛ばせるので、ゲートには数えない。
 
 ゲートが止められない誤りを見つけたら、レビューで指摘するだけでなく、ゲートに足せないかを考える。
@@ -43,6 +43,7 @@ GitHub Copilot code review も、既定ではプルリクエストの必須の�
 - ADR、`AGENTS.md`、`.kiro/` の skill、steering、hook を変える
 - `.github/` の workflow と ruleset、`lefthook.yml`、`tools/scripts/` のゲートを変える
 - 依存を足す
+- CI の test-weakening が警告した (テストファイルを消した、テストケースの数を減らした。[CI](../tooling/ci.md#ciyml-の検証))
 
 それ以外の PR は、ゲートが通っていれば、本文の Summary と Evidence を確かめてマージしてよい。
 マージは人が行う。

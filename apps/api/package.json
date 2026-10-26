@@ -7,10 +7,13 @@
     "dev": "vp dev",
     "build": "vp build",
     "start": "node dist/server.js",
-    "test": "vp test run",
+    "test": "vp test run --coverage",
     "check": "vp check"
   },
   "dependencies": {
+    "@agent-software-factory/approval": "workspace:*",
+    "@agent-software-factory/claim": "workspace:*",
+    "@agent-software-factory/closing": "workspace:*",
     "@hono/node-server": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
@@ -21,6 +24,7 @@
     "@testcontainers/postgresql": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
