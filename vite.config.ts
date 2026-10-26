@@ -67,14 +67,6 @@ export default defineConfig({
       reportUnusedDisableDirectives: "error",
     },
     overrides: [
-      // JavaScript files (scripts/*.mjs) have no type annotations and no type information, so these rules
-      // either cannot match (no-explicit-any, ban-ts-comment) or only report their untyped imports (the
-      // no-unsafe-* rules). They apply to TypeScript (docs/adr/0020).
-      {
-        files: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"],
-        plugins: ["typescript"],
-        rules: Object.fromEntries(Object.keys(typedRules).map((name) => [name, "off"])),
-      },
       // Agent-written tests: block .only (runs a subset) and .skip (hides a failing test).
       // See docs/code-review/agent-pull-requests.md.
       {

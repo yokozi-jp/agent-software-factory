@@ -19,7 +19,7 @@ tags: [adr, tooling, typescript, oxlint, tsgolint, quality]
   - `no-non-null-assertion`: `!` を禁止します。
   - `no-unsafe-type-assertion`: 絞り込みの `as` を禁止し、境界では検証して型を得る形に寄せます。
 
-  `ban-ts-comment` は `@ts-ignore` を禁止し、`@ts-expect-error` は説明を付けたものだけ許します。型注釈も型情報もない JavaScript (`scripts/*.mjs`) には、これらの規則を適用しません。`no-explicit-any` と `ban-ts-comment` は JavaScript では何も報告せず、`no-unsafe-*` は import の型が解決できないので、導入時に `scripts/*.mjs` の3ファイルだけで約240件の報告が出ました。
+  `ban-ts-comment` は `@ts-ignore` を禁止し、`@ts-expect-error` は説明を付けたものだけ許します。導入時は、型注釈も型情報もない JavaScript (`scripts/*.mjs`) にこれらの規則を適用しませんでした。`no-explicit-any` と `ban-ts-comment` は JavaScript では何も報告せず、`no-unsafe-*` は import の型が解決できないので、`scripts/*.mjs` の3ファイルだけで約240件の報告が出たためです。その 3 つを TypeScript に移したので ([Issue #165](https://github.com/yokozi-jp/agent-software-factory/issues/165))、この例外は外しました。JavaScript にも同じ規則がかかります。残る `.mjs` は `tools/scripts/stryker.config.mjs` だけで、import がなく、報告は出ません (2026-10-26 に `vp lint` で確かめました)。
 
 - **抜け道**: テストにも本体と同じ規則をかけます。緩和は、摩擦が実際に出てから足します。`oxlint-disable` は許します。理由の記述は、`apps/web/src` では自作の `web-xss/require-disable-reason` ([ADR 0019](0019-custom-oxlint-plugin-for-xss.md)) が止めますが、それ以外には機械で止める規則がなく、レビューで見ます。
 
