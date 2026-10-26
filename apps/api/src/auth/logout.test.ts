@@ -32,8 +32,24 @@ describe("logout (docs/adr/0022)", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("clear-site-data")).toBe('"cache", "cookies"');
+    expect(
+      browser.appSetCookies.some(
+        (line) => line.startsWith("__Host-session_token=;") && /max-age=0/i.test(line),
+      ),
+    ).toBe(true);
     expect((await fixture.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
     expect((await browser.request("/api/me")).status).toBe(401);
+  });
+
+  it("does not ask the browser to drop its data when the request is rejected", async () => {
+    const res = await fixture.app.request("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: "{}",
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.headers.has("clear-site-data")).toBe(false);
   });
 
   it("ends the session at the IdP too, so the next login asks for the password again", async () => {

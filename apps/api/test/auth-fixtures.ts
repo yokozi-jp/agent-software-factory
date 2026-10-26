@@ -1,6 +1,6 @@
 import { inject } from "vite-plus/test";
 
-import { createAuth, migrateAuth } from "../src/auth/auth.ts";
+import { createAuth, migrateAuth, type AuthConfig } from "../src/auth/auth.ts";
 import { createApp } from "../src/app.ts";
 import { TestBrowser } from "./browser.ts";
 import { createTestDatabase, type TestDatabase } from "./database.ts";
@@ -15,9 +15,7 @@ export interface AuthFixture {
 }
 
 /** 本物の PostgreSQL と Keycloak につないだ、認証つきのアプリを作る。 */
-export async function createAuthFixture(
-  session: { idleSeconds?: number; absoluteSeconds?: number } = {},
-): Promise<AuthFixture> {
+export async function createAuthFixture(session: AuthConfig["session"] = {}): Promise<AuthFixture> {
   const db = await createTestDatabase();
   const auth = createAuth({
     database: db.authService,

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
-import { requireSession, type SessionVariables } from "./auth/session.ts";
+import { requireSession, sessionGuard, type SessionVariables } from "./auth/session.ts";
 import { csrfProtection } from "./security/csrf.ts";
 
 // セキュリティヘッダーの値は docs/web-api/security.md に従う。
@@ -34,15 +34,16 @@ export function createApp({ auth }: AppDependencies = {}) {
 
   if (auth !== undefined) {
     app.use("/api/*", csrfProtection(auth.origin));
+    app.use("/api/*", sessionGuard(auth));
     // ログアウトのあと、ブラウザに HTTP cache と Cookie を捨てさせる (OWASP Session Management)。
     app.use("/api/auth/sign-out", async (c, next) => {
       await next();
-      c.header("Clear-Site-Data", '"cache", "cookies"');
+      if (c.res.ok) c.header("Clear-Site-Data", '"cache", "cookies"');
     });
     app.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
-    app.get("/api/me", requireSession(auth), (c) => {
-      const { user } = c.get("session");
-      return c.json({ id: user.id, email: user.email, name: user.name });
+    app.get("/api/me", requireSession(), (c) => {
+      const user = c.get("session")?.user;
+      return c.json({ id: user?.id, email: user?.email, name: user?.name });
     });
   }
 

@@ -37,24 +37,53 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     expect(res.status).toBe(401);
   });
 
-  it("keeps the session alive while the user is active", async () => {
-    const browser = await loginAt(new Date());
-
-    for (let elapsed = 0; elapsed < 3 * hour; elapsed += 20 * minute) {
-      vi.setSystemTime(Date.now() + 20 * minute);
-      expect((await browser.request("/api/me")).status).toBe(200);
-    }
-  });
-
-  it("ends the session after 8 hours even when the user stays active", async () => {
-    const browser = await loginAt(new Date());
-
-    for (let elapsed = 0; elapsed < 8 * hour; elapsed += 20 * minute) {
+  /** 20 分ごとに使い続けて、指定の時間が経つまで進める。 */
+  async function useEvery20Minutes(
+    browser: ReturnType<AuthFixture["newBrowser"]>,
+    duration: number,
+  ): Promise<void> {
+    for (let elapsed = 0; elapsed < duration; elapsed += 20 * minute) {
       vi.setSystemTime(Date.now() + 20 * minute);
       await browser.request("/api/me");
     }
-    vi.setSystemTime(Date.now() + 20 * minute);
+  }
 
-    expect((await browser.request("/api/me")).status).toBe(401);
+  it("keeps the session alive while the user is active", async () => {
+    const browser = await loginAt(new Date());
+
+    await useEvery20Minutes(browser, 3 * hour);
+
+    expect((await browser.request("/api/me")).status).toBe(200);
+  });
+
+  // /api/me は業務の API の例、/api/auth/get-session は Better Auth 自身の経路。どちらにも効く。
+  it.each(["/api/me", "/api/auth/get-session"])(
+    "ends the session after 8 hours even when the user stays active (%s)",
+    async (path) => {
+      const browser = await loginAt(new Date());
+      await useEvery20Minutes(browser, 8 * hour);
+
+      vi.setSystemTime(Date.now() + 20 * minute);
+
+      expect((await browser.request(path)).status).toBe(401);
+    },
+  );
+
+  it("removes the session row once the 8 hour limit is found out", async () => {
+    const alone = await createAuthFixture();
+    try {
+      const browser = alone.newBrowser();
+      await browser.login(users.yamada);
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date() });
+      expect((await alone.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
+
+      // 使われ続けた session が 8 時間を超えた最初の要求で、行が消える。
+      await useEvery20Minutes(browser, 8 * hour + 20 * minute);
+
+      expect((await alone.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
+    } finally {
+      vi.useRealTimers();
+      await alone.close();
+    }
   });
 });

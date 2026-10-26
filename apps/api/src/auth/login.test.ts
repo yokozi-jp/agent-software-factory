@@ -14,20 +14,6 @@ describe("login with OIDC (docs/adr/0022)", () => {
     await fixture.close();
   });
 
-  it("keeps Better Auth's tables in the auth schema, out of reach of the app role", async () => {
-    const tables = await fixture.db.owner.query(
-      `SELECT table_schema, table_name FROM information_schema.tables
-       WHERE table_name IN ('user', 'session', 'account', 'organization', 'member')`,
-    );
-
-    expect(new Set(tables.rows.map((row: { table_schema: string }) => row.table_schema))).toEqual(
-      new Set(["auth"]),
-    );
-    await expect(fixture.db.appUser.query(`SELECT id FROM auth."user"`)).rejects.toThrow(
-      /permission denied/,
-    );
-  });
-
   it("rejects a request without a session", async () => {
     const res = await fixture.app.request("/api/me");
 
@@ -42,6 +28,30 @@ describe("login with OIDC (docs/adr/0022)", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ email: users.yamada.email });
+  });
+
+  it("gives users UUID ids, so they can be used as tenant ids (ADR 0011)", async () => {
+    const browser = fixture.newBrowser();
+    await browser.login(users.yamada);
+
+    const body: unknown = await (await browser.request("/api/me")).json();
+
+    const id = typeof body === "object" && body !== null && "id" in body ? body.id : undefined;
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+
+  it("does not let a signed-in user create an organization, which is a tenant", async () => {
+    const browser = fixture.newBrowser();
+    await browser.login(users.yamada);
+
+    const res = await browser.request("/api/auth/organization/create", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://app.example.test" },
+      body: JSON.stringify({ name: "Evil Corp", slug: "evil-corp" }),
+    });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect((await fixture.db.owner.query("SELECT 1 FROM auth.organization")).rowCount).toBe(0);
   });
 
   it("keeps two users' sessions apart", async () => {

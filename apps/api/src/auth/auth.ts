@@ -37,19 +37,23 @@ export interface AuthConfig {
 
 // Cookie の名前に __Host- を付ける。Better Auth は useSecureCookies のとき __Secure- を付けるので、
 // それを使わず、名前と Secure を自分で指定する (__Host- は Secure、Path=/、Domain なしが条件)。
-const hostCookieNames = [
-  "session_token",
-  "session_data",
-  "account_data",
-  "dont_remember",
-  "state",
-] as const;
+//
+// SameSite は Strict にする (RFC 10017 6.1.3.2)。ただし state は Lax にする。state は、IdP から戻る
+// callback で、ログインを始めたブラウザかを確かめる Cookie である。IdP から戻る遷移は別のサイトから
+// 始まるので、Strict だと送られず、ログインが "State mismatch" で失敗する。
+const hostCookieSameSite = {
+  session_token: "strict",
+  session_data: "strict",
+  account_data: "strict",
+  dont_remember: "strict",
+  state: "lax",
+} as const;
 
 function hostCookies(): NonNullable<NonNullable<BetterAuthOptions["advanced"]>["cookies"]> {
   return Object.fromEntries(
-    hostCookieNames.map((name) => [
+    Object.entries(hostCookieSameSite).map(([name, sameSite]) => [
       name,
-      { name: `__Host-${name}`, attributes: { secure: true, sameSite: "strict", path: "/" } },
+      { name: `__Host-${name}`, attributes: { secure: true, sameSite, path: "/" } },
     ]),
   );
 }
@@ -64,7 +68,7 @@ function buildBetterAuth(config: AuthConfig) {
     trustedOrigins: [new URL(config.baseURL).origin],
     session: { expiresIn: idle, updateAge: Math.min(60, idle) },
     advanced: {
-      database: { validateSchema: config.validateSchema ?? true },
+      database: { validateSchema: config.validateSchema ?? true, generateId: "uuid" },
       useSecureCookies: false,
       cookies: hostCookies(),
       defaultCookieAttributes: { secure: true, sameSite: "strict", httpOnly: true, path: "/" },
@@ -82,7 +86,8 @@ function buildBetterAuth(config: AuthConfig) {
           },
         ],
       }),
-      organization(),
+      // テナント (organization) は、人事システムの確認で作る。利用者が自分で作れてはいけない。
+      organization({ allowUserToCreateOrganization: false }),
     ],
   });
 }

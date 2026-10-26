@@ -7,7 +7,7 @@ import type { TestProject } from "vite-plus/test/node";
 import { rolePassword } from "./credentials.ts";
 
 // 結合テストは、本物の PostgreSQL と Keycloak を相手にする (docs/db/postgresql-test.md、docs/adr/0022)。
-// 一度だけ起動して全テストで使う。テストごとに別のスキーマとロールを作るので、並列に走らせられる。
+// 一度だけ起動して全テストで使う。テストごとに別のデータベースを作るので、並列に走らせられる (ロールはクラスタ全体で共有する)。
 declare module "vite-plus/test" {
   export interface ProvidedContext {
     postgresUri: string;

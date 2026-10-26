@@ -5,8 +5,23 @@ interface RequestableApp {
   request(input: string, init?: RequestInit): Response | Promise<Response>;
 }
 
+interface StoredCookie {
+  readonly value: string;
+  readonly sameSite: "strict" | "lax" | "none";
+  /** 期限 (ms)。Date.now() と比べる。テストが Date を進めると、Cookie も期限切れになる。 */
+  readonly expiresAt: number | undefined;
+}
+
+interface RequestOptions {
+  /**
+   * 別のサイト (IdP) から始まった遷移として扱う。ブラウザと同じく、SameSite=Strict の Cookie を送らない。
+   * リダイレクトの途中の要求も、遷移の出発点が別のサイトなので、同じく扱う。
+   */
+  readonly crossSite?: boolean;
+}
+
 export class TestBrowser {
-  private readonly cookies = new Map<string, Map<string, string>>();
+  private readonly cookies = new Map<string, Map<string, StoredCookie>>();
   /** アプリが返した Set-Cookie の行を、返された順にすべて残す。 */
   readonly appSetCookies: string[] = [];
 
@@ -18,40 +33,40 @@ export class TestBrowser {
     this.appOrigin = appOrigin;
   }
 
-  /** 指定した host の Cookie を、名前から値を引ける形で返す。 */
-  cookieValue(url: string, name: string): string | undefined {
-    return this.cookies.get(new URL(url).host)?.get(name);
-  }
-
   /** リダイレクトを辿らずに 1 回だけ要求する。Cookie は host ごとに保存、送信する。 */
-  async request(url: string, init: RequestInit = {}): Promise<Response> {
+  async request(
+    url: string,
+    init: RequestInit = {},
+    options: RequestOptions = {},
+  ): Promise<Response> {
     const target = new URL(url, this.appOrigin);
     const headers = new Headers(init.headers);
-    const jar = this.cookies.get(target.host);
-    if (jar && jar.size > 0) {
-      headers.set("cookie", [...jar].map(([name, value]) => `${name}=${value}`).join("; "));
-    }
+    const cookieHeader = this.cookieHeader(target.host, options.crossSite === true);
+    if (cookieHeader !== "") headers.set("cookie", cookieHeader);
 
-    const response =
-      target.origin === this.appOrigin
-        ? await this.app.request(target.toString(), { ...init, headers })
-        : await fetch(target, { ...init, headers, redirect: "manual" });
+    const isApp = target.origin === this.appOrigin;
+    const response = isApp
+      ? await this.app.request(target.toString(), { ...init, headers })
+      : await fetch(target, { ...init, headers, redirect: "manual" });
 
-    if (target.origin === this.appOrigin)
-      this.appSetCookies.push(...response.headers.getSetCookie());
+    if (isApp) this.appSetCookies.push(...response.headers.getSetCookie());
     this.store(target.host, response);
     return response;
   }
 
   /** リダイレクトを辿り、最後の応答を返す。 */
-  async follow(url: string, init: RequestInit = {}): Promise<Response> {
-    let response = await this.request(url, init);
+  async follow(
+    url: string,
+    init: RequestInit = {},
+    options: RequestOptions = {},
+  ): Promise<Response> {
+    let response = await this.request(url, init, options);
     let current = new URL(url, this.appOrigin);
     for (let hops = 0; hops < 10; hops += 1) {
       const location = response.headers.get("location");
       if (response.status < 300 || response.status >= 400 || location === null) return response;
       current = new URL(location, current);
-      response = await this.request(current.toString());
+      response = await this.request(current.toString(), {}, options);
     }
     throw new Error("too many redirects");
   }
@@ -78,19 +93,49 @@ export class TestBrowser {
     const callback = submitted.headers.get("location");
     if (callback === null) throw new Error("Keycloak がログインを拒否した");
 
-    return this.follow(callback);
+    // IdP から戻る遷移は、別のサイトから始まる。
+    return this.follow(callback, {}, { crossSite: true });
+  }
+
+  private cookieHeader(host: string, crossSite: boolean): string {
+    const now = Date.now();
+    const sendable: string[] = [];
+    for (const [name, cookie] of this.cookies.get(host) ?? []) {
+      if (cookie.expiresAt !== undefined && cookie.expiresAt <= now) continue;
+      if (crossSite && cookie.sameSite === "strict") continue;
+      sendable.push(`${name}=${cookie.value}`);
+    }
+    return sendable.join("; ");
   }
 
   private store(host: string, response: Response): void {
-    const jar = this.cookies.get(host) ?? new Map<string, string>();
+    const jar = this.cookies.get(host) ?? new Map<string, StoredCookie>();
     for (const line of response.headers.getSetCookie()) {
       const [pair = "", ...attributes] = line.split(";").map((part) => part.trim());
       const separator = pair.indexOf("=");
       const name = pair.slice(0, separator);
       const value = pair.slice(separator + 1);
-      const maxAge = attributes.find((attribute) => attribute.toLowerCase().startsWith("max-age="));
-      if (value === "" || maxAge?.split("=")[1] === "0") jar.delete(name);
-      else jar.set(name, value);
+      const attribute = (key: string) =>
+        attributes
+          .find((candidate) => candidate.toLowerCase().startsWith(`${key}=`))
+          ?.slice(key.length + 1);
+
+      const maxAge = attribute("max-age");
+      const expires = attribute("expires");
+      let expiresAt: number | undefined;
+      if (maxAge !== undefined) expiresAt = Date.now() + Number(maxAge) * 1000;
+      else if (expires !== undefined) expiresAt = Date.parse(expires);
+
+      if (value === "" || (expiresAt !== undefined && expiresAt <= Date.now())) {
+        jar.delete(name);
+        continue;
+      }
+      const sameSite = attribute("samesite")?.toLowerCase();
+      jar.set(name, {
+        value,
+        sameSite: sameSite === "strict" || sameSite === "none" ? sameSite : "lax",
+        expiresAt,
+      });
     }
     this.cookies.set(host, jar);
   }

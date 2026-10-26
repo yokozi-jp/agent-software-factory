@@ -3,7 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
 import { users } from "../../test/credentials.ts";
 
-describe("session cookies (docs/adr/0022, RFC 10017 6.1.3.2)", () => {
+// state は、IdP から戻る callback で送られる必要があるので Lax にする。ほかは Strict (RFC 10017 6.1.3.2)。
+const expectedSameSite = (name: string) =>
+  name === "__Host-state" ? "samesite=lax" : "samesite=strict";
+
+describe("cookies the login sets (docs/adr/0022, RFC 10017 6.1.3.2)", () => {
   let fixture: AuthFixture;
   let setCookies: string[];
 
@@ -22,24 +26,27 @@ describe("session cookies (docs/adr/0022, RFC 10017 6.1.3.2)", () => {
     expect(setCookies.some((line) => line.startsWith("__Host-session_token="))).toBe(true);
   });
 
-  it.each(["__Host-session_token", "__Host-state"])(
-    "gives %s the attributes RFC 10017 asks for",
-    (name) => {
-      const line = setCookies.find((candidate) => candidate.startsWith(`${name}=`));
-      expect(line, `${name} was not set`).toBeDefined();
-      const attributes = (line ?? "").split(";").map((part) => part.trim().toLowerCase());
+  it("gives every cookie the __Host- prefix and the attributes it requires", () => {
+    const problems: string[] = [];
 
-      expect(attributes).toContain("secure");
-      expect(attributes).toContain("httponly");
-      expect(attributes).toContain("samesite=strict");
-      expect(attributes).toContain("path=/");
-      expect(attributes.some((attribute) => attribute.startsWith("domain="))).toBe(false);
-    },
-  );
+    for (const line of setCookies) {
+      const name = line.slice(0, line.indexOf("="));
+      const attributes = line
+        .split(";")
+        .slice(1)
+        .map((part) => part.trim().toLowerCase());
 
-  it("never sets a cookie without the __Host- prefix", () => {
-    const unprefixed = setCookies.filter((line) => !line.startsWith("__Host-"));
+      if (!name.startsWith("__Host-")) problems.push(`${name}: no __Host- prefix`);
+      if (!attributes.includes("secure")) problems.push(`${name}: not Secure`);
+      if (!attributes.includes("httponly")) problems.push(`${name}: not HttpOnly`);
+      if (!attributes.includes("path=/")) problems.push(`${name}: Path is not /`);
+      if (!attributes.includes(expectedSameSite(name))) problems.push(`${name}: wrong SameSite`);
+      if (attributes.some((attribute) => attribute.startsWith("domain="))) {
+        problems.push(`${name}: has a Domain`);
+      }
+    }
 
-    expect(unprefixed).toEqual([]);
+    expect(setCookies.length).toBeGreaterThan(0);
+    expect(problems).toEqual([]);
   });
 });
