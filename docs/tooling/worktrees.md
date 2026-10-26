@@ -38,6 +38,14 @@ cd "$(scripts/worktree.sh add feat/example)"   # origin/main からブランチ�
 Kiro の file tool (読む、書く、編集する) は、相対 path を worktree ではなく workspace root (main の作業ツリー) に対して解決します。worktree のファイルは絶対 path で渡します。相対 path のまま書くと、別のセッションが使っている main の作業ツリーのファイルを書き換えます。shell のコマンドは、`cwd` に worktree を指定すれば相対 path で構いません。
 作業の手順そのものは `using-git-worktrees` skill に従います。
 
+## 開発サーバーを動かす
+
+別のセッションも同じマシンで開発サーバーを動かします。ポートを worktree ごとに分ける仕組みはまだなく、[Issue #184](https://github.com/yokozi-jp/agent-software-factory/issues/184) で扱います。
+
+- Vite は、指定したポートが塞がっていると、失敗せずに次のポートで起動します。起動したときの出力で実際のポートを読み、決め打ちしません。
+- 動作確認の前に `ss -ltnp` でそのポートの持ち主を確かめます。持ち主の cwd (`readlink /proc/<pid>/cwd`) が自分の worktree なら自分のプロセスです。
+- 止めるのは、自分が起動したプロセスだけです。pid を確かめて `kill <pid>` します。`pkill -f` や `killall` は、パターンに合う別のセッションのプロセスまで止めるので使いません。
+
 ## PR を出す
 
 worktree を作った後も、別の PR が main に入り続けます。番号を振るもの (ADR の `NNNN`) は、ほかの PR と同じ番号を取りやすい箇所です。

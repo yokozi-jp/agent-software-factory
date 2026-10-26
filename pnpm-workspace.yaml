@@ -25,12 +25,17 @@ catalog:
   react: ^19.3.1
   react-dom: ^19.3.1
   typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
-  vite-plus: 1.3.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite-plus: 1.4.0
   markdownlint-cli2: 0.24.0
   jscpd: 5.4.2
   "@iwe-org/iwe": 0.29.0
   knip: 6.42.1
+  better-auth: ^1.7.12
+  pg: ^8.23.1
+  "@testcontainers/postgresql": ^12.2.1
+  "@types/pg": ^8.23.1
+  testcontainers: ^12.2.1
   "@stryker-mutator/core": 10.1.1
   "@stryker-mutator/vitest-runner": 10.1.1
   "@vitest/coverage-v8": 5.0.5
@@ -47,6 +52,11 @@ allowBuilds:
   nx: true
   # Git hooks are installed by the root `prepare` script, not by lefthook's postinstall.
   lefthook: false
+  # testcontainers の依存。build script を実行しない。実行しなくても api のテストは通る
+  # (Docker のソケットを使い、ssh 経由の接続は使わない)。CI の pnpm は、判断のない build script を失敗にする。
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
 # nx 24.0.0 was younger than pnpm's minimumReleaseAge when added by `nx init`.
 # Remove these entries once the version is old enough.
 minimumReleaseAgeExclude:
