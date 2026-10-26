@@ -196,38 +196,33 @@ function steeringFrontmatter(tree: Tree): string[] {
   );
 }
 
+// The shell scripts of this repository: the thin wrappers in tools/scripts/sh/ (docs/adr/0024). The agent skills
+// under .agents/ and .kiro/skills/ are upstream files and are not checked.
+const shellScript = /^tools\/scripts\/sh\/[^/]+\.sh$/;
+const shellScripts = (tree: Tree): string[] => tree.paths.filter((path) => shellScript.test(path));
+
 // Scripts that create or point git at another repository (git init / clone, git -C, --git-dir, GIT_DIR=).
 // Run from a Git hook, such a script inherits GIT_DIR and GIT_INDEX_FILE and acts on this repository instead
-// (docs/tooling/ci.md ("スクリプトのテスト")). Only sh tests isolated by scripts/test/lib.sh may do this.
+// (docs/tooling/ci.md ("スクリプトのテスト")). The shell wrappers only run git on the repository they run in.
+// A test that needs another repository is TypeScript and goes through gitIn (tools/scripts/src/test/sandbox.ts).
 // Shell scripts only: a text pattern misses execFileSync("git", ["-C", ...]), so in TypeScript the
 // no-restricted-imports rule on child_process (root vite.config.ts) and isolation.test.ts guard the same
 // thing (docs/adr/0024).
 // The pattern is tested on each line, so that a match never spans two lines; `\s` would match a newline.
 const otherRepoGit = /(^|[^A-Za-z0-9_-])git\s+(init|clone)(\s|$)|git\s+-C\s|--git-dir|GIT_DIR=/;
-// The start of a line only: a comment or a carriage return may follow.
-const sourcesLib = /^\. "\$\(dirname "\$0"\)\/lib\.sh"/m;
-const shTest = /^scripts\/test\/[^/]+\.test\.sh$/;
-const upstream = (path: string): boolean =>
-  path.startsWith(".agents/") || path.startsWith(".kiro/skills/");
-const shellScripts = (tree: Tree): string[] =>
-  tree.paths.filter((path) => path.endsWith(".sh") && !upstream(path));
 
 function gitOnOtherRepositories(tree: Tree): string[] {
-  const failures: string[] = [];
-  for (const path of shellScripts(tree)) {
-    if (path === "scripts/test/lib.sh") continue;
-    const text = tree.read(path);
-    if (!text.split("\n").some((line) => otherRepoGit.test(line))) continue;
-    if (!shTest.test(path))
-      failures.push(
-        `${path} runs git on another repository. Move that code into a scripts/test/*.test.sh that sources lib.sh, or run git only on this repository.`,
-      );
-    else if (!sourcesLib.test(text))
-      failures.push(
-        `${path} runs git on another repository but does not source scripts/test/lib.sh.`,
-      );
-  }
-  return failures;
+  return shellScripts(tree)
+    .filter((path) =>
+      tree
+        .read(path)
+        .split("\n")
+        .some((line) => otherRepoGit.test(line)),
+    )
+    .map(
+      (path) =>
+        `${path} runs git on another repository. A shell wrapper runs git only on the repository it runs in; write a test that needs another repository in TypeScript, with gitIn (docs/adr/0024).`,
+    );
 }
 
 // The first number of a version or a range: 24 in "v24.1.2", ">=24" and "^24".
@@ -279,35 +274,6 @@ function uniqueAdrNumbers(tree: Tree): string[] {
     .map(([number, files]) => `ADR ${number} is used by more than one file: ${files.join(" ")}`);
 }
 
-// Every string under a `run` key, at any depth: the steps of a workflow, the jobs and commands of lefthook.yml.
-function runs(value: unknown): string[] {
-  if (Array.isArray(value)) return value.flatMap(runs);
-  return Object.entries(record(value)).flatMap(([key, child]) =>
-    key === "run" && typeof child === "string" ? [child] : runs(child),
-  );
-}
-
-const workflow = /^\.github\/workflows\/[^/]+\.ya?ml$/;
-
-// sh tests are listed by hand in the workflows and in lefthook.yml (docs/tooling/ci.md ("スクリプトのテスト")).
-// A new test that is in neither list never runs. Only a `run` counts: not a comment, a name or a glob.
-function listedShTests(tree: Tree): string[] {
-  const inWorkflows = tree.paths
-    .filter((path) => workflow.test(path))
-    .flatMap((path) => runs(tree.parsed(path)));
-  const inHook = runs(tree.parsed("lefthook.yml"));
-  const failures: string[] = [];
-  for (const test of tree.paths.filter((path) => shTest.test(path))) {
-    if (!inWorkflows.some((run) => run.includes(test)))
-      failures.push(
-        `${test} is not run by any workflow. Add it to the Script tests step of .github/workflows/ci.yml.`,
-      );
-    if (!inHook.some((run) => run.includes(test)))
-      failures.push(`${test} is not run by the pre-commit hook. Add a job for it to lefthook.yml.`);
-  }
-  return failures;
-}
-
 // `main` in ci.yml is the required status check (.github/rulesets/protect-main.json) and collects the other jobs.
 // A job that `main` does not need can fail without blocking a merge (docs/tooling/ci.md ("ci.yml の検証")).
 // `needs` is a job id or a list of them (GitHub Docs, workflow syntax, `jobs.<job_id>.needs`).
@@ -343,13 +309,12 @@ function executableScripts(tree: Tree): string[] {
 //   the same path, then ("Heading")             the file must have a heading with that text (cited
 //                                               without its number; \" in a JSON string counts as ")
 //   docs/adr/ and a four-digit number           an ADR with that number must exist
-// .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check. The sh tests
-// (scripts/test/) and the tests and fixtures of adr-check and repo-policy cite missing ADRs on purpose.
+// .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check. The tests and
+// fixtures of adr-check and repo-policy cite missing ADRs on purpose.
 const unchecked = [
   /^docs\//,
   /^\.agents\//,
   /^\.kiro\/skills\//,
-  /^scripts\/test\//,
   /^tools\/scripts\/src\/checks\/(adr-check|repo-policy)\/([^/]*\.test\.ts$|fixtures\/)/,
   /^pnpm-lock\.yaml$/,
 ];
@@ -400,7 +365,6 @@ export function violations(repo: Repo): string[] {
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),
     ...uniqueAdrNumbers(tree),
-    ...listedShTests(tree),
     ...mainNeedsEveryJob(tree),
     ...executableScripts(tree),
     ...docsReferences(tree),

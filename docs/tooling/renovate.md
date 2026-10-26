@@ -25,7 +25,7 @@ PR は squash merge し、タイトルは `chore(deps): ...` です。
 | `.github/workflows/*.yml`                       | Action の commit SHA と、同じ行の `# v1.2.3` のコメント。`jdx/mise-action` の `version`         |
 | `pnpm-workspace.yaml`、`pnpm-lock.yaml`         | catalog の依存。nx と vite-plus と tanstack router は monorepo ごとに1つの PR にまとまる        |
 | `.node-version`、`package.json` の `devEngines` | Node.js (メジャー版を除く) と pnpm                                                              |
-| `scripts/renovate.sh`                           | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する  |
+| `tools/scripts/sh/renovate.sh`                  | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する  |
 
 `config:best-practices` により、npm のパッケージは公開から3日たつまで PR を出しません。
 lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新します。`mise.toml` の版は固定しているので、`mise.lock` の週次の更新では版が変わりません。
@@ -55,13 +55,13 @@ CI (`main`、`commitlint`、`betterleaks`) が通ったことを確かめます�
 
 ## 設定を変えたとき
 
-`renovate.jsonc` と `scripts/renovate.sh` を変えた commit では、pre-commit hook が `scripts/renovate.sh validate` を実行します。CI も同じコマンドを実行します。
-`validate` は `renovate-config-validator --strict` で、知らない設定項目や不正な値を拒否します。実行する Renovate の版は `scripts/renovate.sh` の `renovate_version` に固定してあり、Renovate が週に1回の PR で上げます。どちらも `pnpm dlx` でその版を取るので、ネットワークが要ります。
+`renovate.jsonc` と `tools/scripts/sh/renovate.sh` を変えた commit では、pre-commit hook が `tools/scripts/sh/renovate.sh validate` を実行します。CI も同じコマンドを実行します。
+`validate` は `renovate-config-validator --strict` で、知らない設定項目や不正な値を拒否します。実行する Renovate の版は `tools/scripts/sh/renovate.sh` の `renovate_version` に固定してあり、Renovate が週に1回の PR で上げます。どちらも `pnpm dlx` でその版を取るので、ネットワークが要ります。
 
 実際にどの PR が出るかは、`preview` で確かめます。
 
 ```sh
-scripts/renovate.sh preview
+tools/scripts/sh/renovate.sh preview
 ```
 
 `--platform=local` で Renovate を動かし、出るはずのブランチ名、PR のタイトル、依存ごとの `現在の版 -> 新しい版` を表示します。GitHub の rate limit を避けるため、`GITHUB_COM_TOKEN` か、ログイン済みの `gh` を使います。

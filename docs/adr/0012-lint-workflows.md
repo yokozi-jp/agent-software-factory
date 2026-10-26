@@ -12,7 +12,7 @@ tags: [adr, tooling, actionlint, jactionlint, zizmor, github-actions, ci, securi
 - **jactionlint**: actionlint の fork です ([jdx/jactionlint](https://github.com/jdx/jactionlint))。`.github/jactionlint.yaml` で `profile: correctness` を選び、actionlint と同じ範囲の検査にします。workflow の構文、式の型、`needs` や `steps` の参照、Action の入力を検査します。`PATH` に shellcheck があれば、`run:` のスクリプトも shellcheck で検査します。`mise exec` は `mise.toml` の道具をすべて `PATH` に入れるので、固定した shellcheck ([ADR 0008](0008-pin-shellcheck.md)) で検査します。
 - **zizmor**: workflow のセキュリティの問題を検査します。template injection、`persist-credentials` の書き忘れ (artipacked)、過大な権限、commit SHA で固定していない Action などです。
 
-二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (jactionlint 2.3.0、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`scripts/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `scripts` job と、workflow を変えた commit の pre-commit hook から呼びます。
+二つの道具は見るものが違うので、両方を使います (template injection のように、両方が見つけるものもあります)。版は `mise.toml` (jactionlint 2.3.0、zizmor 1.31.1) と `mise.lock` で固定し、ローカルと CI で同じ版を使います ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。`tools/scripts/sh/lint-workflows.sh` が、git で管理している `.github/workflows/*.yml` と `*.yaml` を両方の道具に渡します。このスクリプトは CI の `ci.yml` の `scripts` job と、workflow を変えた commit の pre-commit hook から呼びます。
 
 zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TOKEN` があると、GitHub API を使う online audit (impostor-commit、known-vulnerable-actions、ref-confusion、stale-action-refs など) も実行します。トークンの有無で結果が変わると、ローカルの hook と CI の結果がずれます。API の一時的な失敗で hook や CI が落ちることもあります。
 
@@ -21,7 +21,7 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 最初 (2026-10-23) は upstream の actionlint 1.7.12 を使い、jactionlint は下の「Considered Options」の理由で採りませんでした。2026-10-24 に、すべての workflow の runner を環境構築の手順と同じ `ubuntu-26.04` にしたところ、actionlint 1.7.12 が `label "ubuntu-26.04" is unknown` と報告しました。`ubuntu-26.04` は 2026-09-17 に GA になった GitHub-hosted runner です ([GitHub changelog](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/))。upstream の main もこの label を知らず、対応を求める Issue (#682) と PR (#683、#723、#743) は 2026-06 から閉じられていません。最後の commit は 2026-04-19、最後の release は 2026-03-30 の v1.7.12 です。下の Consequences に書いていた「upstream の actionlint が、使いたい runner label で誤った指摘を出し、直らない」に当たるので、jactionlint に移しました。
 
 - `.github/actionlint.yaml` の `self-hosted-runner.labels` に `ubuntu-26.04` を足す回避も考えました。1行で済みますが、self-hosted runner のための設定を GitHub-hosted runner に流用することになり、upstream が休止したままなので外す時期も来ません。
-- jactionlint 2.3.0 の `correctness` profile で今の workflow を検査し、指摘がないことを確かめました。`scripts/test/lint-workflows.test.sh` の、わざと誤りを入れた workflow は、actionlint のときと同じく失敗します。
+- jactionlint 2.3.0 の `correctness` profile で今の workflow を検査し、指摘がないことを確かめました。`tools/scripts/src/sh/lint-workflows.tools.test.ts` の、わざと誤りを入れた workflow は、actionlint のときと同じく失敗します。
 - 入れ方は upstream と同じ aqua backend (`"aqua:jdx/jactionlint"`) で、`mise.lock` に checksum と github-attestations の provenance が記録されます。mise の registry の短い名前 `jactionlint` は github backend を指すので使いません。
 - zizmor は併用を続けます。jactionlint の `default` profile の security と policy の規則は使いません。
 
@@ -38,13 +38,13 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 ## Consequences
 
 - 検査の対象は、git で管理している workflow だけです。commit していない作業用の workflow は検査しません。
-- `scripts/test/lint-workflows.test.sh` は、わざと誤りを入れた workflow で検査が失敗し、正しい workflow で通ることを確かめます。
+- `tools/scripts/src/sh/lint-workflows.tools.test.ts` は、わざと誤りを入れた workflow で検査が失敗し、正しい workflow で通ることを確かめます。
 - 意図して書いた箇所の指摘は、その場所に理由を書いて止めます。zizmor は `# zizmor: ignore[<audit>]`、`run:` の中の shellcheck は `# shellcheck disable=SCxxxx` です。例えば `release.yml` の checkout は、`nx release` が push するので `persist-credentials` を残します。
 - zizmor の persona は既定の regular です。pedantic の指摘 (permissions の説明のコメントなど) は扱いません。
 - 版を上げるときは、`mise.toml` の版を変えて `mise lock --platform linux-x64` を実行し、`mise.lock` と一緒に commit します。新しい版で指摘が増えたら、同じ PR で直します。
 - jactionlint は minor の版ごとに規則を足しています。版を上げる Renovate の PR で指摘が増えたら、同じ PR で直すか、`.github/jactionlint.yaml` で規則を外します。`correctness` profile を選んでいるので、`default` profile に足された規則は増えません。
-- `scripts/test/lint-workflows.test.sh` は `.github/jactionlint.yaml` を sandbox にコピーします。設定がないと `default` profile が動き、`concurrency-limits` や `missing-timeout` が報告されるためです。
-- upstream の actionlint が保守を再開し、runner label にも追いついたら、戻すかどうかを検討し直します。jactionlint は actionlint の設定ファイルも読むので、戻すときは `mise.toml` の名前と `scripts/lint-workflows.sh` のコマンドを変えるだけです。これは判断です。
+- `tools/scripts/src/sh/lint-workflows.tools.test.ts` は `.github/jactionlint.yaml` を sandbox にコピーします。設定がないと `default` profile が動き、`concurrency-limits` や `missing-timeout` が報告されるためです。
+- upstream の actionlint が保守を再開し、runner label にも追いついたら、戻すかどうかを検討し直します。jactionlint は actionlint の設定ファイルも読むので、戻すときは `mise.toml` の名前と `tools/scripts/sh/lint-workflows.sh` のコマンドを変えるだけです。これは判断です。
 
 ## 出典
 

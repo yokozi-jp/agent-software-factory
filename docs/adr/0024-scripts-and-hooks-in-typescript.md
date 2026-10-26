@@ -40,8 +40,8 @@ Git hook は `GIT_DIR`、`GIT_INDEX_FILE` などを export し、作業ツリー
 ## Consequences
 
 - PreToolUse の hook は tool の呼び出しごとに動くので、`node` の起動 (1 回約 40〜80 ms) が sh より遅くなります。hook を trigger ごとに 1 つの入口にまとめ、`NODE_COMPILE_CACHE` を指定して埋め合わせます (#158 の手順 2)。jq がないと hook が何もせずに通る穴はなくなります。
-- 移すのは手順ごとに 1 つの PR です (#158)。この ADR を足した PR は、土台と隔離を作り、adr-check (`tools/scripts/src/checks/adr-check/`) を移しました。移した部分の `*.test.sh` は同じ PR で消します。`scripts/` が空になるまでは、sh のテストと隔離 (`scripts/test/lib.sh`、`isolation.test.sh`) も残ります。
-- [ADR 0008](0008-pin-shellcheck.md) の shellcheck の対象は、`scripts/` を `tools/scripts/sh/` に移す PR で、その場で直します。
+- 移すのは手順ごとに 1 つの PR です (#158)。この ADR を足した PR は、土台と隔離を作り、adr-check (`tools/scripts/src/checks/adr-check/`) を移しました。移した部分の `*.test.sh` は同じ PR で消します。最後の PR ([Issue #167](https://github.com/yokozi-jp/agent-software-factory/issues/167)) で、薄いラッパーを `tools/scripts/sh/` に移し、sh のテストと隔離 (`scripts/test/lib.sh`、`isolation.test.sh`) を Vitest に移して、`scripts/` をなくしました。道具と本物の設定を使うテスト (workflow の lint、jscpd、Knip など) は `*.tools.test.ts` として `test-tools` で走らせます。
+- [ADR 0008](0008-pin-shellcheck.md) の shellcheck の対象は、`scripts/` を `tools/scripts/sh/` に移す PR で、その場で直しました。
 - coverage のラチェットは `tools/scripts/vite.config.ts` を書き換えます。上がった下限を commit し忘れると、CI の「Generated files are committed」で止まります。
 - CI には Stryker の incremental の結果を持ち越す cache がないので、`mutation` は `tools/scripts` を変えた PR で毎回すべての mutant を回します (導入時に約 50 秒)。遅くなったら、`reports/stryker-incremental.json` を CI の cache に置くかを決めます。
 - 規則の関数に、テストで殺せない (等価な) mutant が出たら、その行に `// Stryker disable next-line <mutator>: 理由` を書きます。`break` の 100 を下げません。

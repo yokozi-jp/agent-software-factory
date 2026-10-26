@@ -44,9 +44,9 @@ jobs:
       - name: Repo policy (docs/adr)
         run: node tools/scripts/src/checks/repo-policy/cli.ts
 
-      # Runs the Renovate pinned in scripts/renovate.sh through pnpm dlx, so it needs the network.
+      # Runs the Renovate pinned in tools/scripts/sh/renovate.sh through pnpm dlx, so it needs the network.
       - name: Validate Renovate config
-        run: scripts/renovate.sh validate
+        run: tools/scripts/sh/renovate.sh validate
 
       - name: Agent skills match skills-lock.json
         run: node tools/scripts/src/checks/skills-lock/cli.ts
@@ -62,7 +62,7 @@ jobs:
       - name: Docs bundle (OKF, links, orphans)
         run: node tools/scripts/src/checks/docs-check/cli.ts
 
-      # Files outside apps/ and packages/ (root configs, scripts/, docs/, .github/). Nx checks the projects.
+      # Files outside apps/, packages/ and tools/ (root configs, docs/, .github/). Nx checks the projects.
       - name: Check root files
         run: pnpm check:root
 
@@ -74,7 +74,7 @@ jobs:
       - name: Unused code and dependencies (Knip)
         run: pnpm lint:unused
 
-  # The scripts and their tests. This is the slowest job: the tests run one after another.
+  # The scripts that need the tools from mise.lock, and the tests of tools/scripts that run those tools.
   scripts:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -112,10 +112,10 @@ jobs:
           fi
 
       - name: Lint shell scripts
-        run: scripts/shellcheck.sh
+        run: tools/scripts/sh/shellcheck.sh
 
       - name: Lint workflows (jactionlint, zizmor)
-        run: scripts/lint-workflows.sh
+        run: tools/scripts/sh/lint-workflows.sh
 
       # Fails only on ERROR findings that this branch adds (docs/adr/0021). Fetches the Registry rules, so it needs the network.
       # In a pull request, GITHUB_BASE_REF names the base that the findings are compared with.
@@ -124,7 +124,7 @@ jobs:
 
       # Warns, never fails: dependency review (dependency-review.yml) is the gate for dependencies (docs/adr/0021).
       - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
-        run: scripts/osv-scanner.sh
+        run: tools/scripts/sh/osv-scanner.sh
 
       # Tests of tools/scripts that run a real tool from mise.lock on a real config of this repository.
       # Their inputs (package.json of tools/scripts) name each config they read, so affected sees the change.
@@ -132,15 +132,6 @@ jobs:
 
       - name: Tool tests (tools/scripts)
         run: pnpm exec nx affected -t test-tools
-
-      # Behaviour tests for the repo checks (scripts/test/).
-      - name: Script tests
-        run: |
-          tests="scripts/test/guard-push.test.sh scripts/test/lint-workflows.test.sh scripts/test/duplicate-code.test.sh scripts/test/unused-code.test.sh scripts/test/worktree.test.sh scripts/test/renovate.test.sh scripts/test/osv-scanner.test.sh"
-          # shellcheck disable=SC2086 # word splitting of $tests is intended
-          sh scripts/test/run.sh $tests
-          # shellcheck disable=SC2086 # word splitting of $tests is intended
-          sh scripts/test/isolation.test.sh $tests
 
   # The projects (apps/ and packages/): check, test and build the ones that the change affects.
   nx:

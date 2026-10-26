@@ -36,7 +36,7 @@ tags: [agents, skills, retro, convention]
 上から順に検討し、最初に当てはまるものにします。
 
 1. **構造で誤りを書けなくする**: 型、モジュールの境界、雛形、ファイルの置き場所を変えて、誤った書き方そのものができないようにします。
-2. **検査にする**: 機械的に判定できる誤り (決まった書き方、禁止の API、import の形、ファイルの置き場所の規則) は、lint の規則、`scripts/` の検査、Git hook、Kiro の hook、CI のどれかで止めます。
+2. **検査にする**: 機械的に判定できる誤り (決まった書き方、禁止の API、import の形、ファイルの置き場所の規則) は、lint の規則、`tools/scripts/` の検査、Git hook、Kiro の hook、CI のどれかで止めます。
 3. **docs に書く**: 判断が要るものだけを書きます。レビューで見る規約は `CODING_STANDARDS.md`、手順や規約は `docs/` の該当する領域に書き、`AGENTS.md` にはポインタだけを足します ([AGENTS.md、steering、docs、IWE の役割分担](../knowledge/knowledge-architecture.md))。
 
 skill の手順を直したい候補は、この文書に書くか、upstream に提案します。`.agents/skills/**` は `skills-lock.json` と一致させます ([CI](../tooling/ci.md))。

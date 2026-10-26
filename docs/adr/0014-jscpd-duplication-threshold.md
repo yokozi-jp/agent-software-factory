@@ -15,7 +15,7 @@ tags: [adr, tooling, jscpd, ci, quality]
 - **外すもの**: `.gitignore` の対象 (`dist`、`node_modules`、TanStack Router が一時ファイルを書く `.tanstack/`)、生成物の `**/routeTree.gen.ts`、テストの fixture (`**/fixtures/**`、`**/__fixtures__/**`) です。fixture はまだありませんが、わざと同じ内容を並べるものなので、先に外しておきます。テストのコード (`*.test.ts`) は手書きなので対象です。
 - **閾値**: `threshold` は 0 です。2026-10-24 に、この設定で `apps/` を測った重複率が 0% (5 ファイル、367 トークン、clone 0) だったので、その値を閾値にしました。jscpd は重複率が閾値を超えると失敗するので、今は clone が 1 つでもあれば止まります。0 より下げられないので、0 のまま保ちます。
 
-`apps/api/src` と `apps/web/src` に同じ 11 行の関数を置くと、`jscpd found too many duplicates (12.4%) over threshold (0.0%)` で exit 1 になることを確かめました。`scripts/test/duplicate-code.test.sh` が、この設定で、`apps/` と `packages/` の重複で失敗し、対象外の場所の重複と `jscpd:ignore` で囲んだ重複では通ることを確かめます。
+`apps/api/src` と `apps/web/src` に同じ 11 行の関数を置くと、`jscpd found too many duplicates (12.4%) over threshold (0.0%)` で exit 1 になることを確かめました。`tools/scripts/src/configs/jscpd.tools.test.ts` が、この設定で、`apps/` と `packages/` の重複で失敗し、対象外の場所の重複と `jscpd:ignore` で囲んだ重複では通ることを確かめます。
 
 ## Considered Options
 

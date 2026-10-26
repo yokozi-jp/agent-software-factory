@@ -2,7 +2,7 @@
 // makes the agent read old docs, ADRs and configs: it researches and decides on a repository that no
 // longer exists (docs/tooling/worktrees.md ("作業ツリーが古いと警告されたとき")).
 // - Only the main branch is checked. A feature branch is behind origin/main in the normal course of
-//   work, and `scripts/worktree.sh add` starts new branches from origin/main.
+//   work, and `tools/scripts/sh/worktree.sh add` starts new branches from origin/main.
 // - Fetches the base first (cli.ts gives git 5 seconds), then falls back to the ref already in the clone.
 //   No network, no remote or no main: silent.
 // - Never changes the working tree. A `git pull` here could pull the files out from under another session.
@@ -32,7 +32,7 @@ export function staleCheckoutWarning(
   return [
     `WARNING: this working tree (${here}) is on ${branch}, ${behind} commit(s) behind ${base}.`,
     `The files here are out of date. Before you research or decide on anything, read them from ${base}`,
-    `(git show ${base}:<path>, git diff --stat HEAD ${base}), or work in a worktree made by scripts/worktree.sh add,`,
+    `(git show ${base}:<path>, git diff --stat HEAD ${base}), or work in a worktree made by tools/scripts/sh/worktree.sh add,`,
     `which starts from ${base} (docs/tooling/worktrees.md).`,
     "Do not run git pull or git merge in this tree without telling the user: other sessions may be using its files.",
     `Files that differ from ${base} (first 10):`,

@@ -32,8 +32,9 @@ apps/
   web/   React + TanStack Router
 packages/  共有パッケージ (今はなし)
 tools/
-  scripts/ hook と CI から呼ぶ TypeScript の検査 (Nx の project scripts。ADR 0024)
-scripts/   hook と CI から呼ぶシェルスクリプト (tools/scripts に移している途中)
+  scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
+    src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
+    sh/      CLI を呼ぶだけの sh のラッパー
 docs/      ドキュメント (入口は docs/index.md)
 ```
 
@@ -52,15 +53,15 @@ docs/      ドキュメント (入口は docs/index.md)
 | Markdown の検査                                                                                                  | `pnpm lint:md`                                                                                                                                      |
 | 重複コードの検査 (`apps/`、`packages/`)                                                                          | `pnpm lint:dup`。閾値は [ADR 0014](../adr/0014-jscpd-duplication-threshold.md)                                                                      |
 | 未使用のファイル、export、依存の検査 (workspace の全プロジェクトとルート)                                        | `pnpm lint:unused`。例外は `knip.jsonc` ([ADR 0017](../adr/0017-knip-unused-code.md))                                                               |
-| シェルスクリプトの検査                                                                                           | `scripts/shellcheck.sh`                                                                                                                             |
-| GitHub Actions の workflow の検査 (jactionlint、zizmor)                                                          | `scripts/lint-workflows.sh`                                                                                                                         |
-| `renovate.jsonc` の検査と、Renovate が出す PR の確認                                                             | `scripts/renovate.sh validate`、`scripts/renovate.sh preview` ([Renovate](renovate.md))                                                             |
+| シェルスクリプトの検査                                                                                           | `tools/scripts/sh/shellcheck.sh`                                                                                                                    |
+| GitHub Actions の workflow の検査 (jactionlint、zizmor)                                                          | `tools/scripts/sh/lint-workflows.sh`                                                                                                                |
+| `renovate.jsonc` の検査と、Renovate が出す PR の確認                                                             | `tools/scripts/sh/renovate.sh validate`、`tools/scripts/sh/renovate.sh preview` ([Renovate](renovate.md))                                           |
 | docs の検査 (OKF、リンク切れ、見出しへのリンク、リンクの `.md`、孤立文書、index の「いつ読むか」、250行超の警告) | `node tools/scripts/src/checks/docs-check/cli.ts`。`staged` を付けると、取り込んだガイドラインの変更に `about.md` の記録があるかも見る (pre-commit) |
-| スクリプトと Kiro の hook のテスト                                                                               | TypeScript: `pnpm exec nx test scripts`。sh: `sh scripts/test/run.sh` ([CI](ci.md#スクリプトのテスト))                                              |
+| スクリプトと Kiro の hook のテスト                                                                               | `pnpm exec nx test scripts` ([CI](ci.md#スクリプトのテスト))                                                                                        |
 | `tools/scripts` の純粋な関数の mutation test (Stryker)                                                           | `pnpm exec nx mutation scripts`                                                                                                                     |
 | `tools/scripts` の、本物の道具と設定を使うテスト (mise の道具が要るものがある)                                   | `pnpm exec nx test-tools scripts`                                                                                                                   |
 | 次に使える ADR の番号 (open な PR が使っている番号も除く)                                                        | `node tools/scripts/src/checks/check-adr-number/cli.ts`                                                                                             |
-| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `scripts/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                                                 |
+| worktree を作る (どこから実行しても `<main の作業ツリー>-worktrees/<ブランチ名>` に作る)                         | `tools/scripts/sh/worktree.sh add <ブランチ名>`。場所だけを知るときは `path`                                                                        |
 | 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `node tools/scripts/src/checks/adr-check/cli.ts`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
 | 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                                               |
 
@@ -74,4 +75,4 @@ docs/      ドキュメント (入口は docs/index.md)
 - registry のパッケージの情報 (版、公開日、依存) は `pnpm view <pkg>` で調べます。このリポジトリでは、`npm view` は `package.json` の `devEngines` (pnpm を指定) で `EBADDEVENGINES` になります。
 - `apps/web/src/routeTree.gen.ts` は TanStack Router が生成するファイルです。手で編集せず、生成された差分を commit します。CI は build の後に差分が残ると失敗します。
 - `vp check` と、それを呼ぶ Nx の target のエラーには ANSI の色のコードが入るので、出力を grep するときは `FORCE_COLOR=0` を付けます (例: `FORCE_COLOR=0 pnpm exec nx run api:check`)。`NO_COLOR=1` では色が消えません。
-- `vp check` にファイルを渡すときは `--no-error-on-unmatched-pattern` を付けます。渡したファイルに lint の対象 (`.ts` など) が1つもないと、`.md` や `.json` だけでも `No files found to lint` で失敗するためです。lefthook と `scripts/check-root-files.sh` は付けています。
+- `vp check` にファイルを渡すときは `--no-error-on-unmatched-pattern` を付けます。渡したファイルに lint の対象 (`.ts` など) が1つもないと、`.md` や `.json` だけでも `No files found to lint` で失敗するためです。lefthook と `tools/scripts/sh/check-root-files.sh` は付けています。
