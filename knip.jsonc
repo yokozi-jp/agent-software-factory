@@ -19,6 +19,10 @@
         "@nx/js",
       ],
     },
+    "tools/scripts": {
+      // The Kiro hook entry points: .kiro/hooks/*.json runs them with node. Knip does not read those files.
+      "entry": ["src/hooks/*/cli.ts"],
+    },
     "apps/api": {
       "entry": [
         // The dev server entry (@hono/vite-dev-server in vite.config.ts), also Knip's default.
