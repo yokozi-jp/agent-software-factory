@@ -135,34 +135,31 @@ describe("ticketsToRead", () => {
       child(3, ["wayfinder:prototype"]),
       child(4, grilling),
     ];
-    expect(ticketsToRead(map, children, new Set()).map(({ number }) => number)).toEqual([2, 3, 4]);
+    expect(ticketsToRead(map, children).map(({ number }) => number)).toEqual([2, 3, 4]);
   });
 
   it("matches the line by the whole issue number", () => {
-    expect(ticketsToRead(map, [child(3, grilling)], new Set()).map(({ number }) => number)).toEqual(
-      [3],
-    );
+    expect(ticketsToRead(map, [child(3, grilling)]).map(({ number }) => number)).toEqual([3]);
   });
 
-  it("skips open, not planned, exempt, and research or task tickets", () => {
+  it("skips open, not planned, and research or task tickets", () => {
     const children = [
       child(2, grilling, "open", "completed"),
       child(5, grilling, "closed", "not_planned"),
-      child(6, grilling),
       child(7, ["wayfinder:research"]),
       child(8, ["wayfinder:task", "bug"]),
     ];
-    expect(ticketsToRead(map, children, new Set([6]))).toEqual([]);
+    expect(ticketsToRead(map, children)).toEqual([]);
   });
 
   it("reads every ticket when the map has no Decisions so far, whatever other lines say", () => {
     const body = `- [A](${url(1)}): 実施\n## Notes`;
-    expect(ticketsToRead(body, [child(1, grilling)], new Set()).length).toBe(1);
+    expect(ticketsToRead(body, [child(1, grilling)]).length).toBe(1);
   });
 
   it("reads to the end of the body when Decisions so far is the last section", () => {
     const last = `## Notes\n## Decisions so far\n- [A](${url(1)}): 実施: none`;
-    expect(ticketsToRead(last, [child(1, grilling)], new Set())).toEqual([]);
+    expect(ticketsToRead(last, [child(1, grilling)])).toEqual([]);
   });
 });
 

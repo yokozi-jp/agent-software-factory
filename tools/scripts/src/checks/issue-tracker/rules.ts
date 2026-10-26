@@ -102,16 +102,11 @@ const mentionsImplementation = (text: string): boolean => text.includes("実施"
 
 // The decision tickets closed as completed whose line in Decisions so far does not mention 実施. Those
 // are the ones whose comments cli.ts reads; implementationProblems decides with them.
-export function ticketsToRead(
-  mapBody: string,
-  children: readonly Child[],
-  exempt: ReadonlySet<number>,
-): Child[] {
+export function ticketsToRead(mapBody: string, children: readonly Child[]): Child[] {
   const decisions = section(mapBody, "Decisions so far");
   return children.filter((child) => {
     if (child.state !== "closed" || child.stateReason !== "completed") return false;
-    if (exempt.has(child.number) || !child.labels.some((label) => deciding.has(label)))
-      return false;
+    if (!child.labels.some((label) => deciding.has(label))) return false;
     const line = decisions.find((text) => text.includes(`/issues/${child.number})`));
     return line === undefined || !mentionsImplementation(line);
   });

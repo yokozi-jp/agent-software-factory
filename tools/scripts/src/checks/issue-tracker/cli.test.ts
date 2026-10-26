@@ -134,13 +134,13 @@ describe("issue-tracker", () => {
     );
   });
 
-  it("reports a decision ticket closed without its implementation issue, after reading its comments", () => {
+  it("reports a decision ticket closed without its implementation issue, reading the comments only when its line says nothing", () => {
     answer(openIssues, []);
     answer(maps, [
       {
         number: 23,
         title: "Map",
-        body: `## Decisions so far\n- [A](${url(30)}): done\n- [B](${url(31)}): done`,
+        body: `## Decisions so far\n- [A](${url(30)}): done\n- [B](${url(31)}): done\n- [C](${url(25)}): 実施: none`,
       },
     ]);
     answer(
@@ -162,7 +162,7 @@ describe("issue-tracker", () => {
         },
         {
           number: 25,
-          title: "Old",
+          title: "C",
           state: "closed",
           state_reason: "completed",
           labels: ["wayfinder:grilling"],

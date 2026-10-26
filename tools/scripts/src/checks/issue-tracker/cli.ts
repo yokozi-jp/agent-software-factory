@@ -26,10 +26,6 @@ import {
   type Output,
 } from "./rules.ts";
 
-// Decision tickets of map #23 closed before its Notes asked for the implementation issue (2026-10-24).
-// Their decisions were carried out by issues that the map does not link; they are not checked.
-const closedBeforeTheRule = new Set([25, 26, 30, 39, 40, 41, 42, 44, 45, 95, 127]);
-
 class GhError extends Error {}
 
 const git = (args: readonly string[]): string =>
@@ -105,7 +101,7 @@ function main(): Output {
       ],
       parseChildren,
     );
-    const tickets = ticketsToRead(map.body, children, closedBeforeTheRule);
+    const tickets = ticketsToRead(map.body, children);
     const comments = new Map(
       tickets.map((ticket) => [
         ticket.number,

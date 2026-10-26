@@ -102,8 +102,8 @@ git worktree add -b research/<名前> /home/projects/agent-software-factory-work
 
 `node tools/scripts/src/checks/issue-tracker/cli.ts` が、Issue のずれのうち機械的に見つかる 3 つを報告します (exit 1)。`.github/workflows/issue-tracker.yml` が毎週月曜に実行し、失敗はメールで届きます。Issue は PR の外で変わるので、必須チェックにはしません。`/implement` で Issue を取る前と、ファイルを移す PR を merge した後にも手で実行します。
 
-- **消えたパス**: open な Issue のインラインコードに、git の履歴で消えたパスがある。ファイルを移す PR ([Issue #158](https://github.com/yokozi-jp/agent-software-factory/issues/158) の `scripts/`) の後、古いパスを指したままの Issue をエージェントが古い形で作るのを防ぎます。履歴の全部が要るので、shallow clone では exit 2 で止まります。
-- **実施の Issue の漏れ**: 地図の判断のチケット (`wayfinder:grilling`、`wayfinder:prototype`) が completed で閉じたのに、Decisions so far の行にも解決コメントにも「実施」がない。地図の Notes の「実施の Issue を漏らさない」の規則を確かめます。地図 #23 の、この規則より前に閉じた 11 件は `cli.ts` の `closedBeforeTheRule` で外しています。
+- **消えたパス**: open な Issue のインラインコードに、git の履歴で消えたパスがある。ファイルを移す PR ([Issue #158](https://github.com/yokozi-jp/agent-software-factory/issues/158) の `scripts/`) の後、古いパスを指したままの Issue をエージェントが古い形で作るのを防ぎます。履歴の全部が要るので、shallow clone では exit 2 で止まります。経緯として消えたパスに触れるときは、インラインコードにせずに書きます (例: 「#158 で scripts/ がなくなった」)。
+- **実施の Issue の漏れ**: 地図の判断のチケット (`wayfinder:grilling`、`wayfinder:prototype`) が completed で閉じたのに、Decisions so far の行にも解決コメントにも「実施」がない。地図の Notes の「実施の Issue を漏らさない」の規則を確かめます。規則より前に閉じたチケットも、Decisions so far の行に「実施: …」か「実施の Issue は作らない」を書き足して、同じ検査を通しています。
 - **張り忘れた辺**: 本文の `Blocked by:` の行が名指しする Issue に、ネイティブの辺がない (上の「Wayfinding operations」の **Blocking**)。
 
 規則は `tools/scripts/src/checks/issue-tracker/rules.ts` にあります。
