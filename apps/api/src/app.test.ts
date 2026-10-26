@@ -30,7 +30,7 @@ describe("セキュリティヘッダー (docs/web-api/security.md)", () => {
   });
 });
 
-describe("CORS", () => {
+describe("CORS の設定 (docs/web-api/security.md)", () => {
   it("別のオリジンからのプリフライトを許可しないこと", async () => {
     const res = await app.request("/health", {
       method: "OPTIONS",
