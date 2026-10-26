@@ -35,7 +35,7 @@ case "${1:-}" in
       echo "renovate: Renovate failed (see above)." >&2
       exit 1
     fi
-    node scripts/renovate-preview.mjs "$log"
+    node tools/scripts/src/checks/renovate-preview/cli.ts "$log"
     ;;
   *)
     echo "usage: scripts/renovate.sh validate|preview" >&2

@@ -49,7 +49,7 @@ jobs:
         run: scripts/renovate.sh validate
 
       - name: Agent skills match skills-lock.json
-        run: node scripts/verify-skills-lock.mjs
+        run: node tools/scripts/src/checks/skills-lock/cli.ts
 
       # Warns, never fails: a change to a file that tends to carry a decision should add an ADR (docs/adr/0016).
       # In a pull request, GITHUB_BASE_REF names the base that the diff is taken from.
@@ -60,7 +60,7 @@ jobs:
         run: pnpm lint:md
 
       - name: Docs bundle (OKF, links, orphans)
-        run: scripts/docs-check.sh
+        run: node tools/scripts/src/checks/docs-check/cli.ts
 
       # Files outside apps/ and packages/ (root configs, scripts/, docs/, .github/). Nx checks the projects.
       - name: Check root files

@@ -25,7 +25,8 @@
         "inputs": [
           "default",
           "{workspaceRoot}/mise.toml",
-          "{workspaceRoot}/mise.lock"
+          "{workspaceRoot}/mise.lock",
+          "{workspaceRoot}/docs/.iwe/**"
         ]
       },
       "mutation": {

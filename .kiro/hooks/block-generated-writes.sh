@@ -13,7 +13,7 @@
 # rename_symbol), MCP tools, and IDE client tools such as smart_relocate.
 # CI is the last net (docs/tooling/git-hooks.md "Kiro の hook"):
 #   routeTree.gen.ts: the "Generated files are committed" step after the build
-#   skills: the "Agent skills match skills-lock.json" step (scripts/verify-skills-lock.mjs)
+#   skills: the "Agent skills match skills-lock.json" step (tools/scripts/src/checks/skills-lock/)
 #   pnpm-lock.yaml: `vp install` in setup-vp; pnpm runs with a frozen lockfile in CI
 #   mise.lock: jdx/mise-action with MISE_LOCKED=1, which installs only what the lock records, checksum verified
 # Contract: hook event JSON on stdin; exit 2 refuses (stderr goes back to the agent), exit 0 allows.

@@ -13,9 +13,9 @@ tags: [adr, tooling, knip, ci, quality, dependencies]
 - **実行の経路**: ルートの `package.json` の `lint:unused` (`knip`) を、CI の `ci.yml` の `checks` job と、Knip が読むファイルを変えた commit の pre-commit hook から呼びます。設定はすべて `knip.jsonc` に書くので、どちらも同じ検査です。[ADR 0002](0002-nx-orchestrates-vite-plus.md) に従い、`pnpm lint:dup` ([ADR 0014](0014-jscpd-duplication-threshold.md)) と同じ形にしました。
 - **対象**: `pnpm-workspace.yaml` の全てのプロジェクト (今は `apps/api`、`apps/web`、`tools/scripts`) とルートです。Knip は `pnpm-workspace.yaml` を読み、workspace ごとに entry を決めます。Knip の plugin が、`package.json` の scripts と、GitHub Actions の workflow、`lefthook.yml`、Vite+、Vite、Vitest、TanStack Router、Nx、mise、commitlint、markdownlint などの設定から、entry と使っている依存を読みます。今動いている plugin は `knip --debug` の `Enabled plugins` で分かります。
 - **例外の書き方**: Knip の docs に従い、一括の `ignore` を使わず、例外を 1 つずつ書きます。理由は `knip.jsonc` のその行のそばに書きます。
-  - `entry`: Knip が読まない場所から呼ばれるファイル。`scripts/docs-links.mjs` はシェルスクリプトから、`apps/api/src/server.ts` は `vite.config.ts` の `build.ssr` から呼ばれます。
+  - `entry`: Knip が読まない場所から呼ばれるファイル。`tools/scripts/src/checks/renovate-preview/cli.ts` はシェルスクリプト (`scripts/renovate.sh`) から、`apps/api/src/server.ts` は `vite.config.ts` の `build.ssr` から呼ばれます。
   - `project`: 検査の対象から外すもの。`.agents/` は upstream から入れた skill で、このリポジトリのコードではありません。
-  - `ignoreDependencies`: コードや Knip が読む設定から使われない依存。`@iwe-org/iwe` はシェルスクリプトと Kiro の MCP の設定から、`@nx/js` は `nx release` から読み込まれます。
+  - `ignoreDependencies`: コードや Knip が読む設定から使われない依存。`@iwe-org/iwe` は docs-check の入口 (`tools/scripts/src/checks/docs-check/cli.ts`) がパスで呼ぶ実行ファイルと、Kiro の MCP の設定から、`@nx/js` は `nx release` から読み込まれます。
   - export の例外は、その export に `/** @public */` を付け、理由のコメントを添えます。今はありません。
 - **不要になった例外**: `treatConfigHintsAsErrors` を有効にしました。entry や ignore が不要になったり、どのファイルにも合わなくなったりすると、Knip は configuration hint を出します。この設定で、hint も失敗にします。
 

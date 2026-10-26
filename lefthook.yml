@@ -31,12 +31,13 @@ pre-commit:
           - name: markdownlint
             glob: "*.md"
             run: pnpm exec markdownlint-cli2 {staged_files}
+    # pnpm-workspace.yaml pins iwe, so an upgrade re-checks docs/.
     - name: docs-check
       glob:
         - "docs/**"
-        - "scripts/docs-check.sh"
-        - "scripts/docs-links.mjs"
-      run: scripts/docs-check.sh staged
+        - "tools/scripts/src/checks/docs-check/*.ts"
+        - "pnpm-workspace.yaml"
+      run: node tools/scripts/src/checks/docs-check/cli.ts staged
     - name: shellcheck
       glob:
         - "*.sh"
@@ -76,7 +77,6 @@ pre-commit:
         - "nx.json"
         - "mise.toml"
         - ".markdownlint-cli2.yaml"
-        - "scripts/docs-check.sh"
         - ".kiro/settings/mcp.json"
       run: pnpm lint:unused
     - name: skills-lock
@@ -84,8 +84,8 @@ pre-commit:
         - ".agents/**"
         - ".kiro/skills/**"
         - "skills-lock.json"
-        - "scripts/verify-skills-lock.mjs"
-      run: node scripts/verify-skills-lock.mjs
+        - "tools/scripts/src/checks/skills-lock/*.ts"
+      run: node tools/scripts/src/checks/skills-lock/cli.ts
     # Behaviour tests (scripts/test/) for the scripts and Kiro hooks that changed.
     - name: kiro-hooks-test
       glob:
@@ -96,8 +96,6 @@ pre-commit:
     - name: repo-checks-test
       glob:
         - "scripts/check-repo-policy.sh"
-        - "scripts/docs-check.sh"
-        - "scripts/docs-links.mjs"
         - "scripts/test/lib.sh"
         - "scripts/test/repo-checks.test.sh"
       run: sh scripts/test/run.sh scripts/test/repo-checks.test.sh
@@ -154,7 +152,6 @@ pre-commit:
     - name: renovate-test
       glob:
         - "scripts/renovate.sh"
-        - "scripts/renovate-preview.mjs"
         - "scripts/test/lib.sh"
         - "scripts/test/renovate.test.sh"
       run: sh scripts/test/run.sh scripts/test/renovate.test.sh

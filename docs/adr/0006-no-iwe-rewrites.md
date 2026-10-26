@@ -13,4 +13,4 @@ tags: [adr, documentation, iwe, oxfmt]
 
 - 機械的に止めるのは2か所です。MCP では `.kiro/settings/mcp.json` の `disabledTools` で書き換えるツールを無効にし、CLI では全文書を書き換える `iwe normalize` だけを Kiro の PreToolUse hook で拒否します。CLI の `rename` などは対象の文書が限られるので、規約 (`docs/knowledge/documentation-authoring.md`) とレビューに任せます。
 - `iwe create` は content mode でも書式を少し変えます (iwe 0.29.0 の `--help` には内容をそのまま書くとありますが、コードブロックの言語の前に空白を入れ、表を詰めます)。作成後に `vp fmt` を実行して oxfmt の書式に戻します。
-- 移動したときのリンク元の修正は手作業になります。直し忘れは `docs-check.sh` のリンク切れの検査で見つかります。
+- 移動したときのリンク元の修正は手作業になります。直し忘れは docs-check (`tools/scripts/src/checks/docs-check/`) のリンク切れの検査で見つかります。
