@@ -29,6 +29,7 @@ PR は squash merge し、タイトルは `chore(deps): ...` です。
 
 `config:best-practices` により、npm のパッケージは公開から3日たつまで PR を出しません。
 lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新します。`mise.toml` の版は固定しているので、`mise.lock` の週次の更新では版が変わりません。
+`pypi:semgrep` の sidecar (`.mise/locks/pypi-semgrep/.../uv.lock`) は、`mise.toml` の `[settings] minimum_release_age` を固定日時にしていないと、`mise lock` のたびに `exclude-newer` が `now-24h` で焼き直され、版を固定していても digest が毎週変わり、lock file maintenance の PR が繰り返し出ます ([ADR 0021](../adr/0021-sast-and-dependency-scan.md))。この PR が semgrep の sidecar と `mise.lock` の digest だけを変えて何度も作られるときは、`minimum_release_age` が固定日時であることを確かめます。
 
 ## 更新しないもの
 
