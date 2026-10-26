@@ -20,6 +20,8 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["src/**/*.test.ts"],
+          // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
+          exclude: ["**/node_modules/**", "**/__fixtures__/**"],
           // Keycloak の起動に時間がかかる。
           globalSetup: ["./test/global-setup.ts"],
           hookTimeout: 240_000,

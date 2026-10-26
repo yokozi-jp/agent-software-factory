@@ -1,3 +1,8 @@
+// サンプル機能のモジュール (docs/adr/0026)。app.ts は各モジュールの公開 API (index.ts) を import して
+// route を組み立てるだけにする。モジュールはまだ route を持たないので、今は import だけ。
+import "@agent-software-factory/approval";
+import "@agent-software-factory/claim";
+import "@agent-software-factory/closing";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 

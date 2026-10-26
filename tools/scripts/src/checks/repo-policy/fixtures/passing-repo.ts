@@ -1,5 +1,9 @@
 // The files of a small repository that passes every check of repo-policy. The tests of rules.ts and
 // cli.ts start from it and break one thing per case.
+// A detection-power fixture of the module boundaries: an import that the rule must report.
+export const moduleFixture =
+  '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/other";\n';
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "package.json": JSON.stringify({
@@ -11,7 +15,21 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
+  "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
+  "packages/shared/src/__fixtures__/boundaries.ts": moduleFixture,
+  "packages/claim/package.json": JSON.stringify({ name: "@x/claim" }),
+  "packages/claim/src/__fixtures__/boundaries.ts": moduleFixture,
+  "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+  "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,
   "vite.config.ts": [
+    "const modules: Record<string, readonly string[]> = {",
+    "  claim: [],",
+    "};",
+    "const layers: Record<string, readonly string[]> = {",
+    "  domain: [],",
+    '  http: ["domain"],',
+    "};",
+    "",
     "export default defineConfig({",
     "  lint: {",
     "    overrides: [",

@@ -30,7 +30,8 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 apps/
   api/   Hono (Node.js)。GET /health
   web/   React + TanStack Router
-packages/  共有パッケージ (今はなし)
+packages/  サンプル機能のモジュール (claim、approval、closing) と共有コード (shared)。ADR 0026
+  <module>/src/  index.ts (公開 API) と層 (domain/、application/、infrastructure/、http/)
 tools/
   scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
     src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
