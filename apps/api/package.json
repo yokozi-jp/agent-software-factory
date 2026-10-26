@@ -12,11 +12,16 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
-    "hono": "catalog:"
+    "better-auth": "catalog:",
+    "hono": "catalog:",
+    "pg": "catalog:"
   },
   "devDependencies": {
     "@hono/vite-dev-server": "catalog:",
+    "@testcontainers/postgresql": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

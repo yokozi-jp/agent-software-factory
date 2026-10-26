@@ -38,6 +38,7 @@ sources:
 - security.md の Cookie の推奨に、`__Host-Http-` を使える環境では `__Host-` の代わりに使うこと (RFC 10017 6.1.3.2、SHOULD) と、CSRF 対策の実装 (MUST。独自ヘッダーでプリフライトを必須にする CORS、anti-forgery Cookie、同一オリジン。RFC 10017 6.1.3.3)、`SameSite` だけでは同じサイトの別のサブドメインからの攻撃を防げないこと (6.1.3.3.1) を足し、参考に RFC 10017 を足した。
 - authentication-and-authorization.md の推奨 (2) に、Web Functions の OAC が `Authorization` ヘッダーを署名に使うため Bearer と両立しない理由を足し、JWT のアクセストークンは JWKS で手元で検証できる旨の注記を足した。RFC 9068、RFC 8725。
 - authentication-and-authorization.md の（1）ベアラートークン方式の処理性能を、❌ から ⚠ にし、不透明なトークンはイントロスペクションが要り、JWT のアクセストークンは JWKS で手元で検証できる旨に直した。図 1 のイントロスペクションに「不透明なトークンの場合」と添えた。推奨 (2) に、業務アプリでは BFF が strongly recommended で、ブラウザがトークンを持つ形は not recommended である旨を足した。RFC 10017 6.1、6.3.4.3。
+- security.md の CORS に、このリポジトリが同一オリジン構成を採り CORS の middleware を入れないこと、ローカル開発は Vite の proxy で同一オリジンに見せることを注記として足した。推奨の中身は変えていない。ADR 0013、ADR 0022。
 
 ## 位置づけ
 
