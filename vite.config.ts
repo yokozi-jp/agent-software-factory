@@ -141,6 +141,12 @@ export default defineConfig({
         jsPlugins: [{ name: "test-title", specifier: "./apps/api/lint/test-title-plugin.ts" }],
         rules: { "test-title/japanese-title": "error" },
       },
+      // Accessibility of JSX (alt text, anchors, keyboard handlers). Oxlint's default rules are the plugin's
+      // correctness category, so the plugin needs no rule list (docs/web-frontend/static-analysis.md).
+      {
+        files: ["apps/web/src/**"],
+        plugins: ["jsx-a11y"],
+      },
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).
       // Collect client errors with an error tracking service instead.
       {

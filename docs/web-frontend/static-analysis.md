@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: "Webフロントエンドの静的解析"
-description: "静的解析の目的、種類、取り組み方、導入時の考慮事項と、このリポジトリで XSS の入口になる書き方を lint で禁止する一覧を定める文書。型チェック・Linter・フォーマッターを導入・運用するとき、lint で止まった書き方を直すとき、禁止を外す理由を書くときに読む。"
+description: "静的解析の目的、種類、取り組み方、導入時の考慮事項と、このリポジトリで XSS の入口になる書き方を lint で禁止する一覧、JSX のアクセシビリティの検査を定める文書。型チェック・Linter・フォーマッターを導入・運用するとき、lint で止まった書き方を直すとき、禁止を外す理由を書くときに読む。"
 tags: [web-frontend, convention, static-analysis, lint]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forWebFrontend/web_frontend_guidelines.html
@@ -100,6 +100,19 @@ const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 > - [React 19 Upgrade Guide: `javascript:` URL の廃止](https://react.dev/blog/2024/04/25/react-19-upgrade-guide#other-breaking-changes)
 > - [Writing JS plugins | Oxlint](https://oxc.rs/docs/guide/usage/linter/writing-js-plugins.html)
 > - [Vite+ Lint: Writing Your Own Rules](https://github.com/voidzero-dev/vite-plus/blob/main/docs/guide/lint.md)
+
+## JSX のアクセシビリティの検査
+
+`apps/web/src` では、Oxlint の `jsx-a11y` plugin を有効にしている。ルートの `vite.config.ts` の `lint.overrides` に `plugins: ["jsx-a11y"]` を置くだけで、plugin の既定の規則が動く。`vp check` (pre-commit と CI) で止まる。Oxlint の既定では `jsx-a11y` は無効なので、plugin を足さない限り、次のような書き方は検出されない。
+
+- `alt` のない `img` (`jsx-a11y/alt-text`)
+- 無効な `href` の `a` (`jsx-a11y/anchor-is-valid`)
+- キーボードの操作を持たないクリック (`jsx-a11y/click-events-have-key-events`)
+- role のない要素へのイベント (`jsx-a11y/no-static-element-interactions`)
+
+見つけられるのは、JSX に書かれた属性から静的に分かる範囲だけである。色のコントラスト、フォーカスの順序、読み上げの実際の挙動は見つからない。それらは axe-core を使うコンポーネントテストと E2E で確かめる ([テスト](testing.md))。
+
+禁止を外すときは、その行に規則名と理由を書く (`oxlint-disable-next-line jsx-a11y/<規則名> -- <理由>`)。`react` の plugin は有効にしていない。
 
 ## 取り組み方
 
