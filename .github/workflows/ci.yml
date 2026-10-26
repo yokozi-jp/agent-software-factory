@@ -151,6 +151,18 @@ jobs:
 
       - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
 
+      # A change to the code of an app must not make tools/scripts affected, or its tests and mutation run for
+      # every app pull request (#158). It happens when a target of tools/scripts declares an input outside the
+      # project that covers the apps, such as {workspaceRoot}/apps/**/*.
+      - name: An app change does not affect tools/scripts
+        run: |
+          for file in apps/api/src/app.ts apps/web/src/main.tsx; do
+            if pnpm exec nx show projects --affected --files="$file" | grep -qx scripts; then
+              echo "::error::A change to $file makes the scripts project affected. Remove the input of tools/scripts/package.json (or nx.json) that covers it."
+              exit 1
+            fi
+          done
+
       # mutation: Stryker on the pure functions of tools/scripts (stryker.config.mjs).
       - run: pnpm exec nx affected -t check test build mutation
 
