@@ -42,7 +42,7 @@ jobs:
           cache: true
 
       - name: Repo policy (docs/adr)
-        run: scripts/check-repo-policy.sh
+        run: node tools/scripts/src/checks/repo-policy/cli.ts
 
       # Runs the Renovate pinned in scripts/renovate.sh through pnpm dlx, so it needs the network.
       - name: Validate Renovate config

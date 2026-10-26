@@ -9,6 +9,10 @@
     "test-tools": "vp test run --project tools --passWithNoTests",
     "mutation": "stryker run"
   },
+  "dependencies": {
+    "smol-toml": "catalog:",
+    "yaml": "catalog:"
+  },
   "devDependencies": {
     "@stryker-mutator/core": "catalog:",
     "@stryker-mutator/vitest-runner": "catalog:",

@@ -15,6 +15,9 @@ export default defineConfig({
   test: {
     // Clears the git variables a Git hook exports, before any test file loads (src/test/setup.ts).
     setupFiles: ["src/test/setup.ts"],
+    // The process tests (cli.test.ts) start Node.js and git. In the pre-commit hook, which runs its jobs in
+    // parallel, a case took 6 to 10 s, over the 5 s default (measured for #164).
+    testTimeout: 30_000,
     projects: [
       {
         extends: true,
