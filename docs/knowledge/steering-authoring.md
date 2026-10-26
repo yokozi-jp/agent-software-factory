@@ -34,6 +34,10 @@ description: Dockerfile や .dockerignore を新規作成または編集する�
   | `always`    | 毎回、本文まで読み込む                                      | どの作業でも必ず必要なもの                    |
   | `manual`    | `/context add` で足したときだけ                             | ほとんど使わないもの                          |
 
+  `always` と `manual` は使いません。`always` は毎回、本文まで読み込むので文脈を圧迫します。`manual` は人が `/context add` で足したときだけ読まれ、自律実行 (Kiro Web や ready-for-agent の Issue を進めるエージェント) では読まれません。
+
+  Kiro Web は、リポジトリに commit した `.kiro/steering/` を Kiro CLI と同じエンジンで読みます。`always`、`auto`、`fileMatch` は CLI と同じに効きます ([Introducing Kiro Web](https://kiro.dev/blog/introducing-kiro-web/)、KAS 2.34.0 の `parseSteeringFile` と `matchDocumentsForFile`)。Kiro Web に専用の書き方はありません。Kiro Web の設定画面からアップロードした steering は、`auto` を持たない別のスキーマで読まれる可能性があります。確かめていないので、steering はリポジトリに commit します。
+
 - `name`: ファイル名から `.md` を除いたものにします。
 - `description`: 「いつ」「どの docs を読むかを示すか」を書きます。`auto` では、この 1 行で読むかどうかが決まります。
 - `fileMatchPattern`: `inclusion: fileMatch` のときだけ、1 行の配列で書きます。複数のパターンは配列の要素に分けるか、`{a,b}` のブレースで書きます。パターンの中のカンマは「または」と解釈されません。
