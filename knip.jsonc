@@ -5,6 +5,8 @@
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // A hint means an exception here is no longer needed (or no longer matches). Fail, so stale exceptions get removed.
   "treatConfigHintsAsErrors": true,
+  // Installed outside npm (docs/adr/0009). secret-scan and semgrep in tools/scripts run `mise exec`.
+  "ignoreBinaries": ["mise"],
   "workspaces": {
     ".": {
       // scripts/docs-check.sh and scripts/renovate.sh run these with node. Knip does not read shell scripts.

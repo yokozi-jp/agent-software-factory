@@ -1,7 +1,8 @@
 import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { gitIn, runIn, sandbox, type Sandbox } from "./sandbox.ts";
+import { gitIn, miseDirs, runIn, sandbox, type Sandbox } from "./sandbox.ts";
 
 let box: Sandbox;
 beforeEach(() => {
@@ -63,5 +64,36 @@ describe("runIn", () => {
       env: { EXTRA: "x" },
     });
     expect(result.stdout).toBe(`${box.root} x`);
+  });
+});
+
+describe("miseDirs", () => {
+  it("names the directories mise uses by default under the real home", () => {
+    expect(miseDirs({}, "/home/u")).toEqual({
+      MISE_DATA_DIR: "/home/u/.local/share/mise",
+      MISE_CACHE_DIR: "/home/u/.cache/mise",
+      MISE_STATE_DIR: "/home/u/.local/state/mise",
+    });
+  });
+
+  it("follows the XDG variables, and the MISE variables before them", () => {
+    const env = {
+      XDG_DATA_HOME: "/x/data",
+      XDG_CACHE_HOME: "/x/cache",
+      XDG_STATE_HOME: "/x/state",
+      MISE_DATA_DIR: "/m/data",
+    };
+    expect(miseDirs(env, "/home/u")).toEqual({
+      MISE_DATA_DIR: "/m/data",
+      MISE_CACHE_DIR: "/x/cache/mise",
+      MISE_STATE_DIR: "/x/state/mise",
+    });
+  });
+
+  it("reads the environment and the home of this process by default", () => {
+    expect(miseDirs().MISE_DATA_DIR).toBe(
+      process.env.MISE_DATA_DIR ??
+        join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local/share"), "mise"),
+    );
   });
 });

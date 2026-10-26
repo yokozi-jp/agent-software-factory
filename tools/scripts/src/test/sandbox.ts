@@ -4,7 +4,7 @@
 // The design follows git's own t/test-lib.sh: GIT_CEILING_DIRECTORIES, and HOME inside the sandbox.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, relative, isAbsolute, resolve } from "node:path";
 
 export interface Sandbox {
@@ -121,4 +121,21 @@ export function runIn(
     timeout: 100_000,
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+// mise finds its config, installed tools and state under HOME, unless MISE_*_DIR or XDG_* say otherwise
+// (https://mise.jdx.dev/directories.html). runIn moves HOME into the sandbox, so a tool test passes these
+// to runIn: `mise exec` then uses the tools that `mise install --locked` installed, instead of installing
+// them all again into the sandbox. The global config (MISE_CONFIG_DIR) stays in the sandbox, unread.
+export function miseDirs(
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+): Record<string, string> {
+  const dir = (own: string, xdg: string, fallback: string): string =>
+    env[own] ?? join(env[xdg] ?? join(home, fallback), "mise");
+  return {
+    MISE_DATA_DIR: dir("MISE_DATA_DIR", "XDG_DATA_HOME", ".local/share"),
+    MISE_CACHE_DIR: dir("MISE_CACHE_DIR", "XDG_CACHE_HOME", ".cache"),
+    MISE_STATE_DIR: dir("MISE_STATE_DIR", "XDG_STATE_HOME", ".local/state"),
+  };
 }

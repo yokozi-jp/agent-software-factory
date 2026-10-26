@@ -6,7 +6,7 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --project unit --project isolation --coverage",
-    "test-tools": "vp test run --project tools --passWithNoTests",
+    "test-tools": "vp test run --project tools --project isolation-tools",
     "mutation": "stryker run"
   },
   "devDependencies": {
@@ -24,8 +24,10 @@
         "cache": true,
         "inputs": [
           "default",
+          "{workspaceRoot}/.betterleaks.toml",
           "{workspaceRoot}/mise.toml",
-          "{workspaceRoot}/mise.lock"
+          "{workspaceRoot}/mise.lock",
+          "{workspaceRoot}/.mise/locks/**/*"
         ]
       },
       "mutation": {
