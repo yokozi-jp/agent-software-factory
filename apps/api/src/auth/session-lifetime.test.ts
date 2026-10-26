@@ -21,7 +21,15 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     await fixture.close();
   });
 
-  async function loginAt(start: Date) {
+  // 期限の検査は認証が目的ではないので、IdP を通さない browser を使う (docs/adr/0022)。
+  // Set-Cookie で Cookie の期限が延びることだけは、本物のログインを通した browser で確かめる。
+  async function signedInAt(start: Date) {
+    const browser = await fixture.signedIn();
+    vi.useFakeTimers({ toFake: ["Date"], now: start });
+    return browser;
+  }
+
+  async function loggedInAt(start: Date) {
     const browser = fixture.newBrowser();
     await browser.login(users.yamada);
     vi.useFakeTimers({ toFake: ["Date"], now: start });
@@ -29,7 +37,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
   }
 
   it("ends the session after 30 minutes without activity", async () => {
-    const browser = await loginAt(new Date());
+    const browser = await signedInAt(new Date());
     vi.setSystemTime(Date.now() + 31 * minute);
 
     const res = await browser.request("/api/me");
@@ -48,8 +56,8 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
     }
   }
 
-  it("keeps the session alive while the user is active", async () => {
-    const browser = await loginAt(new Date());
+  it("keeps the session cookie alive while the user is active", async () => {
+    const browser = await loggedInAt(new Date());
 
     await useEvery20Minutes(browser, 3 * hour);
 
@@ -60,7 +68,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
   it.each(["/api/me", "/api/auth/get-session"])(
     "ends the session after 8 hours even when the user stays active (%s)",
     async (path) => {
-      const browser = await loginAt(new Date());
+      const browser = await signedInAt(new Date());
       await useEvery20Minutes(browser, 8 * hour);
 
       vi.setSystemTime(Date.now() + 20 * minute);
@@ -72,8 +80,7 @@ describe("session lifetime (docs/adr/0022, OWASP Session Management)", () => {
   it("removes the session row once the 8 hour limit is found out", async () => {
     const alone = await createAuthFixture();
     try {
-      const browser = alone.newBrowser();
-      await browser.login(users.yamada);
+      const browser = await alone.signedIn();
       vi.useFakeTimers({ toFake: ["Date"], now: new Date() });
       expect((await alone.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
 

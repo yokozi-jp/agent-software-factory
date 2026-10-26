@@ -38,7 +38,7 @@ tags: [adr, auth, session, bff, security, multitenancy]
 - `auth` の表の隔離は、DB の RLS ではなく、Better Auth のコードと、アプリ用ロールに権限がないことに依存します。
 - 経理の権限を外しても、最長 8 時間は古い役割が残ります。
 - Better Auth は新しいライブラリです（[npm registry](https://www.npmjs.com/package/better-auth) の 1.7.12、2026-10-20）。実装で確かめたこと: Keycloak の OIDC（認可コードと PKCE）でログインできる。organization プラグインを含む表が `auth` スキーマに作られ、アプリ用ロールからは読めない。無操作の期限（Better Auth の `expiresIn`）は Better Auth が見るが、最長の期限は持たないので、`sessionGuard` が見る。IdP のログアウトは、Better Auth が `end_session_endpoint` の URL を `sign-out` の応答で返す。
-- テストの認証済みの要求は、Keycloak のログインの画面を HTTP で通して作る（2026-10-26 のローカルで 1 回 1〜3 秒）。Better Auth には `testUtils` プラグインもあるが使っていない。ログインの流れ全体を毎回通すほうが本番と同じ経路を確かめられる、というのは判断で、Cookie の `SameSite` の失敗はこの方法で見つかった。
+- テストの認証は 2 通りに分ける。ログイン、Cookie、ログアウトを確かめるテストだけが、Keycloak のログインの画面を HTTP で通す（`TestBrowser.login()`。2026-10-26 のローカルで 1 回 1〜3 秒）。Cookie の `SameSite` と期限の失敗は、この方法で見つかった。業務のテストなど、認証が目的でないテストは、Better Auth の `testUtils` プラグインで作ったセッションを使う（`fixture.signedIn()`。1 回 0.4 秒ほど）。`testUtils` は、アプリと同じ設定、同じ DB、同じ secret の別の認証に足すので、セッションの行と Cookie の署名はアプリがそのまま受け取る（`apps/api/test/auth-fixtures.ts`）。本物のログインを毎回通すと、認証が要るテストが増えるたびに遅くなる。少数のテストに絞るのは、テストピラミッドの考え方に沿った判断である。
 - api のテストは Docker が要り、PostgreSQL と Keycloak のコンテナを起動する。2026-10-26 のローカル（イメージ取得済み）で `vp test run` が 73〜123 秒（3 回の計測）かかり、CI の feedback loop に効く（[工場の成果の測り方を決める](https://github.com/yokozi-jp/agent-software-factory/issues/39)）。
 - 自己登録は、まだ止めていない。IdP でログインできた人は、`user` が自動で作られる。人事システムの確認で止める（[ログインのたびに人事システムで社員を確認し、メンバーシップと役割を同期する](https://github.com/yokozi-jp/agent-software-factory/issues/156)）。
 - `server.ts` は、認証の環境変数が足りないと起動に失敗する（fail closed）。認証なしの開発は `vp dev` を使う。

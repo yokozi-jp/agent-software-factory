@@ -41,8 +41,7 @@ describe("login with OIDC (docs/adr/0022)", () => {
   });
 
   it("does not let a signed-in user create an organization, which is a tenant", async () => {
-    const browser = fixture.newBrowser();
-    await browser.login(users.yamada);
+    const browser = await fixture.signedIn();
 
     const res = await browser.request("/api/auth/organization/create", {
       method: "POST",

@@ -33,6 +33,23 @@ export class TestBrowser {
     this.appOrigin = appOrigin;
   }
 
+  /**
+   * Cookie ヘッダーの値 (`a=b; c=d`) を、アプリの host の Cookie として持つ。
+   * 本物のログインを通さずに、認証済みの browser を作るときに使う (test/auth-fixtures.ts の signedIn)。
+   */
+  adoptCookieHeader(cookieHeader: string): void {
+    const jar = this.cookies.get(new URL(this.appOrigin).host) ?? new Map<string, StoredCookie>();
+    for (const pair of cookieHeader.split(";")) {
+      const separator = pair.indexOf("=");
+      jar.set(pair.slice(0, separator).trim(), {
+        value: pair.slice(separator + 1).trim(),
+        sameSite: "strict",
+        expiresAt: undefined,
+      });
+    }
+    this.cookies.set(new URL(this.appOrigin).host, jar);
+  }
+
   /** リダイレクトを辿らずに 1 回だけ要求する。Cookie は host ごとに保存、送信する。 */
   async request(
     url: string,

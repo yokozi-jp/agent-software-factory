@@ -58,10 +58,11 @@ function hostCookies(): NonNullable<NonNullable<BetterAuthOptions["advanced"]>["
   );
 }
 
-function buildBetterAuth(config: AuthConfig) {
+/** Better Auth の設定から plugins を除いたもの。テストが、同じ設定の認証に plugin を足すために切り出す。 */
+export function authOptions(config: AuthConfig) {
   const idle = config.session?.idleSeconds ?? defaultSessionSeconds.idle;
 
-  return betterAuth({
+  return {
     baseURL: config.baseURL,
     secret: config.secret,
     database: config.database,
@@ -73,23 +74,32 @@ function buildBetterAuth(config: AuthConfig) {
       cookies: hostCookies(),
       defaultCookieAttributes: { secure: true, sameSite: "strict", httpOnly: true, path: "/" },
     },
-    plugins: [
-      genericOAuth({
-        config: [
-          {
-            providerId: oidcProviderId,
-            discoveryUrl: config.oidc.discoveryUrl,
-            clientId: config.oidc.clientId,
-            clientSecret: config.oidc.clientSecret,
-            scopes: ["openid", "email", "profile"],
-            pkce: true,
-          },
-        ],
-      }),
-      // テナント (organization) は、人事システムの確認で作る。利用者が自分で作れてはいけない。
-      organization({ allowUserToCreateOrganization: false }),
-    ],
-  });
+  } satisfies BetterAuthOptions;
+}
+
+export function authPlugins(
+  config: AuthConfig,
+): [ReturnType<typeof genericOAuth>, ReturnType<typeof organization>] {
+  return [
+    genericOAuth({
+      config: [
+        {
+          providerId: oidcProviderId,
+          discoveryUrl: config.oidc.discoveryUrl,
+          clientId: config.oidc.clientId,
+          clientSecret: config.oidc.clientSecret,
+          scopes: ["openid", "email", "profile"],
+          pkce: true,
+        },
+      ],
+    }),
+    // テナント (organization) は、人事システムの確認で作る。利用者が自分で作れてはいけない。
+    organization({ allowUserToCreateOrganization: false }),
+  ];
+}
+
+function buildBetterAuth(config: AuthConfig) {
+  return betterAuth({ ...authOptions(config), plugins: authPlugins(config) });
 }
 
 export function createAuth(config: AuthConfig): Auth {
