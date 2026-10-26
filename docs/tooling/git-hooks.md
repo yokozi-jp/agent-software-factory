@@ -8,7 +8,7 @@ tags: [tooling, reference, lefthook, git-hooks]
 # Git hook
 
 hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定されます ([ADR 0001](../adr/0001-lefthook-for-git-hooks.md))。
-型チェックとテストは hook では実行せず、CI に任せます。例外は `tools/scripts` のテストで、`tools/scripts/**` か Nx の `sharedGlobals` のファイルを変えた commit の pre-commit が `nx test scripts` を実行します (Nx の cache が効くので、変わっていなければすぐ終わります)。
+型チェックとテストは hook では実行せず、CI に任せます。例外は `tools/scripts` のテストで、`tools/scripts/**`、`.kiro/hooks/*.json`、Nx の `sharedGlobals` のどれかのファイルを変えた commit の pre-commit が `nx test scripts` を実行します (Nx の cache が効くので、変わっていなければすぐ終わります)。
 
 ## 実行内容
 

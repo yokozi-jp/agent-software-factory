@@ -29,7 +29,8 @@ function parse(text: string): unknown {
 
 try {
   const event = parse(readFileSync(0, "utf8"));
-  // Kiro sets the event's cwd to the first workspace root, which the file tools resolve paths against.
+  // Kiro sets the event's cwd to the first workspace root, which the file tools resolve paths against
+  // (acp-server.js of Kiro 2.34.0, as in generated-writes.ts).
   const given: unknown =
     typeof event === "object" && event !== null ? Reflect.get(event, "cwd") : undefined;
   const cwd =

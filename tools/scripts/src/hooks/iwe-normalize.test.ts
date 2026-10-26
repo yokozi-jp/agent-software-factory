@@ -14,6 +14,12 @@ describe("refusesIweCommand", () => {
     "bunx iwe normalize",
     "pnpm dlx iwe normalize",
     "mise exec -- iwe normalize",
+    "pnpm iwe normalize",
+    "cd docs && pnpm iwe normalize",
+    "yarn iwe normalize",
+    "mise x iwe normalize",
+    "mise exec iwe normalize",
+    "mise x -- iwe normalize",
     "RUST_LOG=debug iwe normalize",
     'sh -c "iwe normalize"',
     "(cd docs; iwe normalize)",
@@ -30,6 +36,8 @@ describe("refusesIweCommand", () => {
     "iwe normalize-x",
     "myiwe normalize",
     "iwec normalize",
+    "pnpm iwe find normalize",
+    "mise x iwe stats",
   ])("allows another subcommand or program: %j", (command) => {
     expect(refusesIweCommand(command)).toBe(false);
   });
@@ -40,6 +48,8 @@ describe("refusesIweCommand", () => {
     'echo "iwe normalize"',
     "cat > notes.md <<'EOF'\niwe normalize\nEOF",
     'gh pr create --body "never run iwe normalize"',
+    'git commit -m "fix: refuse pnpm iwe normalize"',
+    "cat > notes.md <<'EOF'\nyarn iwe normalize\nmise x iwe normalize\nEOF",
   ])("allows text that only mentions it: %j", (command) => {
     expect(refusesIweCommand(command)).toBe(false);
   });

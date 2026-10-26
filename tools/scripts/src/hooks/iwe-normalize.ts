@@ -6,8 +6,14 @@ import { inCommandPosition } from "./shell-command.ts";
 
 // `iwe [-opt [arg]]... normalize`, also by path (node_modules/.bin/iwe). The subcommand position is
 // matched, so `iwe find normalize` is allowed.
-const iweNormalize = String.raw`(\S*/)?iwe(\s+-\S+(\s+[^-\s]\S*)?)*\s+normalize([^A-Za-z0-9_-]|$)`;
-// Package runners that start iwe, besides the wrappers of shell-command.ts (`pnpm exec` ends in exec).
+// It may follow a launcher that is itself in command position: `pnpm <bin>` and `yarn <bin>` run a local
+// bin when no script has that name (https://pnpm.io/pnpm-cli ("Commands"), https://yarnpkg.com/cli/run),
+// and `mise x` is the alias of `mise exec` (https://mise.jdx.dev/cli/exec.html). The form without `--`
+// is refused too, as the sh hook did. A launcher is not a runner word below, so a message that only
+// mentions `pnpm iwe normalize` is allowed.
+const iweNormalize = String.raw`((pnpm|yarn|mise\s+x)\s+)?(\S*/)?iwe(\s+-\S+(\s+[^-\s]\S*)?)*\s+normalize([^A-Za-z0-9_-]|$)`;
+// Package runners that start iwe, besides the wrappers of shell-command.ts (`pnpm exec` and
+// `mise exec` end in exec, `mise x -- iwe` in --).
 const runners = ["npx", "pnpx", "bunx", "dlx", "--"];
 
 export function refusesIweCommand(command: string): boolean {

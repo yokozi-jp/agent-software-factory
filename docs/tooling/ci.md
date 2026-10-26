@@ -89,11 +89,11 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `tools/scripts` は Nx の project (`scripts`) で、テストは Vitest です。
 
-| target       | 実行するもの                                                                                                           | 走る場所                                                                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `test`       | `unit` と `isolation` の Vitest の project。coverage の下限 (ファイルごとに lines と branches が 90%) とラチェットつき | CI の `nx` の job (`nx affected`)、`tools/scripts/**` か Nx の `sharedGlobals` のファイルを変えた commit の pre-commit (`nx test scripts`) |
-| `mutation`   | `src/` の純粋な関数への Stryker (`--incremental`、`stryker.config.mjs`)。score が `break` (100) を下回ると失敗         | CI の `nx` の job (`nx affected`)                                                                                                          |
-| `test-tools` | `tools` の Vitest の project (`*.tools.test.ts`): mise の道具を本物の設定で動かすテスト。今は空                        | CI の `scripts` の job (`nx affected -t test-tools`)                                                                                       |
+| target       | 実行するもの                                                                                                           | 走る場所                                                                                                                                                               |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test`       | `unit` と `isolation` の Vitest の project。coverage の下限 (ファイルごとに lines と branches が 90%) とラチェットつき | CI の `nx` の job (`nx affected`)、`tools/scripts/**`、`.kiro/hooks/*.json`、Nx の `sharedGlobals` のどれかのファイルを変えた commit の pre-commit (`nx test scripts`) |
+| `mutation`   | `src/` の純粋な関数への Stryker (`--incremental`、`stryker.config.mjs`)。score が `break` (100) を下回ると失敗         | CI の `nx` の job (`nx affected`)                                                                                                                                      |
+| `test-tools` | `tools` の Vitest の project (`*.tools.test.ts`): mise の道具を本物の設定で動かすテスト。今は空                        | CI の `scripts` の job (`nx affected -t test-tools`)                                                                                                                   |
 
 - 規則は純粋な関数 (`src/checks/<名前>/rules.ts`) にし、その場で呼ぶテスト (`rules.test.ts`) で確かめます。入口 (`cli.ts`) は、argv、標準入力、環境変数、git を読んで出力するだけにし、少数のプロセスのテスト (`cli.test.ts`) で、sandbox の中の git を使って確かめます。入口は子プロセスで動き coverage が見えないので、coverage と Stryker の対象から外しています。
 - Kiro の hook も同じ形です。検査ごとの規則は `src/hooks/<検査>.ts`、入口は trigger ごとに `src/hooks/pre-tool-use/cli.ts` と `src/hooks/session-start/cli.ts` です。入口のプロセスのテストは、Kiro が送る形の event の JSON を標準入力に入れ、exit コード (0 か 2)、stderr、stdout の `permissionDecision` を確かめます。
