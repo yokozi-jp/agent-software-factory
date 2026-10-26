@@ -17,7 +17,7 @@
       "enabled": false,
     },
     {
-      // scripts/check-repo-policy.sh requires betterleaksMinVersion to equal the version in mise.toml.
+      // tools/scripts/src/checks/repo-policy/cli.ts requires betterleaksMinVersion to equal the version in mise.toml.
       "description": "Update betterleaks in mise.toml, mise.lock and .betterleaks.toml in one PR",
       "matchDepNames": ["betterleaks"],
       "groupName": "betterleaks",

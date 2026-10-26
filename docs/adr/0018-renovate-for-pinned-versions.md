@@ -21,7 +21,7 @@ Renovate 44.181.1 を `--platform=local` で動かし、`mise.toml` の4つの�
 
 - 設定は `renovate.jsonc` です。App は default branch の設定を読むので、main に merge するまで動きません。インストールは管理者の操作です ([Renovate](../tooling/renovate.md))。
 - betterleaks のメジャー更新は出しません ([ADR 0003](0003-pin-betterleaks-v1.md))。v2 が安定版になったら、ADR を見直したうえで人が上げます。
-- `.betterleaks.toml` の `betterleaksMinVersion` は、`mise.toml` の betterleaks と同じ版でなければなりません (`scripts/check-repo-policy.sh` が検査します)。Renovate の regex manager で `betterleaksMinVersion` も検出し、`groupName` を betterleaks にそろえて、`mise.toml`、`mise.lock`、`.betterleaks.toml` を1つの PR で更新します。この PR が CI で落ちたら、人が直します。
+- `.betterleaks.toml` の `betterleaksMinVersion` は、`mise.toml` の betterleaks と同じ版でなければなりません (`tools/scripts/src/checks/repo-policy/cli.ts` が検査します)。Renovate の regex manager で `betterleaksMinVersion` も検出し、`groupName` を betterleaks にそろえて、`mise.toml`、`mise.lock`、`.betterleaks.toml` を1つの PR で更新します。この PR が CI で落ちたら、人が直します。
 - Node.js と `@types/node` のメジャー更新は出しません。メジャー版は `.node-version`、`engines.node`、catalog の `@types/node`、build target、Lambda の runtime がそろって決まるので ([ADR 0013](0013-api-on-ecs-and-lambda-web-functions.md))、人が `.node-version` から変えます。
 - `runs-on` の image (`ubuntu-26.04`、環境構築の手順の WSL と同じ版) は更新しません。runner の OS を変えるのは、固定した道具の版を上げることと別の判断です。これは判断です。
 - PR のタイトルは `chore(deps): ...` にそろえます ([ADR 0004](0004-squash-merge-and-pr-title-lint.md))。Renovate は main の履歴から Conventional Commits を検出しますが、検出に頼らず `semanticCommits` を `enabled` にします。

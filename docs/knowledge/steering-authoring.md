@@ -9,7 +9,7 @@ tags: [knowledge, convention, steering]
 
 `.kiro/steering/` のファイルには、`docs/` の文書へのポインタだけを書きます。
 内容は `docs/` に書き、steering には「いつ」「どの文書を」読むかを書きます ([役割分担](knowledge-architecture.md))。
-frontmatter で読み込み方を決め、`scripts/check-repo-policy.sh` (pre-commit と CI) が検査します。
+frontmatter で読み込み方を決め、repo-policy (`tools/scripts/src/checks/repo-policy/cli.ts`) (pre-commit と CI) が検査します。
 
 ## frontmatter
 

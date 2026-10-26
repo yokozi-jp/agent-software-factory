@@ -34,6 +34,8 @@ catalog:
   "@stryker-mutator/core": 10.1.1
   "@stryker-mutator/vitest-runner": 10.1.1
   "@vitest/coverage-v8": 5.0.5
+  smol-toml: 1.9.1
+  yaml: 2.9.1
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:

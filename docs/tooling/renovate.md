@@ -43,7 +43,7 @@ lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新�
 CI (`main`、`commitlint`、`betterleaks`) が通ったことを確かめます。そのうえで、PR ごとに次を見ます。
 
 - **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えていないこと。zizmor や jactionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
-- **betterleaks**: `mise.toml`、`mise.lock`、`.betterleaks.toml` の3つが同じ版に変わっていること。`check-repo-policy.sh` が落ちたら、そろっていないファイルを直します。
+- **betterleaks**: `mise.toml`、`mise.lock`、`.betterleaks.toml` の3つが同じ版に変わっていること。repo-policy (`tools/scripts/src/checks/repo-policy/cli.ts`) が落ちたら、そろっていないファイルを直します。
 - **Action**: SHA が変わり、同じ行のコメントの版も変わっていること。リリースノートで権限や入力の変更がないか見ます。
 - **catalog**: `pnpm-lock.yaml` が変わっていること。
 

@@ -40,11 +40,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 どれも、対応するファイルを変えたときに pre-commit hook でも実行します (adr-check は pre-push hook で実行し、そのテストは `tools/scripts` を変えた commit の pre-commit hook で `nx test scripts` として実行します)。
 
-- `scripts/check-repo-policy.sh`: ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない、Node.js のメジャー版が `.node-version`・`engines.node`・`@types/node` の catalog・`vite.config.ts` の build target でそろっている、`ci.yml` の `main` 以外の全ての job が `main` の `needs` に入っている)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
+- `node tools/scripts/src/checks/repo-policy/cli.ts` (repo-policy): ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない、Node.js のメジャー版が `.node-version`・`engines.node`・`@types/node` の catalog・`vite.config.ts` の build target でそろっている、`ci.yml` の `main` 以外の全ての job が `main` の `needs` に入っている)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
-  `ci.yml` の `main` が必須チェックをまとめる job のとき、`needs` に入っていない job は、失敗しても merge を止めません。そこで `needs` は 1 行の `needs: [a, b]` の形で書き、`main` 以外の job が全て入っていることを確認します。
-  `git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作するスクリプトは、`scripts/test/lib.sh` を読み込んだテストの中だけに置けます (理由は「スクリプトのテスト」)。`tools/scripts/src` の TypeScript は対象外です。文字の並びでは `execFileSync("git", ["-C", …])` を見つけられないので、lint の規則と `isolation.test.ts` が守ります ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。
-  `scripts/test/*.test.sh` がどれも workflow と `lefthook.yml` の両方で実行されること (コメントの中の名前は数えません)、git で管理しているシェルスクリプトの mode が `100755` であることも確認します。
+  `ci.yml` の `main` が必須チェックをまとめる job のとき、`needs` に入っていない job は、失敗しても merge を止めません。そこで、`main` 以外の job が全て `needs` に入っていることを確認します。`needs` は 1 行の配列でも、複数行のリストでも書けます。
+  `git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作するシェルスクリプトは、`scripts/test/lib.sh` を読み込んだテストの中だけに置けます (理由は「スクリプトのテスト」)。TypeScript は対象外です。文字の並びでは `execFileSync("git", ["-C", …])` を見つけられないので、lint の規則と `isolation.test.ts` が守ります ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。
+  `scripts/test/*.test.sh` がどれも workflow と `lefthook.yml` の両方の `run` で実行されること (コメント、`name`、`glob` の中の名前は数えません)、git で管理しているシェルスクリプトの mode が `100755` であることも確認します。
+  設定ファイル (workflow、`lefthook.yml`、`pnpm-workspace.yaml`、`mise.toml`、`.betterleaks.toml`、`package.json`、steering の frontmatter) は、catalog で固定したパーサー (`yaml`、`smol-toml`) と `JSON.parse` で読むので、書き方 (1 行か複数行か、引用符、コメント) で結果が変わりません。読めないファイルは、パーサーのエラーを添えて失敗します。`vite.config.ts` は文字列として読みます。
 - `scripts/test/run.sh`: sh のスクリプトと Kiro の hook の動作をテストします ([スクリプトのテスト](#スクリプトのテスト))。
 - `tools/scripts` の Nx の target: `test` (`nx` の job) は TypeScript の検査と hook のテスト、`mutation` (`nx` の job) はその純粋な関数への Stryker、`test-tools` (`scripts` の job) は本物の道具と設定を使うテストです ([スクリプトのテスト](#スクリプトのテスト))。
 - `node tools/scripts/src/checks/adr-check/cli.ts` (adr-check): 依存、ツールの設定、workflow、ruleset、Kiro の hook や設定 (対象は `tools/scripts/src/checks/adr-check/rules.ts` の `isDecisionPath`) を変えたのに、PR の base との差分に ADR (`docs/adr/NNNN-*.md`) の追加がないと、`::warning::` を出します。job は失敗させません ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。テストと fixture の変更は対象外です。base と比べられない (浅い clone など) ときは、理由を `::notice::` に出して通します。pre-push hook でも実行します ([Git hook](git-hooks.md))。
@@ -77,7 +78,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 1. コマンド: リポジトリ全体を見る検査は、`tools/scripts/src/checks/<name>/` の TypeScript (`node tools/scripts/src/checks/<name>/cli.ts` で実行) か、ルートの `package.json` の script にします。1 つの CLI に引数を渡すだけなら sh でも構いません ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。プロジェクトごとの検査は、そのプロジェクトの `package.json` の script にし、Nx の target として動かします。どちらも `vp run` は使いません ([ADR 0002](../adr/0002-nx-orchestrates-vite-plus.md))。道具の版は、npm で配られるものは `pnpm-workspace.yaml` の catalog で、それ以外は `mise.toml` で固定します ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 2. `ci.yml` の job に step を足します。mise の道具を使う検査とスクリプトのテストは `scripts` に、それ以外でリポジトリ全体を見る検査は `checks` に、プロジェクトごとの検査は `nx` に入れます。新しい job を作るなら `main` の `needs` に足します。
 3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
-4. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にし、一覧に載せる必要はありません。sh の検査は `scripts/test/<name>.test.sh` にし、`ci.yml` の Script tests と `lefthook.yml` の job に載せます。載せ忘れと実行権限の付け忘れは `check-repo-policy.sh` が止めます。
+4. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にし、一覧に載せる必要はありません。sh の検査は `scripts/test/<name>.test.sh` にし、`ci.yml` の Script tests と `lefthook.yml` の job に載せます。載せ忘れと実行権限の付け忘れは repo-policy が止めます。
 5. docs: この文書の「ci.yml の検証」、[開発コマンド](commands.md) の構成とコマンドの表、[Git hook](git-hooks.md) の `pre-commit` の行。
 6. 道具や設定を選んだ理由は ADR に書きます。番号は `scripts/check-adr-number.sh` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
