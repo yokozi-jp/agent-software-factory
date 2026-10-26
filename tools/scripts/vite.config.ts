@@ -6,6 +6,11 @@ const exclude = ["**/node_modules/**", "**/fixtures/**"];
 const isolationTest = "src/test/isolation.test.ts";
 const isolationToolsTest = "src/test/isolation.tools.test.ts";
 
+// Stryker runs the tests that import the files it mutates, whatever their project, in a copy of this project
+// where the paths up to the workspace root lead nowhere. The tools projects read the real workspace, so they
+// stay out of its runs (it sets STRYKER_MUTATOR_WORKER in the processes that run the tests).
+const underStryker = process.env.STRYKER_MUTATOR_WORKER !== undefined;
+
 // Tests for the scripts and hooks in src/ (docs/tooling/ci.md ("スクリプトのテスト")), in four projects:
 //   unit             `test` target: reads only the files of this project (fixtures), so Nx can cache it.
 //   isolation        `test` target: runs the unit project in a child process under Git hook variables. Its
@@ -35,11 +40,14 @@ export default defineConfig({
         extends: true,
         test: {
           name: "tools",
-          include: ["src/**/*.tools.test.ts"],
+          include: underStryker ? [] : ["src/**/*.tools.test.ts"],
           exclude: [...exclude, isolationToolsTest],
         },
       },
-      { extends: true, test: { name: "isolation-tools", include: [isolationToolsTest] } },
+      {
+        extends: true,
+        test: { name: "isolation-tools", include: underStryker ? [] : [isolationToolsTest] },
+      },
     ],
     coverage: {
       provider: "v8",
