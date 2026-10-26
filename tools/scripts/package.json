@@ -1,0 +1,42 @@
+{
+  "name": "@agent-software-factory/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "vp check",
+    "test": "vp test run --project unit --project isolation --coverage",
+    "test-tools": "vp test run --project tools --passWithNoTests",
+    "mutation": "stryker run"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "scripts",
+    "targets": {
+      "test-tools": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "{workspaceRoot}/mise.toml",
+          "{workspaceRoot}/mise.lock"
+        ]
+      },
+      "mutation": {
+        "cache": true,
+        "inputs": [
+          "default"
+        ],
+        "outputs": [
+          "{projectRoot}/reports/stryker-incremental.json"
+        ]
+      }
+    }
+  }
+}

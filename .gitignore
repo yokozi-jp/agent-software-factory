@@ -42,3 +42,7 @@ dist-ssr
 
 # Test coverage reports (vitest --coverage)
 coverage
+
+# Stryker: its sandbox copies of a project, and the results it reuses with --incremental
+.stryker-tmp
+stryker-incremental.json

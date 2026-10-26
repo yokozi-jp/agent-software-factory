@@ -89,8 +89,11 @@ done
 # Run from a Git hook, such a script inherits GIT_DIR and GIT_INDEX_FILE and acts on this repository instead
 # (docs/tooling/ci.md ("スクリプトのテスト")). Only tests isolated by scripts/test/lib.sh may do this.
 # This file holds the pattern, and lib.sh is the isolation itself, so both are skipped.
+# The TypeScript in tools/scripts/src is skipped too: a text pattern misses execFileSync("git", ["-C", ...]),
+# so there the no-restricted-imports rule on child_process (root vite.config.ts) and isolation.test.ts
+# guard the same thing (docs/tooling/ci.md ("スクリプトのテスト")).
 other_repo_git='(^|[^[:alnum:]_-])git[[:space:]]+(init|clone)([[:space:]]|$)|git[[:space:]]+-C[[:space:]]|--git-dir|GIT_DIR='
-for file in $(git ls-files -- '*.sh' '*.mjs' '*.js' '*.cjs' '*.ts' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/lib.sh' ':!scripts/check-repo-policy.sh'); do
+for file in $(git ls-files -- '*.sh' '*.mjs' '*.js' '*.cjs' '*.ts' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/lib.sh' ':!scripts/check-repo-policy.sh' ':!tools/scripts/src/*.ts'); do
   grep -qE "$other_repo_git" "$file" || continue
   case "$file" in
     scripts/test/*.test.sh)
@@ -173,8 +176,10 @@ done
 #   docs/<path>.md ("Heading")   the file must have a heading with that text (cite headings without numbers)
 #   docs/adr/NNNN                an ADR with that number must exist
 # .agents/ and .kiro/skills/ hold upstream skills; docs/ itself is covered by docs-check.sh;
-# scripts/test/ cites missing docs on purpose.
-refs="$(git ls-files -- ':!docs/' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/' ':!pnpm-lock.yaml' |
+# scripts/test/ and the tests of adr-check (tools/scripts/src/checks/adr-check/{cli,rules}.test.ts) cite
+# missing ADRs on purpose.
+refs="$(git ls-files -- ':!docs/' ':!.agents/' ':!.kiro/skills/' ':!scripts/test/' \
+  ':!tools/scripts/src/checks/adr-check/*.test.ts' ':!pnpm-lock.yaml' |
   xargs grep -HoE '(^|[^A-Za-z0-9_./-])docs/([A-Za-z0-9_./-]+\.md( \(\\?"[^"\\]+\\?"\))?|adr/[0-9]{4}([^0-9-]|$))' 2>/dev/null || true)"
 printf '%s\n' "$refs" | while IFS= read -r ref; do
   [ -n "$ref" ] || continue

@@ -12,6 +12,10 @@ const ignorePatterns = [
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
+const childProcessMessage =
+  "Start git and other processes through gitIn() or runIn() from tools/scripts/src/test/sandbox.ts, which refuse " +
+  'to act outside the sandbox (docs/tooling/ci.md ("スクリプトのテスト")).';
+
 // Rules of typescript-eslint's `recommended-type-checked` that Oxlint does not enable by default, plus three
 // stricter ones (docs/adr/0020). They stop `any`, `!`, narrowing `as` and @ts-ignore, the ways to silence a
 // type error. A description is required after @ts-expect-error.
@@ -117,6 +121,24 @@ export default defineConfig({
           "import/no-nodejs-modules": "off",
           "no-restricted-imports": "off",
           "no-restricted-globals": "off",
+        },
+      },
+      // Tests of tools/scripts run from Git hooks, where a git command can act on this repository instead of
+      // the temporary one (docs/tooling/ci.md ("スクリプトのテスト")). They start processes only through the
+      // helpers in tools/scripts/src/test/, which are not test files. Dynamic import() and createRequire are
+      // outside this rule; tools/scripts/src/test/isolation.test.ts catches what they would do.
+      {
+        files: ["tools/scripts/src/**/*.test.ts"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [
+                { name: "node:child_process", message: childProcessMessage },
+                { name: "child_process", message: childProcessMessage },
+              ],
+            },
+          ],
         },
       },
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).

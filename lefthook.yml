@@ -172,12 +172,19 @@ pre-commit:
         - "scripts/test/lib.sh"
         - "scripts/test/worktree.test.sh"
       run: sh scripts/test/run.sh scripts/test/worktree.test.sh
-    - name: adr-check-test
+    # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
+    # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
+    # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
+    # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
+    # compiler and the runtime. Keep this list in step with `sharedGlobals`.
+    - name: scripts-test
       glob:
-        - "scripts/adr-check.sh"
-        - "scripts/test/lib.sh"
-        - "scripts/test/adr-check.test.sh"
-      run: sh scripts/test/run.sh scripts/test/adr-check.test.sh
+        - "tools/scripts/**"
+        - "pnpm-workspace.yaml"
+        - "vite.config.ts"
+        - "tsconfig.json"
+        - ".node-version"
+      run: pnpm exec nx test scripts
     - name: semgrep-test
       glob:
         - "scripts/semgrep.sh"
@@ -227,7 +234,7 @@ pre-push:
       use_stdin: true
     # Warns only (docs/adr/0016). Silence it with ADR_ACK=1 for a change that needs no ADR.
     adr-check:
-      run: scripts/adr-check.sh pre-push
+      run: node tools/scripts/src/checks/adr-check/cli.ts pre-push
       use_stdin: true
     # Two open PRs can take the same ADR number (docs/tooling/worktrees.md ("PR を出す")).
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
