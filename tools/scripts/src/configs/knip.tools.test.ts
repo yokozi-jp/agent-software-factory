@@ -2,7 +2,8 @@
 // that Knip reads. Each case adds one unused thing and expects the check to fail; the untouched copy passes.
 // The copy links to the node_modules of the workspace and of its projects (pnpm install).
 // Reads, in the workspace, the inputs of the test-tools target (tools/scripts/package.json): the root files
-// that Knip or the plugins of Knip read, apps/, packages/, .github/workflows/ and .kiro/settings/mcp.json.
+// that Knip or the plugins of Knip read, .github/workflows/ and .kiro/settings/mcp.json. The apps are small ones
+// written below, not the real ones.
 // tools/ is this project. The Knip version is pinned in pnpm-workspace.yaml (`sharedGlobals`).
 import {
   appendFileSync,
@@ -36,7 +37,7 @@ const rootFiles = [
   "tsconfig.json",
 ];
 const rootCode = /^[^.].*\.(js|cjs|mjs|jsx|ts|cts|mts|tsx)$/;
-const folders = ["apps", "packages", "tools", ".github/workflows", ".kiro/settings/mcp.json"];
+const folders = ["tools", ".github/workflows", ".kiro/settings/mcp.json"];
 // Not copied: what git ignores, which Knip does not read either.
 const skipped = new Set([
   "node_modules",
@@ -47,10 +48,51 @@ const skipped = new Set([
   ".tanstack",
 ]);
 
+// The apps of the copy. knip.jsonc names apps/api (its entries src/index.ts and src/server.ts, and the dependencies
+// it keeps) and the workspaces of pnpm-workspace.yaml; small apps written here take the place of the real ones, so
+// that a change to the code of the apps does not make the tools tests run (docs/tooling/ci.md).
+const apps: Record<string, string> = {
+  "apps/api/package.json": JSON.stringify(
+    {
+      name: "@agent-software-factory/api",
+      private: true,
+      type: "module",
+      scripts: { check: "vp check" },
+      dependencies: { "@hono/node-server": "catalog:", hono: "catalog:" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name: "api" },
+    },
+    undefined,
+    2,
+  ),
+  "apps/api/src/app.ts": 'import { Hono } from "hono";\n\nexport const app = new Hono();\n',
+  "apps/api/src/index.ts": 'import { app } from "./app.ts";\n\nexport default app;\n',
+  "apps/api/src/server.ts":
+    'import { serve } from "@hono/node-server";\nimport { app } from "./app.ts";\n\nserve({ fetch: app.fetch });\n',
+  "apps/web/package.json": JSON.stringify(
+    {
+      name: "@agent-software-factory/web",
+      private: true,
+      type: "module",
+      scripts: { check: "vp check" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name: "web" },
+    },
+    undefined,
+    2,
+  ),
+  "apps/web/src/main.ts": 'export const title = "web";\n',
+};
+
 let box: Sandbox;
 let copy: string;
 
-// The root files and the folders above, in `copy`.
+const put = (path: string, text: string): void => {
+  mkdirSync(dirname(join(copy, path)), { recursive: true });
+  writeFileSync(join(copy, path), text);
+};
+
+// The root files and the folders above, and the apps, in `copy`.
 function populate(): void {
   mkdirSync(copy, { recursive: true });
   for (const name of readdirSync(workspace))
@@ -62,21 +104,19 @@ function populate(): void {
         recursive: true,
         filter: (source) => !skipped.has(basename(source)),
       });
+  for (const [path, text] of Object.entries(apps)) put(path, text);
   symlinkSync(join(workspace, "node_modules"), join(copy, "node_modules"));
   for (const project of ["apps/api", "apps/web", "tools/scripts"])
     symlinkSync(join(workspace, project, "node_modules"), join(copy, project, "node_modules"));
 }
 
+// --exclude catalog: the pnpm catalog lists what the real apps use, and the small apps use only some of it.
 const knip = () => {
-  const result = runIn(copy, knipBin, ["--no-progress"]);
+  const result = runIn(copy, knipBin, ["--no-progress", "--exclude", "catalog"]);
   return { status: result.status, output: result.stdout + result.stderr };
 };
 const edit = (path: string, change: (text: string) => string): void => {
   writeFileSync(join(copy, path), change(readFileSync(join(copy, path), "utf8")));
-};
-const put = (path: string, text: string): void => {
-  mkdirSync(dirname(join(copy, path)), { recursive: true });
-  writeFileSync(join(copy, path), text);
 };
 
 beforeAll(() => {
@@ -92,7 +132,7 @@ beforeEach(() => {
 }, 120_000);
 
 describe("Knip with knip.jsonc", () => {
-  it("passes on this repository", () => {
+  it("passes on the configuration of this repository and small apps", () => {
     expect(knip()).toMatchObject({ status: 0 });
   }, 120_000);
 

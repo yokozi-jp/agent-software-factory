@@ -120,6 +120,8 @@ export function startIn(dir: string, command: string, args: readonly string[]): 
 export interface RunOptions {
   readonly input?: string;
   readonly env?: Record<string, string>;
+  // Milliseconds before the command is killed (status null). 100 s by default.
+  readonly timeout?: number;
 }
 
 export interface RunResult {
@@ -144,7 +146,7 @@ export function runIn(
     encoding: "utf8",
     input: options.input ?? "",
     // A command that hangs (a test that starts itself again, say) is killed instead of hanging the run.
-    timeout: 100_000,
+    timeout: options.timeout ?? 100_000,
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }

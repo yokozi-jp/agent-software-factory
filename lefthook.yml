@@ -113,7 +113,7 @@ pre-commit:
     # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)
     # that are not the project (a new betterleaks or Semgrep version, or Semgrep's dependency graph in
     # .mise/locks/, can change what they report), the tools tests, the checks and shell wrappers that have
-    # them, the configs they try (the Knip test also reads apps/ and the other root files, which CI covers
+    # them, the configs they try (the Knip test also reads other root files, which CI covers
     # with `nx affected -t test-tools`), the test helpers and the config that run them, and `sharedGlobals`.
     # CI still runs them for every change to the project. Each input of the target in tools/scripts/package.json
     # is a glob here too, written the same way; repo-policy checks it (inputs left out on purpose are in its notInHook).

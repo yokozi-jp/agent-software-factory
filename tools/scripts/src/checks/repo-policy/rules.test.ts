@@ -414,8 +414,6 @@ describe("the test-tools inputs are in the glob of the scripts-test-tools job", 
   });
 
   it.each([
-    "apps/**/*",
-    "packages/**/*",
     "lefthook.yml",
     "nx.json",
     "package.json",
