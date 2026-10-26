@@ -59,6 +59,11 @@ describe("runIn", () => {
     expect(result).toEqual({ status: 3, stdout: "in", stderr: "err\n" });
   });
 
+  it("kills a command that runs past its timeout", () => {
+    const result = runIn(box.root, "sleep", ["5"], { timeout: 200 });
+    expect(result.status).toBeNull();
+  });
+
   it("gives the command the sandbox as HOME, and the variables it is given", () => {
     const result = runIn(box.root, "sh", ["-c", 'printf "%s %s" "$HOME" "$EXTRA"'], {
       env: { EXTRA: "x" },

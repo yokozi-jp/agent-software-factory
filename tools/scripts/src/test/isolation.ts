@@ -78,7 +78,9 @@ export function leavesTheRepositoryUntouched(
       decoy,
       process.execPath,
       [vitest, "run", "--root", project, "--project", name, "--coverage.enabled=false", ...filters],
-      { env: hook },
+      // The default of runIn (100 s) is too short when the pre-commit hook runs this beside the unit tests: on
+      // 2026-10-26 the child took 100 s there and was killed (status 143). The test itself may take 600 s.
+      { env: hook, timeout: 550_000 },
     );
     // On failure the diff shows the output of the child.
     expect(run).toMatchObject({ status: 0 });
