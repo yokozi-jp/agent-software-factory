@@ -14,7 +14,7 @@ tags: [adr, auth, session, bff, security, multitenancy]
 - 認証は Hono を BFF にします。BFF は confidential client として OIDC の認可コードフローを行い、ブラウザには同じオリジンの `/api/*` で Cookie のセッションだけを渡します。SPA はトークンを持ちません（[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1。業務アプリに BFF を strongly recommended とし、ブラウザがトークンを持つ形を 6.3.4.3 で not recommended とする）。
 - `Authorization` ヘッダーでは認証しません。CloudFront の OAC は origin への要求を SigV4 で署名し、その署名に `Authorization` ヘッダーを使います（[OriginAccessControlConfig](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_OriginAccessControlConfig.html)）。ADR 0013 の Web Functions（OAC、`IamAuth`）と両立しません。`/api/*` の cache policy は `CachingDisabled` にし、Cookie を origin に転送します。
 - 認証は Better Auth（`better-auth`）にします。ログインは OIDC の1経路だけにし、本番の IdP は Cognito か Entra ID（Better Auth の provider か SSO プラグイン）、ローカルと CI は Keycloak にします。IdP の違いは issuer、client ID、secret の設定だけにして、コードの経路を変えません。Better Auth 自身のメールとパスワードのログインは、既定では使いません。
-- Cookie は `Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なしにし、`__Host-` 系の接頭辞を付けます（RFC 10017 6.1.3.2。NIST SP 800-63B-4 も `__Host-` と `Strict` か `Lax` を勧める）。Better Auth の既定は `Lax` なので、`defaultCookieAttributes` で `Strict` に変えます。
+- Cookie は `Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なしにし、`__Host-` 系の接頭辞を付けます。RFC 10017 6.1.3.2 は `SameSite=Strict` と `__Host-Http-` を SHOULD とし、[NIST SP 800-63B-4 の Session Management](https://pages.nist.gov/800-63-4/sp800-63b/session/) は `__Host-` と `SameSite` の `Lax` か `Strict` を SHOULD とします。使える接頭辞は Better Auth で確かめます。Better Auth の既定は `Lax` なので、`defaultCookieAttributes` で `Strict` に変えます。
 - CSRF は `hono/csrf`（`Origin` と `Sec-Fetch-Site` の検査。`origin` に公開のオリジンを明示する）と、「状態を変える API は `application/json` だけを受ける」を組み合わせます。GET で状態を変えません。`SameSite` だけに頼りません（RFC 10017 6.1.3.3、[OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)）。
 - テナントと役割は、IdP のクレームではなくアプリの DB（Better Auth の organization プラグイン）に持ちます。`organization.id` を `tenant_id` に使います。API は、テナントをサーバー側のセッションからだけ取ります。クライアントが送る値は使いません（ADR 0011）。
 - 上長は役割にしません。上長は申請者ごとの関係で（`GLOSSARY.md`）、申請を出すときに人事システムを引いて、承認経路として申請に保存します。承認できるかは「ログイン中の社員が、その申請の承認経路の承認者であること」で判断します。
@@ -37,6 +37,6 @@ tags: [adr, auth, session, bff, security, multitenancy]
 - Cognito 固有の癖（hosted UI、ホスト名、スコープ）は、検証環境の本物の Cognito でしか試せません。検証環境では Cognito を CDK で作って E2E を流して消します（[使い捨ての検証環境を作り、E2E を流して消す流れ（CD）を決める](https://github.com/yokozi-jp/agent-software-factory/issues/88)）。
 - `auth` の表の隔離は、DB の RLS ではなく、Better Auth のコードと、アプリ用ロールに権限がないことに依存します。
 - 経理の権限を外しても、最長 8 時間は古い役割が残ります。
-- Better Auth は新しいライブラリです（1.7.12、2026-10-20）。次は未確認で、実装の最初に確かめます。Keycloak の OIDC との組み合わせ、organization プラグインが `auth` スキーマで動くか、テスト用に session を直接作る手段、`__Host-Http-` の接頭辞、Keycloak の CI での起動時間（feedback loop に効く）。
+- Better Auth は新しいライブラリです（[npm registry](https://www.npmjs.com/package/better-auth) の 1.7.12、2026-10-20）。次は未確認で、実装の最初に確かめます。Keycloak の OIDC との組み合わせ、organization プラグインが `auth` スキーマで動くか、テスト用に session を直接作る手段、`__Host-Http-` の接頭辞、Keycloak の CI での起動時間（feedback loop に効く）。
 - Lambda の構成では、BFF が IdP の token endpoint と JWKS を IPv6 で呼びます（ADR 0013）。Cognito のエンドポイントは DNS では AAAA を返しますが、VPC からの接続は検証環境で確かめます。
 - 取り込んだガイドラインの `docs/web-api/security.md` と `docs/web-frontend/auth.md` は、このリポジトリの構成に合わせて直しています。
