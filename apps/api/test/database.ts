@@ -12,6 +12,8 @@ export interface TestDatabase {
   readonly migrator: Pool;
   /** Better Auth が使うロール。search_path は auth。 */
   readonly authService: Pool;
+  /** authService と同じロールで接続する URL。別のプロセスで動かす API に渡す。 */
+  readonly authServiceUrl: string;
   /** 業務の処理が使うロール。auth スキーマの権限を持たない。 */
   readonly appUser: Pool;
   close(): Promise<void>;
@@ -32,8 +34,9 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const loginAs = (user: string) => connectionUri(base, name, { user, password: rolePassword });
   const superuser = new Pool({ connectionString: connectionUri(base, name) });
   const migrator = new Pool({ connectionString: loginAs("migrator") });
+  const authServiceUrl = loginAs("auth_service");
   const authService = new Pool({
-    connectionString: loginAs("auth_service"),
+    connectionString: authServiceUrl,
     options: "-c search_path=auth",
   });
   const appUser = new Pool({ connectionString: loginAs("app_user") });
@@ -42,6 +45,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     superuser,
     migrator,
     authService,
+    authServiceUrl,
     appUser,
     async close() {
       await Promise.all([superuser.end(), migrator.end(), authService.end(), appUser.end()]);
