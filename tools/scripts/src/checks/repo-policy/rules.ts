@@ -400,7 +400,8 @@ function uniqueAdrNumbers(tree: Tree): string[] {
 //     later request behind it. A file marked `transaction:false` runs without a transaction, where SET LOCAL
 //     does nothing, so it is not asked for it.
 const migrationFile = /(^|\/)db\/migrations\/[^/]+\.sql$/;
-const withoutComments = (section: string): string => section.replace(/^[ \t]*--.*$/gm, "").trim();
+const withoutComments = (section: string): string => section.replace(/^[ \t]*--.*/gm, "").trim();
+const lockTimeout = /^SET\s+LOCAL\s+lock_timeout\b/i;
 const irreversibleDown = /^DO\s+\$\$\s*BEGIN\s+RAISE\s+EXCEPTION\s+'[^']+'\s*;\s*END\s*\$\$\s*;?$/i;
 
 // The part of a dbmate migration after its `-- migrate:<name>` line, up to the next `-- migrate:` line. Its
@@ -421,14 +422,14 @@ function migrationsGoForward(tree: Tree): string[] {
   for (const path of tree.paths.filter((p) => migrationFile.test(p))) {
     const sql = tree.read(path);
     const down = migrationSection(sql, "down");
-    if (!irreversibleDown.test(withoutComments(down?.body ?? "")))
+    if (down === undefined || !irreversibleDown.test(withoutComments(down.body)))
       failures.push(
         `${path} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`,
       );
     const up = migrationSection(sql, "up");
     if (
-      !/transaction:\s*false/.test(up?.header ?? "") &&
-      !/^SET\s+LOCAL\s+lock_timeout\b/i.test(withoutComments(up?.body ?? ""))
+      up === undefined ||
+      !(up.header.includes("transaction:false") || lockTimeout.test(withoutComments(up.body)))
     )
       failures.push(
         `${path} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`,
