@@ -127,6 +127,32 @@
         ]
       },
       {
+        "capability": "shell",
+        "effect": "ask",
+        "match": [
+          "cat*",
+          "head*",
+          "tail*",
+          "less*",
+          "more*",
+          "grep*",
+          "egrep*",
+          "fgrep*",
+          "rg*",
+          "awk*",
+          "sed*",
+          "xxd*",
+          "base64*",
+          "source*",
+          "node -e*",
+          "node --eval*",
+          "node -p*",
+          "python*",
+          "bash -c*",
+          "sh -c*"
+        ]
+      },
+      {
         "capability": "fs_write",
         "effect": "ask",
         "match": [".kiro/agents/**", ".kiro/hooks/**"]
@@ -171,24 +197,19 @@
           "*/.aws/*",
           "*/.ssh/*",
           "*/.config/gh/*",
-          "* .env",
-          "* .env.*",
-          "*/.env",
-          "*/.env.*"
+          "*.env*"
         ]
       },
       {
         "capability": "fs_read",
         "effect": "deny",
-        "match": [
-          "~/.aws/**",
-          "~/.ssh/**",
-          "~/.config/gh/**",
-          "**/.env",
-          "**/.env.*",
-          ".env",
-          ".env.*"
-        ]
+        "match": ["~/.aws/**", "~/.ssh/**", "~/.config/gh/**"]
+      },
+      {
+        "capability": "fs_read",
+        "effect": "deny",
+        "match": ["**/.env", "**/.env.*", ".env", ".env.*"],
+        "exclude": ["**/.env.example", ".env.example"]
       },
       {
         "capability": "fs_write",

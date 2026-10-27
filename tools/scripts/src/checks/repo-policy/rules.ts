@@ -191,7 +191,7 @@ function moduleBoundaries(tree: Tree): string[] {
 
 // ADR 0027: the rules that keep domain pure, each with its name as the disable comment of its fixture. vite.config.ts
 // sets them in the override of domain for each module: `throw` (the domain/no-throw rule of
-// apps/api/lint/domain-plugin.ts), the `Date` global, and `Math.random`. Each module has a fixture (#43) for each
+// tools/lint-plugins/src/domain-plugin.ts), the `Date` global, and `Math.random`. Each module has a fixture (#43) for each
 // in src/domain/__fixtures__/ that the rule must report, so a rule that is turned off, or whose `files` stop
 // reaching domain/, fails `vp check`. Like the fixtures of the layers above, they are asked of the modules only,
 // and only when vite.config.ts has a domain layer. The space after the name keeps a rule of a longer name from

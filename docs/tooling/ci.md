@@ -80,7 +80,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 ## coverage の下限
 
-テストの強さの基準は [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定です。`apps/api` と `tools/scripts` の `test` が、Vitest の coverage (provider は v8) で次の 2 つを確かめ、満たさなければ失敗します。ゲートは `nx` の job の `nx affected -t test` です。
+テストの強さの基準は [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定です。`apps/api`、`tools/scripts`、`tools/lint-plugins` の `test` が、Vitest の coverage (provider は v8) で次の 2 つを確かめ、満たさなければ失敗します。ゲートは `nx` の job の `nx affected -t test` です。
 
 - ファイルごとの下限: lines と branches が 90% (`coverage.thresholds.perFile`)。`include` が全てのソースファイルを数えるので、テストのない新しいファイルを足すと止まります。
 - 全体の値のラチェット: `thresholds.autoUpdate` に `Math.floor` で丸める関数を渡しているので、全体の値が下限を上回った実行は、その値を `vite.config.ts` に書き戻します。テストを消して全体の値が下がると止まります。
