@@ -36,6 +36,8 @@ export default defineConfig({
       include: ["src/**/*.ts", "lint/**/*.ts"],
       exclude: [
         "**/*.test.ts",
+        // lint の検出力を確かめる fixture (docs/adr/0007、0026)。わざと規則に違反する文を持ち、どこからも import されない。
+        "src/__fixtures__/**",
         // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。
         "src/server.ts",
         // vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。
