@@ -128,6 +128,65 @@ describe("preToolUse: generated files", () => {
   });
 });
 
+describe("preToolUse: forbidden commands", () => {
+  it.each(["execute_bash", "shell"])("refuses gh pr merge from %s", (tool) => {
+    const result = preToolUse(shell("gh pr merge 12", tool), {}, deps());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(
+      /^block-forbidden-commands: refused\. .*The user merges it\. .*\n$/,
+    );
+  });
+
+  it("allows an ordinary command", () => {
+    expect(preToolUse(shell("gh pr create --fill"), {}, deps())).toEqual(allow);
+  });
+
+  it("has no variable that lets it through", () => {
+    const env = {
+      KIRO_ALLOW_FORCE_PUSH: "1",
+      IWE_ALLOW_NORMALIZE: "1",
+      KIRO_ALLOW_GENERATED_WRITE: "1",
+    };
+    expect(preToolUse(shell("git push origin main"), env, deps()).status).toBe(2);
+  });
+
+  it("does not look at a tool that is not the shell", () => {
+    expect(preToolUse(write("fs_write", "gh pr merge 12"), {}, deps())).toEqual(allow);
+  });
+
+  it("gives the reasons of both checks when a command does both", () => {
+    const result = preToolUse(shell("git push -f origin main"), {}, deps());
+    expect(result.stderr).toContain("block-force-push");
+    expect(result.stderr).toContain("block-forbidden-commands");
+  });
+});
+
+describe("preToolUse: .kiro/settings", () => {
+  it.each(["fs_write", "str_replace", "fs_append", "delete_file"])("refuses %s", (tool) => {
+    const event = {
+      tool_name: tool,
+      tool_input:
+        tool === "delete_file"
+          ? { targetFile: ".kiro/settings/cli.json" }
+          : { path: ".kiro/settings/cli.json" },
+    };
+    const result = preToolUse(event, {}, deps());
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(
+      /^block-settings-writes: refused .* on \.kiro\/settings\/cli\.json\./,
+    );
+  });
+
+  it("has no variable that lets it through", () => {
+    const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
+    expect(preToolUse(write("fs_write", ".kiro/settings/cli.json"), env, deps()).status).toBe(2);
+  });
+
+  it("allows .kiro/agents", () => {
+    expect(preToolUse(write("fs_write", ".kiro/agents/factory.json"), {}, deps())).toEqual(allow);
+  });
+});
+
 describe("preToolUseMatcher", () => {
   const matcher = new RegExp(preToolUseMatcher);
   it.each([

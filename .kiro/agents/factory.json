@@ -1,0 +1,209 @@
+{
+  "name": "factory",
+  "description": "The agent of this repository: the permissions of docs/tooling/agent-permissions.md (allow, ask, deny).",
+  "tools": ["*"],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_read",
+        "effect": "allow",
+        "match": ["./**"]
+      },
+      {
+        "capability": "fs_write",
+        "effect": "allow",
+        "match": ["./**"]
+      },
+      {
+        "capability": "web_search",
+        "effect": "allow"
+      },
+      {
+        "capability": "subagent",
+        "effect": "allow"
+      },
+      {
+        "capability": "skill",
+        "effect": "allow"
+      },
+      {
+        "capability": "context",
+        "effect": "allow"
+      },
+      {
+        "capability": "diagnostics",
+        "effect": "allow"
+      },
+      {
+        "capability": "workflow",
+        "effect": "allow"
+      },
+      {
+        "capability": "web_fetch",
+        "effect": "allow",
+        "match": [
+          "docs.aws.amazon.com",
+          "docs.github.com",
+          "github.com",
+          "hono.dev",
+          "kiro.dev",
+          "learn.chatgpt.com",
+          "lefthook.dev",
+          "raw.githubusercontent.com",
+          "www.rfc-editor.org"
+        ]
+      },
+      {
+        "capability": "shell",
+        "effect": "allow",
+        "match": [
+          "vp check*",
+          "vp test*",
+          "vp fmt*",
+          "vp lint*",
+          "vp run*",
+          "pnpm exec nx*",
+          "pnpm exec vp*",
+          "pnpm exec vitest*",
+          "pnpm test*",
+          "pnpm install",
+          "node tools/scripts/src/*",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "git show*",
+          "git branch --show-current",
+          "git branch --list*",
+          "git rev-parse*",
+          "git add*",
+          "git commit*",
+          "git switch*",
+          "git worktree*",
+          "git fetch*",
+          "git pull*",
+          "git push*",
+          "gh pr view*",
+          "gh pr list*",
+          "gh pr diff*",
+          "gh pr checks*",
+          "gh pr status*",
+          "gh pr create*",
+          "gh pr comment*",
+          "gh pr edit*",
+          "gh issue view*",
+          "gh issue list*",
+          "gh issue create*",
+          "gh issue comment*",
+          "gh issue edit*",
+          "gh run view*",
+          "gh run list*",
+          "gh repo view*",
+          "gh label list*",
+          "gh api *"
+        ]
+      },
+      {
+        "capability": "shell",
+        "effect": "ask",
+        "match": [
+          "curl*",
+          "wget*",
+          "ssh*",
+          "scp*",
+          "pkill*",
+          "killall*",
+          "pnpm add*",
+          "vp add*",
+          "pnpm install *",
+          "gh issue close*",
+          "gh pr close*",
+          "gh api*-X*",
+          "gh api*--method*",
+          "gh api*-f *",
+          "gh api*-F *",
+          "gh api*--field*",
+          "gh api*--raw-field*",
+          "gh api*--input*"
+        ]
+      },
+      {
+        "capability": "fs_write",
+        "effect": "ask",
+        "match": [".kiro/agents/**", ".kiro/hooks/**"]
+      },
+      {
+        "capability": "shell",
+        "effect": "deny",
+        "match": [
+          "git push*main*",
+          "git push*--no-verify*",
+          "git push*--delete*",
+          "git push*--force*",
+          "git push* -f*",
+          "git push*+*",
+          "git push*--mirror*",
+          "git commit*--no-verify*",
+          "gh pr merge*",
+          "gh secret*",
+          "gh variable*",
+          "gh repo delete*",
+          "gh auth token*",
+          "gh auth status*--show-token*",
+          "gh api*rulesets*",
+          "gh api*actions/secrets*",
+          "gh api*actions/variables*",
+          "gh api*actions/permissions*",
+          "aws*",
+          "cdk deploy*",
+          "cdk destroy*",
+          "pnpm exec cdk deploy*",
+          "pnpm exec cdk destroy*",
+          "curl*|*sh*",
+          "curl*|*bash*",
+          "wget*|*sh*",
+          "wget*|*bash*",
+          "*~/.aws*",
+          "*~/.ssh*",
+          "*~/.config/gh*",
+          "*$HOME/.aws*",
+          "*$HOME/.ssh*",
+          "*$HOME/.config/gh*",
+          "*/.aws/*",
+          "*/.ssh/*",
+          "*/.config/gh/*",
+          "* .env",
+          "* .env.*",
+          "*/.env",
+          "*/.env.*"
+        ]
+      },
+      {
+        "capability": "fs_read",
+        "effect": "deny",
+        "match": [
+          "~/.aws/**",
+          "~/.ssh/**",
+          "~/.config/gh/**",
+          "**/.env",
+          "**/.env.*",
+          ".env",
+          ".env.*"
+        ]
+      },
+      {
+        "capability": "fs_write",
+        "effect": "deny",
+        "match": [
+          ".kiro/settings/**",
+          "~/.aws/**",
+          "~/.ssh/**",
+          "~/.config/gh/**",
+          "**/.env",
+          "**/.env.*",
+          ".env",
+          ".env.*"
+        ]
+      }
+    ]
+  }
+}

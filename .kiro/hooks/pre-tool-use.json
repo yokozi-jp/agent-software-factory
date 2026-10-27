@@ -4,7 +4,7 @@
     {
       "name": "pre-tool-use",
       "trigger": "PreToolUse",
-      "description": "Before a shell, file write or iwe MCP tool: refuse a force push (KIRO_ALLOW_FORCE_PUSH=1), `iwe normalize` (IWE_ALLOW_NORMALIZE=1) and hand edits of generated files (KIRO_ALLOW_GENERATED_WRITE=1) (docs/tooling/git-hooks.md).",
+      "description": "Before a shell, file write or iwe MCP tool: refuse a force push (KIRO_ALLOW_FORCE_PUSH=1), `iwe normalize` (IWE_ALLOW_NORMALIZE=1) and hand edits of generated files (KIRO_ALLOW_GENERATED_WRITE=1), the commands and .kiro/settings writes that docs/tooling/agent-permissions.md forbids (docs/tooling/git-hooks.md).",
       "matcher": "shell|execute_bash|@iwe*|fs_write|str_replace|fs_append|delete_file",
       "action": {
         "type": "command",

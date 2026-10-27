@@ -85,6 +85,29 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     expect(result.status).toBe(0);
   });
 
+  it("refuses a forbidden command with exit 2 whatever the variables say", () => {
+    const env = { KIRO_ALLOW_FORCE_PUSH: "1", KIRO_ALLOW_GENERATED_WRITE: "1" };
+    const result = hook(event("execute_bash", { command: "gh pr merge 12 --squash" }), env);
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toMatch(
+      /^block-forbidden-commands: refused\. .*agent-permissions\.md\)\.\n$/,
+    );
+  });
+
+  it("refuses a write to .kiro/settings whatever the variables say, and allows .kiro/agents", () => {
+    mkdirSync(join(repo, ".kiro/settings"), { recursive: true });
+    const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
+    const settings = hook(event("fs_write", { path: ".kiro/settings/cli.json", text: "x" }), env);
+    expect(settings.status).toBe(2);
+    expect(settings.stderr).toContain(
+      "block-settings-writes: refused fs_write on .kiro/settings/cli.json.",
+    );
+    expect(hook(event("fs_write", { path: ".kiro/agents/factory.json", text: "x" })).status).toBe(
+      0,
+    );
+  });
+
   it("refuses iwe normalize from the shell and from the MCP tool, unless IWE_ALLOW_NORMALIZE=1", () => {
     expect(
       hook(event("execute_bash", { command: "cd docs && pnpm exec iwe normalize" })).status,
