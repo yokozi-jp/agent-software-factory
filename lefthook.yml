@@ -141,7 +141,6 @@ pre-commit:
         - "docs/.iwe/schemas/okf.yaml"
         - "docs/.iwe/schemas/okf-index.yaml"
         - "docs/.iwe/schemas/okf-log.yaml"
-        - "tools/scripts/src/test/isolation.ts"
         - "tools/scripts/src/test/sandbox.ts"
         - "tools/scripts/src/test/setup.ts"
         - "tools/scripts/vite.config.ts"

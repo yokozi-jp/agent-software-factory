@@ -1,5 +1,5 @@
-// Regression test for test isolation (docs/tooling/ci.md ("スクリプトのテスト")), shared by
-// isolation.test.ts (the unit project) and isolation.tools.test.ts (the tools project).
+// Regression test for test isolation (docs/tooling/ci.md ("スクリプトのテスト")), run by isolation.test.ts
+// for the unit project.
 // Git hooks run with GIT_DIR and GIT_INDEX_FILE exported, and from the working tree of the repository.
 // A test that acts on either one changes the repository that runs the hook: on 2026-10-23 a test run from
 // a pre-commit hook committed into this repository and pushed main (PR #10, commit 575c03a, describes it).

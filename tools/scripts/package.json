@@ -6,7 +6,7 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --project unit --project isolation --coverage",
-    "test-tools": "vp test run --project tools --project isolation-tools",
+    "test-tools": "vp test run --project tools",
     "mutation": "stryker run"
   },
   "dependencies": {
