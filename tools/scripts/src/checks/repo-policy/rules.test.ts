@@ -3,6 +3,7 @@
 // working tree (and the staged mode) is in cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
 import {
+  domainFixture,
   factoryAgent,
   moduleFixture,
   passingRepo,
@@ -178,6 +179,8 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
       dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
     ),
     ...srcFixtures(name),
+    // The fixtures of the rules that keep domain pure are checked on their own, below.
+    [`packages/${name}/src/domain/__fixtures__/purity.ts`]: domainFixture,
   });
 
   it("refuses a module that vite.config.ts does not list", () => {
@@ -271,6 +274,104 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
           "vite.config.ts": none,
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
           "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("ADR 0027: the domain of every module has the fixtures of the rules that keep it pure", () => {
+  const config = base["vite.config.ts"] ?? "";
+  const purity = "packages/claim/src/domain/__fixtures__/purity.ts";
+  const noFixture = (name: string, rule: string) =>
+    `packages/${name}/src/domain/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`;
+  const without = (rule: string) =>
+    domainFixture
+      .split("\n")
+      .filter((line) => !line.includes(`oxlint-disable-next-line ${rule} `))
+      .join("\n");
+
+  it.each(["domain/no-throw", "no-restricted-globals", "no-restricted-properties"])(
+    "refuses a domain whose fixtures lack the disable comment of %s",
+    (rule) => {
+      expect(violations(repo({ [purity]: without(rule) }))).toEqual([noFixture("claim", rule)]);
+    },
+  );
+
+  it("names every rule that has no fixture, in the order of the rules", () => {
+    expect(violations(repo({ [purity]: undefined }))).toEqual([
+      noFixture("claim", "domain/no-throw"),
+      noFixture("claim", "no-restricted-globals"),
+      noFixture("claim", "no-restricted-properties"),
+    ]);
+  });
+
+  it("refuses a disable comment of a rule of a similar name", () => {
+    const similar = domainFixture.replace("domain/no-throw", "other/no-throw");
+    expect(violations(repo({ [purity]: similar }))).toEqual([
+      noFixture("claim", "domain/no-throw"),
+    ]);
+  });
+
+  it("passes fixtures that are spread over several files of __fixtures__/", () => {
+    const lines = domainFixture.split("\n");
+    expect(
+      violations(
+        repo({
+          [purity]: lines.slice(0, 2).join("\n"),
+          "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2).join("\n"),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses fixtures that are outside __fixtures__/ of domain", () => {
+    expect(
+      violations(
+        repo({
+          [purity]: undefined,
+          "packages/claim/src/domain/purity.ts": domainFixture,
+          "packages/claim/src/http/__fixtures__/purity.ts": domainFixture,
+          "packages/claim/src/domain/deeper/__fixtures__/purity.ts": domainFixture,
+        }),
+      ),
+    ).toEqual([
+      noFixture("claim", "domain/no-throw"),
+      noFixture("claim", "no-restricted-globals"),
+      noFixture("claim", "no-restricted-properties"),
+    ]);
+  });
+
+  it("asks each module, and not shared", () => {
+    expect(
+      violations(
+        repo({
+          "packages/shared/src/__fixtures__/purity.ts": undefined,
+          "packages/approval/package.json": "{}",
+          ...srcFixtures("approval"),
+          "packages/approval/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/approval/src/http/__fixtures__/boundaries.ts": moduleFixture,
+          "vite.config.ts": config.replace(
+            "  claim: [],\n",
+            '  claim: [],\n  approval: ["claim"],\n',
+          ),
+        }),
+      ),
+    ).toEqual([
+      noFixture("approval", "domain/no-throw"),
+      noFixture("approval", "no-restricted-globals"),
+      noFixture("approval", "no-restricted-properties"),
+    ]);
+  });
+
+  it("asks nothing when vite.config.ts has no domain layer", () => {
+    const none = config.replace("  domain: [],\n", "");
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": none,
+          [purity]: undefined,
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);

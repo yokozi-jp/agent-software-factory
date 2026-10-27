@@ -27,6 +27,8 @@ const propertyNameOf = (member: AstNode): string | undefined => {
 const staticString = (node: AstNode): string | undefined => {
   if (node?.type === "Literal" && typeof node.value === "string") return node.value;
   if (node?.type === "TemplateLiteral" && node.expressions.length === 0) {
+    // cooked is null only for an invalid escape, which is a syntax error outside a tagged template.
+    /* v8 ignore next -- the null case cannot be parsed here */
     return node.quasis[0]?.value.cooked ?? undefined;
   }
   return undefined;
@@ -69,11 +71,12 @@ const noHtmlInjection = defineRule({
         }
       },
       CallExpression(node) {
-        const name = propertyNameOf(node.callee);
+        const callee = node.callee;
+        if (callee.type !== "MemberExpression") return;
+        const name = propertyNameOf(callee);
         if (!name || !htmlSinkMethods.has(name)) return;
         // `write` and `writeln` are common method names; only `document.write` is the sink.
-        const receiver =
-          node.callee.type === "MemberExpression" ? nameOf(node.callee.object) : undefined;
+        const receiver = nameOf(callee.object);
         if (name !== "insertAdjacentHTML" && receiver !== "document") return;
         context.report({ node, messageId: "htmlSink", data: { name } });
       },

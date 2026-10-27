@@ -3,6 +3,17 @@
 // A detection-power fixture of the module boundaries: an import that the rule must report.
 export const moduleFixture =
   '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/other";\n';
+// A detection-power fixture of the rules that keep domain pure: a throw, a Date and a Math.random that the
+// rules must report.
+export const domainFixture = [
+  "// oxlint-disable-next-line domain/no-throw -- fixture",
+  'export const a = () => { throw new Error("x"); };',
+  "// oxlint-disable-next-line no-restricted-globals -- fixture",
+  "export const b = () => Date.now();",
+  "// oxlint-disable-next-line no-restricted-properties -- fixture",
+  "export const c = () => Math.random();",
+  "",
+].join("\n");
 
 // The fixtures of the runtime restrictions (docs/adr/0007) in packages/*/src/__fixtures__/: a global that the
 // rules must report, and an import in a test file that the override of the tests must still report.
@@ -65,6 +76,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/claim/package.json": JSON.stringify({ name: "@x/claim" }),
   ...srcFixtures("claim"),
   "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+  "packages/claim/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,
   "vite.config.ts": [
     "const modules: Record<string, readonly string[]> = {",
