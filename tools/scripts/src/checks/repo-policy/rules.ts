@@ -189,6 +189,37 @@ function moduleBoundaries(tree: Tree): string[] {
   return failures;
 }
 
+// ADR 0027: the rules that keep domain pure, each with its name as the disable comment of its fixture. vite.config.ts
+// sets them in the override of domain for each module: `throw` (the domain/no-throw rule of
+// tools/lint-plugins/src/domain-plugin.ts), the `Date` global, and `Math.random`. Each module has a fixture (#43) for each
+// in src/domain/__fixtures__/ that the rule must report, so a rule that is turned off, or whose `files` stop
+// reaching domain/, fails `vp check`. Like the fixtures of the layers above, they are asked of the modules only,
+// and only when vite.config.ts has a domain layer. The space after the name keeps a rule of a longer name from
+// counting.
+const domainRuleNames = ["domain/no-throw", "no-restricted-globals", "no-restricted-properties"];
+
+function domainPurity(tree: Tree): string[] {
+  if (!objectKeys(tree.read("vite.config.ts"), "layers").includes("domain")) return [];
+  const failures: string[] = [];
+  for (const path of tree.paths) {
+    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
+    if (name === undefined || name === "shared") continue;
+    const fixtures = `packages/${name}/src/domain/__fixtures__/`;
+    for (const rule of domainRuleNames)
+      if (
+        !tree.paths.some(
+          (file) =>
+            file.startsWith(fixtures) &&
+            tree.read(file).includes(`oxlint-disable-next-line ${rule} `),
+        )
+      )
+        failures.push(
+          `${fixtures} has no fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`,
+        );
+  }
+  return failures;
+}
+
 const inclusions: ReadonlySet<unknown> = new Set(["always", "fileMatch", "manual", "auto"]);
 
 // The problems of one steering file. Malformed frontmatter is silently loaded as `always`.
@@ -926,6 +957,7 @@ export function violations(repo: Repo): string[] {
     ...oneBetterleaks(tree),
     ...webStandardApis(tree),
     ...moduleBoundaries(tree),
+    ...domainPurity(tree),
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),
