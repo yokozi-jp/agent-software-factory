@@ -4,9 +4,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   domainFixture,
+  domainRuntimeFixtures,
   factoryAgent,
   moduleFixture,
   passingRepo,
+  runtimeFixture,
+  srcFixtures,
 } from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
@@ -176,6 +179,8 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ...Object.fromEntries(
       dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
     ),
+    ...srcFixtures(name),
+    ...domainRuntimeFixtures(name),
     // The fixtures of the rules that keep domain pure are checked on their own, below.
     [`packages/${name}/src/domain/__fixtures__/purity.ts`]: domainFixture,
   });
@@ -224,6 +229,52 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     expect(
       violations(repo({ "packages/shared/src/__fixtures__/boundaries.ts": undefined })),
     ).toEqual([noFixture("shared", "src")]);
+  });
+
+  it("refuses a package without the fixtures of the runtime restrictions or of the tests", () => {
+    const noRuntime = (annotation: string) =>
+      `packages/claim/src/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+        }),
+      ),
+    ).toEqual([
+      "packages/claim/src/__fixtures__/ has no *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).",
+      noRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(repo({ "packages/shared/src/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noRuntime("no-restricted-globals").replace("claim", "shared"),
+      noRuntime("no-restricted-properties").replace("claim", "shared"),
+    ]);
+  });
+
+  it("refuses a module whose domain fixture does not show the runtime restrictions", () => {
+    const noDomainRuntime = (annotation: string) =>
+      `packages/claim/src/domain/__fixtures__/runtime-apis.ts has no \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
+    expect(
+      violations(repo({ "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noDomainRuntime("no-restricted-globals"),
+      noDomainRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+        }),
+      ),
+    ).toEqual([noDomainRuntime("no-restricted-properties")]);
   });
 
   it("follows the layers that vite.config.ts lists", () => {
@@ -320,7 +371,8 @@ describe("ADR 0027: the domain of every module has the fixtures of the rules tha
         repo({
           "packages/shared/src/__fixtures__/purity.ts": undefined,
           "packages/approval/package.json": "{}",
-          "packages/approval/src/__fixtures__/boundaries.ts": moduleFixture,
+          ...srcFixtures("approval"),
+          ...domainRuntimeFixtures("approval"),
           "packages/approval/src/domain/__fixtures__/boundaries.ts": moduleFixture,
           "packages/approval/src/http/__fixtures__/boundaries.ts": moduleFixture,
           "vite.config.ts": config.replace(
@@ -1262,7 +1314,7 @@ describe("ADR 0026: the edges", () => {
     repo({
       "packages/claim/package.json": undefined,
       [`packages/${name}/package.json`]: "{}",
-      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+      ...srcFixtures(name),
       "vite.config.ts": modulesConfig(body),
     });
 

@@ -15,6 +15,17 @@ export const domainFixture = [
   "",
 ].join("\n");
 
+// The fixtures of the runtime restrictions (docs/adr/0007) in packages/*/src/__fixtures__/: a global that the
+// rules must report, and an import in a test file that the override of the tests must still report.
+export const runtimeFixture =
+  "// oxlint-disable-next-line no-restricted-globals -- fixture\nexport const a: unknown = process;\n" +
+  "// oxlint-disable-next-line no-restricted-properties -- fixture\nexport const b: unknown = globalThis.process;\n";
+export const srcFixtures = (name: string): Record<string, string> => ({
+  [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+  [`packages/${name}/src/__fixtures__/runtime-apis.ts`]: runtimeFixture,
+  [`packages/${name}/src/__fixtures__/boundaries.test.ts`]: moduleFixture,
+});
+
 // The agent of the passing repository: the rules the checks of docs/tooling/agent-permissions.md read.
 interface FixtureRule {
   readonly capability: string;
@@ -49,6 +60,11 @@ export const factoryAgent: {
   },
 };
 
+// The fixture of a module whose domain override must keep the runtime restrictions (docs/adr/0007).
+export const domainRuntimeFixtures = (name: string): Record<string, string> => ({
+  [`packages/${name}/src/domain/__fixtures__/runtime-apis.ts`]: runtimeFixture,
+});
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "package.json": JSON.stringify({
@@ -61,9 +77,10 @@ export const passingRepo: Readonly<Record<string, string>> = {
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
   "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
-  "packages/shared/src/__fixtures__/boundaries.ts": moduleFixture,
+  ...srcFixtures("shared"),
   "packages/claim/package.json": JSON.stringify({ name: "@x/claim" }),
-  "packages/claim/src/__fixtures__/boundaries.ts": moduleFixture,
+  ...srcFixtures("claim"),
+  ...domainRuntimeFixtures("claim"),
   "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/claim/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,

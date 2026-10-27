@@ -194,6 +194,11 @@ pre-push:
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
     adr-number:
       run: node tools/scripts/src/checks/check-adr-number/cli.ts || [ $? -ne 1 ]
+    # The `test` target of every project that the branch affects, as CI runs it (coverage thresholds included).
+    # pre-commit runs only the tests of tools/scripts, so a coverage failure in apps/api first showed up in CI
+    # (#178). Nx skips the projects whose cached result still holds. NX_BASE is what CI sets for the same command.
+    nx-affected-test:
+      run: pnpm exec nx affected -t test --base=origin/main --head=HEAD
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
