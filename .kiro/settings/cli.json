@@ -1,5 +1,5 @@
 {
-  "chat.defaultModel": "auto",
+  "chat.defaultModel": "claude-sonnet-5.5",
   "chat.agentEngine": "v3",
   "chat.defaultAgent": "factory"
 }
