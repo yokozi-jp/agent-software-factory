@@ -1,6 +1,6 @@
 // Oxlint plugin: blocks `throw` in the domain layer of the modules, packages/*/src/domain (docs/adr/0027).
 // domain returns a business failure as a Result instead of throwing it, so the caller has to handle each failure.
-// Oxlint's built-in rules cannot stop `throw` alone, and cannot carry a message that says what to write instead.
+// The rule is a plugin, as in docs/adr/0019, so that its message can say what to write instead.
 import { definePlugin, defineRule } from "vite-plus/lint/plugins";
 
 const noThrow = defineRule({

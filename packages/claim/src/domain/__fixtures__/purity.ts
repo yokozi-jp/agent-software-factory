@@ -24,8 +24,32 @@ export function drawsARandomNumber(): number {
   return Math.random();
 }
 
-// The one use of `Date` that domain may have: the type of an annotation. It carries no disable comment, so
-// `vp check` fails if no-restricted-globals starts to report it.
+// Other ways to write the same thing, which the rules also report.
+export function drawsWithBrackets(): number {
+  // oxlint-disable-next-line no-restricted-properties -- fixture: domain takes the random value as an argument
+  return Math["random"]();
+}
+
+export function drawsWithDestructuring(): number {
+  // oxlint-disable-next-line no-restricted-properties -- fixture: domain takes the random value as an argument
+  const { random } = Math;
+  return random();
+}
+
+export function checksInstanceOfDate(value: unknown): boolean {
+  // oxlint-disable-next-line no-restricted-globals -- fixture: domain takes the time as an argument
+  return value instanceof Date;
+}
+
+// A known gap: `Date` reached through the global object is not reported (docs/adr/0027). It carries no disable
+// comment, so `vp check` fails when Oxlint starts to report it. Then drop this function, move the line above
+// with a disable comment, and fix the ADR.
+export function readsTheClockThroughGlobalThis(): number {
+  return globalThis.Date.now();
+}
+
+// A `Date` in a type annotation is not reported by no-restricted-globals (docs/adr/0027). It carries no disable
+// comment, so `vp check` fails if the rule starts to report it.
 export function startOf(at: Date): Date {
   return at;
 }

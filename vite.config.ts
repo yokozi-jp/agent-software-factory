@@ -103,7 +103,7 @@ function moduleImports(name: string, layer?: string) {
 const domainPurityMessage = (what: string, instead: string) =>
   `${what} makes a domain function depend on something other than its arguments. ${instead}, ` +
   "and let application supply it (docs/adr/0027, docs/domain-model/types.md).";
-const domainOnly = {
+const domainPurityRules = {
   jsPlugins: [{ name: "domain", specifier: "./apps/api/lint/domain-plugin.ts" }],
   rules: {
     "domain/no-throw": "error",
@@ -139,7 +139,11 @@ const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
       "no-restricted-imports": ["error", moduleImports(name, layer)],
     };
     return layer === "domain"
-      ? { files, jsPlugins: domainOnly.jsPlugins, rules: { ...imports, ...domainOnly.rules } }
+      ? {
+          files,
+          jsPlugins: domainPurityRules.jsPlugins,
+          rules: { ...imports, ...domainPurityRules.rules },
+        }
       : { files, rules: imports };
   }),
 ]);
