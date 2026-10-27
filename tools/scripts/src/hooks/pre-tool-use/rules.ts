@@ -5,9 +5,11 @@
 // tool_input. Other Kiro sessions in this working tree are only warned about at SessionStart (#191).
 // Each check keeps the matcher its own hook had (docs/tooling/git-hooks.md ("Kiro の hook")); the matcher
 // in .kiro/hooks/pre-tool-use.json is their union.
+import { forbiddenCommand } from "../forbidden-commands.ts";
 import { refusesForcePush, forcePushMessage } from "../force-push.ts";
 import { generatedWriteRefusal } from "../generated-writes.ts";
 import { iweNormalizeMessage, refusesIweCommand, refusesIweTool } from "../iwe-normalize.ts";
+import { settingsWriteRefusal } from "../settings-writes.ts";
 
 // The variables that let a refused call through for this session.
 export interface PreToolUseEnv {
@@ -52,10 +54,19 @@ function refusals(
     if (refusesIweTool(tool) || (typeof command === "string" && refusesIweCommand(command)))
       reasons.push(iweNormalizeMessage);
   }
-  if (env.KIRO_ALLOW_GENERATED_WRITE !== "1" && generatedTool.test(tool)) {
+  // No variable lets a forbidden command through: the user runs it themselves (docs/tooling/agent-permissions.md).
+  const forbidden =
+    shellTool.test(tool) && typeof command === "string" ? forbiddenCommand(command) : undefined;
+  if (forbidden !== undefined) reasons.push(forbidden);
+  if (generatedTool.test(tool)) {
     const rel = deps.writeTarget(tool, input);
-    const reason = rel === undefined ? undefined : generatedWriteRefusal(tool, rel);
-    if (reason !== undefined) reasons.push(reason);
+    const generated =
+      env.KIRO_ALLOW_GENERATED_WRITE === "1" || rel === undefined
+        ? undefined
+        : generatedWriteRefusal(tool, rel);
+    if (generated !== undefined) reasons.push(generated);
+    const settings = rel === undefined ? undefined : settingsWriteRefusal(tool, rel);
+    if (settings !== undefined) reasons.push(settings);
   }
   return reasons;
 }

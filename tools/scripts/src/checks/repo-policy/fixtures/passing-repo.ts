@@ -4,6 +4,40 @@
 export const moduleFixture =
   '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/other";\n';
 
+// The agent of the passing repository: the rules the checks of docs/tooling/agent-permissions.md read.
+interface FixtureRule {
+  readonly capability: string;
+  readonly effect: string;
+  readonly match?: readonly string[];
+}
+export const factoryAgent: {
+  readonly name: string;
+  readonly tools: readonly string[];
+  readonly permissions: { readonly rules: readonly FixtureRule[] };
+} = {
+  name: "factory",
+  tools: ["*"],
+  permissions: {
+    rules: [
+      { capability: "shell", effect: "allow", match: ["git push*", "git commit*"] },
+      {
+        capability: "shell",
+        effect: "deny",
+        match: [
+          "git push*main*",
+          "git push*--no-verify*",
+          "git push*--delete*",
+          "git push*--force*",
+          "git push*+*",
+          "git push* -f*",
+          "git commit*--no-verify*",
+        ],
+      },
+      { capability: "web_fetch", effect: "allow", match: ["docs.github.com"] },
+    ],
+  },
+};
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "package.json": JSON.stringify({
@@ -109,6 +143,20 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "tools/scripts/src/hooks/force-push.ts":
     "// block-force-push: refuse a force push.\nexport {};\n",
   "tools/scripts/src/hooks/shell-command.ts": "// The words of a shell command.\nexport {};\n",
+  // An agent with rules, the setting that makes it the default, and the documents the rules are compared with.
+  ".kiro/agents/factory.json": JSON.stringify(factoryAgent),
+  ".kiro/settings/cli.json": JSON.stringify({ "chat.defaultAgent": "factory" }),
+  "docs/tooling/external-docs.md":
+    "# 外部ドキュメント\n\n| GitHub | https://docs.github.com/en/x |\n",
+  "docs/tooling/agent-permissions.md": [
+    "# エージェントの権限",
+    "",
+    "| 操作 | 区分 | 実装 | すり抜ける形 |",
+    "| --- | --- | --- | --- |",
+    "| 読む | 許可 | `agent: shell` | なし |",
+    "| force push | 禁止 | `hook: block-force-push`、`agent: shell` | 変数 |",
+    "",
+  ].join("\n"),
   // The table that repo-policy compares with the configs above, as docs/tooling/assurance-catalog.md.
   "docs/tooling/assurance-catalog.md": [
     "# 保証カタログ",
@@ -119,6 +167,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     "| `ruleset: commitlint` | x | 必須チェック | | log | `commitlint.tools.test.ts` |",
     "| `ruleset: CodeQL` | x | ruleset | | alert | GitHub |",
     "| `ruleset: deletion` | x | ガードレール | | push | 静的な検査 |",
+    "| `kiro-agent: factory` | x | ガードレール | | log | `rules.test.ts` |",
     "| `kiro: pre-tool-use/block-force-push` | x | ガードレール | | stderr | `force-push.test.ts` |",
     "",
   ].join("\n"),
