@@ -1,3 +1,6 @@
+/** bootstrap.sql が作るロール。 */
+export const roles = ["migrator", "app_user", "auth_service"] as const;
+
 /** migration を流し終えた DB の名前。テストごとの DB は、これを TEMPLATE にして複製する (docs/adr/0025)。 */
 export const templateDatabase = "template_factory";
 

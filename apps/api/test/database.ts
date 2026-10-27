@@ -6,8 +6,8 @@ import { rolePassword } from "./credentials.ts";
 import { connectionUri } from "./connection.ts";
 
 export interface TestDatabase {
-  /** superuser。テストの準備と、中身の確認に使う。 */
-  readonly owner: Pool;
+  /** superuser (testcontainers の master user)。中身の確認に使う。表の所有者は migrator。 */
+  readonly superuser: Pool;
   /** 表とスキーマの所有者。migration を流すロール。 */
   readonly migrator: Pool;
   /** Better Auth が使うロール。search_path は auth。 */
@@ -25,26 +25,26 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const base = inject("postgresUri");
   const name = `t_${randomBytes(6).toString("hex")}`;
 
-  const bootstrap = new Pool({ connectionString: base });
-  await bootstrap.query(`CREATE DATABASE ${name} TEMPLATE ${inject("templateDatabase")}`);
-  await bootstrap.end();
+  const maintenance = new Pool({ connectionString: base });
+  await maintenance.query(`CREATE DATABASE ${name} TEMPLATE ${inject("templateDatabase")}`);
+  await maintenance.end();
 
-  const as = (user: string) => connectionUri(base, name, { user, password: rolePassword });
-  const owner = new Pool({ connectionString: connectionUri(base, name) });
-  const migrator = new Pool({ connectionString: as("migrator") });
+  const loginAs = (user: string) => connectionUri(base, name, { user, password: rolePassword });
+  const superuser = new Pool({ connectionString: connectionUri(base, name) });
+  const migrator = new Pool({ connectionString: loginAs("migrator") });
   const authService = new Pool({
-    connectionString: as("auth_service"),
+    connectionString: loginAs("auth_service"),
     options: "-c search_path=auth",
   });
-  const appUser = new Pool({ connectionString: as("app_user") });
+  const appUser = new Pool({ connectionString: loginAs("app_user") });
 
   return {
-    owner,
+    superuser,
     migrator,
     authService,
     appUser,
     async close() {
-      await Promise.all([owner.end(), migrator.end(), authService.end(), appUser.end()]);
+      await Promise.all([superuser.end(), migrator.end(), authService.end(), appUser.end()]);
     },
   };
 }

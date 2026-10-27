@@ -15,10 +15,13 @@ DECLARE
 BEGIN
   FOREACH role_name IN ARRAY ARRAY['migrator', 'app_user', 'auth_service'] LOOP
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
-      EXECUTE format('CREATE ROLE %I LOGIN', role_name);
+      -- 権限の属性は明示する。RLS を迂回するロールは作らない (docs/adr/0011)。
+      EXECUTE format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS', role_name);
     END IF;
   END LOOP;
 
+  -- PostgreSQL は PUBLIC に CONNECT を既定で与えるので、この GRANT だけでは接続を絞らない。
+  -- 明示して、PUBLIC の権限を外した環境でも同じ結果にする。
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO migrator, app_user, auth_service', current_database());
   EXECUTE format('GRANT CREATE ON DATABASE %I TO migrator', current_database());
 

@@ -25,7 +25,7 @@ describe("auth スキーマの権限 (ADR 0022、ADR 0025)", () => {
   ];
 
   it("Better Auth の表がすべて auth スキーマにあり、public にはないこと", async () => {
-    const found = await fixture.db.owner.query<{ table_schema: string }>(
+    const found = await fixture.db.superuser.query<{ table_schema: string }>(
       `SELECT table_schema FROM information_schema.tables
        WHERE table_name = ANY($1) AND table_type = 'BASE TABLE'`,
       [tables],
@@ -36,7 +36,7 @@ describe("auth スキーマの権限 (ADR 0022、ADR 0025)", () => {
   });
 
   it("auth スキーマと表の所有者が migrator であること", async () => {
-    const owners = await fixture.db.owner.query<{ owner: string }>(
+    const owners = await fixture.db.superuser.query<{ owner: string }>(
       `SELECT DISTINCT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'auth'
        UNION
        SELECT DISTINCT tableowner FROM pg_tables WHERE schemaname = 'auth'`,

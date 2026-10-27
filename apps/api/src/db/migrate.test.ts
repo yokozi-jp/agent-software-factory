@@ -4,11 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { migrate } from "../../db/migrate.ts";
 import { bootstrapSql } from "../../test/bootstrap.ts";
-import { connectionUri, migratorUrl } from "../../test/connection.ts";
+import { migratorUrl, roles } from "../../test/connection.ts";
 
 // migration を流す入口 (db/migrate.ts) と、ロールを作る bootstrap.sql (docs/adr/0025)。
 // 共有の PostgreSQL ではなく専用のコンテナを使う。rds_iam のロールはクラスタ全体のもので、作ると
 // ほかのテストのロールに影響するため。
+// it は上から順に、1 つのクラスタの状態を進める (bootstrap → rds_iam を作る → migrate)。順番を変えない。
 describe("bootstrap.sql と migrate", () => {
   let postgres: StartedPostgreSqlContainer;
   let master: Client;
@@ -45,16 +46,14 @@ describe("bootstrap.sql と migrate", () => {
   });
 
   it("rds_iam のロールがなければ、何も付かないこと", async () => {
-    for (const role of ["migrator", "app_user", "auth_service"])
-      expect(await memberships(role)).toEqual([]);
+    for (const role of roles) expect(await memberships(role)).toEqual([]);
   });
 
   it("rds_iam のロールがあれば、3 つのロールに付くこと", async () => {
     await master.query(`CREATE ROLE rds_iam`);
     await master.query(bootstrapSql);
 
-    for (const role of ["migrator", "app_user", "auth_service"])
-      expect(await memberships(role)).toEqual(["rds_iam"]);
+    for (const role of roles) expect(await memberships(role)).toEqual(["rds_iam"]);
   });
 
   it("migrate が全部を適用し、2 回目は何も適用せず成功すること", async () => {
@@ -67,13 +66,18 @@ describe("bootstrap.sql と migrate", () => {
     expect(again).not.toContain("Applying: ");
     const applied = await master.query(`SELECT version FROM migrations.schema_migrations`);
     expect(applied.rowCount).toBeGreaterThan(0);
+    const owner = await master.query(
+      `SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'migrations'`,
+    );
+    expect(owner.rows).toEqual([{ owner: "migrator" }]);
   });
 
   it("migrate が失敗したときは dbmate の stderr を載せて投げること", async () => {
-    const unreachable = connectionUri(postgres.getConnectionUri(), "no_such_database");
+    const unreachable = migratorUrl(postgres.getConnectionUri(), "no_such_database", "secret-pw");
 
-    await expect(migrate(`${unreachable}?sslmode=disable`)).rejects.toThrow(
-      /dbmate migrate が失敗した/,
-    );
+    const error = await migrate(unreachable).catch((e: unknown) => e);
+
+    expect(String(error)).toMatch(/dbmate migrate が失敗した/);
+    expect(String(error)).not.toContain("secret-pw");
   });
 });

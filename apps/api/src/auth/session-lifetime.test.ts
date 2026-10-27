@@ -82,12 +82,12 @@ describe("セッションの期間 (ADR 0022、OWASP Session Management)", () =>
     try {
       const browser = await alone.signedIn();
       vi.useFakeTimers({ toFake: ["Date"], now: new Date() });
-      expect((await alone.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
+      expect((await alone.db.superuser.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
 
       // 使われ続けた session が 8 時間を超えた最初の要求で、行が消える。
       await useEvery20Minutes(browser, 8 * hour + 20 * minute);
 
-      expect((await alone.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
+      expect((await alone.db.superuser.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
     } finally {
       vi.useRealTimers();
       await alone.close();

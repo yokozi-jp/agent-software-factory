@@ -7,7 +7,7 @@ import type { TestProject } from "vite-plus/test/node";
 import { migrate } from "../db/migrate.ts";
 import { rolePassword } from "./credentials.ts";
 import { bootstrapSql } from "./bootstrap.ts";
-import { connectionUri, migratorUrl, templateDatabase } from "./connection.ts";
+import { connectionUri, migratorUrl, roles, templateDatabase } from "./connection.ts";
 
 // 結合テストは、本物の PostgreSQL と Keycloak を相手にする (docs/db/postgresql-test.md、docs/adr/0022)。
 // 一度だけ起動して全テストで使う。テストごとに別のデータベースを作るので、並列に走らせられる (ロールはクラスタ全体で共有する)。
@@ -58,8 +58,7 @@ export default async function setup(project: TestProject) {
   const master = new Client({ connectionString: connectionUri(base, templateDatabase) });
   await master.connect();
   await master.query(bootstrapSql);
-  for (const role of ["migrator", "app_user", "auth_service"])
-    await master.query(`ALTER ROLE ${role} PASSWORD '${rolePassword}'`);
+  for (const role of roles) await master.query(`ALTER ROLE ${role} PASSWORD '${rolePassword}'`);
   await master.end();
 
   await migrate(migratorUrl(base, templateDatabase, rolePassword));
