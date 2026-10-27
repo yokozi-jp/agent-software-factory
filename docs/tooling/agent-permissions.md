@@ -94,7 +94,7 @@ file tool の deny が止めるのは file tool だけです。シェルのリ�
 次を、Kiro 2.34.0 で確かめました。
 
 - **`.kiroignore` は CLI で効きません。** `.kiroignore` に `.env` を書いても `read_file` と grep は読めました。engine は、クライアントが `agentIgnoreFiles` を渡したときだけ ignore file を使い、CLI にその設定はありません ([Issue #256](https://github.com/yokozi-jp/agent-software-factory/issues/256) の調査。engine のコードを読んだ結果です)。IDE の `kiroAgent.agentIgnoreFiles` は範囲の外です。
-- **deny の `match` に `~/…` を混ぜると、規則全体が効きません。** `~/.aws/**` と `**/.env` を同じ `match` に並べると、`read_file .env` が通りました。`~` を含む規則と `.env` の規則は、別の規則に分けます。
+- **deny の `match` に `~/…` を混ぜると、規則全体が効きません。** `~/.aws/**` と `**/.env` を同じ `match` に並べると、`fs_read` では `read_file` が、`fs_write` では書き込みが通りました。`~` を含む規則と、それ以外の規則は、別の規則に分けます。
 
 限界があります。この規則は補助で、根本の対策は、秘密の実値をエージェントの手元に置かないことです。`--trust-all-tools` では、deny に当たらない形 (`cat .e[n]v`、`grep -r canary .`) が確認なしで `.env` を読みます。`*.env*` の deny は、`.env` を含む文字列を持つコマンドも止めます。commit メッセージ、Issue の本文、`process.env` や `import.meta.env` を含む `grep`、`.envrc`、shell での `.env.example` の操作 (`cat .env.example`、`git add .env.example`) が当たります。`.env.example` を読めるのは file tool (`read_file`、grep) だけです。
 
