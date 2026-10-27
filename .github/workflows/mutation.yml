@@ -4,8 +4,8 @@ name: Mutation
 # minutes and grows with the code, so it runs outside the pull request (docs/adr/0031, docs/tooling/ci.md).
 on:
   schedule:
-    # Mondays, 03:00 UTC.
-    - cron: "0 3 * * 1"
+    # Every day, 03:00 UTC.
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:

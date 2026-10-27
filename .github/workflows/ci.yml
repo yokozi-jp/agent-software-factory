@@ -168,7 +168,7 @@ jobs:
             fi
           done
 
-      # The mutation target (Stryker) is not here: it runs weekly in mutation.yml (docs/adr/0031).
+      # The mutation target (Stryker) is not here: it runs daily in mutation.yml (docs/adr/0031).
       # The name is the row of the assurance catalog (docs/tooling/assurance-catalog.md).
       - name: Check, test and build (nx affected)
         run: pnpm exec nx affected -t check test build
