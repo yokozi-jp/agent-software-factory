@@ -72,7 +72,7 @@ docs/      ドキュメント (入口は docs/index.md)
 ## 補足
 
 - api の test (`src/` のテスト) は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
-- api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。
+- api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。`tools/lint-plugins` の test も同じ基準で coverage を取り、`tools/lint-plugins/vite.config.ts` の下限が同じように書き換わります。
 - `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`tools/lint-plugins/src/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`tools/lint-plugins/`) は対象外です。
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
