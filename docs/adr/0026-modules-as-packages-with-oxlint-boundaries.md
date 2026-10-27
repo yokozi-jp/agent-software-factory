@@ -46,7 +46,7 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 
 - モジュールを足すときは、`packages/<name>/` (`package.json` の `exports` と `nx.name`、`tsconfig.json`、`src/index.ts`)、`vite.config.ts` の `modules`、`src/` と各層の fixture を足します。どれかを忘れると repo-policy が止めます。層を足すときは `layers` と、各モジュールの fixture を足します。
 - 判定は import の文字列の照合だけです。解決した先は見ないので、許されたモジュールを経由した再 export、文字列を組み立てた動的な `import()`、`require` は見逃します。層の規則は、相対パスの `../` の並びの直後の名前だけを見ます。`domain/sub/x.ts` から `../../infrastructure/...` は止まりますが、層のファイルからモジュールの `src/index.ts` への import (`domain/x.ts` の `../index.ts`) は止まりません。`domain/sub/x.ts` の `../index.ts` (`domain/index.ts`) と文字列で見分けられないためです。`index.ts` が層を再 export すると、そこから層の方向を飛び越えられます。層の中に層と同じ名前のディレクトリ (`domain/http/` など) を作ると、そこへの `../http` も止まります。
-- 他のモジュールの表を直接読み書きしないこと (DB の表の所有) は、import の検査では見つけられません。サンプル機能の仕様で決めます。
+- 他のモジュールの表を直接読み書きしないこと (DB の表の所有) は、import の検査では見つけられません。[ADR 0029](0029-module-data-ownership-and-shared-outbox.md) が、モジュールごとの DB のロールの権限と、カタログのテストで止めると決めました。
 - [ADR 0007 の禁止 API の隙間を塞ぎ、packages のモジュールにも当てる](https://github.com/yokozi-jp/agent-software-factory/issues/178) で `packages/*/src` にランタイムの制限を足すときは、別の override ではなく、`vite.config.ts` の `moduleImports` と `shared` の override に足します。別の override にすると、最後の override だけが使われ、どちらかの制限が消えます。
 - 保証カタログには、「モジュール境界」(方向、package 名での import、層) と「禁止 API」([ADR 0007](0007-api-on-node-web-standard-app.md)) の2行を足します。ゲートはどちらも `vp check` です。カタログはまだなく、作る Issue ([保証カタログを置き、カタログと設定のずれを repo-policy で検出する](https://github.com/yokozi-jp/agent-software-factory/issues/139)) の Implementation Decisions に、作るべき行として2行を足しました。
 
