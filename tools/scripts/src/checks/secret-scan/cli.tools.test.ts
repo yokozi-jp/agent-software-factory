@@ -1,7 +1,6 @@
 // The real betterleaks pinned in mise.toml, with this repository's .betterleaks.toml, on a repository in the
 // sandbox that holds a token generated here. The token is never written to this repository: every git
-// command goes through gitIn, and the only push goes to a bare repository in the sandbox. The isolation
-// test of the tools project (isolation.tools.test.ts) runs this file with Git hook variables set.
+// command goes through gitIn, and the only push goes to a bare repository in the sandbox.
 // Reads .betterleaks.toml, mise.toml, mise.lock and .mise/locks/ of the workspace, the inputs of the
 // test-tools target (tools/scripts/package.json). How the arguments are built is in cli.test.ts.
 import { randomInt } from "node:crypto";
