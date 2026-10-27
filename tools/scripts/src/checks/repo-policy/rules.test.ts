@@ -1416,6 +1416,45 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(violations(repo({ ...withRules(rules), [doc]: table }))).toEqual([]);
   });
 
+  describe("a deny of a file tool that mixes paths of ~/ with other paths", () => {
+    // Only this check: the other checks compare the rules with the table of the doc.
+    const mixing = (rules: readonly unknown[]): string[] =>
+      violations(repo(withRules([...original.permissions.rules, ...rules]))).filter((line) =>
+        line.includes("lists a path of ~/"),
+      );
+    const rule = (
+      capability: string,
+      effect: string,
+      match: string[],
+    ): Record<string, unknown> => ({
+      capability,
+      effect,
+      match,
+    });
+    const index = original.permissions.rules.length;
+    const message = (capability: string): string =>
+      `${agent}: rule ${index} is a deny of ${capability} that lists a path of ~/ with other paths. Kiro 2.34.0 then skips the whole rule without a word, so none of its paths is denied. Put the paths of ~/ in a rule of their own (docs/tooling/agent-permissions.md).`;
+
+    it.each(["fs_read", "fs_write"])("refuses it for %s", (capability) => {
+      expect(mixing([rule(capability, "deny", ["~/.aws/**", "**/secret"])])).toEqual([
+        message(capability),
+      ]);
+    });
+
+    it("passes paths of ~/ alone, and other paths alone", () => {
+      const rules = [
+        rule("fs_read", "deny", ["~/.aws/**", "~/.ssh/**"]),
+        rule("fs_read", "deny", ["**/secret"]),
+      ];
+      expect(mixing(rules)).toEqual([]);
+    });
+
+    it("does not hold an allow, or another capability, to it", () => {
+      expect(mixing([rule("fs_read", "allow", ["~/x", "y"])])).toEqual([]);
+      expect(mixing([rule("shell", "deny", ["~/x", "y"])])).toEqual([]);
+    });
+  });
+
   it("refuses an agent without tools, which can use none", () => {
     expect(violations(repo(withRules(original.permissions.rules, [])))).toEqual([
       `${agent} must have "tools": ["*"]. An agent without tools can use none (docs/tooling/agent-permissions.md).`,

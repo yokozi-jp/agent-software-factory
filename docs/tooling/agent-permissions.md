@@ -132,7 +132,7 @@ Kiro 本体の挙動 (deny、確認、許可が実際に効くか) は、自動�
    ```
 
 2. 決まったコマンドを実行させる。`kiro-cli chat --no-interactive --model claude-haiku-5.5 "Use the shell tool, one call per command, and continue if one is refused: git status; git push origin main; …"`。確認は非対話では拒否されます。
-3. 結果は、モデルの自己申告ではなく、セッションの記録から読む。`~/.kiro/sessions/<workspace hash>/<session>/messages.jsonl` の各行の `payload` を見る。
+3. 結果は、モデルの自己申告ではなく、セッションの記録から読む。`node tools/scripts/src/agent-probe/cli.ts <使い捨てのワークスペースの絶対パス>` が、そのワークスペースの最新のセッションの呼び出しを、`allow`、`deny` (規則つき)、`blocked` (規則も確認もなしに止まった。hook か利用者)、`ask-refused`、`ask-approved`、`failed` で1行ずつ出す。生の記録を読むときは、`~/.kiro/sessions/<workspace hash>/<session>/messages.jsonl` の各行の `payload` を見る。
    - `tool_call` の `status` (`completed`、`denied`、`failed`) と `_meta.kiro.policyDenial` (規則に deny された印。`matchedRule` が規則)。
    - `pending_interaction` (確認を求めた印)。
    - deny は `policyDenial` がある `denied`。確認は `pending_interaction` があり、非対話で拒否された `denied`。許可は `completed` か `failed` (実行された)。
@@ -149,6 +149,7 @@ repo-policy (`ci.yml: Repo policy (docs/adr)`) が、次を確かめます。規
 - 規則の `effect` が `allow`、`deny`、`ask`、`evaluate` のどれかであること。規則のキーが `capability`、`effect`、`match`、`exclude` のどれかであること。
 - `web_fetch` の許可ホストが、[外部ドキュメント](external-docs.md)のホストに含まれること。
 - 「許可と禁止の組」の deny があること。
+- `fs_read` と `fs_write` の deny の `match` に、`~/…` のパスとそれ以外のパスを混ぜていないこと (混ぜると Kiro は規則全体を黙って外す。「`.env` を読ませない」)。
 - この表の禁止の行が、実装の `hook: <検査>` (実在する検査) か `agent: <capability>` (deny の規則がある capability) を持つこと。agent に deny の規則がある capability は、禁止の行のどれかが `agent: <capability>` を持つこと。
 - `.kiro/settings/cli.json` の `chat.defaultAgent` が、`.kiro/agents/` にある agent であること。
 

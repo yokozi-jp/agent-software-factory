@@ -726,9 +726,26 @@ function agentRules(path: string, agent: Record<string, unknown>, failures: stri
       failures.push(
         `${where} has fields Kiro rejects. A rule has capability, effect, and match and exclude as arrays of strings.`,
       );
-    else found.push({ capability, effect, match: match.map(String) });
+    else {
+      found.push({ capability, effect, match: match.map(String) });
+      if (mixesHomePaths(capability, effect, match.map(String)))
+        failures.push(
+          `${where} is a ${effect} of ${capability} that lists a path of ~/ with other paths. Kiro 2.34.0 then skips the whole rule without a word, so none of its paths is denied. Put the paths of ~/ in a rule of their own (${permissionsDoc}).`,
+        );
+    }
   }
   return found;
+}
+
+// A deny of a file tool whose match has a path of ~/ and a path that is not (checked on Kiro 2.34.0 for fs_read and fs_write).
+function mixesHomePaths(capability: string, effect: string, match: readonly string[]): boolean {
+  const home = match.filter((pattern) => pattern.startsWith("~/"));
+  return (
+    effect === "deny" &&
+    (capability === "fs_read" || capability === "fs_write") &&
+    home.length > 0 &&
+    home.length < match.length
+  );
 }
 
 // The hosts of the links in external-docs.md.
