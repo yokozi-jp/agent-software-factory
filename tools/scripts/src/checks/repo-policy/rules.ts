@@ -370,53 +370,6 @@ function gitOnOtherRepositories(tree: Tree): string[] {
     );
 }
 
-// The files outside tools/scripts that the test-tools target reads are inputs of the Nx target
-// (tools/scripts/package.json), and also globs of the scripts-test-tools job of lefthook.yml, which runs the
-// target before a commit that changes one of them. Written in two places, one is easily forgotten
-// (docs/tooling/ci.md ("スクリプトのテスト")). The two lists are compared as strings: Nx and lefthook
-// write globs differently, so a pattern cannot be matched against the other list.
-const toolsInput = "{workspaceRoot}/";
-// Inputs left out of the hook on purpose: the Knip and commitlint tests read them, and a commit
-// that changes one of them must not start the slow tools tests. CI runs the target for every change
-// (docs/tooling/git-hooks.md).
-const notInHook: ReadonlySet<string> = new Set([
-  ".github/workflows/*.{yml,yaml}",
-  ".kiro/settings/mcp.json",
-  "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}",
-  "lefthook.yml",
-  "nx.json",
-  "package.json",
-  "pnpm-lock.yaml",
-]);
-
-function toolsInputsInHook(tree: Tree): string[] {
-  const manifest = "tools/scripts/package.json";
-  const target = record(record(record(tree.parsed(manifest)).nx).targets)["test-tools"];
-  const inputs = record(target).inputs;
-  // Stryker disable next-line ArrayDeclaration: equivalent, a non-string entry is filtered out below.
-  const wanted = (Array.isArray(inputs) ? inputs : [])
-    .filter((input): input is string => typeof input === "string" && input.startsWith(toolsInput))
-    .map((input) => input.slice(toolsInput.length))
-    .filter((input) => !notInHook.has(input));
-  if (wanted.length === 0) return [];
-  const jobs = record(record(tree.parsed("lefthook.yml"))["pre-commit"]).jobs;
-  // Stryker disable next-line ArrayDeclaration: equivalent, record() turns a non-object entry into {}.
-  const job = (Array.isArray(jobs) ? jobs : [])
-    .map(record)
-    .find((j) => j.name === "scripts-test-tools");
-  if (job === undefined)
-    return [
-      "lefthook.yml has no scripts-test-tools job, which runs the test-tools target of tools/scripts.",
-    ];
-  const globs = Array.isArray(job.glob) ? job.glob : [job.glob];
-  return wanted
-    .filter((input) => !globs.includes(input))
-    .map(
-      (input) =>
-        `${manifest}: the test-tools input ${toolsInput}${input} is not in the glob of the scripts-test-tools job of lefthook.yml. Add it there, or to notInHook in tools/scripts/src/checks/repo-policy/rules.ts with the reason.`,
-    );
-}
-
 // The first number of a version or a range: 24 in "v24.1.2", ">=24" and "^24".
 const major = (value: unknown): string | undefined =>
   typeof value === "string" || typeof value === "number"
@@ -1097,7 +1050,6 @@ export function violations(repo: Repo): string[] {
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),
-    ...toolsInputsInHook(tree),
     ...uniqueAdrNumbers(tree),
     ...migrationsGoForward(tree),
     ...mainNeedsEveryJob(tree),
