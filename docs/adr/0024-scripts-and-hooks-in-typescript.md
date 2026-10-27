@@ -17,7 +17,7 @@ tags: [adr, tooling, typescript, node, vitest, stryker, git-hooks, kiro]
 - **[ADR 0007](0007-api-on-node-web-standard-app.md) との関係**: 「Web 標準の API だけで書く」は `apps/api/src` の規則で、`tools/` には当てはまりません。`tools/scripts` は Node.js の上でだけ動く開発用の道具なので、`node:child_process` や `node:fs` を使います。
 - **テストの形**: Vitest で書きます。規則の関数はその場で呼ぶテストにします。exit コード、標準入力、本物の git が要るつなぎ目だけを、プロセスを起動するテスト (`cli.test.ts`。sh のラッパーは `src/sh/<名前>.test.ts`) で確かめます。
 - **テストの入力**: テストは宣言していない入力を読みません。`test` の target のテストは、ふつうは project の中の fixture を読みます。リポジトリの本物のファイルを読むのは、そのファイルを target の `inputs` に書いたときだけです (`src/hooks/kiro-hooks.test.ts` が読む `.kiro/hooks/*.json`)。本物のファイルの中身の検査は、センサーの実行 (CI の `checks` と pre-commit) の役割です。本物の道具と設定を使うテストは `*.tools.test.ts` にし、`test-tools` の target で走らせます。読む設定ファイルと `mise.toml`、`mise.lock` を、その target の `inputs` にファイルごとに書きます ([Nx の Configure Inputs](https://nx.dev/docs/guides/tasks--caching/configure-inputs))。宣言していない入力を読むテストは、Nx の cache が古い結果を返すアンチパターンです。
-- **どこで走るか**: `test` は CI の `nx` の job の `nx affected -t check test build mutation` と、`tools/scripts/**`、`.kiro/hooks/*.json`、Nx の `sharedGlobals` のどれかのファイルを変えた commit の pre-commit (`nx test scripts`) で走ります。`test-tools` は mise のある `scripts` の job で `nx affected -t test-tools` として走ります。アプリだけを変えた PR では、どちらも走りません。
+- **どこで走るか**: `test` は CI の `nx` の job の `nx affected -t check test build` と、`tools/scripts/**`、`.kiro/hooks/*.json`、Nx の `sharedGlobals` のどれかのファイルを変えた commit の pre-commit (`nx test scripts`) で走ります。`test-tools` は mise のある `scripts` の job で `nx affected -t test-tools` として走ります。アプリだけを変えた PR では、どちらも走りません。
 - **テストの強さ**: [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の基準を当てます。coverage はファイルごとの lines と branches の下限 90% と、全体の値のラチェット (`autoUpdate`) です。入口の `cli.ts` は子プロセスで動き、coverage が見えないので、対象から外します。Stryker を `--incremental` で純粋な関数だけにかけます (`mutation` の target)。`thresholds.break` は導入時の実測値 100 です。#30 は Stryker を domain の最初のモジュールと一緒に入れるとしていましたが、`tools/scripts` が先になりました。
 
 ## 隔離
@@ -43,7 +43,7 @@ Git hook は `GIT_DIR`、`GIT_INDEX_FILE` などを export し、作業ツリー
 - 移すのは手順ごとに 1 つの PR です (#158)。この ADR を足した PR は、土台と隔離を作り、adr-check (`tools/scripts/src/checks/adr-check/`) を移しました。移した部分の `*.test.sh` は同じ PR で消します。最後の PR ([Issue #167](https://github.com/yokozi-jp/agent-software-factory/issues/167)) で、薄いラッパーを `tools/scripts/sh/` に移し、sh のテストと隔離 (`scripts/test/lib.sh`、`isolation.test.sh`) を Vitest に移して、`scripts/` をなくしました。道具と本物の設定を使うテスト (workflow の lint、jscpd、Knip など) は `*.tools.test.ts` として `test-tools` で走らせます。
 - [ADR 0008](0008-pin-shellcheck.md) の shellcheck の対象は、`scripts/` を `tools/scripts/sh/` に移す PR で、その場で直しました。
 - coverage のラチェットは `tools/scripts/vite.config.ts` を書き換えます。上がった下限を commit し忘れると、CI の「Generated files are committed」で止まります。
-- CI には Stryker の incremental の結果を持ち越す cache がないので、`mutation` は `tools/scripts` を変えた PR で毎回すべての mutant を回します (導入時に約 50 秒)。遅くなったら、`reports/stryker-incremental.json` を CI の cache に置くかを決めます。
+- `mutation` は、導入時は `tools/scripts` を変えた PR で毎回すべての mutant を回しました (約 50 秒)。遅くなったので、PR の CI から外し、週に1回の workflow にしました ([ADR 0031](0031-mutation-testing-outside-pull-requests.md))。
 - 規則の関数に、テストで殺せない (等価な) mutant が出たら、その行に `// Stryker disable next-line <mutator>: 理由` を書きます。`break` の 100 を下げません。
 
 ## 出典

@@ -156,7 +156,7 @@ jobs:
 
       - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
 
-      # A change to the code of an app must not make tools/scripts affected, or its tests and mutation run for
+      # A change to the code of an app must not make tools/scripts affected, or its tests run for
       # every app pull request (#158). It happens when a target of tools/scripts declares an input outside the
       # project that covers the apps, such as {workspaceRoot}/apps/**/*.
       - name: An app change does not affect tools/scripts
@@ -168,10 +168,10 @@ jobs:
             fi
           done
 
-      # mutation: Stryker on the pure functions of tools/scripts (stryker.config.mjs).
+      # The mutation target (Stryker) is not here: it runs weekly in mutation.yml (docs/adr/0031).
       # The name is the row of the assurance catalog (docs/tooling/assurance-catalog.md).
-      - name: Check, test, build and mutation (nx affected)
-        run: pnpm exec nx affected -t check test build mutation
+      - name: Check, test and build (nx affected)
+        run: pnpm exec nx affected -t check test build
 
       # effect-tsgo on application and infrastructure of the modules: an Effect that is never run, and the Effect 3,
       # unstable and experimental APIs (oxlint.effect.json, docs/tooling/effect-lint.md, docs/adr/0028).
