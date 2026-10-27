@@ -35,6 +35,7 @@ sources:
 - auth.md の方式1 (フロントエンドだけ) に、業務アプリには勧めない旨の警告を、方式2 に、BFF として strongly recommended で、このリポジトリが採る旨の注記を足した。RFC 10017 6.1、6.3.4.3。
 - favicon.md の形式比較の表で、SVG のブラウザ対応を Safari 26 以降で対応済みに直した。WebKit Blog「WebKit Features in Safari 26.0」。
 - static-analysis.md に、このリポジトリの節として「React と JSX のアクセシビリティの検査」を足した (`apps/web/src` で Oxlint の `react` と `jsx-a11y` の plugin を有効にしたこと、見つけられる範囲と見つけられない範囲)。#239。
+- static-analysis.md の「React と JSX のアクセシビリティの検査」に、`react/no-array-index-key` と、不要な effect を止める `eslint-plugin-react-you-might-not-need-an-effect` の 9 つの規則を `error` にしたこと、内蔵の `react/set-state-in-effect` を `off` にしたこと、止まらない書き方を足した。「`key={index}` は見つからない」の記述を削った。#261、調査は #253。
 
 ## 位置づけ
 

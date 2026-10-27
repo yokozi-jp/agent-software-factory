@@ -20,6 +20,7 @@
     "@commitlint/types": "catalog:",
     "@iwe-org/iwe": "catalog:",
     "@nx/js": "catalog:",
+    "eslint-plugin-react-you-might-not-need-an-effect": "catalog:",
     "jscpd": "catalog:",
     "knip": "catalog:",
     "lefthook": "catalog:",

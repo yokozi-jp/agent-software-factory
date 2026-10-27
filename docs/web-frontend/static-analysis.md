@@ -110,11 +110,17 @@ const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 - キーボードの操作を持たないクリック (`jsx-a11y/click-events-have-key-events`)
 - role のない要素へのイベント (`jsx-a11y/no-static-element-interactions`)
 - 依存配列のない `useEffect` (`react-hooks/exhaustive-deps`)
-- effect の中で同期して呼ぶ `setState` (`react/set-state-in-effect`)
 
-見つけられるのは、コードに書かれた形から静的に分かる範囲だけである。`key={index}` のような配列の添字の key (`react/no-array-index-key`) は既定の規則に入っておらず、見つからない。色のコントラスト、フォーカスの順序、読み上げの実際の挙動も見つからない。それらは axe-core を使うコンポーネントテストと E2E で確かめる ([テスト](testing.md))。
+既定の規則に次を足している。
+
+- 配列の添字を key にする `key={index}` (`react/no-array-index-key`)。既定では無効なので、`error` にしている
+- 要らない effect。[`eslint-plugin-react-you-might-not-need-an-effect`](https://github.com/nickjvandyke/eslint-plugin-react-you-might-not-need-an-effect) 1.0.2 を `jsPlugins` に `react-effect` の名前で読み込み、9 つの規則 (`react-effect/no-derived-state`、`no-chain-state-updates`、`no-event-handler`、`no-adjust-state-on-prop-change`、`no-reset-all-state-on-prop-change`、`no-pass-live-state-to-parent`、`no-pass-data-to-parent`、`no-external-store-subscription`、`no-initialize-state`) を `error` にしている。props から導出できる値を effect で state に入れる書き方は `react-effect/no-derived-state` が止め、render の中で計算するよう伝える。版は `pnpm-workspace.yaml` の catalog で固定している
+- `react/set-state-in-effect` は `off` にしている ([Issue #261](https://github.com/yokozi-jp/agent-software-factory/issues/261))。`react-effect/no-derived-state` と同じ行を報告し、二重になるため。内蔵の規則は、effect の中で同期して呼ぶ `setState` をすべて報告し、help に一般的な直し方を書くが、「導出できる値」とは言わない。外したので、上の規則のどれにも当たらない形の `setState` (例: `setCount(count + 1)`) は止まらなくなった
+
+見つけられるのは、コードに書かれた形から静的に分かる範囲だけである。次の書き方は止まらない。effect の中の `fetch`、event handler でしか使わない state、`setCount(count + 1)`。調査 ([Issue #253](https://github.com/yokozi-jp/agent-software-factory/issues/253)) で、これらを止める既製の ESLint plugin は見つからなかった。対応は決めておらず、画面ができて実害が出てから決める ([Issue #261](https://github.com/yokozi-jp/agent-software-factory/issues/261) の範囲外)。色のコントラスト、フォーカスの順序、読み上げの実際の挙動も見つからない。それらは axe-core を使うコンポーネントテストと E2E で確かめる ([テスト](testing.md))。
 
 禁止を外すときは、その行に規則名と理由を書く (`oxlint-disable-next-line <plugin>/<規則名> -- <理由>`)。
+規則が外れていないことは `apps/web/src/__fixtures__/react.tsx` が確かめる。規則ごとに、違反の行へ理由つきの disable コメントを付けてあり、規則が外れるとコメントが使われなくなり、`vp check` が失敗する。
 
 ## 取り組み方
 

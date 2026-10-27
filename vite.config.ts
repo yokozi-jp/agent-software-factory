@@ -253,11 +253,34 @@ export default defineConfig({
         rules: { "test-title/japanese-title": "error" },
       },
       // React rules (hooks, keys, state in effects) and JSX accessibility (alt text, anchors, keyboard
-      // handlers). Oxlint's default rules are each plugin's correctness category, so the plugins need no rule
-      // list (docs/web-frontend/static-analysis.md).
+      // handlers). Oxlint's default rules are each plugin's correctness category (docs/web-frontend/static-analysis.md).
+      // On top of them: a key that is the index of an array, and the effects React says you might not need
+      // (eslint-plugin-react-you-might-not-need-an-effect, in the catalog of pnpm-workspace.yaml). Its
+      // no-derived-state reports what react/set-state-in-effect reports, and says what to compute during render
+      // instead, so the built-in rule is off. apps/web/src/__fixtures__/react.tsx fails `vp check` if one is
+      // turned off.
       {
         files: ["apps/web/src/**"],
         plugins: ["react", "jsx-a11y"],
+        jsPlugins: [
+          {
+            name: "react-effect",
+            specifier: "eslint-plugin-react-you-might-not-need-an-effect",
+          },
+        ],
+        rules: {
+          "react/no-array-index-key": "error",
+          "react/set-state-in-effect": "off",
+          "react-effect/no-derived-state": "error",
+          "react-effect/no-chain-state-updates": "error",
+          "react-effect/no-event-handler": "error",
+          "react-effect/no-adjust-state-on-prop-change": "error",
+          "react-effect/no-reset-all-state-on-prop-change": "error",
+          "react-effect/no-pass-live-state-to-parent": "error",
+          "react-effect/no-pass-data-to-parent": "error",
+          "react-effect/no-external-store-subscription": "error",
+          "react-effect/no-initialize-state": "error",
+        },
       },
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).
       // Collect client errors with an error tracking service instead.
