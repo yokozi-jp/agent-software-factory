@@ -43,7 +43,7 @@ chore(deps): hono を 4.14 に上げる
 
 ### commit の前にメッセージを検査する
 
-commit-msg hook は pre-commit の全部の job が終わった後に動きます。pre-commit は数分かかることがあり (`scripts-test-tools` が入るとき)、件名の規則 (`subject-case` など) で落ちると、待った時間が無駄になります。`git commit` の前に、メッセージだけを commitlint に通します。
+commit-msg hook は pre-commit の全部の job が終わった後に動きます。pre-commit は、他のセッションが動いていて負荷が高いと数分かかることがあり、件名の規則 (`subject-case` など) で落ちると、待った時間が無駄になります。`git commit` の前に、メッセージだけを commitlint に通します。
 
 ```sh
 printf '%s\n' 'feat: 件名' | pnpm exec commitlint   # 終了コード 0 なら通る。本文があるときはその全体を渡す

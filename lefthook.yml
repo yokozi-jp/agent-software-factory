@@ -109,47 +109,6 @@ pre-commit:
         - ".node-version"
         - ".kiro/hooks/*.json"
       run: pnpm exec nx test scripts
-    # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts). They take minutes, so
-    # the glob is narrower than the project: the inputs of the test-tools target (tools/scripts/package.json)
-    # that are not the project (a new betterleaks or Semgrep version, or Semgrep's dependency graph in
-    # .mise/locks/, can change what they report), the tools tests, the checks and shell wrappers that have
-    # them, the configs they try (the Knip test also reads other root files, which CI covers
-    # with `nx affected -t test-tools`), the test helpers and the config that run them, and `sharedGlobals`.
-    # CI still runs them for every change to the project. Each input of the target in tools/scripts/package.json
-    # is a glob here too, written the same way; repo-policy checks it (inputs left out on purpose are in its notInHook).
-    - name: scripts-test-tools
-      glob:
-        - ".betterleaks.toml"
-        - ".github/jactionlint.yaml"
-        - ".github/workflows/ci.yml"
-        - ".gitignore"
-        - ".jscpd.json"
-        - ".markdownlint-cli2.yaml"
-        - "commitlint.config.ts"
-        - "knip.jsonc"
-        - "oxlint.effect.json"
-        - "renovate.jsonc"
-        - "tools/scripts/sh/**"
-        - "mise.toml"
-        - "mise.lock"
-        - ".mise/locks/**/*"
-        - "tools/scripts/src/**/*.tools.test.ts"
-        - "tools/scripts/src/checks/secret-scan/**"
-        - "tools/scripts/src/checks/semgrep/**"
-        - "tools/scripts/src/checks/docs-check/**"
-        - "docs/.iwe/config.toml"
-        - "docs/.iwe/schemas/okf.yaml"
-        - "docs/.iwe/schemas/okf-index.yaml"
-        - "docs/.iwe/schemas/okf-log.yaml"
-        - "tools/scripts/src/test/sandbox.ts"
-        - "tools/scripts/src/test/setup.ts"
-        - "tools/scripts/vite.config.ts"
-        - "tools/scripts/package.json"
-        - "pnpm-workspace.yaml"
-        - "vite.config.ts"
-        - "tsconfig.json"
-        - ".node-version"
-      run: pnpm exec nx test-tools scripts
     # effect-tsgo on application and infrastructure of the modules (oxlint.effect.json, docs/tooling/effect-lint.md).
     # The lint target (vp check) does not load its plugin. Nx skips the run when the cached result still holds.
     - name: lint-effect
@@ -210,6 +169,12 @@ pre-push:
     # (#178). Nx skips the projects whose cached result still holds. NX_BASE is what CI sets for the same command.
     nx-affected-test:
       run: pnpm exec nx affected -t test --base=origin/main --head=HEAD
+    # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts), for the projects the branch
+    # affects, as CI runs them. They take minutes, so they run here and not in pre-commit. Nx decides from the
+    # inputs of the test-tools target (tools/scripts/package.json) and skips the projects whose cached result still
+    # holds. Needs the tools of mise.lock (`mise install --locked`).
+    nx-affected-test-tools:
+      run: pnpm exec nx affected -t test-tools --base=origin/main --head=HEAD
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
