@@ -13,7 +13,7 @@ export interface ModuleDatabases {
 
 /**
  * Creates the database of each module on one pool of `app_user` (docs/adr/0011). They share the connections; only
- * the types differ. The entry file (src/server.ts) creates the pool and ends it.
+ * the types differ. The entry file (src/server.ts) creates the pool.
  */
 export function createModuleDatabases(pool: Pool): ModuleDatabases {
   const dialect = new PostgresDialect({ pool });
