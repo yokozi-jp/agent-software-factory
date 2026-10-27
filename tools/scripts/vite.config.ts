@@ -26,6 +26,9 @@ export default defineConfig({
     // The process tests start node and git several times each. Vitest's default of 5 s was too short on a
     // loaded machine: on 2026-10-26, with a load average of 20, a test of check-adr-number took 7.2 s.
     testTimeout: 60_000,
+    // beforeAll of isolation.ts makes a sandbox repository with several git commands. The default of 10 s was too
+    // short on 2026-10-28, with a load average of 20 to 27 from other sessions: it failed two pre-commit runs.
+    hookTimeout: 60_000,
     projects: [
       {
         extends: true,

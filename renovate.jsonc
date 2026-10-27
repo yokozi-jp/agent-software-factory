@@ -38,6 +38,14 @@
       "enabled": false,
     },
     {
+      // ADR 0028: each @effect/tsgo release supports a range of Oxlint and oxlint-tsgolint (its README), and Vite+
+      // carries them. So a Vite+ update outside that range must not merge alone, nor an @effect/tsgo update that
+      // needs a Vite+ not yet installed. The `vite` entry of the catalog is Vite+'s core package.
+      "description": "Update @effect/tsgo and Vite+ in one PR",
+      "matchPackageNames": ["@effect/tsgo", "vite-plus", "@voidzero-dev/vite-plus-core"],
+      "groupName": "effect-tsgo and vite-plus",
+    },
+    {
       // Renovate releases almost daily. One PR a week is enough for the copy that tools/scripts/sh/renovate.sh runs.
       "description": "Update the Renovate in tools/scripts/sh/renovate.sh once a week",
       "matchDepNames": ["renovate"],

@@ -4,10 +4,13 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   domainFixture,
+  domainRuntimeFixtures,
   factoryAgent,
   migration,
   moduleFixture,
   passingRepo,
+  runtimeFixture,
+  srcFixtures,
 } from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
@@ -177,6 +180,8 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ...Object.fromEntries(
       dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
     ),
+    ...srcFixtures(name),
+    ...domainRuntimeFixtures(name),
     // The fixtures of the rules that keep domain pure are checked on their own, below.
     [`packages/${name}/src/domain/__fixtures__/purity.ts`]: domainFixture,
   });
@@ -225,6 +230,52 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     expect(
       violations(repo({ "packages/shared/src/__fixtures__/boundaries.ts": undefined })),
     ).toEqual([noFixture("shared", "src")]);
+  });
+
+  it("refuses a package without the fixtures of the runtime restrictions or of the tests", () => {
+    const noRuntime = (annotation: string) =>
+      `packages/claim/src/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+        }),
+      ),
+    ).toEqual([
+      "packages/claim/src/__fixtures__/ has no *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).",
+      noRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(repo({ "packages/shared/src/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noRuntime("no-restricted-globals").replace("claim", "shared"),
+      noRuntime("no-restricted-properties").replace("claim", "shared"),
+    ]);
+  });
+
+  it("refuses a module whose domain fixture does not show the runtime restrictions", () => {
+    const noDomainRuntime = (annotation: string) =>
+      `packages/claim/src/domain/__fixtures__/runtime-apis.ts has no \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
+    expect(
+      violations(repo({ "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noDomainRuntime("no-restricted-globals"),
+      noDomainRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+        }),
+      ),
+    ).toEqual([noDomainRuntime("no-restricted-properties")]);
   });
 
   it("follows the layers that vite.config.ts lists", () => {
@@ -321,7 +372,8 @@ describe("ADR 0027: the domain of every module has the fixtures of the rules tha
         repo({
           "packages/shared/src/__fixtures__/purity.ts": undefined,
           "packages/approval/package.json": "{}",
-          "packages/approval/src/__fixtures__/boundaries.ts": moduleFixture,
+          ...srcFixtures("approval"),
+          ...domainRuntimeFixtures("approval"),
           "packages/approval/src/domain/__fixtures__/boundaries.ts": moduleFixture,
           "packages/approval/src/http/__fixtures__/boundaries.ts": moduleFixture,
           "vite.config.ts": config.replace(
@@ -345,6 +397,128 @@ describe("ADR 0027: the domain of every module has the fixtures of the rules tha
           "vite.config.ts": none,
           [purity]: undefined,
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("ADR 0028: application and infrastructure have the fixtures of the Effect rules", () => {
+  const config = base["vite.config.ts"] ?? "";
+  const withLayers = (layers: string) =>
+    config.replace('  http: ["domain"],', `  http: ["domain"],\n${layers}`);
+  const effectTsgo = [
+    "// oxlint-disable-next-line effecttsgo/floating-effect -- fixture",
+    "// oxlint-disable-next-line effecttsgo/unstable-api-usage -- fixture",
+    "// oxlint-disable-next-line effecttsgo/experimental-api-usage -- fixture",
+  ].join("\n");
+  const viteConfig = [
+    "// oxlint-disable-next-line no-restricted-properties -- fixture",
+    "// oxlint-disable-next-line no-restricted-imports -- fixture",
+  ].join("\n");
+  const fixtures = (layer: string) => ({
+    [`packages/claim/src/${layer}/__fixtures__/effect-tsgo.ts`]: effectTsgo,
+    [`packages/claim/src/${layer}/__fixtures__/effect.ts`]: viteConfig,
+  });
+  const missing = (layer: string, file: string, comment: string) =>
+    `packages/claim/src/${layer}/__fixtures__/${file} has no \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
+  const both = withLayers("  application: [],\n  infrastructure: [],");
+
+  it("asks for nothing when vite.config.ts has neither layer", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("passes a module whose layers have both fixtures", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": both,
+          ...fixtures("application"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("asks a layer for every fixture when it has none", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect-tsgo.ts", "effecttsgo/floating-effect"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/unstable-api-usage"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/experimental-api-usage"),
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("names the one rule whose disable comment is missing", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  infrastructure: [],"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/infrastructure/__fixtures__/effect-tsgo.ts": effectTsgo.replace(
+            "effecttsgo/unstable-api-usage",
+            "effecttsgo/other",
+          ),
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([missing("infrastructure", "effect-tsgo.ts", "effecttsgo/unstable-api-usage")]);
+  });
+
+  it("reads each comment in its own file", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/effect-tsgo.ts": `${effectTsgo}\n${viteConfig}`,
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("asks only for the package.json of a package under the root packages/, and once", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "vendor/packages/other/package.json": "{}",
+          "packages/claim/package.json.bak": "{}",
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect-tsgo.ts", "effecttsgo/floating-effect"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/unstable-api-usage"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/experimental-api-usage"),
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("does not ask shared", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": both,
+          ...fixtures("application"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
         }),
       ),
     ).toEqual([]);
@@ -1425,7 +1599,7 @@ describe("ADR 0026: the edges", () => {
     repo({
       "packages/claim/package.json": undefined,
       [`packages/${name}/package.json`]: "{}",
-      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+      ...srcFixtures(name),
       "vite.config.ts": modulesConfig(body),
     });
 

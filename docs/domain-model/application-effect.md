@@ -12,28 +12,28 @@ Effect の一次情報は、入れた版の `node_modules/effect/AGENTS.md` と 
 
 ## 使ってよい機能
 
-| 目的                        | 使う                                                 |
-| --------------------------- | ---------------------------------------------------- |
-| 手続きを書く                | `Effect.gen`、`Effect.fn`                            |
-| 値と失敗を作る              | `Effect.succeed`、`Effect.fail`、`Effect.fromResult` |
-| Promise を包む              | `Effect.tryPromise`、`Effect.promise`                |
-| 型に出す失敗                | `Data.TaggedError`、`Effect.catchTag`                |
-| 依存                        | `Context.Service`、`Layer`                           |
-| 資源                        | `Effect.acquireUseRelease`                           |
-| 実行 (`http`、入口、テスト) | `ManagedRuntime` と実行の関数                        |
+| 目的                        | 使う                                                     |
+| --------------------------- | -------------------------------------------------------- |
+| 手続きを書く                | `Effect.gen`、`Effect.fn`                                |
+| 値と失敗を作る              | `Effect.succeed`、`Effect.fail`、`fromResult` (`shared`) |
+| Promise を包む              | `Effect.tryPromise`、`Effect.promise`                    |
+| 型に出す失敗                | `Data.TaggedError`、`Effect.catchTag`                    |
+| 依存                        | `Context.Service`、`Layer`                               |
+| 資源                        | `Effect.acquireUseRelease`                               |
+| 実行 (`http`、入口、テスト) | `ManagedRuntime` と実行の関数                            |
 
 使わない機能: `Schema`、`effect/http` や `effect/sql` などの unstable の module、`@effect/sql-pg`、`Logger`、`Config`、`Schedule` による再試行、`Stream`、`Queue`、`Fiber`。同じ役割を別の道具で決めているからです (検証は zod、ログは stdout、再試行は ky と SDK)。`@stability unstable` と `experimental` の API も使いません。
 Tracer と `@hono/otel` の span のつなぎ方は、実施の Issue ([Issue #148](https://github.com/yokozi-jp/agent-software-factory/issues/148)) で決めます。
 
 ## domain の Result を変える
 
-`domain` の `Result` は、`Effect.fromResult` で Effect にします。v4 の `Result` は `yield*` できません。失敗の `_tag` はそのまま `catchTag` で処理できます。
+`domain` の `Result` は、`shared` の `fromResult` で Effect にします。v4 の `Effect.fromResult` は Effect の `Result` を受けるので、自作の `Result` には使えません。v4 の `Result` は `yield*` できません。失敗の `_tag` はそのまま `catchTag` で処理できます。
 
 ```ts
 const submitClaim = Effect.fn("submitClaim")(function* (args: { id: ClaimId; now: Instant }) {
   const claims = yield* ClaimRepository;
   const draft = yield* claims.findDraft(args.id);
-  const submitted = yield* Effect.fromResult(submit({ claim: draft, now: args.now }));
+  const submitted = yield* fromResult(submit({ claim: draft, now: args.now }));
   yield* claims.save(submitted);
   return submitted;
 });
@@ -59,4 +59,4 @@ const submitClaim = Effect.fn("submitClaim")(function* (args: { id: ClaimId; now
 
 ## 検査
 
-Effect を入れた後、Nx の target が `effect-tsgo oxlint` を流し、実行し忘れと v3 の API、unstable と experimental の API を止めます ([Issue #260](https://github.com/yokozi-jp/agent-software-factory/issues/260))。`effect-tsgo patch` は使いません。
+Nx の `lint-effect` の target が `effect-tsgo oxlint` を流し、実行し忘れと v3 の API、unstable と experimental の API を止めます。`vp check` は、実行の関数と、使わない機能の import を止めます。止まったときの直し方は [Effect の検査](../tooling/effect-lint.md) にあります。`effect-tsgo patch` は使いません。

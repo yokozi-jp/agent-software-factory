@@ -10,6 +10,10 @@ const ignorePatterns = [
   ".kiro/skills/**",
 ];
 
+// Fixtures whose disable comments name rules of the effecttsgo plugin. Only `effect-tsgo oxlint` loads the plugin
+// (oxlint.effect.json), so for `vp lint` the comments would be unused (docs/tooling/effect-lint.md).
+const effectOnlyFixtures = ["packages/*/src/*/__fixtures__/effect-tsgo.ts"];
+
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
@@ -22,6 +26,38 @@ const runtimeImports = {
   ],
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
+
+// Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
+// into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
+// from globalThis.
+const runtimeGlobals = [
+  { name: "process", message: "Read environment variables from `c.env`." },
+  { name: "Bun", message: runtimeImportMessage },
+  { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
+];
+const runtimeGlobalEntries = [
+  ...runtimeGlobals,
+  // global.process is the Node.js alias of globalThis.process, and no-restricted-properties cannot name it.
+  {
+    name: "global",
+    message:
+      "Do not use `global`: it is the Node.js alias of `globalThis`, and it hides `process` and the other runtime globals. Use only the Web standard globals.",
+  },
+  { name: "__dirname", message: "Use `import.meta.url`." },
+  { name: "__filename", message: "Use `import.meta.url`." },
+  { name: "require", message: "Use `import`." },
+];
+const runtimePropertyEntries = runtimeGlobals.map(({ name, message }) => ({
+  object: "globalThis",
+  property: name,
+  message: `${message} (\`globalThis.${name}\` is the same global.)`,
+}));
+// The domain override sets the same two rules for its own purposes (domainPurityRules), and Oxlint keeps only
+// the last override that sets a rule, so it spreads the entries above into its lists.
+const runtimeGlobalLintRules = {
+  "no-restricted-globals": ["error", ...runtimeGlobalEntries],
+  "no-restricted-properties": ["error", ...runtimePropertyEntries],
+} satisfies Record<string, ["error", ...Record<string, string>[]]>;
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
 // packages/, and apps/api only assembles them. A module may import the modules listed for it here, and they
@@ -58,6 +94,67 @@ const domainMessage =
   `domain imports nothing but types of ${scope}/shared (\`import type\`). Put the code that needs a library or ` +
   "another module in application or infrastructure (docs/adr/0026).";
 
+// Effect (docs/adr/0028). The features that the ADR does not use are each done by another tool already: validation
+// by zod, logs by stdout, retries by ky and the SDKs. The `unstable` and `experimental` APIs are stopped by
+// effect-tsgo (oxlint.effect.json, docs/tooling/effect-lint.md), which can read the @stability tag.
+const unusedEffectModules = [
+  "Schema",
+  "Logger",
+  "Config",
+  "ConfigProvider",
+  "Schedule",
+  "Stream",
+  "Queue",
+  "Fiber",
+  "FiberHandle",
+  "FiberMap",
+  "FiberSet",
+];
+// Subpaths of effect that are whole unstable modules (HTTP, HTTP API, SQL).
+const unusedEffectSubpaths = ["http", "http-api", "sql"];
+const unusedEffectMessage =
+  "This Effect feature is not used: validation is zod, logs are stdout, retries are ky and the SDKs. Use only " +
+  "the features listed in docs/domain-model/application-effect.md (docs/adr/0028).";
+const unusedSqlMessage =
+  "@effect/sql* is not used: the database is Kysely, wrapped by Effect.tryPromise in infrastructure " +
+  "(docs/adr/0025, docs/adr/0028).";
+interface RestrictedPath {
+  name: string;
+  message: string;
+  importNames?: string[];
+}
+// Added to every layer but domain, which may import no library at all (domainMessage above).
+const effectPaths: RestrictedPath[] = [
+  { name: "effect", importNames: unusedEffectModules, message: unusedEffectMessage },
+];
+const effectPatterns = [
+  {
+    regex: `^effect/(?:${[...unusedEffectModules, ...unusedEffectSubpaths].join("|")})(?:/|$)`,
+    message: unusedEffectMessage,
+  },
+  { regex: "^@effect/sql(?:$|-|/)", message: unusedSqlMessage },
+];
+
+// Every function that runs an Effect: Effect.run*, and the same names on a ManagedRuntime. Matched by the name
+// of the property, so an alias of Effect or a runtime held in a variable is stopped too.
+const effectRunFunctions = [
+  "runCallback",
+  "runCallbackWith",
+  "runFork",
+  "runForkWith",
+  "runPromise",
+  "runPromiseExit",
+  "runPromiseExitWith",
+  "runPromiseWith",
+  "runSync",
+  "runSyncExit",
+  "runSyncExitWith",
+  "runSyncWith",
+];
+const effectRunMessage =
+  "application and infrastructure return an Effect and never run it: running it there drops the failure and " +
+  "dependency types. Run it in http, an entry point or a test (docs/adr/0028).";
+
 // Imports that reach past the index.ts of another package: a subpath of the package name, or a relative path
 // into <package>/src. The package.json exports stop the first from resolving, and this rule names both.
 const deepImports = [
@@ -73,7 +170,7 @@ const forbiddenModules = (from: string, allowed: readonly string[]) =>
 // other files outside the layers). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 function moduleImports(name: string, layer?: string) {
-  const patterns: Record<string, unknown>[] = [...deepImports];
+  const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
     if (other.length > 0)
@@ -90,7 +187,19 @@ function moduleImports(name: string, layer?: string) {
       { regex: "^[^.@]", message: domainMessage },
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
-  return { paths: forbiddenModules(name, modules[name] ?? []), patterns };
+  if (layer !== "domain") patterns.push(...effectPatterns);
+  const paths: RestrictedPath[] = [
+    ...runtimeImports.paths,
+    ...forbiddenModules(name, modules[name] ?? []),
+  ];
+  if (layer !== "domain") paths.push(...effectPaths);
+  if (layer === "application" || layer === "infrastructure")
+    paths.push({
+      name: "effect/Effect",
+      importNames: effectRunFunctions,
+      message: effectRunMessage,
+    });
+  return { paths, patterns };
 }
 
 // How domain is written (docs/adr/0027): pure functions that return a Result. domain takes the time and the
@@ -109,6 +218,7 @@ const domainPurityRules = {
     "domain/no-throw": "error",
     "no-restricted-globals": [
       "error",
+      ...runtimeGlobalEntries,
       {
         name: "Date",
         message: domainPurityMessage("`Date`", "Take the time as an argument, a branded `Instant`"),
@@ -116,6 +226,7 @@ const domainPurityRules = {
     ],
     "no-restricted-properties": [
       "error",
+      ...runtimePropertyEntries,
       {
         object: "Math",
         property: "random",
@@ -147,6 +258,13 @@ const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
       : { files, rules: imports };
   }),
 ]);
+
+// What the entry files and the tests of the runtime-specific rules turn off.
+const runtimeRulesOff = {
+  "import/no-nodejs-modules": "off",
+  "no-restricted-globals": "off",
+  "no-restricted-properties": "off",
+} as const;
 
 const childProcessMessage =
   "Start git and other processes through gitIn() or runIn() from tools/scripts/src/test/sandbox.ts, which refuse " +
@@ -188,7 +306,7 @@ export default defineConfig({
     ignorePatterns,
   },
   lint: {
-    ignorePatterns,
+    ignorePatterns: [...ignorePatterns, ...effectOnlyFixtures],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
@@ -223,7 +341,7 @@ export default defineConfig({
       // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
       // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
       {
-        files: ["apps/api/src/**"],
+        files: ["apps/api/src/**", "packages/*/src/**"],
         plugins: ["import"],
         rules: {
           "import/no-nodejs-modules": "error",
@@ -235,15 +353,7 @@ export default defineConfig({
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
-          "no-restricted-globals": [
-            "error",
-            { name: "process", message: "Read environment variables from `c.env`." },
-            { name: "Bun", message: runtimeImportMessage },
-            { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
-            { name: "__dirname", message: "Use `import.meta.url`." },
-            { name: "__filename", message: "Use `import.meta.url`." },
-            { name: "require", message: "Use `import`." },
-          ],
+          ...runtimeGlobalLintRules,
         },
       },
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
@@ -253,23 +363,44 @@ export default defineConfig({
         // A plugin rule can only be turned off in an override that also lists the plugin.
         plugins: ["import"],
         rules: {
-          "import/no-nodejs-modules": "off",
+          ...runtimeRulesOff,
           "no-restricted-imports": ["error", { patterns: deepImports }],
-          "no-restricted-globals": "off",
         },
+      },
+      // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
+      // restrictions of the modules, which are set in the overrides below (docs/adr/0026).
+      {
+        files: ["packages/*/src/**/*.test.ts"],
+        plugins: ["import"],
+        rules: runtimeRulesOff,
       },
       // Module boundaries (docs/adr/0026): the direction between the modules, imports by the package name only,
       // and the direction between the layers of a module.
       {
         files: ["packages/shared/src/**"],
         rules: {
-          "no-restricted-imports": [
-            "error",
-            { paths: forbiddenModules("shared", []), patterns: deepImports },
-          ],
+          "no-restricted-imports": ["error", moduleImports("shared")],
         },
       },
       ...moduleOverrides,
+      // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
+      // fixture in <layer>/__fixtures__/effect.ts that this rule must report (repo-policy checks it).
+      {
+        files: ["packages/*/src/application/**", "packages/*/src/infrastructure/**"],
+        rules: {
+          "no-restricted-properties": [
+            "error",
+            ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
+          ],
+        },
+      },
+      {
+        files: [
+          "packages/*/src/application/**/*.test.ts",
+          "packages/*/src/infrastructure/**/*.test.ts",
+        ],
+        rules: { "no-restricted-properties": "off" },
+      },
       // Tests of tools/scripts run from Git hooks, where a git command can act on this repository instead of
       // the temporary one (docs/tooling/ci.md ("スクリプトのテスト")). They start processes only through the
       // helpers in tools/scripts/src/test/, which are not test files. Dynamic import() and createRequire are

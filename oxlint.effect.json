@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+  "plugins": ["effecttsgo"],
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "effecttsgo/floating-effect": "error",
+    "effecttsgo/outdated-api": "error",
+    "effecttsgo/unstable-api-usage": "error",
+    "effecttsgo/experimental-api-usage": "error"
+  },
+  "ignorePatterns": ["**/__fixtures__/*", "!**/__fixtures__/effect-tsgo.ts"],
+  "categories": {
+    "correctness": "off"
+  }
+}
