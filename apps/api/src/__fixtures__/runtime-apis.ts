@@ -10,3 +10,5 @@ export const viaGlobalThis: unknown = globalThis.process;
 export const viaString: unknown = globalThis["process"];
 // oxlint-disable-next-line no-restricted-globals -- fixture: global is the Node.js alias of globalThis
 export const viaGlobal: unknown = global;
+// oxlint-disable-next-line no-restricted-properties -- fixture: destructuring a global from globalThis
+export const { process: destructured }: { process: unknown } = globalThis;

@@ -31,7 +31,7 @@ sources:
 > [!NOTE]
 > **アーキテクチャ保護の実現手段の例**
 >
-> - **静的解析**: JS/TS は `vp lint` (Oxlint)、Python は Pylint、Go は golangci-lintなどを実行し、依存関係を制御する（インポートの禁止ルールなど）。このリポジトリでは、`apps/api/src` からランタイム固有のモジュールの import を禁じるルールを `vite.config.ts` に置いている ([ADR 0007](../adr/0007-api-on-node-web-standard-app.md))。より複雑な依存関係のグラフ解析が必要な場合は、dependency-cruiserなどの専用ツールを組み込む
+> - **静的解析**: JS/TS は `vp lint` (Oxlint)、Python は Pylint、Go は golangci-lintなどを実行し、依存関係を制御する（インポートの禁止ルールなど）。このリポジトリでは、`apps/api/src` と `packages/*/src` からランタイム固有のモジュールの import とグローバルの使用を禁じるルールを `vite.config.ts` に置いている ([ADR 0007](../adr/0007-api-on-node-web-standard-app.md))。より複雑な依存関係のグラフ解析が必要な場合は、dependency-cruiserなどの専用ツールを組み込む
 > - **専用フレームワーク**: ArchUnit、ArchUnitTSなどを用いて、「特定のレイヤーのクラスは特定の命名規則に従う」「特定のインタフェースを必ず実装する」といった、ドメイン特化のアーキテクチャ制約を、ユニットテストと同様に記述する
 > - **AI自動コードレビュー**: 人間によるレビュー負荷を低減するため、PR/MRの内容がアーキテクチャガイドラインに準拠しているかAIに自動チェックする
 

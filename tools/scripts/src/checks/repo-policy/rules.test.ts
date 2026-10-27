@@ -2,7 +2,12 @@
 // a repository that passes, and expects the message that names the problem. Reading git and the
 // working tree (and the staged mode) is in cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
-import { moduleFixture, passingRepo } from "./fixtures/passing-repo.ts";
+import {
+  moduleFixture,
+  passingRepo,
+  runtimeFixture,
+  srcFixtures,
+} from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
 const base = passingRepo;
@@ -171,6 +176,7 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ...Object.fromEntries(
       dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
     ),
+    ...srcFixtures(name),
   });
 
   it("refuses a module that vite.config.ts does not list", () => {
@@ -217,6 +223,31 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     expect(
       violations(repo({ "packages/shared/src/__fixtures__/boundaries.ts": undefined })),
     ).toEqual([noFixture("shared", "src")]);
+  });
+
+  it("refuses a package without the fixtures of the runtime restrictions or of the tests", () => {
+    const noRuntime = (annotation: string) =>
+      `packages/claim/src/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+        }),
+      ),
+    ).toEqual([
+      "packages/claim/src/__fixtures__/ has no *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).",
+      noRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(repo({ "packages/shared/src/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noRuntime("no-restricted-globals").replace("claim", "shared"),
+      noRuntime("no-restricted-properties").replace("claim", "shared"),
+    ]);
   });
 
   it("follows the layers that vite.config.ts lists", () => {
@@ -1156,7 +1187,7 @@ describe("ADR 0026: the edges", () => {
     repo({
       "packages/claim/package.json": undefined,
       [`packages/${name}/package.json`]: "{}",
-      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+      ...srcFixtures(name),
       "vite.config.ts": modulesConfig(body),
     });
 

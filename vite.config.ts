@@ -23,19 +23,24 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
 
-// Runtime-specific globals (docs/adr/0007). no-restricted-globals stops the bare name, and no-restricted-properties
-// stops the same name read from globalThis.
+// Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
+// into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
+// from globalThis.
 const runtimeGlobals = [
   { name: "process", message: "Read environment variables from `c.env`." },
   { name: "Bun", message: runtimeImportMessage },
   { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
 ];
-const runtimeGlobalRules: Record<string, ["error", ...Record<string, string>[]]> = {
+const runtimeGlobalLintRules: Record<string, ["error", ...Record<string, string>[]]> = {
   "no-restricted-globals": [
     "error",
     ...runtimeGlobals,
     // global.process is the Node.js alias of globalThis.process, and no-restricted-properties cannot name it.
-    { name: "global", message: "Use `globalThis`, and not for the globals of Node.js or Bun." },
+    {
+      name: "global",
+      message:
+        "Do not use `global`: it is the Node.js alias of `globalThis`, and it hides `process` and the other runtime globals. Use only the Web standard globals.",
+    },
     { name: "__dirname", message: "Use `import.meta.url`." },
     { name: "__filename", message: "Use `import.meta.url`." },
     { name: "require", message: "Use `import`." },
@@ -134,6 +139,13 @@ const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
   })),
 ]);
 
+// What the entry files and the tests of the runtime-specific rules turn off.
+const runtimeRulesOff = {
+  "import/no-nodejs-modules": "off",
+  "no-restricted-globals": "off",
+  "no-restricted-properties": "off",
+} as const;
+
 const childProcessMessage =
   "Start git and other processes through gitIn() or runIn() from tools/scripts/src/test/sandbox.ts, which refuse " +
   'to act outside the sandbox (docs/tooling/ci.md ("スクリプトのテスト")).';
@@ -221,7 +233,7 @@ export default defineConfig({
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
-          ...runtimeGlobalRules,
+          ...runtimeGlobalLintRules,
         },
       },
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
@@ -231,10 +243,8 @@ export default defineConfig({
         // A plugin rule can only be turned off in an override that also lists the plugin.
         plugins: ["import"],
         rules: {
-          "import/no-nodejs-modules": "off",
+          ...runtimeRulesOff,
           "no-restricted-imports": ["error", { patterns: deepImports }],
-          "no-restricted-globals": "off",
-          "no-restricted-properties": "off",
         },
       },
       // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
@@ -242,24 +252,14 @@ export default defineConfig({
       {
         files: ["packages/*/src/**/*.test.ts"],
         plugins: ["import"],
-        rules: {
-          "import/no-nodejs-modules": "off",
-          "no-restricted-globals": "off",
-          "no-restricted-properties": "off",
-        },
+        rules: runtimeRulesOff,
       },
       // Module boundaries (docs/adr/0026): the direction between the modules, imports by the package name only,
       // and the direction between the layers of a module.
       {
         files: ["packages/shared/src/**"],
         rules: {
-          "no-restricted-imports": [
-            "error",
-            {
-              paths: [...runtimeImports.paths, ...forbiddenModules("shared", [])],
-              patterns: [...runtimeImports.patterns, ...deepImports],
-            },
-          ],
+          "no-restricted-imports": ["error", moduleImports("shared")],
         },
       },
       ...moduleOverrides,

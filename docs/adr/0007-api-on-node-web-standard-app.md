@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く"
-description: apps/api を Bun に移行せず Node.js で動かし、Lambda、Cloudflare Workers、ECS のどれにも載せられるように、ランタイム固有のコードを入口のファイルに閉じ込める決定。
+description: apps/api を Bun に移行せず Node.js で動かし、Lambda、Cloudflare Workers、ECS のどれにも載せられるように、apps/api/src と packages/*/src のランタイム固有のコードを入口のファイルに閉じ込める決定。
 tags: [adr, tooling, api, hono, runtime]
 ---
 
@@ -19,10 +19,10 @@ Hono が Bun 上で速いのは主にサーバー部分で、Node.js では `@ho
 ## ルール
 
 - `apps/api/src` と `packages/*/src` では、Node.js の組み込みモジュール、`bun` と `bun:*`、ランタイム用の adapter (`@hono/node-server`、`@hono/aws-lambda`、`@hono/node-ws`) を import しません。グローバルの `process`、`Bun`、`Buffer`、`__dirname`、`__filename`、`require` も使いません。環境変数は `c.env` で受け取ります。
-- 同じグローバルを `globalThis` から読む書き方も止めます。`no-restricted-globals` は名前の直接の参照だけを止めるので、`no-restricted-properties` で `globalThis.process`、`globalThis.Bun`、`globalThis.Buffer` を止めます。`globalThis["process"]` のような文字列のアクセスと、`const { process } = globalThis` の分割代入も止まります (このリポジトリの Oxlint で確かめた)。Node.js の別名 `global` は `global.process` と書かれるので、`no-restricted-globals` で `global` ごと止めます (`globalThis` を使います)。
+- 同じグローバルを `globalThis` から読む書き方も止めます。`no-restricted-globals` は名前の直接の参照だけを止めるので、`no-restricted-properties` で `globalThis.process`、`globalThis.Bun`、`globalThis.Buffer` を止めます。`globalThis["process"]` のような文字列のアクセスと、`const { process } = globalThis` の分割代入も止まります (Oxlint 1.89.0 で 2026-10-28 に確かめました)。Node.js の別名 `global` は `global.process` と書かれるので、`no-restricted-globals` で `global` ごと止めます (`globalThis` を使います)。
 - 止められない書き方が残ります。`const g = globalThis; g.process`、`Reflect.get(globalThis, "process")`、`eval` や `Function` で組み立てる名前は、静的な検査では見つけられません。これらはレビューで止めます。
 - ランタイム固有のコードは入口のファイル (今は `server.ts`) にだけ置きます。入口のファイル名は、`server.ts` のようにランタイムやデプロイ先が分かる名前にします。
-- ルールはルートの `vite.config.ts` の `lint.overrides` で設定していて、`vp check` (pre-commit と CI) で止まります。入口のファイルとテスト (`apps/api/src/server.ts`、`apps/api/src/**/*.test.ts`、`packages/*/src/**/*.test.ts`) は対象から外しています。外すのはこのランタイムの制限だけで、モジュールの深い import を止める `no-restricted-imports` の制限は、入口のファイルとテストにも残ります ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。
+- ルールはルートの `vite.config.ts` の `lint.overrides` で設定していて、`vp check` (pre-commit と CI) で止まります。入口のファイルとテスト (`apps/api/src/server.ts`、`apps/api/src/**/*.test.ts`、`packages/*/src/**/*.test.ts`) は、ランタイムのグローバルと Node.js の組み込みモジュールの制限の対象から外しています。ただし `packages/*/src` のテストでは、`bun` と adapter の import は止まったままです。`apps/api` のテストの override は `no-restricted-imports` を深い import の制限だけに置き換えますが、packages ではモジュールごとの override が最後に使われ、その `moduleImports` がランタイムの import の制限も持つためです。テストが `bun` や adapter を import する必要はないので、差はそのままにしています。外すのはこのランタイムの制限だけで、モジュールの深い import を止める `no-restricted-imports` の制限は、入口のファイルとテストにも残ります ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。
 
 ## Considered Options
 
@@ -34,5 +34,6 @@ Hono が Bun 上で速いのは主にサーバー部分で、Node.js では `@ho
 
 - Lambda、Cloudflare Workers の入口を足すときは、その入口を `vite.config.ts` の `lint.overrides` の除外の一覧に追加します。
 - Lambda では Lambda Web Functions を使うので、リポジトリを Node.js 24 にすることにしました (ADR 0013)。Web Functions のランタイムは `nodejs24.x` だけで、Lambda Event Functions の `nodejs26.x` は 2026-10 時点で public preview です (docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html)。Web Functions が Node.js 26 に対応したら、26 に上げます。
-- 検出力 ([Issue #43](https://github.com/yokozi-jp/agent-software-factory/issues/43)) は、`apps/api/src/__fixtures__/runtime-apis.ts` と各 package の `src/__fixtures__/runtime-apis.ts` で確かめます。`process`、`globalThis.process`、`globalThis["process"]`、`global` の行に `oxlint-disable-next-line` を付けてあり、規則を消すか `files` が届かなくなると、使われない disable のコメントで `vp check` が失敗します。置き場所は ADR 0026 の `__fixtures__/` と同じで、Knip、jscpd、Nx の `production`、build の対象から外れています。
+- 検出力 ([Issue #43](https://github.com/yokozi-jp/agent-software-factory/issues/43)) は、`apps/api/src/__fixtures__/runtime-apis.ts` と各 package の `src/__fixtures__/runtime-apis.ts` で確かめます。`process`、`globalThis.process`、`globalThis["process"]`、`global`、`const { process } = globalThis` の行に `oxlint-disable-next-line` を付けてあり、規則を消すか `files` が届かなくなると、使われない disable のコメントで `vp check` が失敗します。各 package の `src/__fixtures__/boundaries.test.ts` は、テストの override がランタイムの制限を外しても、深い import の制限を残すことを確かめます。置き場所は ADR 0026 の `__fixtures__/` と同じで、Knip、jscpd、Nx の `production`、build の対象から外れています。
+- 新しい package を足すときの書き忘れは、repo-policy (`tools/scripts/src/checks/repo-policy/rules.ts`) が止めます。各 package の `src/__fixtures__/` に、`no-restricted-globals` と `no-restricted-properties` の `oxlint-disable-next-line` がある fixture と、`no-restricted-imports` のある `*.test.ts` の fixture が要ります。
 - `packages/*/src` の `no-restricted-imports` は、モジュールごとの override が最後に使われるので、ランタイムの import の制限 (`bun`、adapter) もそこ (`moduleImports` と `shared` の override) に持たせています。

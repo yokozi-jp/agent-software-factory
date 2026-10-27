@@ -156,11 +156,27 @@ function objectKeys(text: string, name: string): string[] {
 }
 
 const fixtureAnnotation = "oxlint-disable-next-line no-restricted-imports";
+const runtimeAnnotations = [
+  "oxlint-disable-next-line no-restricted-globals",
+  "oxlint-disable-next-line no-restricted-properties",
+];
+
+// Whether a file of `fixtures` (a __fixtures__/ directory) has `annotation`. A test file counts only when
+// `test` is true, because the override of the tests is not the one that the other fixtures show.
+const hasFixture = (tree: Tree, fixtures: string, annotation: string, test = false) =>
+  tree.paths.some(
+    (file) =>
+      file.startsWith(fixtures) &&
+      file.endsWith(".test.ts") === test &&
+      tree.read(file).includes(annotation),
+  );
 
 // ADR 0026: the boundaries of each package under packages/. vite.config.ts builds an override of
 // no-restricted-imports for each module in its `modules` object, and for each layer of its `layers` object; a
 // package left out has no boundaries. Each override has a fixture (#43) in <dir>/__fixtures__/ that the rule
 // must report: src/ of every package, and src/<layer>/ of every module. shared has its own override and no layers.
+// The runtime restrictions of docs/adr/0007 (no-restricted-globals, no-restricted-properties) reach all of
+// packages/*/src, so src/__fixtures__/ also needs a fixture for each of them and one for the tests.
 function moduleBoundaries(tree: Tree): string[] {
   const config = tree.read("vite.config.ts");
   const modules = new Set(objectKeys(config, "modules"));
@@ -176,15 +192,22 @@ function moduleBoundaries(tree: Tree): string[] {
       );
     for (const dir of ["src", ...(isModule ? layers.map((layer) => `src/${layer}`) : [])]) {
       const fixtures = `packages/${name}/${dir}/__fixtures__/`;
-      if (
-        !tree.paths.some(
-          (file) => file.startsWith(fixtures) && tree.read(file).includes(fixtureAnnotation),
-        )
-      )
+      if (!hasFixture(tree, fixtures, fixtureAnnotation))
         failures.push(
           `${fixtures} has no fixture with \`${fixtureAnnotation}\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`,
         );
     }
+    // The override of the tests keeps the import restrictions (docs/adr/0007).
+    const src = `packages/${name}/src/__fixtures__/`;
+    if (!hasFixture(tree, src, fixtureAnnotation, true))
+      failures.push(
+        `${src} has no *.test.ts fixture with \`${fixtureAnnotation}\`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).`,
+      );
+    for (const annotation of runtimeAnnotations)
+      if (!hasFixture(tree, src, annotation))
+        failures.push(
+          `${src} has no fixture with \`${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`,
+        );
   }
   return failures;
 }
