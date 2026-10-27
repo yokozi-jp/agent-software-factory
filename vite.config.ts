@@ -93,15 +93,59 @@ function moduleImports(name: string, layer?: string) {
   return { paths: forbiddenModules(name, modules[name] ?? []), patterns };
 }
 
+// How domain is written (docs/adr/0027): pure functions that return a Result. domain takes the time and the
+// randomness as arguments, and returns a failure instead of throwing it. `Date` is stopped as a value only
+// (`new Date()`, `Date.now()`); the type `Date` in an annotation is not reported (checked with Oxlint 1.89.0,
+// see the 出典 of docs/adr/0027).
+// These rules join the no-restricted-imports of the domain override of each module, in the same object: Oxlint
+// keeps only the last override that sets a rule for a file, so a second override for domain would drop one of
+// the two (docs/adr/0026). Each rule has a fixture in packages/*/src/domain/__fixtures__/purity.ts (#43).
+const domainPurityMessage = (what: string, instead: string) =>
+  `${what} makes a domain function depend on something other than its arguments. ${instead}, ` +
+  "and let application supply it (docs/adr/0027, docs/domain-model/types.md).";
+const domainPurityRules = {
+  jsPlugins: [{ name: "domain", specifier: "./tools/lint-plugins/src/domain-plugin.ts" }],
+  rules: {
+    "domain/no-throw": "error",
+    "no-restricted-globals": [
+      "error",
+      {
+        name: "Date",
+        message: domainPurityMessage("`Date`", "Take the time as an argument, a branded `Instant`"),
+      },
+    ],
+    "no-restricted-properties": [
+      "error",
+      {
+        object: "Math",
+        property: "random",
+        message: domainPurityMessage(
+          "`Math.random`",
+          "Take the random value, or the id, as an argument",
+        ),
+      },
+    ],
+  },
+} satisfies Pick<OxlintOverride, "jsPlugins" | "rules">;
+
 const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
   {
     files: [`packages/${name}/src/**`],
     rules: { "no-restricted-imports": ["error", moduleImports(name)] },
   },
-  ...Object.keys(layers).map((layer): OxlintOverride => ({
-    files: [`packages/${name}/src/${layer}/**`],
-    rules: { "no-restricted-imports": ["error", moduleImports(name, layer)] },
-  })),
+  ...Object.keys(layers).map((layer): OxlintOverride => {
+    const files = [`packages/${name}/src/${layer}/**`];
+    const imports: NonNullable<OxlintOverride["rules"]> = {
+      "no-restricted-imports": ["error", moduleImports(name, layer)],
+    };
+    return layer === "domain"
+      ? {
+          files,
+          jsPlugins: domainPurityRules.jsPlugins,
+          rules: { ...imports, ...domainPurityRules.rules },
+        }
+      : { files, rules: imports };
+  }),
 ]);
 
 const childProcessMessage =
@@ -245,11 +289,13 @@ export default defineConfig({
         },
       },
       // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
-      // list of what the code guarantees. The rule is in apps/api/lint/test-title-plugin.ts. Tests of the tools
+      // list of what the code guarantees. The rule is in tools/lint-plugins/src/test-title-plugin.ts. Tests of the tools
       // and of the lint plugins themselves are outside this rule.
       {
         files: ["apps/*/src/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
-        jsPlugins: [{ name: "test-title", specifier: "./apps/api/lint/test-title-plugin.ts" }],
+        jsPlugins: [
+          { name: "test-title", specifier: "./tools/lint-plugins/src/test-title-plugin.ts" },
+        ],
         rules: { "test-title/japanese-title": "error" },
       },
       // React rules (hooks, keys, state in effects) and JSX accessibility (alt text, anchors, keyboard
@@ -289,11 +335,11 @@ export default defineConfig({
         rules: { "no-console": "error" },
       },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
-      // apps/web/lint/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
+      // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
       {
         files: ["apps/web/src/**"],
-        jsPlugins: [{ name: "web-xss", specifier: "./apps/web/lint/xss-plugin.ts" }],
+        jsPlugins: [{ name: "web-xss", specifier: "./tools/lint-plugins/src/xss-plugin.ts" }],
         plugins: ["unicorn"],
         rules: {
           "web-xss/no-html-injection": "error",

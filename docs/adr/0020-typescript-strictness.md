@@ -34,7 +34,7 @@ tags: [adr, tooling, typescript, oxlint, tsgolint, quality]
 ## Consequences
 
 - 標準との関係: [`@tsconfig/strictest`](https://github.com/tsconfig/bases/blob/main/bases/strictest.json) は、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`、`noImplicitOverride`、`noImplicitReturns`、`noFallthroughCasesInSwitch`、`allowUnreachableCode: false`、`allowUnusedLabels: false` を入れています。`erasableSyntaxOnly` と `verbatimModuleSyntax` は入れていません。`noUnused*` と `noPropertyAccessFromIndexSignature` は入れていますが、このリポジトリでは採りません。[create-vite の React テンプレート](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-react-ts/tsconfig.app.json)が入れるのは `noUnusedLocals`、`noUnusedParameters`、`erasableSyntaxOnly`、`noFallthroughCasesInSwitch` です。この組み合わせは標準そのものではなく、判断を含みます。
-- 導入時に、`apps/web/lint/xss-plugin.ts` の `any` を Oxlint の plugin API の型 (`ESTree`) に直し、テストの `plugin.rules[...]` に未定義の確認を足し、`commitlint.config.ts` の不要な `async` を外しました。
+- 導入時に、`xss-plugin.ts` (当時は `apps/web/lint/`、今は `tools/lint-plugins/src/`) の `any` を Oxlint の plugin API の型 (`ESTree`) に直し、テストの `plugin.rules[...]` に未定義の確認を足し、`commitlint.config.ts` の不要な `async` を外しました。
 - 警告が失敗になるので、警告のまま残す規則は作れません。外したい規則は、規則ごとに `off` にします。
 - 規則を足す、外すときは、`vite.config.ts` の `typedRules` を直します。tsconfig のフラグは、ルートの `tsconfig.json` を直します。どちらも Nx の cache の入力です (`nx.json` の `sharedGlobals`)。
 - `oxlint-disable` の理由を `apps/web/src` の外でも機械で止めたくなったら、`web-xss/require-disable-reason` を `apps/web` の外にも広げるか、同じ形の plugin を足します。
