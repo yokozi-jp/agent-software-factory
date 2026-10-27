@@ -1,23 +1,15 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { Pool } from "pg";
 import { inject } from "vite-plus/test";
 
 import { rolePassword } from "./credentials.ts";
-
-const authSchemaSql = readFileSync(new URL("../db/auth-schema.sql", import.meta.url), "utf8");
-
-function connectionUri(base: string, user: string, password: string, database: string): string {
-  const url = new URL(base);
-  url.username = user;
-  url.password = password;
-  url.pathname = `/${database}`;
-  return url.toString();
-}
+import { connectionUri } from "./connection.ts";
 
 export interface TestDatabase {
-  /** データベースの所有者。migration と、テストの準備に使う。 */
+  /** superuser。テストの準備と、中身の確認に使う。 */
   readonly owner: Pool;
+  /** 表とスキーマの所有者。migration を流すロール。 */
+  readonly migrator: Pool;
   /** Better Auth が使うロール。search_path は auth。 */
   readonly authService: Pool;
   /** 業務の処理が使うロール。auth スキーマの権限を持たない。 */
@@ -25,35 +17,34 @@ export interface TestDatabase {
   close(): Promise<void>;
 }
 
-/** テストごとに空のデータベースを作り、auth スキーマと権限を db/auth-schema.sql で用意する。 */
+/**
+ * テストごとにデータベースを作る。globalSetup が本番と同じ経路 (bootstrap.sql と dbmate) で
+ * migration を流したテンプレートの DB を複製するので、auth スキーマと権限はそろっている (docs/adr/0025)。
+ */
 export async function createTestDatabase(): Promise<TestDatabase> {
   const base = inject("postgresUri");
   const name = `t_${randomBytes(6).toString("hex")}`;
 
   const bootstrap = new Pool({ connectionString: base });
-  await bootstrap.query(`CREATE DATABASE ${name}`);
+  await bootstrap.query(`CREATE DATABASE ${name} TEMPLATE ${inject("templateDatabase")}`);
   await bootstrap.end();
 
-  const ownerUser = new URL(base).username;
-  const ownerPassword = new URL(base).password;
-  const owner = new Pool({ connectionString: connectionUri(base, ownerUser, ownerPassword, name) });
-  await owner.query(`GRANT CONNECT ON DATABASE ${name} TO auth_service, app_user`);
-  await owner.query(authSchemaSql);
-
+  const as = (user: string) => connectionUri(base, name, { user, password: rolePassword });
+  const owner = new Pool({ connectionString: connectionUri(base, name) });
+  const migrator = new Pool({ connectionString: as("migrator") });
   const authService = new Pool({
-    connectionString: connectionUri(base, "auth_service", rolePassword, name),
+    connectionString: as("auth_service"),
     options: "-c search_path=auth",
   });
-  const appUser = new Pool({
-    connectionString: connectionUri(base, "app_user", rolePassword, name),
-  });
+  const appUser = new Pool({ connectionString: as("app_user") });
 
   return {
     owner,
+    migrator,
     authService,
     appUser,
     async close() {
-      await Promise.all([owner.end(), authService.end(), appUser.end()]);
+      await Promise.all([owner.end(), migrator.end(), authService.end(), appUser.end()]);
     },
   };
 }

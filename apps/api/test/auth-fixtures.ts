@@ -2,13 +2,7 @@ import { betterAuth } from "better-auth";
 import { testUtils } from "better-auth/plugins";
 import { inject } from "vite-plus/test";
 
-import {
-  authOptions,
-  authPlugins,
-  createAuth,
-  migrateAuth,
-  type AuthConfig,
-} from "../src/auth/auth.ts";
+import { authOptions, authPlugins, createAuth, type AuthConfig } from "../src/auth/auth.ts";
 import { createApp } from "../src/app.ts";
 import { TestBrowser } from "./browser.ts";
 import { createTestDatabase, type TestDatabase } from "./database.ts";
@@ -41,10 +35,8 @@ export async function createAuthFixture(session: AuthConfig["session"] = {}): Pr
       clientSecret: "test-client-secret",
     },
     session,
-    validateSchema: false,
   };
   const auth = createAuth(config);
-  await migrateAuth(auth);
   const app = createApp({ auth });
 
   // 同じ設定、同じ DB、同じ secret に testUtils だけを足した認証。session の行と Cookie の署名が同じなので、

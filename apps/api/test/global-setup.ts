@@ -4,13 +4,18 @@ import { GenericContainer, Wait } from "testcontainers";
 import { Client } from "pg";
 import type { TestProject } from "vite-plus/test/node";
 
+import { migrate } from "../db/migrate.ts";
 import { rolePassword } from "./credentials.ts";
+import { bootstrapSql } from "./bootstrap.ts";
+import { connectionUri, migratorUrl, templateDatabase } from "./connection.ts";
 
 // 結合テストは、本物の PostgreSQL と Keycloak を相手にする (docs/db/postgresql-test.md、docs/adr/0022)。
 // 一度だけ起動して全テストで使う。テストごとに別のデータベースを作るので、並列に走らせられる (ロールはクラスタ全体で共有する)。
 declare module "vite-plus/test" {
   export interface ProvidedContext {
     postgresUri: string;
+    /** migration を流し終えた DB。テストごとの DB は、これを TEMPLATE にして複製する。 */
+    templateDatabase: string;
     keycloakBaseUrl: string;
   }
 }
@@ -41,14 +46,26 @@ export default async function setup(project: TestProject) {
       .start(),
   ]);
 
-  // ロールはクラスタ全体で共有する。インフラが作るものを、ここで代わりに作る (db/auth-schema.sql の冒頭)。
-  const admin = new Client({ connectionString: postgres.getConnectionUri() });
+  // 本番と同じ経路で、テンプレートの DB に 1 回だけ migration を流す (docs/adr/0025)。
+  // 1. master user (testcontainers の superuser) が bootstrap.sql でロールを作る。ロールはクラスタ全体で共有する。
+  // 2. migrator が dbmate で migration を流す。ローカルはパスワードで接続するので、ここで設定する。
+  const base = postgres.getConnectionUri();
+  const admin = new Client({ connectionString: base });
   await admin.connect();
-  await admin.query(`CREATE ROLE auth_service LOGIN PASSWORD '${rolePassword}'`);
-  await admin.query(`CREATE ROLE app_user LOGIN PASSWORD '${rolePassword}'`);
+  await admin.query(`CREATE DATABASE ${templateDatabase}`);
   await admin.end();
 
-  project.provide("postgresUri", postgres.getConnectionUri());
+  const master = new Client({ connectionString: connectionUri(base, templateDatabase) });
+  await master.connect();
+  await master.query(bootstrapSql);
+  for (const role of ["migrator", "app_user", "auth_service"])
+    await master.query(`ALTER ROLE ${role} PASSWORD '${rolePassword}'`);
+  await master.end();
+
+  await migrate(migratorUrl(base, templateDatabase, rolePassword));
+
+  project.provide("postgresUri", base);
+  project.provide("templateDatabase", templateDatabase);
   project.provide(
     "keycloakBaseUrl",
     `http://${keycloak.getHost()}:${keycloak.getMappedPort(8080)}`,

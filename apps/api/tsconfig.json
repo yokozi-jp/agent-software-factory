@@ -5,5 +5,5 @@
     "lib": ["es2024"],
     "types": ["node"]
   },
-  "include": ["src", "test", "lint", "vite.config.ts"]
+  "include": ["src", "test", "db", "lint", "vite.config.ts"]
 }

@@ -4,6 +4,16 @@
 export const moduleFixture =
   '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/other";\n';
 
+// A dbmate migration that passes the check of migrations (docs/adr/0025). The tests of rules.ts change one
+// section of it.
+export function migration(
+  parts: { readonly up?: string; readonly down?: string; readonly upOptions?: string } = {},
+): string {
+  const up = parts.up ?? "SET LOCAL lock_timeout = '5s';\nCREATE TABLE x (id int);\n";
+  const down = parts.down ?? "DO $$ BEGIN RAISE EXCEPTION 'irreversible: forward only'; END $$;\n";
+  return `-- migrate:up${parts.upOptions ?? ""}\n${up}\n-- migrate:down\n${down}`;
+}
+
 // The agent of the passing repository: the rules the checks of docs/tooling/agent-permissions.md read.
 interface FixtureRule {
   readonly capability: string;
@@ -45,6 +55,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     engines: { node: "^24" },
   }),
   "apps/api/package.json": JSON.stringify({ dependencies: { hono: "catalog:" } }),
+  "apps/api/db/migrations/20260101000000_create_x.sql": migration(),
   "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   ".betterleaks.toml":
