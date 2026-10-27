@@ -23,6 +23,33 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
 
+// Runtime-specific globals (docs/adr/0007). no-restricted-globals stops the bare name, and no-restricted-properties
+// stops the same name read from globalThis.
+const runtimeGlobals = [
+  { name: "process", message: "Read environment variables from `c.env`." },
+  { name: "Bun", message: runtimeImportMessage },
+  { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
+];
+const runtimeGlobalRules: Record<string, ["error", ...Record<string, string>[]]> = {
+  "no-restricted-globals": [
+    "error",
+    ...runtimeGlobals,
+    // global.process is the Node.js alias of globalThis.process, and no-restricted-properties cannot name it.
+    { name: "global", message: "Use `globalThis`, and not for the globals of Node.js or Bun." },
+    { name: "__dirname", message: "Use `import.meta.url`." },
+    { name: "__filename", message: "Use `import.meta.url`." },
+    { name: "require", message: "Use `import`." },
+  ],
+  "no-restricted-properties": [
+    "error",
+    ...runtimeGlobals.map(({ name, message }) => ({
+      object: "globalThis",
+      property: name,
+      message: `${message} (\`globalThis.${name}\` is the same global.)`,
+    })),
+  ],
+};
+
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
 // packages/, and apps/api only assembles them. A module may import the modules listed for it here, and they
 // point one way: closing (締め) → approval (承認) → claim (申請). shared imports no module.
@@ -73,7 +100,7 @@ const forbiddenModules = (from: string, allowed: readonly string[]) =>
 // other files outside the layers). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 function moduleImports(name: string, layer?: string) {
-  const patterns: Record<string, unknown>[] = [...deepImports];
+  const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
     if (other.length > 0)
@@ -90,7 +117,10 @@ function moduleImports(name: string, layer?: string) {
       { regex: "^[^.@]", message: domainMessage },
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
-  return { paths: forbiddenModules(name, modules[name] ?? []), patterns };
+  return {
+    paths: [...runtimeImports.paths, ...forbiddenModules(name, modules[name] ?? [])],
+    patterns,
+  };
 }
 
 const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
@@ -179,7 +209,7 @@ export default defineConfig({
       // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
       // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
       {
-        files: ["apps/api/src/**"],
+        files: ["apps/api/src/**", "packages/*/src/**"],
         plugins: ["import"],
         rules: {
           "import/no-nodejs-modules": "error",
@@ -191,15 +221,7 @@ export default defineConfig({
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
-          "no-restricted-globals": [
-            "error",
-            { name: "process", message: "Read environment variables from `c.env`." },
-            { name: "Bun", message: runtimeImportMessage },
-            { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
-            { name: "__dirname", message: "Use `import.meta.url`." },
-            { name: "__filename", message: "Use `import.meta.url`." },
-            { name: "require", message: "Use `import`." },
-          ],
+          ...runtimeGlobalRules,
         },
       },
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
@@ -212,6 +234,18 @@ export default defineConfig({
           "import/no-nodejs-modules": "off",
           "no-restricted-imports": ["error", { patterns: deepImports }],
           "no-restricted-globals": "off",
+          "no-restricted-properties": "off",
+        },
+      },
+      // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
+      // restrictions of the modules, which are set in the overrides below (docs/adr/0026).
+      {
+        files: ["packages/*/src/**/*.test.ts"],
+        plugins: ["import"],
+        rules: {
+          "import/no-nodejs-modules": "off",
+          "no-restricted-globals": "off",
+          "no-restricted-properties": "off",
         },
       },
       // Module boundaries (docs/adr/0026): the direction between the modules, imports by the package name only,
@@ -221,7 +255,10 @@ export default defineConfig({
         rules: {
           "no-restricted-imports": [
             "error",
-            { paths: forbiddenModules("shared", []), patterns: deepImports },
+            {
+              paths: [...runtimeImports.paths, ...forbiddenModules("shared", [])],
+              patterns: [...runtimeImports.patterns, ...deepImports],
+            },
           ],
         },
       },
