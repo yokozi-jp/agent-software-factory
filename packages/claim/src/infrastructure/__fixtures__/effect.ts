@@ -8,6 +8,8 @@ import { Effect } from "effect";
 import "@effect/sql-pg";
 // oxlint-disable-next-line no-restricted-imports -- fixture: effect/Stream is not used
 import "effect/Stream";
+// oxlint-disable-next-line no-restricted-imports -- fixture: effect/http is an unstable module
+import "effect/http";
 
 // oxlint-disable-next-line no-restricted-imports -- fixture: Schema is not used (validation is zod)
 export { Schema } from "effect";

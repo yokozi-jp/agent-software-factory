@@ -78,6 +78,8 @@ const unusedEffectModules = [
   "FiberMap",
   "FiberSet",
 ];
+// Subpaths of effect that are whole unstable modules (HTTP, HTTP API, SQL).
+const unusedEffectSubpaths = ["http", "http-api", "sql"];
 const unusedEffectMessage =
   "This Effect feature is not used: validation is zod, logs are stdout, retries are ky and the SDKs. Use only " +
   "the features listed in docs/domain-model/application-effect.md (docs/adr/0028).";
@@ -94,7 +96,10 @@ const effectPaths: RestrictedPath[] = [
   { name: "effect", importNames: unusedEffectModules, message: unusedEffectMessage },
 ];
 const effectPatterns = [
-  { regex: `^effect/(?:${unusedEffectModules.join("|")})$`, message: unusedEffectMessage },
+  {
+    regex: `^effect/(?:${[...unusedEffectModules, ...unusedEffectSubpaths].join("|")})(?:/|$)`,
+    message: unusedEffectMessage,
+  },
   { regex: "^@effect/sql(?:$|-|/)", message: unusedSqlMessage },
 ];
 

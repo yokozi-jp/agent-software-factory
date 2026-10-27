@@ -77,6 +77,8 @@ minimumReleaseAgeExclude:
   - "@nx/devkit@24.0.0"
   - "@nx/js@24.0.0"
   - "@nx/workspace@24.0.0"
+  # @effect/tsgo 0.61.0 (published 2026-10-26) was younger than minimumReleaseAge when added (docs/adr/0028). It is
+  # pinned to the Oxlint of Vite+ (docs/tooling/effect-lint.md). Remove these entries once the version is old enough.
   - "@effect/tsgo-darwin-arm64@0.61.0"
   - "@effect/tsgo-darwin-x64@0.61.0"
   - "@effect/tsgo-linux-arm64@0.61.0"
