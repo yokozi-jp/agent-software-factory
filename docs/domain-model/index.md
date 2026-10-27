@@ -1,0 +1,7 @@
+# ドメインモデルの書き方
+
+- [型の書き方](types.md)：`domain` の状態、遷移、値の型、構成で表す型、網羅、`satisfies` を書くとき
+- [失敗の書き方](failures.md)：業務の規則の失敗を `Result` で返すとき、失敗の `_tag` を決めるとき、`throw` と zod と `Result` のどれを使うか迷うとき、失敗を HTTP の応答に変えるとき
+- [application の Effect の書き方](application-effect.md)：`application` や `infrastructure` で Effect を使うとき、使ってよい機能を確かめるとき、Kysely を包むとき、入口で実行するとき
+- [型述語の境界値のテスト](testing.md)：`domain` の型述語や遷移の関数のテストを書くとき
+- [英語の識別子と用語集の対応表](glossary-mapping.md)：`domain` や `application` の識別子を決めるとき、`GLOSSARY.md` の言葉を英語にするとき
