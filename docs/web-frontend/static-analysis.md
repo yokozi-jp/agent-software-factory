@@ -110,11 +110,17 @@ const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 - キーボードの操作を持たないクリック (`jsx-a11y/click-events-have-key-events`)
 - role のない要素へのイベント (`jsx-a11y/no-static-element-interactions`)
 - 依存配列のない `useEffect` (`react-hooks/exhaustive-deps`)
-- effect の中で同期して呼ぶ `setState` (`react/set-state-in-effect`)
 
-見つけられるのは、コードに書かれた形から静的に分かる範囲だけである。`key={index}` のような配列の添字の key (`react/no-array-index-key`) は既定の規則に入っておらず、見つからない。色のコントラスト、フォーカスの順序、読み上げの実際の挙動も見つからない。それらは axe-core を使うコンポーネントテストと E2E で確かめる ([テスト](testing.md))。
+既定の規則に次を足している。
+
+- 配列の添字を key にする `key={index}` (`react/no-array-index-key`)。既定では無効なので、`error` にしている
+- 要らない effect。[`eslint-plugin-react-you-might-not-need-an-effect`](https://github.com/nickjvandyke/eslint-plugin-react-you-might-not-need-an-effect) 1.0.2 を `jsPlugins` に `react-effect` の名前で読み込み、9 つの規則 (`react-effect/no-derived-state`、`no-chain-state-updates`、`no-event-handler`、`no-adjust-state-on-prop-change`、`no-reset-all-state-on-prop-change`、`no-pass-live-state-to-parent`、`no-pass-data-to-parent`、`no-external-store-subscription`、`no-initialize-state`) を `error` にしている。props から導出できる値を effect で state に入れる書き方は `react-effect/no-derived-state` が止め、render の中で計算するよう伝える。版は `pnpm-workspace.yaml` の catalog で固定している
+- `react/set-state-in-effect` は `off` にしている。`react-effect/no-derived-state` と同じ行を報告するうえ、メッセージが直し方を書かないため。effect の中の `setState` は、上の規則が書き方ごとに止める
+
+見つけられるのは、コードに書かれた形から静的に分かる範囲だけである。次の書き方は止まらない。effect の中の `fetch`、event handler でしか使わない state、`setCount(count + 1)`。画面ができて実害が出てから、自作の規則か別の道具を決める。色のコントラスト、フォーカスの順序、読み上げの実際の挙動も見つからない。それらは axe-core を使うコンポーネントテストと E2E で確かめる ([テスト](testing.md))。
 
 禁止を外すときは、その行に規則名と理由を書く (`oxlint-disable-next-line <plugin>/<規則名> -- <理由>`)。
+規則が外れていないことは `apps/web/src/__fixtures__/react.tsx` が確かめる。規則ごとに、違反の行へ理由つきの disable コメントを付けてあり、規則が外れるとコメントが使われなくなり、`vp check` が失敗する。
 
 ## 取り組み方
 
