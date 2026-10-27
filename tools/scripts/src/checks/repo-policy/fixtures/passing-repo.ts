@@ -60,6 +60,11 @@ export const factoryAgent: {
   },
 };
 
+// The fixture of a module whose domain override must keep the runtime restrictions (docs/adr/0007).
+export const domainRuntimeFixtures = (name: string): Record<string, string> => ({
+  [`packages/${name}/src/domain/__fixtures__/runtime-apis.ts`]: runtimeFixture,
+});
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "package.json": JSON.stringify({
@@ -75,6 +80,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   ...srcFixtures("shared"),
   "packages/claim/package.json": JSON.stringify({ name: "@x/claim" }),
   ...srcFixtures("claim"),
+  ...domainRuntimeFixtures("claim"),
   "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/claim/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,

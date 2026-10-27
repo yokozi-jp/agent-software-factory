@@ -197,6 +197,17 @@ function moduleBoundaries(tree: Tree): string[] {
           `${fixtures} has no fixture with \`${fixtureAnnotation}\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`,
         );
     }
+    // The override of domain sets no-restricted-globals and no-restricted-properties for its own rules (docs/adr/0027),
+    // and Oxlint keeps only the last override that sets a rule, so it must carry the runtime restrictions too. The
+    // annotations of the purity fixtures (Date, Math.random) name the same rules, so the fixture has its own file.
+    if (isModule && layers.includes("domain")) {
+      const runtime = `packages/${name}/src/domain/__fixtures__/runtime-apis.ts`;
+      for (const annotation of runtimeAnnotations)
+        if (!tree.paths.includes(runtime) || !tree.read(runtime).includes(annotation))
+          failures.push(
+            `${runtime} has no \`${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`,
+          );
+    }
     // The override of the tests keeps the import restrictions (docs/adr/0007).
     const src = `packages/${name}/src/__fixtures__/`;
     if (!hasFixture(tree, src, fixtureAnnotation, true))
@@ -233,6 +244,8 @@ function domainPurity(tree: Tree): string[] {
         !tree.paths.some(
           (file) =>
             file.startsWith(fixtures) &&
+            // runtime-apis.ts is the fixture of docs/adr/0007 (moduleBoundaries), and names the same two rules.
+            !file.endsWith("/runtime-apis.ts") &&
             tree.read(file).includes(`oxlint-disable-next-line ${rule} `),
         )
       )
