@@ -50,7 +50,7 @@ describe("OIDC でのログイン (ADR 0022)", () => {
     });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
-    expect((await fixture.db.owner.query("SELECT 1 FROM auth.organization")).rowCount).toBe(0);
+    expect((await fixture.db.superuser.query("SELECT 1 FROM auth.organization")).rowCount).toBe(0);
   });
 
   it("2人の利用者のセッションが混ざらないこと", async () => {

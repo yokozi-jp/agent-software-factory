@@ -26,7 +26,7 @@ describe("ログアウト (ADR 0022)", () => {
   it("セッションの行と Cookie を消し、ブラウザにデータを捨てさせること", async () => {
     const browser = fixture.newBrowser();
     await browser.login(users.yamada);
-    expect((await fixture.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
+    expect((await fixture.db.superuser.query("SELECT 1 FROM auth.session")).rowCount).toBe(1);
 
     const res = await signOut(browser);
 
@@ -37,7 +37,7 @@ describe("ログアウト (ADR 0022)", () => {
         (line) => line.startsWith("__Host-session_token=;") && /max-age=0/i.test(line),
       ),
     ).toBe(true);
-    expect((await fixture.db.owner.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
+    expect((await fixture.db.superuser.query("SELECT 1 FROM auth.session")).rowCount).toBe(0);
     expect((await browser.request("/api/me")).status).toBe(401);
   });
 

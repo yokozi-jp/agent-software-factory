@@ -1,5 +1,4 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
-import { getMigrations } from "better-auth/db/migration";
 import { genericOAuth, organization } from "better-auth/plugins";
 import type { Pool } from "pg";
 
@@ -117,10 +116,4 @@ export interface Auth {
   readonly origin: string;
   /** セッションが使われ続けても、この秒数を超えたら切る。 */
   readonly absoluteSessionSeconds: number;
-}
-
-/** Better Auth の表を、接続している DB (auth スキーマ) に作る。 */
-export async function migrateAuth({ betterAuth: instance }: Auth): Promise<void> {
-  const { runMigrations } = await getMigrations(instance.options);
-  await runMigrations();
 }

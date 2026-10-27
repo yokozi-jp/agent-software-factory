@@ -6,6 +6,7 @@ import {
   domainFixture,
   domainRuntimeFixtures,
   factoryAgent,
+  migration,
   moduleFixture,
   passingRepo,
   runtimeFixture,
@@ -741,6 +742,168 @@ describe("ADR numbers are unique", () => {
   it("does not count files that are not ADRs", () => {
     expect(
       violations(repo({ "docs/adr/index.md": "# x\n", "docs/adr/0001/notes.md": "# x\n" })),
+    ).toEqual([]);
+  });
+});
+
+describe("ADR 0025: migrations go forward only", () => {
+  const path = "apps/api/db/migrations/20260102000000_add_y.sql";
+  const downProblem = `${path} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`;
+  const lockProblem = `${path} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`;
+
+  it("passes a migration with a raising down and a lock_timeout", () => {
+    expect(violations(repo({ [path]: migration() }))).toEqual([]);
+  });
+
+  it("passes comments around the statements and a lower-case down", () => {
+    expect(
+      violations(
+        repo({
+          [path]: migration({
+            up: "-- why\nset local lock_timeout = '3s';\nALTER TABLE x ADD COLUMN y int;\n",
+            down: "-- irreversible\ndo $$ begin raise exception 'no'; end $$;\n",
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["an empty down", ""],
+    ["a down with only a comment", "-- nothing\n"],
+    ["a down that drops the table", "DROP TABLE x;\n"],
+    [
+      "a down that raises and then drops",
+      "DO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\nDROP TABLE x;\n",
+    ],
+    ["a down that does something else in the block", "DO $$ BEGIN DROP TABLE x; END $$;\n"],
+  ])("refuses %s", (_name, down) => {
+    expect(violations(repo({ [path]: migration({ down }) }))).toEqual([downProblem]);
+  });
+
+  it("refuses a migration without a down section", () => {
+    expect(
+      violations(
+        repo({
+          [path]: "-- migrate:up\nSET LOCAL lock_timeout = '5s';\nCREATE TABLE y (id int);\n",
+        }),
+      ),
+    ).toEqual([downProblem]);
+  });
+
+  it("refuses an up section that does not start with SET LOCAL lock_timeout", () => {
+    expect(
+      violations(
+        repo({
+          [path]: migration({ up: "CREATE TABLE y (id int);\nSET LOCAL lock_timeout = '5s';\n" }),
+        }),
+      ),
+    ).toEqual([lockProblem]);
+  });
+
+  it("refuses an up section that is empty", () => {
+    expect(violations(repo({ [path]: migration({ up: "" }) }))).toEqual([lockProblem]);
+  });
+
+  it("does not ask a transaction:false file for lock_timeout", () => {
+    expect(
+      violations(
+        repo({
+          [path]: migration({
+            upOptions: " transaction:false",
+            up: "CREATE INDEX CONCURRENTLY y_idx ON x (id);\n",
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["a statement before the block", "SELECT 1;\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n"],
+    ["a statement after the block", "DO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\nSELECT 1;\n"],
+    ["a block that raises with an empty message", "DO $$ BEGIN RAISE EXCEPTION ''; END $$;\n"],
+  ])("refuses a down with %s", (_name, down) => {
+    expect(violations(repo({ [path]: migration({ down }) }))).toEqual([downProblem]);
+  });
+
+  it.each([
+    ["written compactly, without the last semicolon", "DO $$BEGIN RAISE EXCEPTION 'x';END$$"],
+    [
+      "written over several lines with wide spacing",
+      "DO   $$\n  BEGIN\n\tRAISE   EXCEPTION   'x'   ;\n  END   $$   ;\n",
+    ],
+    ["with a `--` inside the message", "DO $$ BEGIN RAISE EXCEPTION 'a -- b'; END $$;\n"],
+  ])("passes a down %s", (_name, down) => {
+    expect(violations(repo({ [path]: migration({ down }) }))).toEqual([]);
+  });
+
+  it.each([
+    ["spaces", "SET   LOCAL   lock_timeout = '5s';\n"],
+    ["lines", "SET\nLOCAL\nlock_timeout = '5s';\n"],
+    ["an indented comment before it", "  -- why\n\t-- and why\nSET LOCAL lock_timeout = '5s';\n"],
+    [
+      "a comment that mentions the marker",
+      "-- run it -- migrate: later\nSET LOCAL lock_timeout = '5s';\n",
+    ],
+  ])("passes an up section with %s", (_name, up) => {
+    expect(violations(repo({ [path]: migration({ up }) }))).toEqual([]);
+  });
+
+  it("reads the lock_timeout of the up section, not the one in the down section", () => {
+    expect(
+      violations(repo({ [path]: migration({ up: "", down: "SET LOCAL lock_timeout = '5s';\n" }) })),
+    ).toEqual([downProblem, lockProblem]);
+  });
+
+  it("reads an up section that comes after the down section, to the last character", () => {
+    const sql =
+      "-- migrate:down\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n-- migrate:up\nSET LOCAL lock_timeout";
+    expect(violations(repo({ [path]: sql }))).toEqual([]);
+  });
+
+  it("refuses a migration without an up section", () => {
+    const sql = "-- migrate:down\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n";
+    expect(violations(repo({ [path]: sql }))).toEqual([lockProblem]);
+  });
+
+  it("refuses transaction:false that is only another word", () => {
+    expect(
+      violations(
+        repo({ [path]: migration({ upOptions: " transaction:falsy", up: "SELECT 1;\n" }) }),
+      ),
+    ).toEqual([lockProblem]);
+  });
+
+  it("checks a migration at the root of the repository, not a file that only starts like one", () => {
+    expect(
+      violations(repo({ "db/migrations/20260104000000_w.sql": "", "db/migrations/x.sql.bak": "" })),
+    ).toEqual([
+      `db/migrations/20260104000000_w.sql has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`,
+      "db/migrations/20260104000000_w.sql does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).",
+    ]);
+  });
+
+  it("reports both problems of one file, and the file of another module", () => {
+    const other = "packages/claim/db/migrations/20260103000000_z.sql";
+    expect(
+      violations(repo({ [path]: migration({ up: "SELECT 1;\n", down: "" }), [other]: "" })),
+    ).toEqual([
+      downProblem,
+      lockProblem,
+      `${other} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`,
+      `${other} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`,
+    ]);
+  });
+
+  it("does not read files outside db/migrations, or that are not SQL", () => {
+    expect(
+      violations(
+        repo({
+          "apps/api/db/bootstrap.sql": "SELECT 1;\n",
+          "apps/api/db/migrations/README.md": "",
+          "docs/migrations/x.sql": "",
+        }),
+      ),
     ).toEqual([]);
   });
 });

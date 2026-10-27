@@ -466,6 +466,51 @@ function uniqueAdrNumbers(tree: Tree): string[] {
     .map(([number, files]) => `ADR ${number} is used by more than one file: ${files.join(" ")}`);
 }
 
+// Migrations only go forward (docs/adr/0025). A db/migrations/*.sql file of dbmate has two sections:
+//   - down is a single `DO $$ BEGIN RAISE EXCEPTION '...'; END $$;`. dbmate's `rollback` with an empty down
+//     succeeds and deletes the history row, so the database and its history drift apart.
+//   - up starts with `SET LOCAL lock_timeout`, so a migration waiting for a table lock does not queue every
+//     later request behind it. A file marked `transaction:false` runs without a transaction, where SET LOCAL
+//     does nothing, so it is not asked for it.
+const migrationFile = /(^|\/)db\/migrations\/[^/]+\.sql$/;
+const withoutComments = (section: string): string => section.replace(/^[ \t]*--.*/gm, "").trim();
+const lockTimeout = /^SET\s+LOCAL\s+lock_timeout\b/i;
+const irreversibleDown = /^DO\s+\$\$\s*BEGIN\s+RAISE\s+EXCEPTION\s+'[^']+'\s*;\s*END\s*\$\$\s*;?$/i;
+
+// The part of a dbmate migration after its `-- migrate:<name>` line, up to the next `-- migrate:` line. Its
+// first line holds the options (`transaction:false`).
+const migrationSection = (
+  sql: string,
+  name: string,
+): { header: string; body: string } | undefined => {
+  const marker = new RegExp(`^-- migrate:${name}\\b.*$`, "m").exec(sql);
+  if (marker === null) return undefined;
+  const rest = sql.slice(marker.index + marker[0].length);
+  const next = rest.search(/^-- migrate:/m);
+  return { header: marker[0], body: next === -1 ? rest : rest.slice(0, next) };
+};
+
+function migrationsGoForward(tree: Tree): string[] {
+  const failures: string[] = [];
+  for (const path of tree.paths.filter((p) => migrationFile.test(p))) {
+    const sql = tree.read(path);
+    const down = migrationSection(sql, "down");
+    if (down === undefined || !irreversibleDown.test(withoutComments(down.body)))
+      failures.push(
+        `${path} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`,
+      );
+    const up = migrationSection(sql, "up");
+    if (
+      up === undefined ||
+      !(up.header.includes("transaction:false") || lockTimeout.test(withoutComments(up.body)))
+    )
+      failures.push(
+        `${path} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`,
+      );
+  }
+  return failures;
+}
+
 // `main` in ci.yml is the required status check (.github/rulesets/protect-main.json) and collects the other jobs.
 // A job that `main` does not need can fail without blocking a merge (docs/tooling/ci.md ("ci.yml の検証")).
 // `needs` is a job id or a list of them (GitHub Docs, workflow syntax, `jobs.<job_id>.needs`).
@@ -1054,6 +1099,7 @@ export function violations(repo: Repo): string[] {
     ...oneNodeMajor(tree),
     ...toolsInputsInHook(tree),
     ...uniqueAdrNumbers(tree),
+    ...migrationsGoForward(tree),
     ...mainNeedsEveryJob(tree),
     ...requiredChecksRun(tree),
     ...catalogMatchesConfigs(tree),

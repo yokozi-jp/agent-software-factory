@@ -77,3 +77,27 @@ sources:
 >
 > 例えば、VIEWについては、新規作成・変更・削除されてもpg-schema-diffのplan/apply上で何も表示されないし変更されない。そのため、pg-schema-diffだけに頼らず、あくまで補助的なツールとしての利用に留める必要がある。
 > pg-schema-diffが生成したスキーマ変更を必ずレビューし、過不足がないことを確認した上で適用すること。
+
+## このリポジトリの migration の書き方
+
+このリポジトリの migration は [dbmate](https://github.com/amacneil/dbmate) で流す版付きの SQL のファイルで、決定と根拠は [ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md) にあります。次の書き方を守ります。
+
+- **置き場所**: `apps/api/db/migrations/<UTC の日時 14 桁>_<名前>.sql`。足すときは `dbmate new` ではなく、下のひな形を写します。`dbmate new` のひな形は down が空だからです。
+- **流し方**: `apps/api` の `pnpm db:migrate` (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `apps/api/db/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
+- **ロール**: `migrator`、`app_user`、`auth_service` は migration ではなく、`apps/api/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
+- **`lock_timeout`**: up の先頭に `SET LOCAL lock_timeout = '5s';` を書きます。ロックを待ち続けて、後ろの要求を詰まらせないためです。
+- **`transaction:false`**: `CREATE INDEX CONCURRENTLY` のように、トランザクションの中で実行できない文を含むファイルだけ、`-- migrate:up transaction:false` にします。トランザクションの外では `SET LOCAL` が効かないので、`lock_timeout` は要りません。
+- **down**: `DO $$ BEGIN RAISE EXCEPTION 'irreversible …'; END $$;` だけを書きます。dbmate は down が空だと `rollback` が成功して履歴だけを消すので、失敗させるためです。
+- **前に進めるだけ**: 適用済みの migration は書き換えません。直すときは前向きの migration を足します。互換を壊す変更は expand と contract に分けます。expand (列や表を足す) を出し、アプリを新しい形に切り替えてから、contract (古い列や表を消す) を出します。
+
+```sql
+-- migrate:up
+SET LOCAL lock_timeout = '5s';
+
+ALTER TABLE example ADD COLUMN note text;
+
+-- migrate:down
+DO $$ BEGIN RAISE EXCEPTION 'irreversible: 前に進めるだけ (docs/adr/0025)'; END $$;
+```
+
+down が `RAISE EXCEPTION` だけであることと、up の先頭の `SET LOCAL lock_timeout` (`transaction:false` を除く) は、repo-policy が `db/migrations/*.sql` の全部で検査します (`tools/scripts/src/checks/repo-policy/rules.ts`)。

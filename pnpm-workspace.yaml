@@ -36,6 +36,7 @@ catalog:
   eslint-plugin-react-you-might-not-need-an-effect: 1.0.2
   better-auth: ^1.7.12
   pg: ^8.23.1
+  dbmate: 2.37.0
   "@testcontainers/postgresql": ^12.2.1
   "@types/pg": ^8.23.1
   testcontainers: ^12.2.1
