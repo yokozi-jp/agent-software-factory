@@ -34,6 +34,15 @@
     "check": {
       "cache": true,
       "inputs": ["default", "^production"]
+    },
+    "lint-effect": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/oxlint.effect.json",
+        "{workspaceRoot}/pnpm-lock.yaml",
+        "{workspaceRoot}/packages/shared/src/**/*"
+      ]
     }
   },
   "release": {

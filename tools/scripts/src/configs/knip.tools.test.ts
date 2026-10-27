@@ -3,7 +3,7 @@
 // The copy links to the node_modules of the workspace and of its projects (pnpm install).
 // Reads, in the workspace, the inputs of the test-tools target (tools/scripts/package.json): the root files
 // that Knip or the plugins of Knip read, .github/workflows/ and .kiro/settings/mcp.json. The apps are small ones
-// written below, not the real ones.
+// written below, not the real ones. So are the modules that knip.jsonc names.
 // tools/ is this project. The Knip version is pinned in pnpm-workspace.yaml (`sharedGlobals`).
 import {
   appendFileSync,
@@ -87,6 +87,27 @@ const apps: Record<string, string> = {
     '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
 };
 
+// The modules named in knip.jsonc, which depend on effect before their application/ and infrastructure/ import it.
+const modules = ["claim", "approval", "closing"];
+for (const name of modules) {
+  apps[`packages/${name}/package.json`] = JSON.stringify(
+    {
+      name: `@agent-software-factory/${name}`,
+      private: true,
+      type: "module",
+      exports: { ".": "./src/index.ts" },
+      // lint-effect is what uses @effect/tsgo, a dependency of the root.
+      scripts: { check: "vp check", "lint-effect": "effect-tsgo oxlint --type-aware" },
+      dependencies: { effect: "catalog:" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name },
+    },
+    undefined,
+    2,
+  );
+  apps[`packages/${name}/src/index.ts`] = "export {};\n";
+}
+
 let box: Sandbox;
 let copy: string;
 
@@ -109,7 +130,12 @@ function populate(): void {
       });
   for (const [path, text] of Object.entries(apps)) put(path, text);
   symlinkSync(join(workspace, "node_modules"), join(copy, "node_modules"));
-  for (const project of ["apps/api", "apps/web", "tools/scripts"])
+  for (const project of [
+    "apps/api",
+    "apps/web",
+    "tools/scripts",
+    ...modules.map((name) => `packages/${name}`),
+  ])
     symlinkSync(join(workspace, project, "node_modules"), join(copy, project, "node_modules"));
 }
 

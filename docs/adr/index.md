@@ -6,13 +6,13 @@
 - [ADR 0004: PR は squash merge だけにし、PR タイトルを Conventional Commits で検証する](0004-squash-merge-and-pr-title-lint.md)：merge の方式やコミットの検証を変えるとき
 - [ADR 0005: docs を IWE で管理し、OKF v0.2 のバンドルにする](0005-manage-docs-with-iwe-okf.md)：docs の構成、frontmatter、IWE の設定を変えるとき
 - [ADR 0006: IWE の書き換え操作を使わず、Markdown の書式は oxfmt に任せる](0006-no-iwe-rewrites.md)：IWE で文書を編集、移動しようとするとき
-- [ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く](0007-api-on-node-web-standard-app.md)：API のランタイムやデプロイ先を変えるとき、`apps/api` に入口のファイルを足すとき、Node.js や Bun 固有の API を使いたくなったとき
+- [ADR 0007: API のランタイムは Bun に移行せず Node.js のままにし、アプリのコードは Web 標準の API だけで書く](0007-api-on-node-web-standard-app.md)：API のランタイムやデプロイ先を変えるとき、`apps/api` に入口のファイルを足すとき、`apps/api` や `packages/*` で Node.js や Bun 固有の API を使いたくなったとき
 - [ADR 0008: シェルスクリプトは版を固定した shellcheck で検査する](0008-pin-shellcheck.md)：シェルスクリプトを足すとき、shellcheck の版や検査の対象を変えるとき
 - [ADR 0009: 版を固定する CLI ツールは mise と mise.lock で入れる](0009-mise-for-pinned-cli-tools.md)：版を固定した CLI ツールを足すとき、`mise.toml` や `mise.lock`、mise の設定を変えるとき
 - [ADR 0010: ブランチ運用はトランクベース開発にし、main と短命なブランチだけを使う](0010-trunk-based-development.md)：ブランチを作るとき、ブランチ運用やリリースの流れを変えるとき、取り込んだガイドラインが develop や release ブランチを前提にしているとき
 - [ADR 0011: テナントが1つでも、tenant_id と PostgreSQL の RLS を最初から入れる](0011-tenant-id-and-rls-from-the-start.md)：表や migration を足すとき、DB のロールや接続の設定を変えるとき、テナントを使わない構成に戻したくなったとき、DB を PostgreSQL 以外にしたくなったとき
 - [ADR 0012: GitHub Actions の workflow は版を固定した jactionlint と zizmor で検査する](0012-lint-workflows.md)：workflow を足す、変えるとき、workflow の検査や jactionlint、zizmor の版を変えるとき、検査の指摘を抑制したくなったとき、upstream の actionlint に戻したくなったとき
-- [ADR 0013: API、ワーカー、バッチを ECS と Lambda の両方に置けるようにし、Lambda は Web Functions のために Node.js 24 にし、IaC は AWS CDK で書く](0013-api-on-ecs-and-lambda-web-functions.md)：デプロイ先や実行基盤を変えるとき、入口のファイルやインフラのコードを足すとき、Node.js の版を変えるとき、新しい AWS のサービスや外部システムを呼ぶとき、NAT Gateway や VPC エンドポイントを足したくなったとき、Lambda Web Adapter や AWS Blocks や Cloudflare に移したくなったとき、キューや DB の種類を変えたくなったとき
+- [ADR 0013: API、ワーカー、バッチを ECS と Lambda の両方に置けるようにし、Lambda は Web Functions のために Node.js 24 にし、IaC は AWS CDK で書く](0013-api-on-ecs-and-lambda-web-functions.md)：デプロイ先や実行基盤を変えるとき、入口のファイルやインフラのコードを足すとき、Node.js の版を変えるとき、新しい AWS のサービスや外部システムを呼ぶとき、NAT Gateway や VPC エンドポイントを足したくなったとき、秘密（Secrets Manager、Parameter Store）の取得や注入を変えるとき、Lambda Web Adapter や AWS Blocks や Cloudflare に移したくなったとき、キューや DB の種類を変えたくなったとき
 - [ADR 0014: 手書きのソースの重複は jscpd で検査し、導入時の重複率を閾値にする](0014-jscpd-duplication-threshold.md)：重複の検査で止まったとき、検査の対象や閾値、jscpd の版や設定を変えるとき、意図した重複を残したくなったとき
 - [ADR 0015: タスクの区切りで、エージェントが retro skill を実行する規則を AGENTS.md と docs に置く](0015-retro-at-task-boundary.md)：振り返りの規則や retro skill の扱いを変えるとき、規則が守られないので hook を足したくなったとき、上流の skill の frontmatter を変えたくなったとき
 - [ADR 0016: 判断が絡む変更に ADR がないと、pre-push hook と CI で警告だけを出す（adr-check）](0016-adr-check-warns-without-blocking.md)：adr-check の警告が出たとき、対象のファイルや警告の出し方を変えるとき、検査を失敗させたくなったとき
@@ -28,3 +28,6 @@
 - [ADR 0026: モジュールは packages/ の Nx project にし、方向と層は Oxlint の no-restricted-imports で止める](0026-modules-as-packages-with-oxlint-boundaries.md)：モジュールや層を足すとき、モジュールの境界の lint で止まったとき、`packages/` に project を足すとき、Nx の enforce-module-boundaries や dependency-cruiser を使いたくなったとき、lint の fixture を足すとき
 - [ADR 0027: ドメインモデルは純粋な関数と判別可能な union と自作の Result で書き、throw と zod は domain に入れない](0027-domain-model-as-pure-functions-and-unions.md)：`domain` のコードを書く、直すとき、値の型や失敗の表し方を変えたくなったとき、`domain` に zod や throw や Effect を入れたくなったとき、`Date` や `Math.random` を `domain` で使いたくなったとき
 - [ADR 0028: Effect 4 は application と infrastructure の限られた機能だけで使い、実行は入口に集め、検査は @effect/tsgo で行う](0028-effect-in-application-and-infrastructure.md)：Effect を使うコードを書くとき、Effect の機能や版を足す、変えるとき、`domain` や `http` に Effect を入れたくなったとき、Effect の実行の関数を `application` で呼びたくなったとき、`@effect/sql-pg` を使いたくなったとき
+- [ADR 0029: モジュールの表は DB のロールで所有を分け、モジュールをまたぐ変更は共有の Outbox のイベントでつなぐ](0029-module-data-ownership-and-shared-outbox.md)：モジュールの表を足すとき、ほかのモジュールの表を読み書きしたくなったとき、モジュールをまたぐ変更を 1 つのトランザクションで書きたくなったとき、Outbox や受信の重複除去の処理を書くとき、DB のロールや権限、`outbox_relay` を変えるとき、モジュールのスキーマに view や `SECURITY DEFINER` の関数を足したくなったとき、RLS の例外を足したくなったとき
+- [ADR 0030: 自作の Oxlint plugin は tools/lint-plugins の Nx project にまとめ、app や package には置かない](0030-lint-plugins-in-tools-lint-plugins.md)：自作の Oxlint plugin を足す、直す、移すとき、plugin のテストを動かす場所を探すとき、新しい app や package に既存の plugin の規則を使いたくなったとき
+- [ADR 0031: mutation test は PR の CI から外し、1日1回の workflow で実行する](0031-mutation-testing-outside-pull-requests.md)：mutation の実行時間が重いとき、Stryker の設定や target を変えるとき、mutation を merge のゲートに戻したくなったとき

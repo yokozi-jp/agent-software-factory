@@ -53,6 +53,7 @@
           "{workspaceRoot}/knip.jsonc",
           "{workspaceRoot}/lefthook.yml",
           "{workspaceRoot}/nx.json",
+          "{workspaceRoot}/oxlint.effect.json",
           "{workspaceRoot}/package.json",
           "{workspaceRoot}/pnpm-lock.yaml",
           "{workspaceRoot}/renovate.jsonc"

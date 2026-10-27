@@ -33,6 +33,7 @@ apps/
 packages/  サンプル機能のモジュール (claim、approval、closing) と共有コード (shared)。ADR 0026
   <module>/src/  index.ts (公開 API) と層 (domain/、application/、infrastructure/、http/)
 tools/
+  lint-plugins/ 自作の Oxlint の JS plugin とそのテスト (Nx の project lint-plugins。ADR 0030)
   scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
     src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、工場の成果の指標の集計 (metrics/)、Kiro のセッションの記録から agent の規則の結果を読む道具 (agent-probe/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
     sh/      CLI を呼ぶだけの sh のラッパー
@@ -47,9 +48,10 @@ docs/      ドキュメント (入口は docs/index.md)
 | web の開発サーバー (<http://localhost:5173>)                                                                     | `pnpm exec nx dev web`                                                                                                                              |
 | 全プロジェクトの lint、format、型チェック                                                                        | `pnpm check`                                                                                                                                        |
 | プロジェクトの外にあるファイルの同じ検査                                                                         | `pnpm check:root`                                                                                                                                   |
+| Effect の検査 (実行し忘れ、Effect 3、unstable の API。[Effect の検査](effect-lint.md))                           | `pnpm exec nx run-many -t lint-effect`                                                                                                              |
 | 全プロジェクトのテスト                                                                                           | `pnpm test`                                                                                                                                         |
 | 全プロジェクトの build                                                                                           | `pnpm build`                                                                                                                                        |
-| 変更の影響を受けるプロジェクトだけ実行                                                                           | `pnpm exec nx affected -t check test build mutation`                                                                                                |
+| 変更の影響を受けるプロジェクトだけ実行                                                                           | `pnpm exec nx affected -t check test build`                                                                                                         |
 | format と lint の自動修正                                                                                        | `pnpm exec vp check --fix`                                                                                                                          |
 | Markdown の検査                                                                                                  | `pnpm lint:md`                                                                                                                                      |
 | 重複コードの検査 (`apps/`、`packages/`)                                                                          | `pnpm lint:dup`。閾値は [ADR 0014](../adr/0014-jscpd-duplication-threshold.md)                                                                      |
@@ -71,9 +73,9 @@ docs/      ドキュメント (入口は docs/index.md)
 
 ## 補足
 
-- api の test は 2 つの project に分かれます。`lint` (lint plugin の規則のテスト) はコンテナを使いません。`integration` (`src/` のテスト) は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
-- api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。
-- `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`apps/api/lint/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`apps/*/lint/`) は対象外です。
+- api の test (`src/` のテスト) は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
+- api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。`tools/lint-plugins` の test も同じ基準で coverage を取り、`tools/lint-plugins/vite.config.ts` の下限が同じように書き換わります。
+- `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`tools/lint-plugins/src/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`tools/lint-plugins/`) は対象外です。
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
 - `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。

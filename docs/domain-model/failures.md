@@ -62,5 +62,5 @@ export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, 
 ## throw が許される場所
 
 - `infrastructure` の `parseX` (DB の行を `domain` の型にする)。失敗はデータの破損か実装の誤りで、呼び出し側は処理を変えられないので 500 です。
-- `domain` では `throw` を書きません。Oxlint の自作の規則が止めます ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259) で入れます)。
+- `domain` では `throw` を書きません。Oxlint の自作の規則 `domain/no-throw` が止めます ([ADR 0027](../adr/0027-domain-model-as-pure-functions-and-unions.md))。止まったら、失敗を `Result` の `Err` で返します。
 - 外から来る入力の検証は zod の仕事で、`http` だけで使います。
