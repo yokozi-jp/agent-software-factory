@@ -12,7 +12,9 @@ import { commandLines, inCommandPosition } from "./shell-command.ts";
 // `gh [-opt [arg]]... `.
 const gh = String.raw`gh(\s+-\S+(\s+[^-\s]\S*)?)*\s+`;
 // The refspec words of a push that name main: `main`, `HEAD:main`, `refs/heads/main`.
-const mainRefspec = /[\s:/]main(\s|$|["'])/;
+const mainRefspec = /[\s:/"']main(\s|$|["'])/;
+// A push option (`-o "main is protected"`) is text for the server, not a refspec.
+const pushOption = /\s(-o|--push-option)(=|\s+)("[^"]*"|'[^']*'|\S+)/g;
 // A string between quotes, so that a commit message that mentions a flag is not read as the flag.
 const quoted = /"[^"]*"|'[^']*'/g;
 // Where the command starts in a segment that may be the string given to `bash -c`.
@@ -49,8 +51,8 @@ export function forbiddenCommand(command: string): string | undefined {
   // Stryker disable next-line ArrayDeclaration: a wrapper word that is not in the command changes nothing.
   const some = (pattern: string, wrappers: readonly string[] = []): string[] =>
     inCommandPosition(command, pattern, wrappers, "");
-  // Stryker disable next-line StringLiteral: the text that replaces a quoted string only has to hold no refspec.
-  if (some(gitPush).some((segment) => mainRefspec.test(segment.replace(quoted, ""))))
+  // Stryker disable next-line StringLiteral: the text that replaces a push option only has to hold no refspec.
+  if (some(gitPush).some((segment) => mainRefspec.test(segment.replace(pushOption, ""))))
     return refusal(
       "A push to main (push to main) changes the shared branch without a review.",
       "Push a branch and open a PR; the user merges it.",
@@ -71,7 +73,7 @@ export function forbiddenCommand(command: string): string | undefined {
       "Fix what the hook reports, then commit again.",
     );
   if (
-    some(`${gh}(secret|variable)\\s+(set|delete|remove)(\\s|$)`).length > 0 ||
+    some(`${gh}(secret|variable)(\\s|$)`).length > 0 ||
     some(`${gh}repo\\s+delete(\\s|$)`).length > 0 ||
     some(`${gh}api\\s`).some(changesSettings)
   )
