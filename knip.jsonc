@@ -28,6 +28,12 @@
       // the factory metrics entry by hand (docs/agents/factory-metrics.md).
       "entry": ["src/checks/renovate-preview/cli.ts", "src/hooks/*/cli.ts", "src/metrics/cli.ts"],
     },
+    // The modules depend on effect for application/ and infrastructure/ (docs/adr/0028), which have no code yet:
+    // the sample feature writes it. Their fixtures import it, and Knip does not read __fixtures__/. Remove an entry
+    // when the module's application or infrastructure imports effect.
+    "packages/claim": { "ignoreDependencies": ["effect"] },
+    "packages/approval": { "ignoreDependencies": ["effect"] },
+    "packages/closing": { "ignoreDependencies": ["effect"] },
     "apps/api": {
       "entry": [
         // The dev server entry (@hono/vite-dev-server in vite.config.ts), also Knip's default.

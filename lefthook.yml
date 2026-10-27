@@ -127,6 +127,7 @@ pre-commit:
         - ".markdownlint-cli2.yaml"
         - "commitlint.config.ts"
         - "knip.jsonc"
+        - "oxlint.effect.json"
         - "renovate.jsonc"
         - "tools/scripts/sh/**"
         - "mise.toml"
@@ -150,6 +151,17 @@ pre-commit:
         - "tsconfig.json"
         - ".node-version"
       run: pnpm exec nx test-tools scripts
+    # effect-tsgo on application and infrastructure of the modules (oxlint.effect.json, docs/tooling/effect-lint.md).
+    # The lint target (vp check) does not load its plugin. Nx skips the run when the cached result still holds.
+    - name: lint-effect
+      glob:
+        - "packages/**"
+        - "oxlint.effect.json"
+        - "pnpm-workspace.yaml"
+        - "pnpm-lock.yaml"
+        - "vite.config.ts"
+        - "tsconfig.json"
+      run: pnpm exec nx run-many -t lint-effect
     - name: repo-policy
       glob:
         - "**/package.json"

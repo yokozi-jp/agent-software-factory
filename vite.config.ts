@@ -10,6 +10,10 @@ const ignorePatterns = [
   ".kiro/skills/**",
 ];
 
+// Fixtures whose disable comments name rules of the effecttsgo plugin. Only `effect-tsgo oxlint` loads the plugin
+// (oxlint.effect.json), so for `vp lint` the comments would be unused (docs/tooling/effect-lint.md).
+const effectOnlyFixtures = ["packages/*/src/*/__fixtures__/effect-tsgo.ts"];
+
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
@@ -58,6 +62,62 @@ const domainMessage =
   `domain imports nothing but types of ${scope}/shared (\`import type\`). Put the code that needs a library or ` +
   "another module in application or infrastructure (docs/adr/0026).";
 
+// Effect (docs/adr/0028). The features that the ADR does not use are each done by another tool already: validation
+// by zod, logs by stdout, retries by ky and the SDKs. The `unstable` and `experimental` APIs are stopped by
+// effect-tsgo (oxlint.effect.json, docs/tooling/effect-lint.md), which can read the @stability tag.
+const unusedEffectModules = [
+  "Schema",
+  "Logger",
+  "Config",
+  "ConfigProvider",
+  "Schedule",
+  "Stream",
+  "Queue",
+  "Fiber",
+  "FiberHandle",
+  "FiberMap",
+  "FiberSet",
+];
+const unusedEffectMessage =
+  "This Effect feature is not used: validation is zod, logs are stdout, retries are ky and the SDKs. Use only " +
+  "the features listed in docs/domain-model/application-effect.md (docs/adr/0028).";
+const unusedSqlMessage =
+  "@effect/sql* is not used: the database is Kysely, wrapped by Effect.tryPromise in infrastructure " +
+  "(docs/adr/0025, docs/adr/0028).";
+interface RestrictedPath {
+  name: string;
+  message: string;
+  importNames?: string[];
+}
+// Added to every layer but domain, which may import no library at all (domainMessage above).
+const effectPaths: RestrictedPath[] = [
+  { name: "effect", importNames: unusedEffectModules, message: unusedEffectMessage },
+];
+const effectPatterns = [
+  { regex: `^effect/(?:${unusedEffectModules.join("|")})$`, message: unusedEffectMessage },
+  { regex: "^@effect/sql(?:$|-|/)", message: unusedSqlMessage },
+];
+
+// Every function that runs an Effect: Effect.run*, and the same names on a ManagedRuntime. Matched by the name
+// of the property, so an alias of Effect or a runtime held in a variable is stopped too.
+const effectRunFunctions = [
+  "runCallback",
+  "runCallbackWith",
+  "runFork",
+  "runForkWith",
+  "runPromise",
+  "runPromiseExit",
+  "runPromiseExitWith",
+  "runPromiseWith",
+  "runSync",
+  "runSyncExit",
+  "runSyncExitWith",
+  "runSyncWith",
+];
+const effectRunMessage =
+  "application and infrastructure return an Effect and never run it: running it there drops the failure and " +
+  "dependency types. Run it in http, an entry point or a test (docs/adr/0028).";
+
 // Imports that reach past the index.ts of another package: a subpath of the package name, or a relative path
 // into <package>/src. The package.json exports stop the first from resolving, and this rule names both.
 const deepImports = [
@@ -90,7 +150,16 @@ function moduleImports(name: string, layer?: string) {
       { regex: "^[^.@]", message: domainMessage },
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
-  return { paths: forbiddenModules(name, modules[name] ?? []), patterns };
+  if (layer !== "domain") patterns.push(...effectPatterns);
+  const paths: RestrictedPath[] = forbiddenModules(name, modules[name] ?? []);
+  if (layer !== "domain") paths.push(...effectPaths);
+  if (layer === "application" || layer === "infrastructure")
+    paths.push({
+      name: "effect/Effect",
+      importNames: effectRunFunctions,
+      message: effectRunMessage,
+    });
+  return { paths, patterns };
 }
 
 const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
@@ -144,7 +213,7 @@ export default defineConfig({
     ignorePatterns,
   },
   lint: {
-    ignorePatterns,
+    ignorePatterns: [...ignorePatterns, ...effectOnlyFixtures],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
@@ -226,6 +295,24 @@ export default defineConfig({
         },
       },
       ...moduleOverrides,
+      // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
+      // fixture in <layer>/__fixtures__/effect.ts that this rule must report (repo-policy checks it).
+      {
+        files: ["packages/*/src/application/**", "packages/*/src/infrastructure/**"],
+        rules: {
+          "no-restricted-properties": [
+            "error",
+            ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
+          ],
+        },
+      },
+      {
+        files: [
+          "packages/*/src/application/**/*.test.ts",
+          "packages/*/src/infrastructure/**/*.test.ts",
+        ],
+        rules: { "no-restricted-properties": "off" },
+      },
       // Tests of tools/scripts run from Git hooks, where a git command can act on this repository instead of
       // the temporary one (docs/tooling/ci.md ("スクリプトのテスト")). They start processes only through the
       // helpers in tools/scripts/src/test/, which are not test files. Dynamic import() and createRequire are

@@ -15,7 +15,7 @@ workflow は `.github/workflows/` にあり、全ての Action は commit SHA �
 
 | workflow                | 実行タイミング     | 内容                                                                                                                                                                                       |
 | ----------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ci.yml`                | PR、main への push | 下の検証と `nx affected -t check test build mutation` (3 つの job を並列に実行し、`main` でまとめる)                                                                                       |
+| `ci.yml`                | PR、main への push | 下の検証と `nx affected -t check test build mutation` と `nx affected -t lint-effect` (3 つの job を並列に実行し、`main` でまとめる)                                                       |
 | `commitlint.yml`        | PR                 | PR タイトルと PR 内の全コミットを検証                                                                                                                                                      |
 | `secret-scan.yml`       | PR、main への push | secret-scan の `*.tools.test.ts` (本物の betterleaks のテスト) とその隔離の後、PR は PR のコミットを、main は全履歴を betterleaks で scan                                                  |
 | `dependency-review.yml` | PR                 | PR が足した依存に、重大度 high 以上の既知の脆弱性があれば失敗する (`actions/dependency-review-action`、runtime と development の両方。[ADR 0021](../adr/0021-sast-and-dependency-scan.md)) |
@@ -28,12 +28,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                                    |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip      |
-| `scripts` | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools` |
-| `nx`      | `nx affected -t check test build mutation` (`tools/scripts` を含む) と、build の後に生成ファイルが commit 済みであること                |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                  |
+| job       | 内容                                                                                                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                    |
+| `scripts` | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools`                                               |
+| `nx`      | `nx affected -t check test build mutation` (`tools/scripts` を含む)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。

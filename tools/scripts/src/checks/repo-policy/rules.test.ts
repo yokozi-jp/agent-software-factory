@@ -245,6 +245,128 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
   });
 });
 
+describe("ADR 0028: application and infrastructure have the fixtures of the Effect rules", () => {
+  const config = base["vite.config.ts"] ?? "";
+  const withLayers = (layers: string) =>
+    config.replace('  http: ["domain"],', `  http: ["domain"],\n${layers}`);
+  const effectTsgo = [
+    "// oxlint-disable-next-line effecttsgo/floating-effect -- fixture",
+    "// oxlint-disable-next-line effecttsgo/unstable-api-usage -- fixture",
+    "// oxlint-disable-next-line effecttsgo/experimental-api-usage -- fixture",
+  ].join("\n");
+  const viteConfig = [
+    "// oxlint-disable-next-line no-restricted-properties -- fixture",
+    "// oxlint-disable-next-line no-restricted-imports -- fixture",
+  ].join("\n");
+  const fixtures = (layer: string) => ({
+    [`packages/claim/src/${layer}/__fixtures__/effect-tsgo.ts`]: effectTsgo,
+    [`packages/claim/src/${layer}/__fixtures__/effect.ts`]: viteConfig,
+  });
+  const missing = (layer: string, file: string, comment: string) =>
+    `packages/claim/src/${layer}/__fixtures__/${file} has no \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
+  const both = withLayers("  application: [],\n  infrastructure: [],");
+
+  it("asks for nothing when vite.config.ts has neither layer", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("passes a module whose layers have both fixtures", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": both,
+          ...fixtures("application"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("asks a layer for every fixture when it has none", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect-tsgo.ts", "effecttsgo/floating-effect"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/unstable-api-usage"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/experimental-api-usage"),
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("names the one rule whose disable comment is missing", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  infrastructure: [],"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/infrastructure/__fixtures__/effect-tsgo.ts": effectTsgo.replace(
+            "effecttsgo/unstable-api-usage",
+            "effecttsgo/other",
+          ),
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([missing("infrastructure", "effect-tsgo.ts", "effecttsgo/unstable-api-usage")]);
+  });
+
+  it("reads each comment in its own file", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/effect-tsgo.ts": `${effectTsgo}\n${viteConfig}`,
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("asks only for the package.json of a package under the root packages/, and once", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": withLayers("  application: [],"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "vendor/packages/other/package.json": "{}",
+          "packages/claim/package.json.bak": "{}",
+        }),
+      ),
+    ).toEqual([
+      missing("application", "effect-tsgo.ts", "effecttsgo/floating-effect"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/unstable-api-usage"),
+      missing("application", "effect-tsgo.ts", "effecttsgo/experimental-api-usage"),
+      missing("application", "effect.ts", "no-restricted-properties"),
+      missing("application", "effect.ts", "no-restricted-imports"),
+    ]);
+  });
+
+  it("does not ask shared", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": both,
+          ...fixtures("application"),
+          ...fixtures("infrastructure"),
+          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
   const guide = "(docs/knowledge/steering-authoring.md)";
   const steering = (frontmatter: string) => ({

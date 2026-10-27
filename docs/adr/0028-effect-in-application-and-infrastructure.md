@@ -22,12 +22,12 @@ tags: [adr, architecture, effect, typescript, lint, application, infrastructure]
 
   使わない機能の理由は、同じ役割をすでに決めているからです。検証は zod (`http`)、ログは stdout、再試行は ky と SDK ([ADR 0023](0023-ky-for-external-http-and-sdk-retries-for-aws.md)) で、Effect で書くと二重になります。`@stability unstable` と `experimental` の API は使いません。4.0 で unstable の module のパスから `unstable` が外れ、`@stability` の印でしか見分けられないためです ([MIGRATION.md](https://github.com/Effect-TS/effect/blob/main/MIGRATION.md))。
 
-- **domain の Result** (Q18): `domain` の `Result` は自作のまま ([ADR 0027](0027-domain-model-as-pure-functions-and-unions.md))、`application` が `Effect.fromResult` で Effect に変えます。v4 の `Result` は `yield*` できないので、`fromResult` が要ります。判別のフィールドが `_tag` なので、`domain` の失敗をそのまま `catchTag` で処理できます。
+- **domain の Result** (Q18): `domain` の `Result` は自作のまま ([ADR 0027](0027-domain-model-as-pure-functions-and-unions.md))、`application` が `shared` の `fromResult` で Effect に変えます。v4 の `Result` は `yield*` できず、`Effect.fromResult` は Effect の `Result` を受けるので、自作の `Result` 用の `fromResult` を `shared` に置きます。判別のフィールドが `_tag` なので、`domain` の失敗をそのまま `catchTag` で処理できます。
 - **実行の場所** (Q24): Effect の実行の関数 (`Effect.runPromise` など) は、`http`、入口、テストだけで呼びます。`application` と `infrastructure` では `no-restricted-properties` で止めます。中で実行すると、失敗と依存の型が消えます。Effect は一番外側で実行するのが [Running Effects](https://effect.website/docs/getting-started/running-effects/) の説明です。
 - **ManagedRuntime** (Q25): 入口ごとに起動時に 1 つ作り、`app.ts` とワーカーの handler に渡します。`Layer` は入口が作った資源を包むだけにし、リクエストごとの状態を持たせません。停止の合図で `dispose` します。ECS のワーカーとバッチの `runMain` は、それらの入口を作るときに決めます。リクエストごとに `Effect.provide` すると `Layer` を毎回作ります (試作で、3 回の呼び出しに対し 3 回作られ、`ManagedRuntime` は 1 回でした)。Web Functions は 1 つの実行環境で最大 64 の同時のリクエストを受けます ([ADR 0013](0013-api-on-ecs-and-lambda-web-functions.md))。
 - **Kysely** (Q17): [ADR 0025](0025-kysely-and-dbmate-sql-first.md) のまま、保存先の実装 (`infrastructure`) が Kysely の呼び出しを `Effect.tryPromise` で包みます。
 - **失敗の分け方** (Q19): DB の故障は型に出さず defect にします。型に出す (`Data.TaggedError`) のは、`application` が分岐して応答を変える失敗 (一意制約の違反、楽観排他の衝突の 409) だけです。誰も見分けない失敗を型にしない、という Wlaschin の考え方に従います。v4 では defect が混ざると `catchTag` が動かず、500 になります。
-- **検査** (Q16、Q26): Nx の target で `effect-tsgo oxlint` を流し、実行し忘れ (`floating-effect`) と v3 の API (`outdated-api`) を止めます。`unstable-api-usage` と `experimental-api-usage` は error にします。`effect-tsgo patch` は使いません。実装は [Issue #260](https://github.com/yokozi-jp/agent-software-factory/issues/260) です。
+- **検査** (Q16、Q26): Nx の target で `effect-tsgo oxlint` を流し、実行し忘れ (`floating-effect`) と v3 の API (`outdated-api`) を止めます。`unstable-api-usage` と `experimental-api-usage` は error にします。`effect-tsgo patch` は使いません。実行の関数と、使わない機能の import は、`vite.config.ts` の Oxlint の規則が `vp check` で止めます。手順と限界は [Effect の検査](../tooling/effect-lint.md) にあります。
 - **版の結び付き** (Q16): `@effect/tsgo` 0.61.0 は Oxlint 1.87〜1.89、oxlint-tsgolint 7.0.2004〜2005 に対応します (今の Vite+ 1.4.0 は範囲内)。`@effect/tsgo` と Vite+ を Renovate の同じ group にして、片方だけが上がらないようにします ([ADR 0018](0018-renovate-for-pinned-versions.md))。TypeScript 7 では `@effect/language-service` 0.87.5 が動かないので、`@effect/tsgo` を使います。
 
 ## Considered Options
@@ -41,20 +41,26 @@ tags: [adr, architecture, effect, typescript, lint, application, infrastructure]
 ## Consequences
 
 - `application` の関数は `Effect` を返し、依存は `Context.Service` で宣言します。`http` は `ManagedRuntime` 経由で実行し、`Exit` や失敗の `_tag` を応答に変えます。
-- Effect 4 と `@effect/tsgo` を入れるまで (Issue #260)、このルールの検査は働きません。それまではレビューで守ります。
+- このルールは `lint-effect` (Nx の target) と `vp check` が検査します。`http` と入口は対象に入れていないので、実行の配線を入れるときに足します ([Effect の検査](../tooling/effect-lint.md))。
+- `effecttsgo/outdated-api` は、1 つの違反に報告を 2 つ出し、1 つはどの disable コメントも届かないので、fixture にできません。`tools/scripts` のテストで確かめます。
 - 使う機能の範囲は、この ADR と `docs/domain-model/` に従います。Effect の package に入っている `AGENTS.md` と `ai-docs/src/` には、使わないと決めた機能 (`Schema` など) の例もあります ([外部ドキュメントの読み方](../tooling/external-docs.md))。
 
-## 確かめられなかったこと
+## 確かめたことと、確かめられなかったこと
+
+[Issue #260](https://github.com/yokozi-jp/agent-software-factory/issues/260) で確かめたこと (2026-10-28、@effect/tsgo 0.61.0、Oxlint 1.89.0):
+
+- `effect-tsgo oxlint` は `oxlint-disable-next-line` と、使われない disable のコメントの検査に従う。ただし `outdated-api` が出す、ファイルの 1 行 1 列の報告には、どの disable コメントも届かない。
+- `no-restricted-properties` は、import した `Effect` の名前空間にも、実行環境を持つ変数にも効く。プロパティの名前で止めるためで、分割代入は止めない。
+- `Context.Tag` は 4.x の型にないので、`outdated-api` ではなく型検査が止める。
 
 次は実施の Issue で確かめます。
 
-- `effect-tsgo oxlint` が `oxlint-disable-next-line` と、使われない disable のコメントの検査に従うか (最初に確かめます)
-- `no-restricted-properties` が import した `Effect` の名前空間に効くか
 - Lambda Web Functions が実行環境を止める前に `SIGTERM` を送るか
 - Effect の Tracer と `@hono/otel` の span のつなぎ方
 
 ## 出典
 
+- 検査の実装の確認 (Issue #260、Effect 4.0.6、@effect/tsgo 0.61.0、Oxlint 1.89.0、2026-10-28): [Effect の検査](../tooling/effect-lint.md) の「確かめたこと」
 - 試作 (`/tmp/fdm`: Effect 4.0.6、TypeScript 7.0.2、Oxlint 1.89.0、2026-10-26): `fromResult` の型検査、`ManagedRuntime` と `Effect.provide` の `Layer` を作る回数、`@effect/tsgo` 0.61.0 の `floating-effect` と `outdated-api`、defect が混ざると `catchTag` が動かないこと
 - 改名と unstable の module のパス: [MIGRATION.md](https://github.com/Effect-TS/effect/blob/main/MIGRATION.md)
 - 実行の位置: [Running Effects](https://effect.website/docs/getting-started/running-effects/)

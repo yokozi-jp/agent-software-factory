@@ -7,7 +7,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "check": "vp check"
+    "check": "vp check",
+    "test": "vp test run",
+    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src"
+  },
+  "dependencies": {
+    "effect": "catalog:"
   },
   "devDependencies": {
     "typescript": "catalog:",
