@@ -29,7 +29,7 @@ catalog:
   vite-plus: 1.4.0
   markdownlint-cli2: 0.24.0
   jscpd: 5.4.2
-  "@iwe-org/iwe": 0.29.0
+  "@iwe-org/iwe": 0.29.1
   knip: 6.43.0
   better-auth: ^1.7.12
   pg: ^8.23.1
