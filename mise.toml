@@ -11,7 +11,7 @@ osv-scanner = "2.7.0"
 "pypi:semgrep" = "1.182.1"
 python = "3.13.17"
 shellcheck = "0.11.0"
-uv = "0.13.5"
+uv = "0.13.6"
 zizmor = "1.31.1"
 
 [settings]
