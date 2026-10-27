@@ -245,11 +245,13 @@ export default defineConfig({
         },
       },
       // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
-      // list of what the code guarantees. The rule is in apps/api/lint/test-title-plugin.ts. Tests of the tools
+      // list of what the code guarantees. The rule is in tools/lint-plugins/src/test-title-plugin.ts. Tests of the tools
       // and of the lint plugins themselves are outside this rule.
       {
         files: ["apps/*/src/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
-        jsPlugins: [{ name: "test-title", specifier: "./apps/api/lint/test-title-plugin.ts" }],
+        jsPlugins: [
+          { name: "test-title", specifier: "./tools/lint-plugins/src/test-title-plugin.ts" },
+        ],
         rules: { "test-title/japanese-title": "error" },
       },
       // React rules (hooks, keys, state in effects) and JSX accessibility (alt text, anchors, keyboard
@@ -289,11 +291,11 @@ export default defineConfig({
         rules: { "no-console": "error" },
       },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
-      // apps/web/lint/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
+      // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
       {
         files: ["apps/web/src/**"],
-        jsPlugins: [{ name: "web-xss", specifier: "./apps/web/lint/xss-plugin.ts" }],
+        jsPlugins: [{ name: "web-xss", specifier: "./tools/lint-plugins/src/xss-plugin.ts" }],
         plugins: ["unicorn"],
         rules: {
           "web-xss/no-html-injection": "error",

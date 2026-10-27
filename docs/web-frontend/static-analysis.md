@@ -63,7 +63,7 @@ Webフロントエンド開発における静的解析の主な手法や技術�
 ## XSS の入口になる書き方の禁止
 
 このリポジトリの `apps/web/src` では、XSS の入口になる書き方を Linter で禁止している。`vp check` (pre-commit と CI) で止まる。
-Oxlint の組み込みの `no-eval`、`no-new-func`、`no-script-url` などは、メッセージを指定できず、「代わりに何を書くか」を載せられない。そのため、規則は `apps/web/lint/xss-plugin.ts` の自作の plugin に置き、ルートの `vite.config.ts` の `lint.overrides` で有効にしている。
+Oxlint の組み込みの `no-eval`、`no-new-func`、`no-script-url` などは、メッセージを指定できず、「代わりに何を書くか」を載せられない。そのため、規則は `tools/lint-plugins/src/xss-plugin.ts` の自作の plugin に置き、ルートの `vite.config.ts` の `lint.overrides` で有効にしている。
 
 | 規則                                | 禁止する書き方                                                                                                                                           | 理由                                                                            | 代わりの書き方                                                                                     |
 | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------- |
@@ -91,7 +91,7 @@ Oxlint の組み込みの `no-eval`、`no-new-func`、`no-script-url` などは�
 const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 ```
 
-規則の動きは `apps/web/lint/xss-plugin.test.ts` が、禁止の書き方と通す書き方の例で確かめる。`vp test` (Nx の `web:test`) で動く。
+規則の動きは `tools/lint-plugins/src/xss-plugin.test.ts` が、禁止の書き方と通す書き方の例で確かめる。`vp test` (Nx の `lint-plugins:test`) で動く。
 
 > [!NOTE]
 > **参考**

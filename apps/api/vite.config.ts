@@ -1,9 +1,8 @@
 import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite-plus";
 
-// テストは 2 つの project に分ける。
-//   lint         Oxlint の自作 plugin の規則のテスト。コンテナを使わないので速い。
-//   integration  src/ のテスト。PostgreSQL と Keycloak のコンテナを、全テストで共有して一度だけ起動する。
+// テストの project は integration の 1 つ。src/ のテストで、PostgreSQL と Keycloak のコンテナを、全テストで共有して
+// 一度だけ起動する。Oxlint の自作 plugin の規則のテストは tools/lint-plugins にある (docs/adr/0030)。
 export default defineConfig({
   plugins: [devServer({ entry: "./src/index.ts" })],
   server: { port: 3000 },
@@ -14,7 +13,6 @@ export default defineConfig({
   },
   test: {
     projects: [
-      { extends: true, test: { name: "lint", include: ["lint/**/*.test.ts"] } },
       {
         extends: true,
         test: {
@@ -33,7 +31,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       // テストのない新しいファイルも数え、ファイルごとの下限で止める。
-      include: ["src/**/*.ts", "lint/**/*.ts"],
+      include: ["src/**/*.ts"],
       exclude: [
         "**/*.test.ts",
         // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。

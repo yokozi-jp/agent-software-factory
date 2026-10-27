@@ -20,8 +20,13 @@ const tester = new RuleTester({
 tester.run("no-html-injection", rule("no-html-injection"), {
   valid: [
     "const a = <div>{text}</div>;",
+    'const a = <div className="x" />;',
     "el.textContent = text;",
+    "el[name] = html;",
     "writer.write(text);",
+    "run();",
+    "el.focus();",
+    "el[method]();",
     "const a = { html: text };",
   ],
   invalid: [
@@ -35,6 +40,14 @@ tester.run("no-html-injection", rule("no-html-injection"), {
     },
     {
       code: 'createElement("div", { dangerouslySetInnerHTML: { __html: html } });',
+      errors: [{ messageId: "dangerouslySetInnerHTML" }],
+    },
+    {
+      code: 'createElement("div", { "dangerouslySetInnerHTML": { __html: html } });',
+      errors: [{ messageId: "dangerouslySetInnerHTML" }],
+    },
+    {
+      code: 'createElement("div", { ["dangerouslySetInnerHTML"]: { __html: html } });',
       errors: [{ messageId: "dangerouslySetInnerHTML" }],
     },
     { code: "el.innerHTML = html;", errors: [{ messageId: "htmlSink" }] },
@@ -71,6 +84,8 @@ tester.run("no-dynamic-code", rule("no-dynamic-code"), {
     "setTimeout(callback, 0);",
     "const f = (eval: number) => eval;",
     "obj.eval(code);",
+    "this.eval(code);",
+    "new Date();",
   ],
   invalid: [
     { code: 'eval("1");', errors: [{ messageId: "dynamicCode" }] },
