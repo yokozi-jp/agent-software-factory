@@ -256,6 +256,43 @@ function domainPurity(tree: Tree): string[] {
   return failures;
 }
 
+// The fixtures of the Effect rules, and the disable comments each carries. effect-tsgo.ts has the rules of
+// effect-tsgo (oxlint.effect.json). effect.ts has the rules of vite.config.ts, which stop an Effect from being run
+// in the layer and the features that ADR 0028 does not use. They are two files because `vp lint` does not load the
+// effecttsgo plugin, and would report its disable comments as unused.
+const effectFixtures: Readonly<Record<string, readonly string[]>> = {
+  "effect-tsgo.ts": ["floating-effect", "unstable-api-usage", "experimental-api-usage"].map(
+    (rule) => `oxlint-disable-next-line effecttsgo/${rule}`,
+  ),
+  "effect.ts": ["no-restricted-properties", "no-restricted-imports"].map(
+    (rule) => `oxlint-disable-next-line ${rule}`,
+  ),
+};
+
+// ADR 0028: application and infrastructure of each module are checked for Effect by effect-tsgo (the lint-effect
+// target) and by vite.config.ts. Each of them has a fixture (#43) in <layer>/__fixtures__/ for each rule, so that a
+// rule turned off, or one that stops reaching the layer, fails the check. outdated-api has none: a disable comment
+// does not reach all of what it reports, so tools/scripts/src/checks/effect-lint/ tests it.
+function effectBoundaries(tree: Tree): string[] {
+  const layers = objectKeys(tree.read("vite.config.ts"), "layers");
+  const failures: string[] = [];
+  for (const path of tree.paths) {
+    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
+    if (name === undefined || name === "shared") continue;
+    for (const layer of ["application", "infrastructure"].filter((l) => layers.includes(l)))
+      for (const [file, annotations] of Object.entries(effectFixtures)) {
+        const fixture = `packages/${name}/src/${layer}/__fixtures__/${file}`;
+        const text = tree.read(fixture);
+        for (const annotation of annotations)
+          if (!text.includes(annotation))
+            failures.push(
+              `${fixture} has no \`${annotation}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`,
+            );
+      }
+  }
+  return failures;
+}
+
 const inclusions: ReadonlySet<unknown> = new Set(["always", "fileMatch", "manual", "auto"]);
 
 // The problems of one steering file. Malformed frontmatter is silently loaded as `always`.
@@ -994,6 +1031,7 @@ export function violations(repo: Repo): string[] {
     ...webStandardApis(tree),
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
+    ...effectBoundaries(tree),
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),

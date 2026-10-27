@@ -6,6 +6,7 @@ packages:
 catalogMode: prefer
 
 catalog:
+  "@effect/tsgo": 0.61.0
   "@commitlint/cli": ^21.2.4
   "@commitlint/config-conventional": ^21.2.4
   "@commitlint/config-nx-scopes": ^21.2.3
@@ -18,6 +19,7 @@ catalog:
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
   "@vitejs/plugin-react": ^6.1.2
+  effect: ^4.0.6
   hono: ^4.13.13
   lefthook: ^2.2.2
   nx: 24.0.1
@@ -75,3 +77,13 @@ minimumReleaseAgeExclude:
   - "@nx/devkit@24.0.0"
   - "@nx/js@24.0.0"
   - "@nx/workspace@24.0.0"
+  # @effect/tsgo 0.61.0 (published 2026-10-26) was younger than minimumReleaseAge when added (docs/adr/0028). It is
+  # pinned to the Oxlint of Vite+ (docs/tooling/effect-lint.md). Remove these entries once the version is old enough.
+  - "@effect/tsgo-darwin-arm64@0.61.0"
+  - "@effect/tsgo-darwin-x64@0.61.0"
+  - "@effect/tsgo-linux-arm64@0.61.0"
+  - "@effect/tsgo-linux-arm@0.61.0"
+  - "@effect/tsgo-linux-x64@0.61.0"
+  - "@effect/tsgo-win32-arm64@0.61.0"
+  - "@effect/tsgo-win32-x64@0.61.0"
+  - "@effect/tsgo@0.61.0"
