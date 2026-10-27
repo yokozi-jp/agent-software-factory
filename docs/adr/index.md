@@ -31,3 +31,4 @@
 - [ADR 0029: モジュールの表は DB のロールで所有を分け、モジュールをまたぐ変更は共有の Outbox のイベントでつなぐ](0029-module-data-ownership-and-shared-outbox.md)：モジュールの表を足すとき、ほかのモジュールの表を読み書きしたくなったとき、モジュールをまたぐ変更を 1 つのトランザクションで書きたくなったとき、Outbox や受信の重複除去の処理を書くとき、DB のロールや権限、`outbox_relay` を変えるとき、モジュールのスキーマに view や `SECURITY DEFINER` の関数を足したくなったとき、RLS の例外を足したくなったとき
 - [ADR 0030: 自作の Oxlint plugin は tools/lint-plugins の Nx project にまとめ、app や package には置かない](0030-lint-plugins-in-tools-lint-plugins.md)：自作の Oxlint plugin を足す、直す、移すとき、plugin のテストを動かす場所を探すとき、新しい app や package に既存の plugin の規則を使いたくなったとき
 - [ADR 0031: mutation test は PR の CI から外し、1日1回の workflow で実行する](0031-mutation-testing-outside-pull-requests.md)：mutation の実行時間が重いとき、Stryker の設定や target を変えるとき、mutation を merge のゲートに戻したくなったとき
+- [ADR 0032: 環境変数は入口のファイルが読んで検査し、createApp に引数で渡す](0032-env-read-at-entry-and-passed-as-argument.md)：環境変数の読み方や検査を変えるとき、`createApp` の引数を変えるとき、アプリのコードで `c.env` や `process.env` を読みたくなったとき、Cloudflare Workers の入口を足すとき
