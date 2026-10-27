@@ -54,4 +54,5 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 ## 出典
 
 - Oxlint の `no-restricted-imports` の `paths`、`patterns` (`group`、`regex`、`allowTypeImports`) と、override の扱い、pattern の順序: Oxlint 1.89.0 (Vite+ 1.4.0) で確かめた (2026-10-26)
+- `domain` の override に足した `no-restricted-globals` (`Date`) と `no-restricted-properties` (`Math.random`) が、型の注釈の `Date` を止めないこと: Oxlint 1.89.0 (Vite+ 1.4.0) で確かめた (2026-10-26 に Issue #259 で、2026-10-27 にこのリポジトリで再び)。止まる書き方と止まらない書き方の一覧は [ADR 0027](0027-domain-model-as-pure-functions-and-unions.md) の出典にある
 - Nx 24.0.0 の `pluginsConfig["@nx/js"]` の既定値: `nx/dist/src/plugins/js/utils/config.js`。graph の作成の失敗と、TypeScript 7.0.2 の `typescript` package の export: このリポジトリで確かめた (2026-10-26)

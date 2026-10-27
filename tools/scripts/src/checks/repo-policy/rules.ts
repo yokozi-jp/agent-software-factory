@@ -196,7 +196,7 @@ function moduleBoundaries(tree: Tree): string[] {
 // reaching domain/, fails `vp check`. Like the fixtures of the layers above, they are asked of the modules only,
 // and only when vite.config.ts has a domain layer. The space after the name keeps a rule of a longer name from
 // counting.
-const domainRules = ["domain/no-throw", "no-restricted-globals", "no-restricted-properties"];
+const domainRuleNames = ["domain/no-throw", "no-restricted-globals", "no-restricted-properties"];
 
 function domainPurity(tree: Tree): string[] {
   if (!objectKeys(tree.read("vite.config.ts"), "layers").includes("domain")) return [];
@@ -205,7 +205,7 @@ function domainPurity(tree: Tree): string[] {
     const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
     if (name === undefined || name === "shared") continue;
     const fixtures = `packages/${name}/src/domain/__fixtures__/`;
-    for (const rule of domainRules)
+    for (const rule of domainRuleNames)
       if (
         !tree.paths.some(
           (file) =>
