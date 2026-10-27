@@ -8,6 +8,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
 import { requireSession, sessionGuard, type SessionVariables } from "./auth/session.ts";
+import type { ModuleDatabases } from "./db/databases.ts";
 import { csrfProtection } from "./security/csrf.ts";
 
 // セキュリティヘッダーの値は docs/web-api/security.md に従う。
@@ -20,6 +21,11 @@ import { csrfProtection } from "./security/csrf.ts";
 export interface AppDependencies {
   /** 認証。渡さないと認証の経路 (`/api/auth/*`、`/api/me`) は付かない。 */
   readonly auth?: Auth;
+  /**
+   * モジュールの DB。各モジュールの route には、そのモジュールの DB だけを渡す (docs/adr/0025、docs/adr/0029)。
+   * モジュールはまだ route を持たないので、今は受け取るだけ。
+   */
+  readonly databases?: ModuleDatabases;
 }
 
 export function createApp({ auth }: AppDependencies = {}) {

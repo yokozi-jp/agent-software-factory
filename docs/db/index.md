@@ -16,7 +16,7 @@
 - [PostgreSQL のキー設計（サロゲートキー・連番/UUID・共通カラム）](postgresql-keys.md)：主キーや共通カラムを設計するとき
 - [PostgreSQL のテーブル論理設計（スナップショット・導出・業務日付）](postgresql-logical-design-snapshot.md)：属性の持たせ方や業務日付の扱いを決めるとき
 - [PostgreSQL のテーブル論理設計（適用期間・世代管理・論理削除）](postgresql-logical-design-history.md)：履歴や有効期間を持つデータを設計するとき
-- [PostgreSQL のクライアント管理](postgresql-client.md)：アプリから DB に接続する実装を設計するとき
+- [PostgreSQL のクライアント管理](postgresql-client.md)：アプリから DB に接続する実装を設計するとき、Kysely でクエリを書くとき、モジュールの DB の型を生成し直すとき
 - [PostgreSQL の海外対応](postgresql-i18n.md)：多言語対応や複数タイムゾーンのデータを扱うとき
 - [PostgreSQL のマルチテナント](postgresql-multitenancy.md)：マルチテナントのシステムで DB を設計するとき
 - [PostgreSQL の排他制御](postgresql-concurrency.md)：排他制御を設計するとき

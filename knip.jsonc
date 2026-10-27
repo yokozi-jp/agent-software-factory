@@ -10,6 +10,9 @@
   // Detection-power fixtures of the module boundaries (#43): each breaks a lint rule on purpose, and nothing
   // imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not checked.
   "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**"],
+  // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
+  // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
+  "ignoreIssues": { "packages/*/src/infrastructure/db.gen.ts": ["types"] },
   "workspaces": {
     ".": {
       // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).

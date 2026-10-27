@@ -3,6 +3,7 @@ import { Pool } from "pg";
 
 import { createApp } from "./app.ts";
 import { createAuth } from "./auth/auth.ts";
+import { createModuleDatabases } from "./db/databases.ts";
 
 const port = Number(process.env.PORT ?? 3000);
 
@@ -29,7 +30,11 @@ const auth = createAuth({
   },
 });
 
-const app = createApp({ auth });
+const app = createApp({
+  auth,
+  // 業務の処理は app_user で接続する。auth スキーマの権限を持たず、RLS を迂回しない (docs/adr/0011)。
+  databases: createModuleDatabases(new Pool({ connectionString: requireEnv("APP_DATABASE_URL") })),
+});
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);

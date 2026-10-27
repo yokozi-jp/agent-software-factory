@@ -35,6 +35,10 @@
       "cache": true,
       "inputs": ["default", "^production"]
     },
+    "db-types-check": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
     "lint-effect": {
       "cache": true,
       "inputs": [

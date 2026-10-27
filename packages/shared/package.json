@@ -12,7 +12,8 @@
     "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src"
   },
   "dependencies": {
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "kysely": "catalog:"
   },
   "devDependencies": {
     "typescript": "catalog:",

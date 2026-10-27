@@ -245,6 +245,12 @@ catalogs:
     knip:
       specifier: 6.43.0
       version: 6.43.0
+    kysely:
+      specifier: ^0.29.7
+      version: 0.29.7
+    kysely-codegen:
+      specifier: 0.20.0
+      version: 0.20.0
     lefthook:
       specifier: ^2.2.2
       version: 2.2.2
@@ -346,6 +352,9 @@ importers:
       '@agent-software-factory/closing':
         specifier: workspace:*
         version: link:../../packages/closing
+      '@agent-software-factory/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@hono/node-server':
         specifier: 'catalog:'
         version: 2.1.5(hono@4.13.13)
@@ -355,6 +364,9 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.13.13
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
       pg:
         specifier: 'catalog:'
         version: 8.23.1
@@ -377,6 +389,9 @@ importers:
       dbmate:
         specifier: 'catalog:'
         version: 2.37.0
+      kysely-codegen:
+        specifier: 'catalog:'
+        version: 0.20.0(kysely@0.29.7)(pg@8.23.1)(typescript@7.0.2)
       testcontainers:
         specifier: 'catalog:'
         version: 12.2.1(supports-color@7.2.0)
@@ -426,6 +441,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.6
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -439,6 +457,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.6
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -452,6 +473,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.6
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -465,6 +489,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.6
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -3552,6 +3579,10 @@ packages:
   diff-match-patch@1.0.5:
     resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
 
+  diff@8.0.4:
+    resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
+    engines: {node: '>=0.3.1'}
+
   diff@9.0.0:
     resolution: {integrity: sha512-svtcdpS8CgJyqAjEQIXdb3OjhFVVYjzGAPO8WGCmRbrml64SPw/jJD4GoE98aR7r25A0XcgrK3F02yw9R/vhQw==}
     engines: {node: '>=0.3.1'}
@@ -3577,6 +3608,10 @@ packages:
 
   dotenv@16.4.7:
     resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
+
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -4141,6 +4176,41 @@ packages:
     resolution: {integrity: sha512-8l3cCOg/EXoILO0qcSoMra49yQM91+lEIR4fu5Ko8rrArGX8xKdKZiGI9psPiY6rhLmfLERcMfFEByF0wli5CA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
+
+  kysely-codegen@0.20.0:
+    resolution: {integrity: sha512-LSi2KBG7uDmNCZ+XurLSA9LH7XFyyoQ6xb5DLJSInPTSYLVApjOP2KwO8mSaREWTtoX+C2AG2GTlYR0DLjTbcA==}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@libsql/kysely-libsql': '>=0.3.0 <0.5.0'
+      '@tediousjs/connection-string': ^1.0.0
+      better-sqlite3: '>=7.6.2 <13.0.0'
+      kysely: '>=0.27.0 <1.0.0'
+      kysely-bun-sqlite: '>=0.3.2 <1.0.0'
+      kysely-bun-worker: '>=1.2.0 <2.0.0'
+      mysql2: '>=2.3.3 <4.0.0'
+      pg: '>=8.8.0 <9.0.0'
+      tarn: '>=3.0.0 <4.0.0'
+      tedious: '>=18.0.0 <20.0.0'
+    peerDependenciesMeta:
+      '@libsql/kysely-libsql':
+        optional: true
+      '@tediousjs/connection-string':
+        optional: true
+      better-sqlite3:
+        optional: true
+      kysely-bun-sqlite:
+        optional: true
+      kysely-bun-worker:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      tarn:
+        optional: true
+      tedious:
+        optional: true
 
   kysely@0.29.7:
     resolution: {integrity: sha512-fmIq+7kv4WbFm2tcfznRzikqB4cuNpgZ40PSU2fAJ2/OO5XhojqnTPrmgrCjYSRJVwBln03XcRXJGnw9H099IQ==}
@@ -4717,6 +4787,10 @@ packages:
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
+
+  pluralize@8.0.0:
+    resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
+    engines: {node: '>=4'}
 
   pngjs@7.0.0:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
@@ -8341,6 +8415,8 @@ snapshots:
 
   diff-match-patch@1.0.5: {}
 
+  diff@8.0.4: {}
+
   diff@9.0.0: {}
 
   docker-compose@1.5.0:
@@ -8374,6 +8450,8 @@ snapshots:
       dotenv: 16.4.7
 
   dotenv@16.4.7: {}
+
+  dotenv@17.4.2: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -8882,6 +8960,23 @@ snapshots:
       unbash: 6.0.1
       yaml: 2.9.1
       zod: 4.6.7
+
+  kysely-codegen@0.20.0(kysely@0.29.7)(pg@8.23.1)(typescript@7.0.2):
+    dependencies:
+      chalk: 4.1.2
+      cosmiconfig: 9.0.2(typescript@7.0.2)
+      diff: 8.0.4
+      dotenv: 17.4.2
+      dotenv-expand: 12.0.3
+      kysely: 0.29.7
+      micromatch: 4.0.8
+      minimist: 1.2.8
+      pluralize: 8.0.0
+      zod: 4.6.7
+    optionalDependencies:
+      pg: 8.23.1
+    transitivePeerDependencies:
+      - typescript
 
   kysely@0.29.7: {}
 
@@ -9667,6 +9762,8 @@ snapshots:
   picomatch@4.0.4: {}
 
   picomatch@4.0.7: {}
+
+  pluralize@8.0.0: {}
 
   pngjs@7.0.0: {}
 

@@ -173,6 +173,12 @@ jobs:
       - name: Check, test and build (nx affected)
         run: pnpm exec nx affected -t check test build
 
+      # The Kysely types of the module schemas (packages/*/src/infrastructure/db.gen.ts) are generated from the
+      # migrations and committed. Runs the migrations on a fresh PostgreSQL, generates the types again and fails if
+      # they differ from the committed ones (apps/api/db/types.ts, docs/adr/0025).
+      - name: DB types match the migrations (kysely-codegen, nx affected)
+        run: pnpm exec nx affected -t db-types-check
+
       # effect-tsgo on application and infrastructure of the modules: an Effect that is never run, and the Effect 3,
       # unstable and experimental APIs (oxlint.effect.json, docs/tooling/effect-lint.md, docs/adr/0028).
       - name: Effect checks (effect-tsgo, nx affected)

@@ -4,6 +4,7 @@
 //   pnpm-lock.yaml                                        pnpm writes it
 //   mise.lock, .mise/locks/**                             `mise lock` writes them (.mise/locks/ holds the
 //                                                         dependency graphs of PyPI tools)
+//   packages/*/src/infrastructure/db.gen.ts               kysely-codegen writes them from the migrations
 // Only the file tools that create, replace, append or delete are checked; reads always pass.
 // Tool names and path fields, checked against Kiro 2.33.1 (docs/tooling/git-hooks.md ("生成物への書き込み")),
 // and the event's fields again against 2.34.0 (kas/<version>/node_modules/@kiro/agent/dist/server/
@@ -66,6 +67,11 @@ function regenerate(rel: string): readonly [string, string] | undefined {
     return [
       "mise writes it (docs/adr/0009).",
       "change mise.toml and run `mise lock --platform linux-x64`.",
+    ];
+  if (/^packages\/[^/]+\/src\/infrastructure\/db\.gen\.ts$/.test(rel))
+    return [
+      "kysely-codegen generates it from the migrations (docs/adr/0025).",
+      "change the migrations under apps/api/db/migrations/ and run `pnpm exec nx db-types api`, then commit the regenerated file.",
     ];
   return undefined;
 }
