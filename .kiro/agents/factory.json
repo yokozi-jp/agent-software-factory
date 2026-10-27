@@ -214,16 +214,12 @@
       {
         "capability": "fs_write",
         "effect": "deny",
-        "match": [
-          ".kiro/settings/**",
-          "~/.aws/**",
-          "~/.ssh/**",
-          "~/.config/gh/**",
-          "**/.env",
-          "**/.env.*",
-          ".env",
-          ".env.*"
-        ]
+        "match": ["~/.aws/**", "~/.ssh/**", "~/.config/gh/**"]
+      },
+      {
+        "capability": "fs_write",
+        "effect": "deny",
+        "match": [".kiro/settings/**", "**/.env", "**/.env.*", ".env", ".env.*"]
       }
     ]
   }

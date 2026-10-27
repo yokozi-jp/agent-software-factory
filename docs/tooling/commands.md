@@ -35,7 +35,7 @@ packages/  サンプル機能のモジュール (claim、approval、closing) と
 tools/
   lint-plugins/ 自作の Oxlint の JS plugin とそのテスト (Nx の project lint-plugins。ADR 0030)
   scripts/ hook と CI から呼ぶ検査 (Nx の project scripts。ADR 0024)
-    src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、工場の成果の指標の集計 (metrics/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
+    src/     TypeScript の検査 (checks/)、Kiro の hook (hooks/)、工場の成果の指標の集計 (metrics/)、Kiro のセッションの記録から agent の規則の結果を読む道具 (agent-probe/)、sh のラッパーのテスト (sh/)、設定のテスト (configs/)
     sh/      CLI を呼ぶだけの sh のラッパー
 docs/      ドキュメント (入口は docs/index.md)
 ```
@@ -68,6 +68,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | 判断が絡む変更に ADR がないかの確認 (警告だけ)                                                                   | `node tools/scripts/src/checks/adr-check/cli.ts`。要らない変更は `ADR_ACK=1` で抑える ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md)) |
 | テストファイルの削除とテストケースの数の減少の確認 (警告だけ)                                                    | `node tools/scripts/src/checks/test-weakening/cli.ts`。意図した変更は `TESTS_ACK=1` で抑える ([CI](ci.md#ciyml-の検証))                             |
 | 工場の成果の指標の集計 (期間か、境目の PR の前後)                                                                | `node tools/scripts/src/metrics/cli.ts --since <YYYY-MM-DD>` ([工場の成果の指標](../agents/factory-metrics.md))                                     |
+| agent の規則が各 tool の呼び出しにどう働いたかの確認 (最新のセッション)                                          | `node tools/scripts/src/agent-probe/cli.ts <workspace の絶対パス>` ([エージェントの権限](agent-permissions.md#規則を変えたときの手元の確認))        |
 | 依存の追加 (例: api)                                                                                             | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                                               |
 
 ## 補足

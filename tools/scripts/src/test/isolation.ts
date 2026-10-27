@@ -59,7 +59,10 @@ export function leavesTheRepositoryUntouched(
     gitIn(decoy, ["commit", "-qm", "decoy"]);
     gitIn(decoy, ["remote", "add", "origin", remote]);
     gitIn(decoy, ["push", "-q", "origin", "HEAD:refs/heads/main"]);
-  });
+    // The default hook timeout (10 s) is too short on a loaded machine: the git calls above took longer than
+    // that (load average 20 to 47 from other Kiro sessions, 2026-10-28), and the pre-commit hook failed with
+    // "Hook timed out in 10000ms".
+  }, 120_000);
   afterAll(() => {
     box.remove();
   });
