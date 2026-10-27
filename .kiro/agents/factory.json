@@ -142,16 +142,12 @@
           "awk*",
           "sed*",
           "xxd*",
-          "od*",
           "base64*",
-          "strings*",
           "source*",
           "node -e*",
           "node --eval*",
           "node -p*",
           "python*",
-          "perl*",
-          "ruby*",
           "bash -c*",
           "sh -c*"
         ]
