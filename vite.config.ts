@@ -27,6 +27,38 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
 
+// Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
+// into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
+// from globalThis.
+const runtimeGlobals = [
+  { name: "process", message: "Read environment variables from `c.env`." },
+  { name: "Bun", message: runtimeImportMessage },
+  { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
+];
+const runtimeGlobalEntries = [
+  ...runtimeGlobals,
+  // global.process is the Node.js alias of globalThis.process, and no-restricted-properties cannot name it.
+  {
+    name: "global",
+    message:
+      "Do not use `global`: it is the Node.js alias of `globalThis`, and it hides `process` and the other runtime globals. Use only the Web standard globals.",
+  },
+  { name: "__dirname", message: "Use `import.meta.url`." },
+  { name: "__filename", message: "Use `import.meta.url`." },
+  { name: "require", message: "Use `import`." },
+];
+const runtimePropertyEntries = runtimeGlobals.map(({ name, message }) => ({
+  object: "globalThis",
+  property: name,
+  message: `${message} (\`globalThis.${name}\` is the same global.)`,
+}));
+// The domain override sets the same two rules for its own purposes (domainPurityRules), and Oxlint keeps only
+// the last override that sets a rule, so it spreads the entries above into its lists.
+const runtimeGlobalLintRules = {
+  "no-restricted-globals": ["error", ...runtimeGlobalEntries],
+  "no-restricted-properties": ["error", ...runtimePropertyEntries],
+} satisfies Record<string, ["error", ...Record<string, string>[]]>;
+
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
 // packages/, and apps/api only assembles them. A module may import the modules listed for it here, and they
 // point one way: closing (締め) → approval (承認) → claim (申請). shared imports no module.
@@ -138,7 +170,7 @@ const forbiddenModules = (from: string, allowed: readonly string[]) =>
 // other files outside the layers). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 function moduleImports(name: string, layer?: string) {
-  const patterns: Record<string, unknown>[] = [...deepImports];
+  const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
     if (other.length > 0)
@@ -156,7 +188,10 @@ function moduleImports(name: string, layer?: string) {
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
-  const paths: RestrictedPath[] = forbiddenModules(name, modules[name] ?? []);
+  const paths: RestrictedPath[] = [
+    ...runtimeImports.paths,
+    ...forbiddenModules(name, modules[name] ?? []),
+  ];
   if (layer !== "domain") paths.push(...effectPaths);
   if (layer === "application" || layer === "infrastructure")
     paths.push({
@@ -167,16 +202,69 @@ function moduleImports(name: string, layer?: string) {
   return { paths, patterns };
 }
 
+// How domain is written (docs/adr/0027): pure functions that return a Result. domain takes the time and the
+// randomness as arguments, and returns a failure instead of throwing it. `Date` is stopped as a value only
+// (`new Date()`, `Date.now()`); the type `Date` in an annotation is not reported (checked with Oxlint 1.89.0,
+// see the 出典 of docs/adr/0027).
+// These rules join the no-restricted-imports of the domain override of each module, in the same object: Oxlint
+// keeps only the last override that sets a rule for a file, so a second override for domain would drop one of
+// the two (docs/adr/0026). Each rule has a fixture in packages/*/src/domain/__fixtures__/purity.ts (#43).
+const domainPurityMessage = (what: string, instead: string) =>
+  `${what} makes a domain function depend on something other than its arguments. ${instead}, ` +
+  "and let application supply it (docs/adr/0027, docs/domain-model/types.md).";
+const domainPurityRules = {
+  jsPlugins: [{ name: "domain", specifier: "./tools/lint-plugins/src/domain-plugin.ts" }],
+  rules: {
+    "domain/no-throw": "error",
+    "no-restricted-globals": [
+      "error",
+      ...runtimeGlobalEntries,
+      {
+        name: "Date",
+        message: domainPurityMessage("`Date`", "Take the time as an argument, a branded `Instant`"),
+      },
+    ],
+    "no-restricted-properties": [
+      "error",
+      ...runtimePropertyEntries,
+      {
+        object: "Math",
+        property: "random",
+        message: domainPurityMessage(
+          "`Math.random`",
+          "Take the random value, or the id, as an argument",
+        ),
+      },
+    ],
+  },
+} satisfies Pick<OxlintOverride, "jsPlugins" | "rules">;
+
 const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
   {
     files: [`packages/${name}/src/**`],
     rules: { "no-restricted-imports": ["error", moduleImports(name)] },
   },
-  ...Object.keys(layers).map((layer): OxlintOverride => ({
-    files: [`packages/${name}/src/${layer}/**`],
-    rules: { "no-restricted-imports": ["error", moduleImports(name, layer)] },
-  })),
+  ...Object.keys(layers).map((layer): OxlintOverride => {
+    const files = [`packages/${name}/src/${layer}/**`];
+    const imports: NonNullable<OxlintOverride["rules"]> = {
+      "no-restricted-imports": ["error", moduleImports(name, layer)],
+    };
+    return layer === "domain"
+      ? {
+          files,
+          jsPlugins: domainPurityRules.jsPlugins,
+          rules: { ...imports, ...domainPurityRules.rules },
+        }
+      : { files, rules: imports };
+  }),
 ]);
+
+// What the entry files and the tests of the runtime-specific rules turn off.
+const runtimeRulesOff = {
+  "import/no-nodejs-modules": "off",
+  "no-restricted-globals": "off",
+  "no-restricted-properties": "off",
+} as const;
 
 const childProcessMessage =
   "Start git and other processes through gitIn() or runIn() from tools/scripts/src/test/sandbox.ts, which refuse " +
@@ -253,7 +341,7 @@ export default defineConfig({
       // ADR 0007: apps/api/src uses Web standard APIs only, so the app runs on Node.js,
       // Lambda and Cloudflare Workers. Runtime-specific code lives in the entry files below.
       {
-        files: ["apps/api/src/**"],
+        files: ["apps/api/src/**", "packages/*/src/**"],
         plugins: ["import"],
         rules: {
           "import/no-nodejs-modules": "error",
@@ -265,15 +353,7 @@ export default defineConfig({
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
-          "no-restricted-globals": [
-            "error",
-            { name: "process", message: "Read environment variables from `c.env`." },
-            { name: "Bun", message: runtimeImportMessage },
-            { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
-            { name: "__dirname", message: "Use `import.meta.url`." },
-            { name: "__filename", message: "Use `import.meta.url`." },
-            { name: "require", message: "Use `import`." },
-          ],
+          ...runtimeGlobalLintRules,
         },
       },
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
@@ -283,20 +363,23 @@ export default defineConfig({
         // A plugin rule can only be turned off in an override that also lists the plugin.
         plugins: ["import"],
         rules: {
-          "import/no-nodejs-modules": "off",
+          ...runtimeRulesOff,
           "no-restricted-imports": ["error", { patterns: deepImports }],
-          "no-restricted-globals": "off",
         },
+      },
+      // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
+      // restrictions of the modules, which are set in the overrides below (docs/adr/0026).
+      {
+        files: ["packages/*/src/**/*.test.ts"],
+        plugins: ["import"],
+        rules: runtimeRulesOff,
       },
       // Module boundaries (docs/adr/0026): the direction between the modules, imports by the package name only,
       // and the direction between the layers of a module.
       {
         files: ["packages/shared/src/**"],
         rules: {
-          "no-restricted-imports": [
-            "error",
-            { paths: forbiddenModules("shared", []), patterns: deepImports },
-          ],
+          "no-restricted-imports": ["error", moduleImports("shared")],
         },
       },
       ...moduleOverrides,
@@ -337,11 +420,13 @@ export default defineConfig({
         },
       },
       // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
-      // list of what the code guarantees. The rule is in apps/api/lint/test-title-plugin.ts. Tests of the tools
+      // list of what the code guarantees. The rule is in tools/lint-plugins/src/test-title-plugin.ts. Tests of the tools
       // and of the lint plugins themselves are outside this rule.
       {
         files: ["apps/*/src/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
-        jsPlugins: [{ name: "test-title", specifier: "./apps/api/lint/test-title-plugin.ts" }],
+        jsPlugins: [
+          { name: "test-title", specifier: "./tools/lint-plugins/src/test-title-plugin.ts" },
+        ],
         rules: { "test-title/japanese-title": "error" },
       },
       // React rules (hooks, keys, state in effects) and JSX accessibility (alt text, anchors, keyboard
@@ -381,11 +466,11 @@ export default defineConfig({
         rules: { "no-console": "error" },
       },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
-      // apps/web/lint/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
+      // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
       {
         files: ["apps/web/src/**"],
-        jsPlugins: [{ name: "web-xss", specifier: "./apps/web/lint/xss-plugin.ts" }],
+        jsPlugins: [{ name: "web-xss", specifier: "./tools/lint-plugins/src/xss-plugin.ts" }],
         plugins: ["unicorn"],
         rules: {
           "web-xss/no-html-injection": "error",

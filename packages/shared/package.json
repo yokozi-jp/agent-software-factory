@@ -8,7 +8,7 @@
   },
   "scripts": {
     "check": "vp check",
-    "test": "vp test run",
+    "test": "vp test run --exclude \"**/__fixtures__/**\" --exclude \"**/node_modules/**\"",
     "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src"
   },
   "dependencies": {

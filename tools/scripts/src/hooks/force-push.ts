@@ -4,7 +4,7 @@
 import { inCommandPosition } from "./shell-command.ts";
 
 // `git [-opt [arg]]... push`.
-const gitPush = String.raw`git(\s+-\S+(\s+[^-\s]\S*)?)*\s+push(\s|$)`;
+export const gitPush = String.raw`git(\s+-\S+(\s+[^-\s]\S*)?)*\s+push(\s|$)`;
 // A `--force` form, `-f` (also inside a bundle such as -uf) or `+refspec`.
 const forceFlag =
   /\s(--force(-with-lease|-if-includes)?(=\S*)?|-[A-Za-z0-9]*f[A-Za-z0-9]*|\+\S+)(\s|[)"'`}]|$)/;

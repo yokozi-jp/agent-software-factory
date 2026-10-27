@@ -2,7 +2,15 @@
 // a repository that passes, and expects the message that names the problem. Reading git and the
 // working tree (and the staged mode) is in cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
-import { moduleFixture, passingRepo } from "./fixtures/passing-repo.ts";
+import {
+  domainFixture,
+  domainRuntimeFixtures,
+  factoryAgent,
+  moduleFixture,
+  passingRepo,
+  runtimeFixture,
+  srcFixtures,
+} from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
 const base = passingRepo;
@@ -171,6 +179,10 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ...Object.fromEntries(
       dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
     ),
+    ...srcFixtures(name),
+    ...domainRuntimeFixtures(name),
+    // The fixtures of the rules that keep domain pure are checked on their own, below.
+    [`packages/${name}/src/domain/__fixtures__/purity.ts`]: domainFixture,
   });
 
   it("refuses a module that vite.config.ts does not list", () => {
@@ -219,6 +231,52 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ).toEqual([noFixture("shared", "src")]);
   });
 
+  it("refuses a package without the fixtures of the runtime restrictions or of the tests", () => {
+    const noRuntime = (annotation: string) =>
+      `packages/claim/src/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+        }),
+      ),
+    ).toEqual([
+      "packages/claim/src/__fixtures__/ has no *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).",
+      noRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(repo({ "packages/shared/src/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noRuntime("no-restricted-globals").replace("claim", "shared"),
+      noRuntime("no-restricted-properties").replace("claim", "shared"),
+    ]);
+  });
+
+  it("refuses a module whose domain fixture does not show the runtime restrictions", () => {
+    const noDomainRuntime = (annotation: string) =>
+      `packages/claim/src/domain/__fixtures__/runtime-apis.ts has no \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
+    expect(
+      violations(repo({ "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined })),
+    ).toEqual([
+      noDomainRuntime("no-restricted-globals"),
+      noDomainRuntime("no-restricted-properties"),
+    ]);
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+            "no-restricted-properties",
+            "no-console",
+          ),
+        }),
+      ),
+    ).toEqual([noDomainRuntime("no-restricted-properties")]);
+  });
+
   it("follows the layers that vite.config.ts lists", () => {
     const threeLayers = config.replace('  http: ["domain"],', '  http: ["domain"],\n  infra: [],');
     expect(violations(repo({ "vite.config.ts": threeLayers }))).toEqual([
@@ -239,6 +297,105 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
           "vite.config.ts": none,
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
           "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("ADR 0027: the domain of every module has the fixtures of the rules that keep it pure", () => {
+  const config = base["vite.config.ts"] ?? "";
+  const purity = "packages/claim/src/domain/__fixtures__/purity.ts";
+  const noFixture = (name: string, rule: string) =>
+    `packages/${name}/src/domain/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`;
+  const without = (rule: string) =>
+    domainFixture
+      .split("\n")
+      .filter((line) => !line.includes(`oxlint-disable-next-line ${rule} `))
+      .join("\n");
+
+  it.each(["domain/no-throw", "no-restricted-globals", "no-restricted-properties"])(
+    "refuses a domain whose fixtures lack the disable comment of %s",
+    (rule) => {
+      expect(violations(repo({ [purity]: without(rule) }))).toEqual([noFixture("claim", rule)]);
+    },
+  );
+
+  it("names every rule that has no fixture, in the order of the rules", () => {
+    expect(violations(repo({ [purity]: undefined }))).toEqual([
+      noFixture("claim", "domain/no-throw"),
+      noFixture("claim", "no-restricted-globals"),
+      noFixture("claim", "no-restricted-properties"),
+    ]);
+  });
+
+  it("refuses a disable comment of a rule of a similar name", () => {
+    const similar = domainFixture.replace("domain/no-throw", "other/no-throw");
+    expect(violations(repo({ [purity]: similar }))).toEqual([
+      noFixture("claim", "domain/no-throw"),
+    ]);
+  });
+
+  it("passes fixtures that are spread over several files of __fixtures__/", () => {
+    const lines = domainFixture.split("\n");
+    expect(
+      violations(
+        repo({
+          [purity]: lines.slice(0, 2).join("\n"),
+          "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2).join("\n"),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses fixtures that are outside __fixtures__/ of domain", () => {
+    expect(
+      violations(
+        repo({
+          [purity]: undefined,
+          "packages/claim/src/domain/purity.ts": domainFixture,
+          "packages/claim/src/http/__fixtures__/purity.ts": domainFixture,
+          "packages/claim/src/domain/deeper/__fixtures__/purity.ts": domainFixture,
+        }),
+      ),
+    ).toEqual([
+      noFixture("claim", "domain/no-throw"),
+      noFixture("claim", "no-restricted-globals"),
+      noFixture("claim", "no-restricted-properties"),
+    ]);
+  });
+
+  it("asks each module, and not shared", () => {
+    expect(
+      violations(
+        repo({
+          "packages/shared/src/__fixtures__/purity.ts": undefined,
+          "packages/approval/package.json": "{}",
+          ...srcFixtures("approval"),
+          ...domainRuntimeFixtures("approval"),
+          "packages/approval/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/approval/src/http/__fixtures__/boundaries.ts": moduleFixture,
+          "vite.config.ts": config.replace(
+            "  claim: [],\n",
+            '  claim: [],\n  approval: ["claim"],\n',
+          ),
+        }),
+      ),
+    ).toEqual([
+      noFixture("approval", "domain/no-throw"),
+      noFixture("approval", "no-restricted-globals"),
+      noFixture("approval", "no-restricted-properties"),
+    ]);
+  });
+
+  it("asks nothing when vite.config.ts has no domain layer", () => {
+    const none = config.replace("  domain: [],\n", "");
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": none,
+          [purity]: undefined,
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);
@@ -995,6 +1152,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
       "| t | | `ruleset: CodeQL` |",
       "| t | | `ruleset: deletion` |",
       "| t | | `kiro: pre-tool-use/block-force-push` |",
+      "| t | | `kiro-agent: factory` |",
       "",
     ].join("\n");
     expect(violations(repo({ [path]: swapped }))).toEqual([]);
@@ -1278,7 +1436,7 @@ describe("ADR 0026: the edges", () => {
     repo({
       "packages/claim/package.json": undefined,
       [`packages/${name}/package.json`]: "{}",
-      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+      ...srcFixtures(name),
       "vite.config.ts": modulesConfig(body),
     });
 
@@ -1483,6 +1641,280 @@ describe("references to docs/: the edges", () => {
     };
     expect(violations(repo(files))).toEqual([
       "lefthook.yml cites docs/adr/0003, which does not exist.",
+    ]);
+  });
+});
+
+describe("the permissions of the agents (docs/tooling/agent-permissions.md)", () => {
+  const agent = ".kiro/agents/factory.json";
+  const doc = "docs/tooling/agent-permissions.md";
+  const settings = ".kiro/settings/cli.json";
+  const catalogPath = "docs/tooling/assurance-catalog.md";
+  const original = factoryAgent;
+  // The agent of the passing repository with its rules replaced (or its tools).
+  const withRules = (
+    rules: readonly unknown[],
+    tools: unknown = original.tools,
+  ): Record<string, string> => ({
+    [agent]: json({ ...original, tools, permissions: { rules } }),
+  });
+  const rule = (extra: Record<string, unknown>): Record<string, unknown> => ({
+    capability: "web_fetch",
+    effect: "allow",
+    match: ["docs.github.com"],
+    ...extra,
+  });
+  const shellRules = original.permissions.rules.slice(0, 2);
+  const shellRule = (effect: string, match: string[]): Record<string, unknown> => ({
+    capability: "shell",
+    effect,
+    match,
+  });
+
+  it("passes a repository without an agent", () => {
+    const rows = (base[catalogPath] ?? "")
+      .split("\n")
+      .filter((line) => !line.includes("kiro-agent"));
+    const without = { [agent]: undefined, [settings]: undefined, [doc]: undefined };
+    expect(violations(repo({ ...without, [catalogPath]: rows.join("\n") }))).toEqual([]);
+  });
+
+  it("takes only .kiro/agents/<name>.json for an agent", () => {
+    const files = {
+      ".kiro/agents/sub/x.json": "{}",
+      "docs/.kiro/agents/y.json": "{}",
+      ".kiro/agents/z.json.bak": "{}",
+    };
+    expect(violations(repo(files))).toEqual([]);
+  });
+
+  it("does not hold a rule of another capability to the pairs", () => {
+    const rules = [{ capability: "fs_read", effect: "allow", match: ["git push*"] }];
+    const table =
+      "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `hook: block-force-push` |\n";
+    expect(violations(repo({ ...withRules(rules), [doc]: table }))).toEqual([]);
+  });
+
+  it("refuses an agent without tools, which can use none", () => {
+    expect(violations(repo(withRules(original.permissions.rules, [])))).toEqual([
+      `${agent} must have "tools": ["*"]. An agent without tools can use none (docs/tooling/agent-permissions.md).`,
+    ]);
+  });
+
+  it("refuses a capability Kiro does not know, which it skips without a word", () => {
+    const failures = violations(
+      repo(withRules([...original.permissions.rules, rule({ capability: "shel" })])),
+    );
+    expect(failures).toEqual([
+      `${agent}: rule 3 has the capability "shel", which Kiro does not know. It skips such a rule without a word. Known: all, builtin, filesystem, fs_read, fs_write, shell, web_fetch, web_search, mcp, subagent, skill, power, context, diagnostics, workflow, sandbox_network.`,
+    ]);
+  });
+
+  it("refuses an effect that Kiro does not accept", () => {
+    expect(
+      violations(repo(withRules([...original.permissions.rules, rule({ effect: "block" })]))),
+    ).toEqual([`${agent}: rule 3 has the effect "block". Use allow, deny, ask or evaluate.`]);
+  });
+
+  it.each([
+    { colour: "red" },
+    { match: "docs.github.com" },
+    { match: [1] },
+    { match: ["docs.github.com", 1] },
+    { exclude: "x" },
+  ])("refuses fields Kiro rejects: %j", (extra) => {
+    const failures = violations(repo(withRules([...original.permissions.rules, rule(extra)])));
+    expect(failures).toEqual([
+      `${agent}: rule 3 has fields Kiro rejects. A rule has capability, effect, and match and exclude as arrays of strings.`,
+    ]);
+  });
+
+  it("accepts every capability and effect that Kiro knows", () => {
+    const capabilities = [
+      "all",
+      "builtin",
+      "filesystem",
+      "fs_read",
+      "fs_write",
+      "shell",
+      "web_search",
+      "mcp",
+      "subagent",
+      "skill",
+      "power",
+      "context",
+      "diagnostics",
+      "workflow",
+      "sandbox_network",
+    ];
+    const rules = capabilities.flatMap((capability) =>
+      ["allow", "ask", "evaluate"].map((effect) => ({ capability, effect })),
+    );
+    expect(
+      violations(
+        repo(
+          withRules([
+            ...original.permissions.rules,
+            ...rules,
+            { capability: "mcp", effect: "ask", match: ["a"], exclude: ["b"] },
+          ]),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses a web_fetch allow for a host that external-docs.md does not list", () => {
+    expect(
+      violations(
+        repo(
+          withRules([
+            ...original.permissions.rules.slice(0, 2),
+            rule({ match: ["docs.github.com", "example.com"] }),
+          ]),
+        ),
+      ),
+    ).toEqual([
+      `${agent}: web_fetch allows "example.com", which is not a host of docs/tooling/external-docs.md. Add it there, or remove it from the agent.`,
+    ]);
+  });
+
+  it("refuses a web_fetch allow without a match, which allows every host", () => {
+    expect(
+      violations(
+        repo(
+          withRules([
+            ...original.permissions.rules.slice(0, 2),
+            { capability: "web_fetch", effect: "allow" },
+          ]),
+        ),
+      ),
+    ).toEqual([
+      `${agent}: a web_fetch allow without match allows every host. List the hosts of docs/tooling/external-docs.md.`,
+    ]);
+  });
+
+  it("does not hold a web_fetch ask or deny to the list of hosts", () => {
+    const rules = [...original.permissions.rules, rule({ effect: "ask", match: ["example.com"] })];
+    expect(violations(repo(withRules(rules)))).toEqual([]);
+  });
+
+  it.each([
+    ["git push*", "main"],
+    ["git push*", "--no-verify"],
+    ["git push*", "--delete"],
+    ["git push*", "--force"],
+    ["git push*", "+"],
+    ["git push*", " -f"],
+    ["git commit*", "--no-verify"],
+  ])("refuses the allow %j without a deny that has %j", (allow, word) => {
+    const deny = {
+      ...shellRules[1],
+      match: (shellRules[1]?.match ?? []).filter(
+        (pattern) => !(pattern.startsWith(allow.slice(0, -1)) && pattern.includes(word)),
+      ),
+    };
+    const command = allow.slice(0, -1);
+    expect(
+      violations(repo(withRules([shellRules[0], deny, original.permissions.rules[2]]))),
+    ).toEqual([
+      `${agent}: the allow "${allow}" has no deny of "${command}" with "${word}". An allow that ends with * lets that argument through (${doc} ("許可と禁止の組")).`,
+    ]);
+  });
+
+  it("does not ask for a deny when the allow does not end with *, or is another command", () => {
+    const rules = [
+      shellRule("allow", ["git push", "git status*"]),
+      shellRule("deny", ["git push*main*"]),
+      original.permissions.rules[2],
+    ];
+    expect(violations(repo(withRules(rules)))).toEqual([]);
+  });
+
+  it("looks for the deny among the denies only", () => {
+    const asks = { ...shellRules[1], effect: "ask" };
+    const failures = violations(
+      repo(withRules([shellRules[0], asks, original.permissions.rules[2]])),
+    );
+    expect(failures.filter((failure) => failure.includes("has no deny"))).toHaveLength(7);
+  });
+
+  it.each([undefined, "other", 1])("refuses chat.defaultAgent %j", (value) => {
+    const failures = violations(repo({ [settings]: json({ "chat.defaultAgent": value }) }));
+    expect(failures).toEqual([
+      `${settings} must set "chat.defaultAgent" to the name of an agent of .kiro/agents/, so that the rules apply without --agent.`,
+    ]);
+  });
+
+  it("refuses a missing cli.json", () => {
+    expect(violations(repo({ [settings]: undefined }))).toHaveLength(1);
+  });
+
+  it("refuses a missing table, and a table without the columns", () => {
+    const message = `${doc} has no table with the columns 区分 and 実装. It lists every operation of the agents, and repo-policy compares it with the agents and the hooks.`;
+    expect(violations(repo({ [doc]: undefined }))).toEqual([message]);
+    expect(
+      violations(repo({ [doc]: "# x\n\n| 操作 | 区分 |\n| --- | --- |\n| a | 禁止 |\n" })),
+    ).toEqual([message]);
+    expect(
+      violations(
+        repo({ [doc]: "# x\n\n| 操作 | 実装 |\n| --- | --- |\n| a | `agent: shell` |\n" }),
+      ),
+    ).toEqual([message]);
+  });
+
+  it("refuses a 禁止 row without an implementation", () => {
+    const table =
+      "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | なし |\n| b | 禁止 | `agent: shell` |\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([
+      `${doc}: a row of 禁止 has no 実装. Name a \`hook: <check>\` or an \`agent: <capability>\`.`,
+    ]);
+  });
+
+  it("refuses a hook that does not exist", () => {
+    const table =
+      "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `hook: block-gone`、`agent: shell` |\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([
+      `${doc}: hook: block-gone, agent: shell names the hook check "block-gone", which tools/scripts/src/hooks/ does not have.`,
+    ]);
+  });
+
+  it("refuses an agent capability without a deny rule", () => {
+    const table =
+      "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `agent: shell`、`agent: fs_write` |\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([
+      `${doc}: agent: shell, agent: fs_write names "agent: fs_write", but no agent has a deny rule for fs_write.`,
+    ]);
+  });
+
+  it("refuses a deny rule that no 禁止 row cites", () => {
+    const table =
+      "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `hook: block-force-push` |\n| b | 確認 | `agent: shell` |\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([
+      `An agent denies shell, but no row of 禁止 in ${doc} has \`agent: shell\`. Add the operation to the table.`,
+    ]);
+  });
+
+  it("reads a row without the closing pipe", () => {
+    const table = "| 操作 | 区分 | 実装\n| --- | --- | ---\n| a | 禁止 | `agent: shell`\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([]);
+  });
+
+  it("reads the columns by their names, and stops at the end of the table", () => {
+    const table =
+      "| 実装 | 区分 |\n| --- | --- |\n| `agent: shell` | 禁止 |\n\ntext\n\n| 実装 | 区分 |\n| --- | --- |\n| `hook: block-gone` | 禁止 |\n";
+    expect(violations(repo({ [doc]: table }))).toEqual([]);
+  });
+
+  it("wants a row for the agent in the catalog, and none for an agent that is gone", () => {
+    const rows = (base[catalogPath] ?? "")
+      .split("\n")
+      .filter((line) => !line.includes("kiro-agent"));
+    expect(violations(repo({ [catalogPath]: rows.join("\n") }))).toEqual([
+      `\`kiro-agent: factory\` has no row in ${catalogPath}. Add a row for the agent.`,
+    ]);
+    const extra = `${base[catalogPath] ?? ""}| \`kiro-agent: gone\` | x | g | | | t |\n`;
+    expect(violations(repo({ [catalogPath]: extra }))).toEqual([
+      `${catalogPath} names \`kiro-agent: gone\`, which is not in an agent of .kiro/agents/<name>.json.`,
     ]);
   });
 });

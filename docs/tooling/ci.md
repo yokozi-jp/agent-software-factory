@@ -40,14 +40,14 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 ## ci.yml の検証
 
-どれも、対応するファイルを変えたときに pre-commit hook でも実行します (adr-check と test-weakening は pre-push hook で実行し、そのテストは `tools/scripts` を変えた commit の pre-commit hook で `nx test scripts` として実行します)。どの hook の job がどの検証の写しかは、[保証カタログ](assurance-catalog.md) の「ローカルの写し」の列にあります。
+どれも、対応するファイルを変えたときに pre-commit hook でも実行します (pre-push hook は、`nx affected -t test` も実行し、影響を受ける project の coverage の下限を push の前に確かめます。adr-check と test-weakening は pre-push hook で実行し、そのテストは `tools/scripts` を変えた commit の pre-commit hook で `nx test scripts` として実行します)。どの hook の job がどの検証の写しかは、[保証カタログ](assurance-catalog.md) の「ローカルの写し」の列にあります。
 
 - `node tools/scripts/src/checks/repo-policy/cli.ts` (repo-policy): ADR の決定を機械的に確認します (`@nx/vite` がない、`vite.config.ts` に `run` がない、`.vite-hooks` がない、betterleaks のバージョンが一致している、ADR の番号が重複していない、Node.js のメジャー版が `.node-version`・`engines.node`・`@types/node` の catalog・`vite.config.ts` の build target でそろっている、`ci.yml` の `main` 以外の全ての job が `main` の `needs` に入っている)。CI は作業ツリーを、pre-commit は `staged` を付けてステージした内容を検査します。ステージしていない他のファイルの編集で、コミットが止まらないようにするためです。
   `docs/` の外 (スクリプト、設定、`AGENTS.md`、workflow) に書いた `docs/...md` のパス、`docs/...md ("見出し")` の見出し、`docs/adr/NNNN` の番号が実在することも確認します。見出しは番号を付けずに書きます。
   `ci.yml` の `main` が必須チェックをまとめる job のとき、`needs` に入っていない job は、失敗しても merge を止めません。そこで、`main` 以外の job が全て `needs` に入っていることを確認します。`needs` は 1 つの job の id でも、job の id のリストでも書けます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。リストは 1 行の配列でも、複数行のリストでも読みます。`ci.yml` がなければ失敗します。
   `tools/scripts/sh/*.sh` が、`git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作していないことも確認します。Git hook の中で動くと、hook を動かしたリポジトリに効くためです (理由は「スクリプトのテスト」)。別のリポジトリが要るテストは TypeScript で `gitIn` を通して書きます。TypeScript は対象外です。文字の並びでは `execFileSync("git", ["-C", …])` を見つけられないので、lint の規則と `isolation.test.ts` が守ります ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。
   `tools/scripts/sh/*.sh` の mode が `100755` であることも確認します。
-  `packages/` の `shared` 以外の package が、ルートの `vite.config.ts` の `modules` にあること (ないと、その package の import を止める規則がありません)、各 package の `src/` と各モジュールの各層 (`vite.config.ts` の `layers`) の `__fixtures__/` に、`oxlint-disable-next-line no-restricted-imports` を書いた fixture があることも確認します ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
+  `packages/` の `shared` 以外の package が、ルートの `vite.config.ts` の `modules` にあること (ないと、その package の import を止める規則がありません)、各 package の `src/` と各モジュールの各層 (`vite.config.ts` の `layers`) の `__fixtures__/` に、`oxlint-disable-next-line no-restricted-imports` を書いた fixture があることも確認します ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。`vite.config.ts` の `layers` に `domain` があれば、各モジュールの `src/domain/__fixtures__/` に、`domain/no-throw`、`no-restricted-globals`、`no-restricted-properties` の disable のコメントを書いた fixture があることも確認します ([ADR 0027](../adr/0027-domain-model-as-pure-functions-and-unions.md))。
   `tools/scripts/package.json` の `test-tools` の `inputs` のうち `{workspaceRoot}/…` のものが、`lefthook.yml` の `scripts-test-tools` の `glob` に同じ文字列で入っていることも確認します。Nx と lefthook では glob の書き方が違うので、パターンの照合はしません。意図して外すものは、repo-policy の `rules.ts` の `notInHook` に理由を添えて書きます。
   [保証カタログ](assurance-catalog.md) の表と、`ci.yml` の step、ruleset の規則、`lefthook.yml` の job、`.kiro/hooks/` の hook と `tools/scripts/src/hooks/` の検査が対応していること (行のない名前、設定にない名前、2 回出る名前、「検出力の確かめ方」が空の行がない) と、ruleset の必須チェックがどれも `pull_request` で動く workflow の job の名前であることも確認します。照合の決まりはカタログの「表と設定のずれの検査」にあります。
   設定ファイル (workflow、`pnpm-workspace.yaml`、`mise.toml`、`.betterleaks.toml`、`package.json`、steering の frontmatter) は、catalog で固定したパーサー (`yaml`、`smol-toml`) と `JSON.parse` で読みます。値を取り出す検査は、引用符、コメント、1 行か複数行かで結果が変わりません。例外は steering の `fileMatchPattern` で、1 行の配列 (`["a", "b"]`) で書くことを求めます。読めないファイルは、パーサーのエラーを添えて失敗します。`vite.config.ts` は文字列として読みます。
@@ -80,12 +80,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 ## coverage の下限
 
-テストの強さの基準は [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定です。`apps/api` と `tools/scripts` の `test` が、Vitest の coverage (provider は v8) で次の 2 つを確かめ、満たさなければ失敗します。ゲートは `nx` の job の `nx affected -t test` です。
+テストの強さの基準は [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定です。`apps/api`、`tools/scripts`、`tools/lint-plugins` の `test` が、Vitest の coverage (provider は v8) で次の 2 つを確かめ、満たさなければ失敗します。ゲートは `nx` の job の `nx affected -t test` です。
 
 - ファイルごとの下限: lines と branches が 90% (`coverage.thresholds.perFile`)。`include` が全てのソースファイルを数えるので、テストのない新しいファイルを足すと止まります。
 - 全体の値のラチェット: `thresholds.autoUpdate` に `Math.floor` で丸める関数を渡しているので、全体の値が下限を上回った実行は、その値を `vite.config.ts` に書き戻します。テストを消して全体の値が下がると止まります。
 
-対象から外すのは、実行環境ごとの入口 (`apps/api/src/server.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`) とテストファイルです。`apps/web` にはまだ coverage がなく、最初の component test を足すときに `--passWithNoTests` を外して同じ基準を入れます。そのときは、生成物 (`routeTree.gen.ts`) と入口 (`main.tsx`) を対象から外します。
+対象から外すのは、実行環境ごとの入口 (`apps/api/src/server.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`)、テストファイル、lint の検出力を確かめる fixture (`apps/api/src/__fixtures__/`) です。fixture はわざと規則に違反する文を持ち、どこからも import されないので、0% と数えられて下限を割ります。`apps/web` にはまだ coverage がなく、最初の component test を足すときに `--passWithNoTests` を外して同じ基準を入れます。そのときは、生成物 (`routeTree.gen.ts`) と入口 (`main.tsx`) を対象から外します。
 
 ファイルごとの下限で止まったら、そのファイルの、通っていない行と分岐を確かめるテストを足します。下限を下げたり、ファイルを `exclude` に足したりはしません。テストで通せない分岐 (型のためだけの `??` など) には、理由を添えて `/* v8 ignore next -- <理由> */` を書きます。
 

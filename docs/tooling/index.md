@@ -5,6 +5,7 @@
 - [CI](ci.md)：CI が失敗したとき、workflow や CI の検証を変えるとき、検査を足すとき
 - [保証カタログ](assurance-catalog.md)：何が merge のゲートで保証されているかを確かめるとき、検査、hook、ruleset を足す、変える、消すとき
 - [Effect の検査](effect-lint.md)：`lint-effect` が失敗したとき、Effect の規則で `vp check` が止まったとき、Effect の検査や effect-tsgo の版を変えるとき
+- [エージェントの権限](agent-permissions.md)：エージェントの操作が止まった、確認を求められたとき、権限の規則や hook を足す、変える、緩めるとき、`--trust-all-tools` を付けるか迷うとき、worktree で Kiro を始めるとき
 - [secret scan](secret-scan.md)：betterleaks で止まったとき、誤検知を除外するとき、betterleaks を更新するとき
 - [Renovate](renovate.md)：Renovate の PR が出たとき、Renovate の設定を変えるとき、GitHub App をインストールするとき
 - [検証環境の流れ](verification-environment.md)：検証環境の workflow や CDK の stack を書く、変えるとき、検証環境が失敗したとき、本番の CD との違いを確かめるとき

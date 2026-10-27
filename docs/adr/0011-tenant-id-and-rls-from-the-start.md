@@ -19,7 +19,7 @@ tags: [adr, db, postgresql, multitenancy, security]
 - API は、テナントをサーバー側のセッションからだけ取ります（[ADR 0022](0022-better-auth-cookie-bff.md)。Cookie のセッションはサーバーだけが書ける値で、AWS が勧める「テナントを署名されたトークンに結び付ける」（[AWS Well-Architected SaaS Lens: Identity and access management](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/identity-and-access-management.html)）と同じ信頼の度合いである、というのは判断です）。クライアントが送るヘッダー、パス、本文のテナントは使いません。
 - 認証の表（Better Auth）は、専用の `auth` スキーマに置き、RLS の対象にしません。アプリ用のロールには `auth` スキーマの権限を与えません（ADR 0022）。
 - テナントは、トランザクションごとに `set_config('app.current_tenant', <id>, true)`（`SET LOCAL` と同じ）で設定します。接続プールで次のリクエストに残るので、セッション単位の `SET` は使いません。
-- 非同期処理は Outbox のメッセージに `tenant_id` を載せ、ワーカーが処理のトランザクションの中で設定します。バッチはテナントをパラメータに取ってテナントごとに実行し、`BYPASSRLS` を持つロールで全テナントを一度に処理しません。
+- 非同期処理は Outbox のメッセージに `tenant_id` を載せ、ワーカーが処理のトランザクションの中で設定します。バッチはテナントをパラメータに取ってテナントごとに実行し、`BYPASSRLS` を持つロールで全テナントを一度に処理しません。唯一の例外は、Outbox を送る処理が専用のロール `outbox_relay` で `messaging.outbox` の全テナントの行を読むことです ([ADR 0029](0029-module-data-ownership-and-shared-outbox.md))。
 - テストデータには2つのテナントを置き、別のテナントの行が読めない、更新できない、バッチの対象に入らないことをテストします。`tenant_id` を持つ表（`auth` スキーマを除く）がすべて RLS を有効にして強制していることを、カタログ（`pg_class.relrowsecurity`、`relforcerowsecurity`）で確かめるテストも置きます。
 
 ## Considered Options

@@ -1,0 +1,18 @@
+{
+  "name": "@agent-software-factory/lint-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "vp check",
+    "test": "vp test run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "lint-plugins"
+  }
+}
