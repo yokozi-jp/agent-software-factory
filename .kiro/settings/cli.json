@@ -1,4 +1,5 @@
 {
   "chat.defaultModel": "auto",
-  "chat.agentEngine": "v3"
+  "chat.agentEngine": "v3",
+  "chat.defaultAgent": "factory"
 }
