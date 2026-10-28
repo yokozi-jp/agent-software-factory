@@ -1164,6 +1164,13 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
+  it("refuses a check that asks the user and has no row", () => {
+    const check = { "tools/scripts/src/hooks/discard-changes.ts": "// ask-discard-changes: x\n" };
+    expect(violations(repo(check))).toEqual([
+      `\`ask-discard-changes\` (tools/scripts/src/hooks/discard-changes.ts) has no row in ${path}. Add a row \`kiro: <hook>/ask-discard-changes\` for the hook that runs it.`,
+    ]);
+  });
+
   it("refuses a check of the Kiro hooks that has no row", () => {
     const check = { "tools/scripts/src/hooks/iwe-normalize.ts": "// block-iwe-normalize: x\n" };
     expect(violations(repo(check))).toEqual([

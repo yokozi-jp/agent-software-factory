@@ -581,7 +581,7 @@ interface Configs {
 
 const hookFile = /^\.kiro\/hooks\/[^/]+\.json$/;
 const checkFile = /^tools\/scripts\/src\/hooks\/[^/]+\.ts$/;
-const checkName = /^\/\/ ((?:block|warn)-[a-z-]+): /;
+const checkName = /^\/\/ ((?:block|warn|ask)-[a-z-]+): /;
 const agentFile = /^\.kiro\/agents\/([^/]+)\.json$/;
 
 function configNames(tree: Tree): Configs {
