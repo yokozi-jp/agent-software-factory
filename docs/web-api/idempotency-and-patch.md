@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: "Web API の冪等性と PATCH の部分更新"
-description: "POST/PATCH に冪等性を持たせる Idempotency-Key と、PATCH の部分更新形式を定める規約。リトライ時の重複処理を防ぐとき、PATCH のボディ形式を決めるときに読む。"
+description: "POST/PATCH に冪等性を持たせる Idempotency-Key（このリポジトリでは POST と PATCH のすべてで必須。ヘッダーの形式、一意キー、ペイロードのハッシュ、処理中の重複、保存期間、保存する応答）と、PATCH の部分更新形式を定める規約。リトライ時の重複処理を防ぐとき、POST や PATCH の route を足すとき、PATCH のボディ形式を決めるときに読む。"
 tags: [web-api, convention, idempotency, http-method]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forWebAPI/web_api_guidelines.html
@@ -24,9 +24,30 @@ Idempotency-Keyヘッダーという[IETF Draft（2026年10月時点ではDraft 
 - POSTやPATCHであっても、リトライ時の重複起動に備えて、できる限り冪等な設計とする
 - IETF Draftな状態であるが、`Idempotency-Key` を用いる
 - キーにはフロントエンドでUUIDを採番して設定してもらう
-- サーバーサイドのDBには `Idempotency-Key` の値とペイロードのハッシュ値を格納するカラムを追加し、`Idempotency-Key` 側のカラムにユニーク制約を貼る
+- サーバーサイドのDBには `Idempotency-Key` の値とペイロードのハッシュ値を格納するカラムを追加し、`(tenant_id, user_id, Idempotency-Key)` の組にユニーク制約を貼る
 - サーバーサイドは、`Idempotency-Key`が指定された場合、その値とペイロードのハッシュ値を突き合わせて、どちらの値も一致していれば処理済みとする
 - `Idempotency-Key` が処理済みだが、ペイロードハッシュ値が異なる場合は、400 (Bad Request) エラーを返す（フロントエンド側で別のUUIDを発番してもらう）
+
+このリポジトリでは、上の推奨を次のように具体化する（理由は [ADR 0036](../adr/0036-idempotency-key-in-module-schema.md)）。
+
+- **対象**: POST と PATCH のすべてで `Idempotency-Key` を必須とする。ヘッダーがなければ 400 を返す。Better Auth の `/api/auth/*` は契約の外にあり、対象にしない
+- **ヘッダーの形式**: 値は UUID で、Structured Field の String として引用符で囲む（`Idempotency-Key: "<UUID>"`）。この形式でなければ 400 を返す
+- **保存先**: キーは、モジュールごとのスキーマの専用の表に、業務の更新と同じトランザクションで書く。キーのカラムだけにユニーク制約を貼ると、別のテナントの同じキーで、行は RLS で見えないのに挿入だけが拒まれるので、`tenant_id` と `user_id` を含める（[ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md)）
+- **ペイロードのハッシュ**: HTTPメソッド、パス、クエリ文字列、リクエストボディのバイト列を合わせた SHA-256 とする。JSON は正規化しない
+- **処理中の重複**: 先の要求が処理中のときは、5 秒まで待つ。待ちが切れたら 409 (Conflict) と `Retry-After` ヘッダーを返す
+- **保存期間**: 24 時間（API の利用者に公開する期限）。この間は、同じキーでの再試行に保存した応答を返す
+- **保存する応答**: 2xx だけを保存する。2xx 以外の応答は保存せず、キーも残さないので、同じキーでの再試行は業務の処理をもう一度実行する
+- **処理済みの再試行への応答**: 保存した HTTPステータスコードとボディをそのまま返す。返し直したことを示すヘッダーは付けない
+- **エラーの区別**: ヘッダーなし、形式の誤り、ペイロードの不一致、処理中の重複は、エラー応答（Problem Details）の `type` で区別する
+
+> [!NOTE]
+> **フロントエンドの書き方**
+>
+> キーは `crypto.randomUUID()` で、利用者の1回の操作ごとに採番する。再試行のあいだは同じ値を送る。TanStack Query の mutation は、再試行のたびに `mutationFn` を呼び直すため、キーは `mutationFn` の外で作って変数に渡す。
+>
+> `crypto.randomUUID()` は secure context でしか使えない。HTTPS と `http://localhost` は使えるが、それ以外の HTTP では動かない（[MDN: Crypto.randomUUID()](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)、[MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts)）。
+
+検査は [ADR 0036 の検査](../adr/0036-idempotency-key-in-module-schema.md#検査) にある。契約のゲート、共有の関数、web の hook は、実装の Issue で足す。
 
 > [!TIP]
 > **業務アプリケーションで伝統的に行われていた設計パターン**
