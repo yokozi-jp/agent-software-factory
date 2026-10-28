@@ -21,7 +21,7 @@
 - [PostgreSQL のマルチテナント](postgresql-multitenancy.md)：マルチテナントのシステムで DB を設計するとき
 - [PostgreSQL の排他制御](postgresql-concurrency.md)：排他制御を設計するとき
 - [PostgreSQL のテスト](postgresql-test.md)：DB を含むテストを設計するとき
-- [PostgreSQL のスキーママイグレーション](postgresql-migration.md)：スキーマを変更するとき
+- [PostgreSQL のスキーママイグレーション](postgresql-migration.md)：スキーマを変更するとき、seed を足す、直すとき
 - [PostgreSQL のバージョン](postgresql-version.md)：利用バージョンやアップグレードを計画するとき
 - [PostgreSQL の拡張機能](postgresql-extensions.md)：拡張機能を導入するか検討するとき
 - [PostgreSQL の VACUUM とロケール](postgresql-vacuum-locale.md)：自動バキュームを設定するとき、照合順序を決めるとき

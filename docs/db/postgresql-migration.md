@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: "PostgreSQL のスキーママイグレーション"
-description: "PostgreSQL のスキーマ変更の対応手順と、マイグレーションツールの利用方針を定める文書。スキーマを変更するときに読む。"
+description: "PostgreSQL のスキーマ変更の対応手順と、マイグレーションツールの利用方針、このリポジトリの migration と seed の書き方を定める文書。スキーマを変更するとき、seed を足す、直すときに読む。"
 tags: [db, postgresql, migration]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html
@@ -103,3 +103,14 @@ DO $$ BEGIN RAISE EXCEPTION 'irreversible: 前に進めるだけ (docs/adr/0025)
 ```
 
 down が `RAISE EXCEPTION` だけであることと、up の先頭の `SET LOCAL lock_timeout` (`transaction:false` を除く) は、repo-policy が `db/migrations/*.sql` の全部で検査します (`tools/scripts/src/checks/repo-policy/rules.ts`)。
+
+## このリポジトリの seed
+
+手で触るためのローカルのデータと、結合テストのテンプレートの DB に入れるデータは、migration の外の seed に置きます。決定と根拠は [ADR 0036](../adr/0036-seed-in-typescript-through-rls.md) にあります。次の書き方を守ります。
+
+- **置き場所**: `packages/db/src/seed/` の TypeScript で、モジュールごとのファイルと `index.ts` に分けます。`packages/db` への移動 ([Issue #337](https://github.com/yokozi-jp/agent-software-factory/issues/337)) と seed の入口の実装 ([Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332)) が終わるまで、このディレクトリはありません。
+- **流し方**: `pnpm db:seed` (`DATABASE_URL` に `migrator` の接続 URL を渡す)、またはコードから `seed(databaseUrl)`。`migrator` の 1 つのトランザクションの中で `set_config('app.current_tenant', …, true)` を切り替えて、RLS を通して書きます。`inTenantTransaction` と superuser は使いません。
+- **冪等にしない**: テナント A の行があれば、何もせずに失敗します。やり直すときは DB を作り直してから流します。
+- **データ**: 名前で呼ぶデータは固定のリテラル、件数を増やすデータは `fakerJA` と固定の `faker.seed()` で作ります。id は採番に任せ、`now()` と乱数は使いません。
+- **migration と同じ PR で直す**: 表や列を変える migration を足す PR は、seed も同じ PR で書き換えます。seed は版を重ねず、どの commit でも、その commit の migration を流した DB にその commit の seed が入ります。表ごとの対応表が、表を足して seed を書き忘れることを `vp check` で止めます。`auth` と `migrations` 以外の全部の表に行があることは、結合テストが確かめます。Outbox、冪等キー、受信の重複除去の表には、送信済みや期限切れの状態の行も入れます。
+- **流さない場所**: 検証環境と本番では流しません。seed と faker は本番のイメージに入れません。アプリが動くのに必須のデータ (区分のコード表など) は seed ではなく migration に書きます ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。
