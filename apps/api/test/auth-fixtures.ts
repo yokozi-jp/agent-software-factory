@@ -71,7 +71,8 @@ export async function createAuthFixture({
     app,
     async startInstance() {
       const instance = await startServerProcess({
-        AUTH_DATABASE_URL: db.authServiceUrl,
+        AUTH_DATABASE_URL: db.url("auth_service"),
+        APP_DATABASE_URL: db.url("app_user"),
         PUBLIC_ORIGIN: config.baseURL,
         AUTH_SECRET: config.secret,
         OIDC_DISCOVERY_URL: config.oidc.discoveryUrl,

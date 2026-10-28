@@ -11,6 +11,7 @@ export const envSchema = z.object({
     .pipe(z.number().int().min(1).max(65535))
     .default(3000),
   AUTH_DATABASE_URL: z.string().min(1),
+  APP_DATABASE_URL: z.string().min(1),
   PUBLIC_ORIGIN: z.url(),
   AUTH_SECRET: z.string().min(1),
   OIDC_DISCOVERY_URL: z.url(),

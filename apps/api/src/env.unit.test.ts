@@ -6,6 +6,7 @@ import { envSchema, loadEnv } from "./env.ts";
 
 const validEnv = {
   AUTH_DATABASE_URL: "postgres://auth_service:pw@localhost:5432/app", // betterleaks:allow
+  APP_DATABASE_URL: "postgres://app_user:pw@localhost:5432/app", // betterleaks:allow
   PUBLIC_ORIGIN: "https://app.example.test",
   AUTH_SECRET: "a-secret-that-is-long-enough-for-tests", // betterleaks:allow
   OIDC_DISCOVERY_URL: "https://idp.example.test/.well-known/openid-configuration",

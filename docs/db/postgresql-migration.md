@@ -88,6 +88,8 @@ sources:
 - **`lock_timeout`**: up の先頭に `SET LOCAL lock_timeout = '5s';` を書きます。ロックを待ち続けて、後ろの要求を詰まらせないためです。
 - **`transaction:false`**: `CREATE INDEX CONCURRENTLY` のように、トランザクションの中で実行できない文を含むファイルだけ、`-- migrate:up transaction:false` にします。トランザクションの外では `SET LOCAL` が効かないので、`lock_timeout` は要りません。
 - **down**: `DO $$ BEGIN RAISE EXCEPTION 'irreversible …'; END $$;` だけを書きます。dbmate は down が空だと `rollback` が成功して履歴だけを消すので、失敗させるためです。
+- **表の形**: テナントの表は、`tenant_id` を先頭にした複合の主キー、連番のサロゲートキー (`bigint GENERATED ALWAYS AS IDENTITY`)、[共通カラム](postgresql-keys.md#共通カラム)、`ENABLE` と `FORCE ROW LEVEL SECURITY` とテナントのポリシーを持ちます。最初の例は `20261027200000_create_module_schemas.sql` の `claim.t_claim` で、共通カラムの型と桁もそこに合わせます。共通カラムの日時は既定値を持たず、アプリがバインドします。
+- **型**: モジュールのスキーマ (`claim`、`approval`、`closing`) の表を変えたら、`pnpm exec nx db-types api` で Kysely の型 (`packages/<モジュール>/src/infrastructure/db.gen.ts`) を生成し直して、migration と同じ commit に入れます。CI が、生成し直した型と違うと失敗します ([PostgreSQL のクライアント管理](postgresql-client.md))。
 - **前に進めるだけ**: 適用済みの migration は書き換えません。直すときは前向きの migration を足します。互換を壊す変更は expand と contract に分けます。expand (列や表を足す) を出し、アプリを新しい形に切り替えてから、contract (古い列や表を消す) を出します。
 
 ```sql

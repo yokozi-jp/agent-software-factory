@@ -2,3 +2,4 @@
 // module (docs/adr/0026). Other packages import only this file, by the package name.
 export { fromResult } from "./from-result.ts";
 export type { Result } from "./result.ts";
+export { inTenantTransaction, type ModuleName, type TenantScope } from "./tenant-transaction.ts";

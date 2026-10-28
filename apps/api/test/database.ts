@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { inject } from "vite-plus/test";
 
 import { rolePassword } from "./credentials.ts";
-import { connectionUri } from "./connection.ts";
+import { connectionUri, roles } from "./connection.ts";
 
 export interface TestDatabase {
   /** superuser (testcontainers の master user)。中身の確認に使う。表の所有者は migrator。 */
@@ -12,10 +12,10 @@ export interface TestDatabase {
   readonly migrator: Pool;
   /** Better Auth が使うロール。search_path は auth。 */
   readonly authService: Pool;
-  /** authService と同じロールで接続する URL。別のプロセスで動かす API に渡す。 */
-  readonly authServiceUrl: string;
   /** 業務の処理が使うロール。auth スキーマの権限を持たない。 */
   readonly appUser: Pool;
+  /** このデータベースの接続 URI。ロールを渡さなければ superuser。別のプロセスで動かす API にも渡す。 */
+  url(role?: (typeof roles)[number]): string;
   close(): Promise<void>;
 }
 
@@ -34,9 +34,8 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const loginAs = (user: string) => connectionUri(base, name, { user, password: rolePassword });
   const superuser = new Pool({ connectionString: connectionUri(base, name) });
   const migrator = new Pool({ connectionString: loginAs("migrator") });
-  const authServiceUrl = loginAs("auth_service");
   const authService = new Pool({
-    connectionString: authServiceUrl,
+    connectionString: loginAs("auth_service"),
     options: "-c search_path=auth",
   });
   const appUser = new Pool({ connectionString: loginAs("app_user") });
@@ -45,8 +44,8 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     superuser,
     migrator,
     authService,
-    authServiceUrl,
     appUser,
+    url: (role) => (role === undefined ? connectionUri(base, name) : loginAs(role)),
     async close() {
       await Promise.all([superuser.end(), migrator.end(), authService.end(), appUser.end()]);
     },

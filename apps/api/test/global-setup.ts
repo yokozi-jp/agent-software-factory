@@ -1,13 +1,10 @@
 import { readFileSync } from "node:fs";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { GenericContainer, Wait } from "testcontainers";
-import { Client } from "pg";
 import type { TestProject } from "vite-plus/test/node";
 
-import { migrate } from "../db/migrate.ts";
-import { rolePassword } from "./credentials.ts";
-import { bootstrapSql } from "./bootstrap.ts";
-import { connectionUri, migratorUrl, roles, templateDatabase } from "./connection.ts";
+import { postgresImage, templateDatabase } from "./connection.ts";
+import { prepareDatabase } from "./prepare-database.ts";
 
 // 結合テストは、本物の PostgreSQL と Keycloak を相手にする (docs/db/postgresql-test.md、docs/adr/0022)。
 // 一度だけ起動して全テストで使う。テストごとに別のデータベースを作るので、並列に走らせられる (ロールはクラスタ全体で共有する)。
@@ -37,7 +34,7 @@ export default async function setup(project: TestProject) {
 
 async function start(project: TestProject) {
   const [postgres, keycloak] = await Promise.all([
-    new PostgreSqlContainer("postgres:17").start(),
+    new PostgreSqlContainer(postgresImage).start(),
     new GenericContainer("quay.io/keycloak/keycloak:26.8.1")
       .withEnvironment({
         KC_BOOTSTRAP_ADMIN_USERNAME: "admin",
@@ -60,21 +57,8 @@ async function start(project: TestProject) {
   ]);
 
   // 本番と同じ経路で、テンプレートの DB に 1 回だけ migration を流す (docs/adr/0025)。
-  // 1. master user (testcontainers の superuser) が bootstrap.sql でロールを作る。ロールはクラスタ全体で共有する。
-  // 2. migrator が dbmate で migration を流す。ローカルはパスワードで接続するので、ここで設定する。
   const base = postgres.getConnectionUri();
-  const admin = new Client({ connectionString: base });
-  await admin.connect();
-  await admin.query(`CREATE DATABASE ${templateDatabase}`);
-  await admin.end();
-
-  const master = new Client({ connectionString: connectionUri(base, templateDatabase) });
-  await master.connect();
-  await master.query(bootstrapSql);
-  for (const role of roles) await master.query(`ALTER ROLE ${role} PASSWORD '${rolePassword}'`);
-  await master.end();
-
-  await migrate(migratorUrl(base, templateDatabase, rolePassword));
+  await prepareDatabase(base, templateDatabase);
 
   project.provide("postgresUri", base);
   project.provide("templateDatabase", templateDatabase);
