@@ -149,7 +149,7 @@ Kiro 本体の挙動 (deny、確認、許可が実際に効くか) は、自動�
 
 ## 機械的な検査
 
-repo-policy (`ci.yml: Repo policy (docs/adr)`) が、次を確かめます。規則は `tools/scripts/src/checks/repo-policy/rules.ts` にあります。`kiro-cli agent validate` は、不正な agent でも終了コード 0 なので使いません。
+repo-policy (`ci.yml: Repo policy (docs/adr)`) が、次を確かめます。規則は `tools/scripts/src/checks/repo-policy/agent-permissions.ts` にあります。`kiro-cli agent validate` は、不正な agent でも終了コード 0 なので使いません。
 
 - `.kiro/agents/*.json` の `tools` に `"*"` があること (書かないと tool が1つも使えない)。
 - 規則の `capability` が既知の名前であること (綴り違いは、何も表示されずに規則が外れる)。既知の名前は `all`、`builtin`、`filesystem`、`fs_read`、`fs_write`、`shell`、`web_fetch`、`web_search`、`mcp`、`subagent`、`skill`、`power`、`context`、`diagnostics`、`workflow`、`sandbox_network`。
