@@ -86,10 +86,23 @@ const apps: Record<string, string> = {
   // knip.jsonc (below) takes the default entries away, so main.ts needs this link.
   "apps/web/index.html":
     '<!doctype html>\n<html lang="en">\n  <body>\n    <script type="module" src="/src/main.ts"></script>\n  </body>\n</html>\n',
-  // The files knip.jsonc names as entries of apps/web (the parts `shadcn add` writes, docs/adr/0033). Nothing
-  // imports them; as entries, their exports are not reported.
-  "apps/web/src/components/ui/button.tsx": 'export const Button = "button";\n',
-  "apps/web/src/lib/utils.ts": 'export const cn = (...names: string[]) => names.join(" ");\n',
+  // packages/ui and the files knip.jsonc names as entries of it (the parts `shadcn add` writes, docs/adr/0033,
+  // 0034). Nothing imports them; as entries, their exports are not reported.
+  "packages/ui/package.json": JSON.stringify(
+    {
+      name: "@agent-software-factory/ui",
+      private: true,
+      type: "module",
+      exports: { "./components/*": "./src/components/*.tsx", "./lib/*": "./src/lib/*.ts" },
+      scripts: { check: "vp check" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name: "ui" },
+    },
+    undefined,
+    2,
+  ),
+  "packages/ui/src/components/button.tsx": 'export const Button = "button";\n',
+  "packages/ui/src/lib/utils.ts": 'export const cn = (...names: string[]) => names.join(" ");\n',
   // A detection-power fixture of the module boundaries, which nothing imports (ignoreFiles in knip.jsonc).
   "apps/api/src/__fixtures__/boundaries.ts":
     '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
@@ -142,6 +155,7 @@ function populate(): void {
   for (const project of [
     "apps/api",
     "apps/web",
+    "packages/ui",
     "tools/scripts",
     ...modules.map((name) => `packages/${name}`),
   ])

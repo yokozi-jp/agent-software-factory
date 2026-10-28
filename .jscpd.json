@@ -7,7 +7,7 @@
     "**/db.gen.ts",
     "**/fixtures/**",
     "**/__fixtures__/**",
-    "apps/web/src/index.css"
+    "packages/ui/src/styles/globals.css"
   ],
   "gitignore": true,
   "threshold": 0,

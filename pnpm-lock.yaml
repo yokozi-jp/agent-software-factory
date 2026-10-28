@@ -437,42 +437,21 @@ importers:
 
   apps/web:
     dependencies:
-      '@base-ui/react':
-        specifier: 'catalog:'
-        version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@fontsource-variable/geist':
-        specifier: 'catalog:'
-        version: 5.3.0
+      '@agent-software-factory/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@1.4.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      class-variance-authority:
-        specifier: 'catalog:'
-        version: 0.7.1
-      cn:
-        specifier: 'catalog:'
-        version: 0.5.0
-      lucide-react:
-        specifier: 'catalog:'
-        version: 1.62.0(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: 'catalog:'
         version: 19.3.1
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
-      shadcn:
-        specifier: 'catalog:'
-        version: 4.22.1(babel-plugin-macros@3.1.0)(supports-color@7.2.0)
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 4.3.3
-      tw-animate-css:
-        specifier: 'catalog:'
-        version: 1.4.0
     devDependencies:
       '@tanstack/router-plugin':
         specifier: 'catalog:'
@@ -566,6 +545,46 @@ importers:
         specifier: 'catalog:'
         version: 0.29.7
     devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.4.0(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/ui:
+    dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@fontsource-variable/geist':
+        specifier: 'catalog:'
+        version: 5.3.0
+      class-variance-authority:
+        specifier: 'catalog:'
+        version: 0.7.1
+      cn:
+        specifier: 'catalog:'
+        version: 0.5.0
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.62.0(@types/react@19.3.0)(react@19.3.1)
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+      shadcn:
+        specifier: 'catalog:'
+        version: 4.22.1(babel-plugin-macros@3.1.0)(supports-color@7.2.0)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
+      tw-animate-css:
+        specifier: 'catalog:'
+        version: 1.4.0
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
