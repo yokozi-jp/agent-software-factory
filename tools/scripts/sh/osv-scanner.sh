@@ -6,6 +6,8 @@
 # Ignore a vulnerability in osv-scanner.toml ([[IgnoredVulns]] with a reason).
 # OSV-Scanner runs through `mise exec`, so the version is the one pinned in mise.toml and mise.lock (docs/adr/0009).
 # Run by the pre-push hook and by CI. In GitHub Actions the warning is a ::warning:: annotation.
+# When OSV_SARIF_FILE names a file, a second scan writes the findings there as SARIF 2.1.0 for Code scanning
+# (ci.yml uploads it on a push to main, docs/adr/0021). The file is absent when that scan did not run.
 set -u
 
 cd "$(git rev-parse --show-toplevel)" || exit 0
@@ -32,4 +34,19 @@ case "$status" in
   1) warn "pnpm-lock.yaml has dependencies with known vulnerabilities (listed above). Update them, or ignore one in osv-scanner.toml with a reason." ;;
   *) warn "the scan failed (exit $status), so the dependencies were not checked. It needs to reach osv.dev." ;;
 esac
+
+# The SARIF scan runs only when the first one ran (0 or 1). Exit 1 still writes the file.
+if [ -n "${OSV_SARIF_FILE:-}" ]; then
+  rm -f "$OSV_SARIF_FILE"
+  case "$status" in
+    0 | 1)
+      mise exec -- osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output-file "$OSV_SARIF_FILE" >/dev/null
+      # 0 and 1 write the file. Anything else leaves nothing valid, so it is not uploaded.
+      case "$?" in
+        0 | 1) ;;
+        *) rm -f "$OSV_SARIF_FILE" ;;
+      esac
+      ;;
+  esac
+fi
 exit 0
