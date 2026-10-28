@@ -1,10 +1,10 @@
+import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import type { ClaimDatabase } from "@agent-software-factory/claim";
 import { inTenantTransaction } from "@agent-software-factory/shared";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { createTestDatabase, type TestDatabase } from "../../test/database.ts";
 import { createModuleDatabases } from "./databases.ts";
 
 // shared のテナントの設定 (inTenantTransaction) と、モジュールの最初の表 claim.t_claim の RLS (docs/adr/0011)。
