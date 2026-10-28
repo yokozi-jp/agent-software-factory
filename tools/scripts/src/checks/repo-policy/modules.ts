@@ -109,11 +109,34 @@ const globPattern = (glob: string): RegExp =>
 const resolves = (path: string, what: string) =>
   `${path} ${what}, which lets a package resolve a package that its package.json does not declare. The direction between the modules rests on that not resolving (docs/adr/0026).`;
 
+// What to write for the `@/*` import of apps/web, said where `paths` or `alias` is refused (docs/adr/0033).
+export const pathsHint =
+  "To import with `@/*`, set compilerOptions.paths with targets under ./src/ only, and resolve.tsconfigPaths: true in vite.config.ts (docs/adr/0033).";
+
 // An alias key of a Vite config: `alias:`, or the shorthand `{ alias }` and `{ alias, ... }`. Line comments are
 // dropped first, so the word in a comment ("the Node.js alias of globalThis") does not count; the // of a URL
 // ("https://") follows a colon and is kept.
 const aliasKey = /\balias\s*[:,}]/;
 const withoutLineComments = (text: string): string => text.replace(/(^|[^:])\/\/.*/gm, "$1");
+
+// A `paths` that only names files under the package's own src/ ({ "@/*": ["./src/*"] }, docs/adr/0033). It
+// resolves nothing outside the package, so it cannot reach a module the package does not declare. An empty
+// `paths`, a target outside ./src/, and a target with `..` are not this.
+function staysInSrc(paths: unknown): boolean {
+  const entries = Object.values(record(paths));
+  return (
+    entries.length > 0 &&
+    entries.every(
+      (targets) =>
+        Array.isArray(targets) &&
+        targets.length > 0 &&
+        targets.every(
+          (target) =>
+            typeof target === "string" && target.startsWith("./src/") && !target.includes(".."),
+        ),
+    )
+  );
+}
 
 // The settings that let a package resolve a package it does not declare: the paths and baseUrl of a tsconfig.json
 // (TypeScript), an alias of a vite.config.ts (Vite and Vitest), and a hoisted node_modules (pnpm). With any of
@@ -122,12 +145,13 @@ export function noResolutionBypass(tree: Tree): string[] {
   const failures: string[] = [];
   for (const path of tree.named("tsconfig.json")) {
     const options = record(record(tree.parsed(path)).compilerOptions);
-    for (const option of ["paths", "baseUrl"])
-      if (option in options) failures.push(resolves(path, `sets compilerOptions.${option}`));
+    if ("baseUrl" in options) failures.push(resolves(path, "sets compilerOptions.baseUrl"));
+    if ("paths" in options && !staysInSrc(options.paths))
+      failures.push(`${resolves(path, "sets compilerOptions.paths")} ${pathsHint}`);
   }
   for (const path of tree.named("vite.config.ts"))
     if (aliasKey.test(withoutLineComments(tree.read(path))))
-      failures.push(resolves(path, "sets an alias"));
+      failures.push(`${resolves(path, "sets an alias")} ${pathsHint}`);
   const workspace = record(tree.parsed("pnpm-workspace.yaml"));
   if (workspace.shamefullyHoist === true)
     failures.push(resolves("pnpm-workspace.yaml", "sets shamefullyHoist"));

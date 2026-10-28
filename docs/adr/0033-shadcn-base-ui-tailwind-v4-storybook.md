@@ -1,0 +1,50 @@
+---
+type: ADR
+title: "ADR 0033: web の UI は shadcn/ui (Base UI) と Tailwind CSS v4 で作り、カタログは Storybook に一本化する"
+description: web の UI 部品を shadcn/ui (下位ライブラリは Base UI) で作り、スタイルを Tailwind CSS v4 にし、部品のカタログと component test を Storybook に一本化する決定。部品のコードを components/ui/ に取り込んで自分たちで持つこと、取り込んだコードの更新が Renovate で追えず shadcn add --diff で手で確かめること、Storybook に Vite+ の公式の保証がなく外す条件があること、Base UI の ScrollArea と Select が style 要素を出す CSP の制約を書く。比べた案は Material UI、React Aria Components 単体、CSS-in-JS。UI の部品やスタイルの方式を変えるとき、部品を足すとき、Storybook や component test を入れるとき、web の CSP を決めるときに読む。
+tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
+---
+
+# ADR 0033: web の UI は shadcn/ui (Base UI) と Tailwind CSS v4 で作り、カタログは Storybook に一本化する
+
+`apps/web` の UI 部品は shadcn/ui (下位ライブラリは Base UI) で作り、スタイルは Tailwind CSS v4 で書きます。部品のカタログと component test は Storybook に一本化します。決定は [web の UI コンポーネントとカタログの方式を決める](https://github.com/yokozi-jp/agent-software-factory/issues/227) の解決コメントにあり、比較は [Issue #226](https://github.com/yokozi-jp/agent-software-factory/issues/226) です。導入は [Issue #314](https://github.com/yokozi-jp/agent-software-factory/issues/314) で行いました。Storybook は [Issue #141](https://github.com/yokozi-jp/agent-software-factory/issues/141) で入れます。この ADR の範囲は、shadcn (Base UI)、Tailwind v4、Storybook です。
+
+## 決定
+
+- **UI 部品**: shadcn/ui の CLI で部品のコードを `apps/web/src/components/ui/` に取り込みます。取り込んだコードはこのリポジトリのコードで、直接編集します。下位ライブラリは Base UI (`@base-ui/react`) で、`pnpm dlx shadcn@latest init --base base` が選びます。`components.json` に設定が残ります。
+- **スタイル**: Tailwind CSS v4 (`tailwindcss` と `@tailwindcss/vite`) です。CSS の入口は `apps/web/src/index.css` で、`main.tsx` が読みます。CSS-in-JS は使いません。
+- **alias**: `@/*` は `apps/web/src/*` を指します。`tsconfig.json` の `paths` に書きます。shadcn が生成するコードが `@/components/ui/button` のように import します。`apps/web/src` は、別のディレクトリのファイルを `@/` で import し、`../` を使いません。`vite.config.ts` の `no-restricted-imports` が `../` を止め、`apps/web/src/__fixtures__/relative-parent.ts` が検出力を確かめます。`apps/api` と `packages/*` には適用しません。
+- **alias の実装**: `vite.config.ts` は `resolve.tsconfigPaths: true` にして、`tsconfig.json` の `paths` を Vite が読みます。`resolve.alias` は書きません (Issue #314 は `resolve.alias` を挙げていました)。[ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md) は、宣言していない package を解決させる `paths` と `alias` を repo-policy で止めています。`@/*` が指すのは自分の `./src/*` だけで、ほかの package は解決しません。そこで repo-policy は、すべての target が `./src/` の下にある `paths` を許し、空の `paths`、`..` を含む target、`baseUrl`、`alias` は止めたままにしました。ADR 0026 のほかの規則は変えません。
+- **版**: 足した依存の版は `pnpm-workspace.yaml` の catalog で固定します。`shadcn init` が足す行の引用符は `vp fmt` で整えます。
+- **置き場所**: 部品は `components/ui/` です。業務コンポーネントは置きません ([Webフロントエンドのコンポーネント設計](../web-frontend/component-design.md))。
+- **story**: `components/ui/` の各部品に隣の `*.stories.tsx` を必須にします。ない部品は失敗にします。この検査は [Issue #315](https://github.com/yokozi-jp/agent-software-factory/issues/315) で作ります。業務コンポーネントは対象外です。
+- **テスト**: Storybook の story を component test にします。`*.test.tsx` と `vitest-browser-react` は使いません。`components/ui/` に専用のテストは書きません。基盤の確認は `vp check` と `vp build` です。
+
+## 制約
+
+- **取り込んだコードの更新は Renovate で追えません。** 部品のコードは依存ではなくリポジトリのファイルなので、Renovate は上流の変更を知りません。依存 (`@base-ui/react`、`shadcn` など) の版は Renovate が追います。部品のコードは `pnpm dlx shadcn@latest add <部品> --diff` で上流との差を見て、必要な変更を手で取り込みます。`--dry-run` は書かずに内容を確かめられます。
+- **Base UI の `ScrollArea` と `Select` (`alignItemWithTrigger`) は `<style>` 要素を出します。** CSP が `style-src` を制限すると、この `<style>` が止まります。使うときは、アプリの上位に Base UI の `CSPProvider` を置き、`disableStyleElements` を付けるか `nonce` を渡します (`@base-ui/react/csp-provider` の型定義で確認)。web の CSP はまだ決まっていないので、検査は作りません。この制約を、CSP を決める Issue に引き継ぎます。
+- **Storybook に Vite+ の公式の保証はありません。** Storybook は Vite を使いますが、このリポジトリの `vite` は `@voidzero-dev/vite-plus-core` に差し替えています。Vite+ が Storybook の動作を保証する文書はなく、動かなくなっても Vite+ 側の修正は約束されません。
+- **Storybook を外す条件**: Vite+ の更新で Storybook が起動しないか story の test が動かず、直す手間が story を持つ利点を上回るときです。外すときは、ここに書いた story 必須の検査も外し、component test を Vitest の browser mode の `*.test.tsx` に戻すかを決め直し、この ADR を置き換える ADR を書きます。
+
+## Knip と jscpd の扱い
+
+`shadcn add` が書くコードは、このリポジトリの検査をそのままでは通りません。
+
+- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `components/ui/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `apps/web` に、`src/components/ui/**/*.tsx` と `src/lib/utils.ts` を `entry` として書きました。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
+- **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `apps/web/src/index.css` だけを足しました。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
+
+## Considered Options
+
+- **Material UI**: 部品が揃い、保守も活発です。ただし、見た目の調整は MUI のテーマと CSS-in-JS (Emotion) を通すことになり、Tailwind と別の方式が増えます。コードを自分で持たないので、見た目や構造を大きく変えにくいです (判断)。
+- **React Aria Components 単体**: アクセシビリティの品質は高く、Base UI と同じ位置づけです。ただし、スタイルのついた部品の一式はなく、見た目を一から作ります。shadcn/ui が下位ライブラリに React Aria を選ぶ道もありますが、既定は Base UI で、既定に従うほうが `shadcn add` の更新に追従しやすいです (判断)。
+- **CSS-in-JS**: 実行時に `<style>` を挿入する方式は、CSP の `style-src` と相性が悪く、Tailwind と二重になります。
+- **Storybook と Vitest の browser mode の `*.test.tsx` を分ける**: story が腐ったときに人が気づく必要があります。一本化なら CI が story の壊れを止めます ([Issue #227](https://github.com/yokozi-jp/agent-software-factory/issues/227))。
+
+## Consequences
+
+- 部品を足すときは `pnpm dlx shadcn@latest add <部品>` を `apps/web` で実行し、`vp check` と `vp build` を通します。
+- 取り込んだコードの更新は人が確かめます。Renovate の PR は出ません。
+- `index.css` には shadcn が書くダークモード用の変数と `.dark` の変種が入っています。ダークモードは使わない範囲で、決めるときは [ダークモード](../web-frontend/dark-mode.md) を読みます。
+- 部品は今 `apps/web` の中に置きます。UI を使うアプリは今は 1 つだけだからです。複数のアプリで共有するときは、shadcn の標準の構成 ([Monorepo](https://ui.shadcn.com/docs/monorepo)) に従い、`packages/ui` に移します。ADR 0026 は `packages/` の直下を module と `shared` と `module-fixtures` に限り、`exports` を `src/index.ts` だけにしているので、移す前に例外を決めます ([Issue #330](https://github.com/yokozi-jp/agent-software-factory/issues/330))。
+- Storybook を入れる Issue (#141) と、story の検査の Issue (#315) が、この決定の続きです。

@@ -36,6 +36,7 @@ sources:
 - favicon.md の形式比較の表で、SVG のブラウザ対応を Safari 26 以降で対応済みに直した。WebKit Blog「WebKit Features in Safari 26.0」。
 - static-analysis.md に、このリポジトリの節として「React と JSX のアクセシビリティの検査」を足した (`apps/web/src` で Oxlint の `react` と `jsx-a11y` の plugin を有効にしたこと、見つけられる範囲と見つけられない範囲)。#239。
 - static-analysis.md の「React と JSX のアクセシビリティの検査」に、`react/no-array-index-key` と、不要な effect を止める `eslint-plugin-react-you-might-not-need-an-effect` の 9 つの規則を `error` にしたこと、内蔵の `react/set-state-in-effect` を `off` にしたこと、止まらない書き方を足した。「`key={index}` は見つからない」の記述を削った。#261、調査は #253。
+- component-design.md の「共通コンポーネントの実装方針」の後に、このリポジトリの節として「このリポジトリの方針」を足した (原文にはない)。原文の出典は 2025 年のガイドラインで、shadcn/ui のようにコードを取り込む方式、その更新が Renovate で追えないこと、Base UI の CSP の制約を含まない。shadcn/ui の CLI (`add --diff`) と Base UI の挙動を一次情報で確かめた。#314。
 
 ## 位置づけ
 

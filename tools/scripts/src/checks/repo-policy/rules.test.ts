@@ -13,6 +13,7 @@ import {
   packageFiles,
   packageJson,
 } from "./fixtures/passing-repo.ts";
+import { pathsHint } from "./modules.ts";
 import { violations, type Repo } from "./rules.ts";
 
 const base = passingRepo;
@@ -2311,6 +2312,8 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
 describe("ADR 0026: nothing resolves a package that a package.json does not declare", () => {
   const resolves = (path: string, what: string) =>
     `${path} ${what}, which lets a package resolve a package that its package.json does not declare. The direction between the modules rests on that not resolving (docs/adr/0026).`;
+  // paths and alias also say what to write for `@/*`; baseUrl and the pnpm settings do not.
+  const resolvesWithHint = (path: string, what: string) => `${resolves(path, what)} ${pathsHint}`;
   const workspace = base["pnpm-workspace.yaml"] ?? "";
 
   it.each(["paths", "baseUrl"])(
@@ -2327,11 +2330,43 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
           }),
         ).filter((failure) => failure.includes("lets a package resolve")),
       ).toEqual([
-        resolves("packages/claim/tsconfig.json", `sets compilerOptions.${option}`),
-        resolves("tsconfig.json", `sets compilerOptions.${option}`),
+        (option === "paths" ? resolvesWithHint : resolves)(
+          "packages/claim/tsconfig.json",
+          `sets compilerOptions.${option}`,
+        ),
+        (option === "paths" ? resolvesWithHint : resolves)(
+          "tsconfig.json",
+          `sets compilerOptions.${option}`,
+        ),
       ]);
     },
   );
+
+  it("passes a tsconfig.json whose paths only name files under its own src/", () => {
+    expect(
+      violations(
+        repo({
+          "apps/web/tsconfig.json": JSON.stringify({
+            compilerOptions: { paths: { "@/*": ["./src/*"] } },
+          }),
+        }),
+      ).filter((failure) => failure.includes("lets a package resolve")),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["a target outside src/", { "@/*": ["../../packages/closing/src/*"] }],
+    ["a target that leaves src/ with ..", { "@/*": ["./src/../../x"] }],
+    ["a target that is not a list", { "@/*": "./src/*" }],
+    ["an empty list of targets", { "@/*": [] }],
+    ["one entry outside src/", { "@/*": ["./src/*"], "#x": ["./lib/x.ts"] }],
+  ])("refuses a tsconfig.json whose paths have %s", (_name, paths) => {
+    expect(
+      violations(
+        repo({ "apps/web/tsconfig.json": JSON.stringify({ compilerOptions: { paths } }) }),
+      ).filter((failure) => failure.includes("lets a package resolve")),
+    ).toEqual([resolvesWithHint("apps/web/tsconfig.json", "sets compilerOptions.paths")]);
+  });
 
   it.each([
     ["an alias", "resolve: { alias: { x: 'y' } },"],
@@ -2343,13 +2378,13 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
   ])("refuses a vite.config.ts with %s", (_, line) => {
     expect(
       violations(repo({ "apps/web/vite.config.ts": `export default {\n  ${line}\n};\n` })),
-    ).toEqual([resolves("apps/web/vite.config.ts", "sets an alias")]);
+    ).toEqual([resolvesWithHint("apps/web/vite.config.ts", "sets an alias")]);
   });
 
   it("keeps what comes before a comment on the line of the alias", () => {
     expect(
       violations(repo({ "apps/web/vite.config.ts": "export default {alias}// a comment\n" })),
-    ).toEqual([resolves("apps/web/vite.config.ts", "sets an alias")]);
+    ).toEqual([resolvesWithHint("apps/web/vite.config.ts", "sets an alias")]);
   });
 
   it("passes the word alias that is not a key, and a key of a longer name", () => {

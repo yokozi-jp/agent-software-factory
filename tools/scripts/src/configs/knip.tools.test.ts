@@ -82,6 +82,14 @@ const apps: Record<string, string> = {
     2,
   ),
   "apps/web/src/main.ts": 'export const title = "web";\n',
+  // The Vite plugin of Knip reads the entry from index.html, as it does in the real app. Naming entries in
+  // knip.jsonc (below) takes the default entries away, so main.ts needs this link.
+  "apps/web/index.html":
+    '<!doctype html>\n<html lang="en">\n  <body>\n    <script type="module" src="/src/main.ts"></script>\n  </body>\n</html>\n',
+  // The files knip.jsonc names as entries of apps/web (the parts `shadcn add` writes, docs/adr/0033). Nothing
+  // imports them; as entries, their exports are not reported.
+  "apps/web/src/components/ui/button.tsx": 'export const Button = "button";\n',
+  "apps/web/src/lib/utils.ts": 'export const cn = (...names: string[]) => names.join(" ");\n',
   // A detection-power fixture of the module boundaries, which nothing imports (ignoreFiles in knip.jsonc).
   "apps/api/src/__fixtures__/boundaries.ts":
     '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
