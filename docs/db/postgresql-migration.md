@@ -82,14 +82,14 @@ sources:
 
 このリポジトリの migration は [dbmate](https://github.com/amacneil/dbmate) で流す版付きの SQL のファイルで、決定と根拠は [ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md) にあります。次の書き方を守ります。
 
-- **置き場所**: `apps/api/db/migrations/<UTC の日時 14 桁>_<名前>.sql`。足すときは `dbmate new` ではなく、下のひな形を写します。`dbmate new` のひな形は down が空だからです。
-- **流し方**: `apps/api` の `pnpm db:migrate` (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `apps/api/db/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
-- **ロール**: `migrator`、`app_user`、`auth_service` は migration ではなく、`apps/api/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
+- **置き場所**: `packages/db/migrations/<UTC の日時 14 桁>_<名前>.sql`。足すときは `dbmate new` ではなく、下のひな形を写します。`dbmate new` のひな形は down が空だからです。
+- **流し方**: `packages/db` の `pnpm db:migrate` (`pnpm exec nx db:migrate db`) (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `packages/db/src/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
+- **ロール**: `migrator`、`app_user`、`auth_service` は migration ではなく、`packages/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
 - **`lock_timeout`**: up の先頭に `SET LOCAL lock_timeout = '5s';` を書きます。ロックを待ち続けて、後ろの要求を詰まらせないためです。
 - **`transaction:false`**: `CREATE INDEX CONCURRENTLY` のように、トランザクションの中で実行できない文を含むファイルだけ、`-- migrate:up transaction:false` にします。トランザクションの外では `SET LOCAL` が効かないので、`lock_timeout` は要りません。
 - **down**: `DO $$ BEGIN RAISE EXCEPTION 'irreversible …'; END $$;` だけを書きます。dbmate は down が空だと `rollback` が成功して履歴だけを消すので、失敗させるためです。
 - **表の形**: テナントの表は、`tenant_id` を先頭にした複合の主キー、連番のサロゲートキー (`bigint GENERATED ALWAYS AS IDENTITY`)、[共通カラム](postgresql-keys.md#共通カラム)、`ENABLE` と `FORCE ROW LEVEL SECURITY` とテナントのポリシーを持ちます。最初の例は `20261027200000_create_module_schemas.sql` の `claim.t_claim` で、共通カラムの型と桁もそこに合わせます。共通カラムの日時は既定値を持たず、アプリがバインドします。
-- **型**: モジュールのスキーマ (`claim`、`approval`、`closing`) の表を変えたら、`pnpm exec nx db-types api` で Kysely の型 (`packages/<モジュール>/src/infrastructure/db.gen.ts`) を生成し直して、migration と同じ commit に入れます。CI が、生成し直した型と違うと失敗します ([PostgreSQL のクライアント管理](postgresql-client.md))。
+- **型**: モジュールのスキーマ (`claim`、`approval`、`closing`) の表を変えたら、`pnpm exec nx db-types db` で Kysely の型 (`packages/<モジュール>/src/infrastructure/db.gen.ts`) を生成し直して、migration と同じ commit に入れます。CI が、生成し直した型と違うと失敗します ([PostgreSQL のクライアント管理](postgresql-client.md))。
 - **前に進めるだけ**: 適用済みの migration は書き換えません。直すときは前向きの migration を足します。互換を壊す変更は expand と contract に分けます。expand (列や表を足す) を出し、アプリを新しい形に切り替えてから、contract (古い列や表を消す) を出します。
 
 ```sql

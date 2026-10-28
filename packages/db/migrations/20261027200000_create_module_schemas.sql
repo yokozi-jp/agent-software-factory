@@ -3,7 +3,7 @@
 -- migrator のロールが実行し、スキーマと表の所有者になる。
 --
 -- 型は、このスキーマごとに kysely-codegen で packages/<モジュール>/src/infrastructure/db.gen.ts に生成する
--- (apps/api の `pnpm exec nx db-types api`)。あるモジュールの Kysely<DB> から、ほかのモジュールの表は見えない。
+-- (`pnpm exec nx db-types db`)。あるモジュールの Kysely<DB> から、ほかのモジュールの表は見えない。
 --
 -- 権限は app_user に与えない。モジュールごとの NOLOGIN のロール (<モジュール>_module) を作って、そこに与える
 -- (Issue #268、docs/adr/0029)。それまでは、アプリのロールはどのモジュールの表も読めない。

@@ -5,7 +5,7 @@ import { inject } from "vite-plus/test";
 import { authOptions, authPlugins, createAuth, type AuthConfig } from "../src/auth/auth.ts";
 import { createApp } from "../src/app.ts";
 import { TestBrowser } from "./browser.ts";
-import { createTestDatabase, type TestDatabase } from "./database.ts";
+import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import { startServerProcess, type ServerProcess } from "./server-process.ts";
 
 export const appOrigin = "https://app.example.test";

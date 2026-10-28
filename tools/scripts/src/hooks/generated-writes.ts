@@ -71,7 +71,7 @@ function regenerate(rel: string): readonly [string, string] | undefined {
   if (/^packages\/[^/]+\/src\/infrastructure\/db\.gen\.ts$/.test(rel))
     return [
       "kysely-codegen generates it from the migrations (docs/adr/0025).",
-      "change the migrations under apps/api/db/migrations/ and run `pnpm exec nx db-types api`, then commit the regenerated file.",
+      "change the migrations under packages/db/migrations/ and run `pnpm exec nx db-types db`, then commit the regenerated file.",
     ];
   return undefined;
 }

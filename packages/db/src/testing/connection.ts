@@ -1,5 +1,5 @@
 /**
- * テストと型の生成 (db/types.ts) が起動する PostgreSQL のイメージ。版を上げるときは、ここ 1 か所を直す。
+ * テストと型の生成 (src/types.ts) が起動する PostgreSQL のイメージ。版を上げるときは、ここ 1 か所を直す。
  * 型を生成する DB とテストの DB の版がずれないようにする。
  */
 export const postgresImage = "postgres:17";
