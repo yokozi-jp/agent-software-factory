@@ -5,6 +5,15 @@ import { inject } from "vite-plus/test";
 import { rolePassword } from "./credentials.ts";
 import { connectionUri, roles } from "./connection.ts";
 
+// The values that globalSetup provides: apps/api and the db package each start the PostgreSQL and provide these two.
+declare module "vite-plus/test" {
+  export interface ProvidedContext {
+    postgresUri: string;
+    /** migration を流し終えた DB。テストごとの DB は、これを TEMPLATE にして複製する。 */
+    templateDatabase: string;
+  }
+}
+
 export interface TestDatabase {
   /** superuser (testcontainers の master user)。中身の確認に使う。表の所有者は migrator。 */
   readonly superuser: Pool;

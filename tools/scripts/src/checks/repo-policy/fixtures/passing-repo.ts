@@ -133,7 +133,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     engines: { node: "^24" },
   }),
   "apps/api/package.json": JSON.stringify({ dependencies: { hono: "catalog:" } }),
-  "apps/api/db/migrations/20260101000000_create_x.sql": migration(),
+  "packages/db/migrations/20260101000000_create_x.sql": migration(),
   "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   ".betterleaks.toml":

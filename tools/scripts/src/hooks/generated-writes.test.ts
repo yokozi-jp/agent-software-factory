@@ -23,9 +23,9 @@ describe("generatedWriteRefusal", () => {
     [
       "packages/claim/src/infrastructure/db.gen.ts",
       "kysely-codegen generates it from the migrations",
-      "pnpm exec nx db-types api",
+      "pnpm exec nx db-types db",
     ],
-    ["packages/closing/src/infrastructure/db.gen.ts", "(docs/adr/0025)", "apps/api/db/migrations/"],
+    ["packages/closing/src/infrastructure/db.gen.ts", "(docs/adr/0025)", "packages/db/migrations/"],
   ])("refuses %s and says why and how to regenerate it", (path, why, how) => {
     const message = generatedWriteRefusal("fs_write", path);
     expect(message).toContain(`block-generated-writes: refused fs_write on ${path}. `);

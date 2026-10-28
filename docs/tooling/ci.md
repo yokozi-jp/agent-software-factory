@@ -77,8 +77,8 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - `pnpm lint:unused` (Knip): pnpm workspace の全てのプロジェクトとルートで、どこからも使われていないファイル、export、依存を見つけると失敗します ([ADR 0017](../adr/0017-knip-unused-code.md))。設定は `knip.jsonc` です。
   Knip が読めない場所 (シェルスクリプト、Kiro の設定など) からだけ使うファイルや依存は、`knip.jsonc` に例外として個別に書き、理由をそのそばに書きます。意図して残す export には `/** @public */` と理由を書きます。不要になった例外も失敗します (`treatConfigHintsAsErrors`)。
   未使用かどうかはほかのファイルの import で決まるので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。
-- `nx affected -t db-types-check` (`nx` の job の「DB types match the migrations」): testcontainers の PostgreSQL に migration を流し、kysely-codegen でモジュールのスキーマごとに型を生成し直し、commit された `packages/*/src/infrastructure/db.gen.ts` と違えば失敗します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。migration を変えたら `pnpm exec nx db-types api` で型を生成し直して commit します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
-  入口は `apps/api/db/types.ts` で、ずれを見つける関数のテストは `apps/api/src/db/types.test.ts` です。PostgreSQL のコンテナを起動する (約 10 秒) ので、pre-commit の hook (`db-types`) は migration、生成した型、生成の入口、`pnpm-workspace.yaml` のどれかを変えた commit でだけ実行します。
+- `nx affected -t db-types-check` (`nx` の job の「DB types match the migrations」): testcontainers の PostgreSQL に migration を流し、kysely-codegen でモジュールのスキーマごとに型を生成し直し、commit された `packages/*/src/infrastructure/db.gen.ts` と違えば失敗します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。migration を変えたら `pnpm exec nx db-types db` で型を生成し直して commit します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
+  入口は `packages/db/src/types.ts` で、ずれを見つける関数のテストは `packages/db/src/types.test.ts` です。PostgreSQL のコンテナを起動する (約 10 秒) ので、pre-commit の hook (`db-types`) は migration、生成した型、生成の入口、`pnpm-workspace.yaml` のどれかを変えた commit でだけ実行します。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
 ## coverage の下限

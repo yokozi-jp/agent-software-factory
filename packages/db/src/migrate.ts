@@ -1,5 +1,5 @@
 // migration を流す入口。dbmate の引数をここ 1 か所にまとめる (docs/adr/0025、docs/db/postgresql-migration.md)。
-//   DATABASE_URL=postgres://migrator@host/db node db/migrate.ts
+//   DATABASE_URL=postgres://migrator@host/db node src/migrate.ts
 // DATABASE_URL は dbmate が読む。URL に password を書くときも、引数ではなく環境変数で渡すので ps に出ない。
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { resolveBinary } from "dbmate";
 
 const run = promisify(execFile);
-const migrationsDir = fileURLToPath(new URL("./migrations", import.meta.url));
+const migrationsDir = fileURLToPath(new URL("../migrations", import.meta.url));
 
 /**
  * 適用していない migration を全部流す。履歴の表は専用の `migrations` スキーマに置き、同時に流しても
@@ -36,6 +36,7 @@ export async function migrate(databaseUrl: string): Promise<string> {
   }
 }
 
+/* v8 ignore start -- the command line entry; the tests call migrate() */
 if (import.meta.main) {
   const url = process.env.DATABASE_URL;
   if (url === undefined || url === "") {
@@ -44,3 +45,4 @@ if (import.meta.main) {
   }
   process.stdout.write(await migrate(url));
 }
+/* v8 ignore stop */

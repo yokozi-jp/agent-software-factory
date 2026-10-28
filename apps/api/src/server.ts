@@ -10,7 +10,7 @@ import { loadEnv } from "./env.ts";
 const env = loadEnv(process.env);
 
 // 認証は必須にする。環境変数が足りないまま、認証も CSRF の検査もない API を起動しない (fail closed)。
-// Better Auth の表は auth スキーマにあり、auth_service のロールで接続する (db/migrations、docs/adr/0022、docs/adr/0025)。
+// Better Auth の表は auth スキーマにあり、auth_service のロールで接続する (packages/db/migrations、docs/adr/0022、docs/adr/0025)。
 // 認証なしでの開発は、vp dev (src/index.ts) を使う。
 const auth = createAuth({
   database: new Pool({

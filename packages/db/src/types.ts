@@ -1,15 +1,15 @@
 // モジュールのスキーマごとの Kysely の型を、migration を流した DB から生成する (docs/adr/0025、docs/adr/0029)。
-//   node db/types.ts          testcontainers の PostgreSQL に migration を流し、型のファイルを書く
-//   node db/types.ts --check  同じく生成し、commit された型と違えば失敗する (CI の「DB types match the migrations」)
-// Nx の target は `db-types` と `db-types-check` (apps/api/package.json)。
+//   node src/types.ts          testcontainers の PostgreSQL に migration を流し、型のファイルを書く
+//   node src/types.ts --check  同じく生成し、commit された型と違えば失敗する (CI の「DB types match the migrations」)
+// Nx の target は `db-types` と `db-types-check` (packages/db/package.json)。
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Cli } from "kysely-codegen";
 
-import { postgresImage, connectionUri } from "../test/connection.ts";
-import { prepareDatabase } from "../test/prepare-database.ts";
+import { postgresImage, connectionUri } from "./testing/connection.ts";
+import { prepareDatabase } from "./testing/prepare-database.ts";
 
 /**
  * 型を生成するスキーマ。モジュールの名前 (GLOSSARY.md、vite.config.ts の `modules`) と同じ。
@@ -76,6 +76,7 @@ export async function staleTypes(
   return stale;
 }
 
+/* v8 ignore start -- the command line entry; the tests call generateTypes() and the functions around it */
 if (import.meta.main) {
   const check = process.argv.includes("--check");
   const postgres = await new PostgreSqlContainer(postgresImage).start();
@@ -88,7 +89,7 @@ if (import.meta.main) {
       if (stale.length > 0) {
         process.stderr.write(
           `migration と型がずれている: ${stale.join(", ")}\n` +
-            "`pnpm exec nx db-types api` で型を生成し直し、commit する (docs/db/postgresql-client.md)。\n",
+            "`pnpm exec nx db-types db` で型を生成し直し、commit する (docs/db/postgresql-client.md)。\n",
         );
         process.exitCode = 1;
       }
@@ -99,3 +100,4 @@ if (import.meta.main) {
     await postgres.stop();
   }
 }
+/* v8 ignore stop */

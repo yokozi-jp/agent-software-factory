@@ -35,11 +35,16 @@ const shared = "shared";
 const moduleFixtures = "module-fixtures";
 const ui = "ui";
 const dependOnNone: readonly string[] = [shared, moduleFixtures, ui];
+// db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
+// has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api depends on it
+// (docs/adr/0037). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
+const db = "db";
+const dbApp = "apps/api";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but shared and ui.
+// and module-fixtures. Every package under packages/ but shared, ui and db.
 export const modulePackageNames = (tree: Tree): string[] =>
-  packageNames(tree).filter((name) => name !== shared && name !== ui);
+  packageNames(tree).filter((name) => name !== shared && name !== ui && name !== db);
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
 // exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
@@ -54,13 +59,22 @@ const uiPublicApi = {
   "./lib/*": "./src/lib/*.ts",
 };
 
+// db has the production entry, the seed and the tools of the tests as three entries, so that faker, testcontainers
+// and Vitest stay out of the entry that production code imports (docs/adr/0037).
+const dbPublicApi = {
+  ".": "./src/index.ts",
+  "./seed": "./src/seed/index.ts",
+  "./testing": "./src/testing/index.ts",
+};
+
 export function packageManifests(tree: Tree): string[] {
   return packageNames(tree).flatMap((name) => {
     const path = manifest(name);
     const json = record(tree.parsed(path));
     const failures: string[] = [];
     const isUi = name === ui;
-    const exported = isUi ? uiPublicApi : publicApi;
+    const isDb = name === db;
+    const exported = isUi ? uiPublicApi : isDb ? dbPublicApi : publicApi;
     if (json.name !== `${scope}/${name}`)
       failures.push(
         `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
@@ -69,7 +83,9 @@ export function packageManifests(tree: Tree): string[] {
       failures.push(
         isUi
           ? `${path} must have the exports ${JSON.stringify(exported)}, the folders of the parts and the CSS and nothing else (docs/adr/0034).`
-          : `${path} must have the exports ${JSON.stringify(exported)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+          : isDb
+            ? `${path} must have the exports ${JSON.stringify(exported)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0037).`
+            : `${path} must have the exports ${JSON.stringify(exported)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
       );
     if (!isUi && !tree.paths.includes(`packages/${name}/src/index.ts`))
       failures.push(
@@ -92,6 +108,7 @@ export function packageManifests(tree: Tree): string[] {
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
+    if (name === db) continue;
     const dependsOnNone = dependOnNone.includes(name);
     const position = moduleOrder.indexOf(name);
     if (!dependsOnNone && position === -1) {
@@ -105,12 +122,42 @@ export function modulesDependOneWay(tree: Tree): string[] {
       for (const dependency of Object.keys(record(json[field]))) {
         if (!dependency.startsWith(`${scope}/`)) continue;
         const target = dependency.slice(scope.length + 1);
+        // A dependency on db is dbDependencies' to refuse, for every package at once.
+        if (target === db) continue;
         if (!dependsOnNone && (target === shared || moduleOrder.indexOf(target) > position))
           continue;
         failures.push(
           `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures and ui on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
         );
       }
+  }
+  return failures;
+}
+
+// db depends on the modules, in devDependencies and for their types, and on no other package of the workspace. Only
+// apps/api depends on db: the modules and shared have no use for the tools of the database, and apps/web and the
+// tools must not reach them (docs/adr/0037).
+export function dbDependencies(tree: Tree): string[] {
+  if (!packageNames(tree).includes(db)) return [];
+  const failures: string[] = [];
+  const own = record(tree.parsed(manifest(db)));
+  for (const field of dependencyFields)
+    for (const dependency of Object.keys(record(own[field]))) {
+      if (!dependency.startsWith(`${scope}/`)) continue;
+      if (field === "devDependencies" && moduleOrder.includes(dependency.slice(scope.length + 1)))
+        continue;
+      failures.push(
+        `${manifest(db)} has ${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency.slice(scope.length + 1)} out of db (docs/adr/0037).`,
+      );
+    }
+  for (const path of tree.named("package.json")) {
+    if (path === manifest(db) || path === `${dbApp}/package.json`) continue;
+    const json = record(tree.parsed(path));
+    for (const field of dependencyFields)
+      if (`${scope}/${db}` in record(json[field]))
+        failures.push(
+          `${path} has ${scope}/${db} in ${field}. Only ${dbApp} depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0037).`,
+        );
   }
   return failures;
 }
