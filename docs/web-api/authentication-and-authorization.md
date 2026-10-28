@@ -17,6 +17,8 @@ Web API 認証はセッショントークン方式を使い、ロール管理は
 
 ## 認証
 
+このリポジトリでは、Better Auth の `/api/auth/*` だけが Problem Details の例外で、Better Auth の `{ code, message }` を返す。その前に掛かる自前の middleware (`sessionGuard`、`requireSession`、`csrfProtection`) は Problem Details を返す ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
+
 ### システム間連携時のネットワークレベルの制御
 
 対向システムからのバッチ処理などで、自システム側のWeb APIを公開する要件があるとする。
