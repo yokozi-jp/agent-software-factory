@@ -22,7 +22,6 @@ describe("サインインの rate limit (#236)", () => {
   });
 
   afterAll(async () => {
-    await other.stop();
     await fixture.close();
   });
 

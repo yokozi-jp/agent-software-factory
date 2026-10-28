@@ -15,7 +15,7 @@ export interface AuthFixture {
   readonly app: ReturnType<typeof createApp>;
   /**
    * 同じ DB と同じ設定で、別のプロセスに API をもう 1 つ起動する (ECS のタスクや Lambda の実行環境の 1 つ)。
-   * 本番の入口 (src/server.ts) を使い、プロセスの中の状態をこのアプリと共有しない。
+   * 本番の入口 (src/server.ts) を使い、プロセスの中の状態をこのアプリと共有しない。`close()` が止める。
    */
   startInstance(): Promise<ServerProcess>;
   newBrowser(): TestBrowser;
@@ -64,19 +64,23 @@ export async function createAuthFixture({
     plugins: [...authPlugins(config), testUtils()],
   });
   const { test } = await testAuth.$context;
+  const instances: ServerProcess[] = [];
 
   return {
     db,
     app,
-    startInstance: () =>
-      startServerProcess({
+    async startInstance() {
+      const instance = await startServerProcess({
         AUTH_DATABASE_URL: db.authServiceUrl,
         PUBLIC_ORIGIN: config.baseURL,
         AUTH_SECRET: config.secret,
         OIDC_DISCOVERY_URL: config.oidc.discoveryUrl,
         OIDC_CLIENT_ID: config.oidc.clientId,
         OIDC_CLIENT_SECRET: config.oidc.clientSecret,
-      }),
+      });
+      instances.push(instance);
+      return instance;
+    },
     newBrowser: () => new TestBrowser(app, appOrigin),
     async signedIn(user = {}) {
       const saved = await test.saveUser(test.createUser(user));
@@ -85,6 +89,10 @@ export async function createAuthFixture({
       browser.adoptCookieHeader(headers.get("cookie") ?? "");
       return browser;
     },
-    close: () => db.close(),
+    async close() {
+      // DB を消す前に、その DB につないだプロセスを止める。
+      await Promise.all(instances.map((instance) => instance.stop()));
+      await db.close();
+    },
   };
 }
