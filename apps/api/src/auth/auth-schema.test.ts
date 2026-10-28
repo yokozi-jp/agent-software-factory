@@ -22,6 +22,7 @@ describe("auth スキーマの権限 (ADR 0022、ADR 0025)", () => {
     "organization",
     "member",
     "invitation",
+    "rateLimit",
   ];
 
   it("Better Auth の表がすべて auth スキーマにあり、public にはないこと", async () => {
