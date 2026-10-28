@@ -1036,6 +1036,64 @@ function docsReferences(tree: Tree): string[] {
   return failures;
 }
 
+// The Nx targets of `nx affected` and `nx run-many` in a command of ci.yml: the names after -t or --targets
+// (`-t a b`, `--targets=a,b`), which may follow other flags. A word that is not a flag ends the command.
+const ciTargets = (command: string): string[] =>
+  [
+    ...command.matchAll(
+      /\bnx (?:affected|run-many)(?: -\S+)* (?:-t|--targets)[ =](\w[\w-]*(?:[ ,]\w[\w-]*)*)/g,
+    ),
+  ].flatMap((match) => String(match[1]).split(/[ ,]/));
+
+// Every Nx target that ci.yml runs has a command in docs/tooling/commands.md, so a person can run the same check
+// before pushing (docs/tooling/ci.md ("検査を足すとき"), step 6). A target counts when it is a word of an inline code
+// span that also has the word nx: `nx affected -t a`, `nx a api`, `nx run api:a`. The backticks pair within a line,
+// so the fence of a code block does not pair with those of the inline code.
+function ciTargetsHaveCommands(tree: Tree): string[] {
+  const ci = ".github/workflows/ci.yml";
+  const commands = "docs/tooling/commands.md";
+  const inCi = new Set<string>();
+  for (const job of Object.values(record(record(tree.parsed(ci)).jobs)))
+    for (const step of list(record(job).steps).map(record))
+      for (const target of ciTargets(String(step.run))) inCi.add(target);
+  const documented = new Set(
+    tree
+      .read(commands)
+      .split("\n")
+      .flatMap((line) => line.split("`").filter((_, index) => index % 2 === 1))
+      .map((span) => span.split(/[\s:,=]/))
+      .filter((words) => words.includes("nx"))
+      .flat(),
+  );
+  return [...inCi]
+    .filter((target) => !documented.has(target))
+    .map(
+      (target) =>
+        `${ci} runs the Nx target ${target}, but ${commands} has no nx command that runs it. Add the command a person runs to its table (docs/tooling/ci.md ("検査を足すとき")).`,
+    );
+}
+
+// The pnpm catalog holds versions of registry packages. With catalogMode: prefer, `pnpm add <package>@workspace:*`
+// writes the workspace package into the catalog and `catalog:` into the package.json, instead of `workspace:*`.
+function noWorkspaceInCatalog(tree: Tree): string[] {
+  const workspace = record(tree.parsed("pnpm-workspace.yaml"));
+  const catalogs: [string, unknown][] = [
+    ["catalog", workspace.catalog],
+    ...Object.entries(record(workspace.catalogs)).map(([name, value]): [string, unknown] => [
+      `catalogs.${name}`,
+      value,
+    ]),
+  ];
+  return catalogs.flatMap(([where, catalog]) =>
+    Object.entries(record(catalog))
+      .filter(([, version]) => typeof version === "string" && version.startsWith("workspace:"))
+      .map(
+        ([name, version]) =>
+          `pnpm-workspace.yaml ${where} has ${name}: ${String(version)}. A workspace package is not a catalog entry: write "workspace:*" in the package.json that depends on it and run pnpm install. With catalogMode: prefer, \`pnpm add <package>@workspace:*\` puts it in the catalog.`,
+      ),
+  );
+}
+
 // Every failure: the files that do not parse, then the checks in order.
 export function violations(repo: Repo): string[] {
   const tree = new Tree(repo);
@@ -1058,6 +1116,8 @@ export function violations(repo: Repo): string[] {
     ...agentPermissions(tree),
     ...executableScripts(tree),
     ...docsReferences(tree),
+    ...ciTargetsHaveCommands(tree),
+    ...noWorkspaceInCatalog(tree),
   ];
   return [...tree.parseErrors, ...failures];
 }

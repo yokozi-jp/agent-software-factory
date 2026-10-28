@@ -1330,6 +1330,110 @@ describe("every required check of the ruleset is a job that runs on pull_request
   });
 });
 
+describe("every Nx target that ci.yml runs has a command in docs/tooling/commands.md", () => {
+  const ci = base[".github/workflows/ci.yml"] ?? "";
+  const runs = (command: string) =>
+    ci.replace("run: tools/scripts/sh/guard-push.sh", `run: ${command}`);
+  const commands = (...rows: string[]) =>
+    ["# 開発コマンド", "", "| やりたいこと | コマンド |", "| --- | --- |", ...rows, ""].join("\n");
+  const missing = (target: string) =>
+    `.github/workflows/ci.yml runs the Nx target ${target}, but docs/tooling/commands.md has no nx command that runs it. Add the command a person runs to its table (docs/tooling/ci.md ("検査を足すとき")).`;
+
+  it("refuses a target of nx affected that commands.md does not run", () => {
+    expect(
+      violations(
+        repo({
+          ".github/workflows/ci.yml": runs("pnpm exec nx affected -t check db-types-check"),
+          "docs/tooling/commands.md": commands("| 検査 | `pnpm exec nx affected -t check` |"),
+        }),
+      ),
+    ).toEqual([missing("db-types-check")]);
+  });
+
+  it.each([
+    ["the -t list of nx affected", "`pnpm exec nx affected -t check db-types-check`"],
+    ["the --targets list of nx run-many", "`pnpm exec nx run-many --targets=db-types-check,check`"],
+    ["nx <target> <project>", "`pnpm exec nx db-types-check api` と `pnpm exec nx check api`"],
+    ["nx run <project>:<target>", "`pnpm exec nx run api:db-types-check`、`nx run api:check`"],
+  ])("passes targets that commands.md runs in %s", (_, cell) => {
+    expect(
+      violations(
+        repo({
+          ".github/workflows/ci.yml": runs("pnpm exec nx affected -t check db-types-check"),
+          "docs/tooling/commands.md": commands(`| 検査 | ${cell} |`),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("reads the targets after other flags, after --targets with = or a space, and of every nx command", () => {
+    const step = [
+      "|",
+      "          pnpm exec nx run-many --targets=lint-effect,mutation",
+      "          pnpm exec nx affected --base=x --head=y -t test db-types-check --parallel=1 && pnpm exec nx affected --targets build",
+    ].join("\n");
+    expect(
+      violations(
+        repo({ ".github/workflows/ci.yml": runs(step), "docs/tooling/commands.md": commands() }),
+      ),
+    ).toEqual(["lint-effect", "mutation", "test", "db-types-check", "build"].map(missing));
+  });
+
+  it("reads the inline code after a fenced code block", () => {
+    const fenced = ["```sh", "pnpm install", "```", "", "| 検査 | `pnpm exec nx check api` |", ""];
+    expect(
+      violations(
+        repo({
+          ".github/workflows/ci.yml": runs("pnpm exec nx affected -t check"),
+          "docs/tooling/commands.md": fenced.join("\n"),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("finds no target in nx commands that run none", () => {
+    const step =
+      "pnpm exec nx show projects --affected && pnpm exec nx affected --graph && echo onx affected -t x";
+    expect(
+      violations(
+        repo({ ".github/workflows/ci.yml": runs(step), "docs/tooling/commands.md": commands() }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not count a target that commands.md names outside an nx command", () => {
+    expect(
+      violations(
+        repo({
+          ".github/workflows/ci.yml": runs("pnpm exec nx affected -t db-types-check"),
+          "docs/tooling/commands.md": commands(
+            "| nx で db-types-check を流す | `pnpm db-types-check` |",
+          ),
+        }),
+      ),
+    ).toEqual([missing("db-types-check")]);
+  });
+});
+
+describe("the pnpm catalog has no workspace packages", () => {
+  const refused = (where: string, name: string) =>
+    `pnpm-workspace.yaml ${where} has ${name}: workspace:*. A workspace package is not a catalog entry: write "workspace:*" in the package.json that depends on it and run pnpm install. With catalogMode: prefer, \`pnpm add <package>@workspace:*\` puts it in the catalog.`;
+
+  it("refuses a workspace: version in the default catalog", () => {
+    const workspace = `${base["pnpm-workspace.yaml"] ?? ""}  "@x/shared": workspace:*\n`;
+    expect(violations(repo({ "pnpm-workspace.yaml": workspace }))).toEqual([
+      refused("catalog", "@x/shared"),
+    ]);
+  });
+
+  it("refuses a workspace: version in a named catalog", () => {
+    const workspace = `${base["pnpm-workspace.yaml"] ?? ""}catalogs:\n  tools:\n    "@x/shared": workspace:^\n`;
+    expect(violations(repo({ "pnpm-workspace.yaml": workspace }))).toEqual([
+      refused("catalogs.tools", "@x/shared").replace("workspace:*.", "workspace:^."),
+    ]);
+  });
+});
+
 describe("configuration files that cannot be parsed", () => {
   it.each([
     [".github/workflows/ci.yml", "jobs: [\n"],
