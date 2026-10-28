@@ -67,5 +67,5 @@ tools/scripts/sh/renovate.sh preview
 `--platform=local` で Renovate を動かし、出るはずのブランチ名、PR のタイトル、依存ごとの `現在の版 -> 新しい版` を表示します。GitHub の rate limit を避けるため、`GITHUB_COM_TOKEN` か、ログイン済みの `gh` を使います。
 設定を変えたあとは、意図した PR が出て、止めたはずの更新 (betterleaks の v2 など) が出ないことを見ます。
 
-`re2` のネイティブモジュールを読めないという警告が出ても、検証は完了します。
+`renovate.sh` は `pnpm dlx --allow-build=re2` で Renovate を動かします。`pnpm dlx` は、許可のない依存の install スクリプトを実行しないので、この指定がないと `re2` のネイティブモジュール (`build/Release/re2.node`) が作られず、`RE2 not usable` という警告が出ます。そのとき Renovate は `RegExp` で正規表現を検証するので、RE2 が受け付けない構文を見逃します。`re2` はビルド済みのバイナリを GitHub Releases から取ります。
 `validate` は、スクリプトが Renovate を動かせることまでしか確かめません。`mise lock` で `mise.lock` が更新されることなど、PR を作る段階の動作は、App をインストールしたあとの最初の PR で確かめます。

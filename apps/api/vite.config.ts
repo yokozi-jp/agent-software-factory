@@ -1,8 +1,11 @@
 import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite-plus";
 
-// テストの project は integration の 1 つ。src/ のテストで、PostgreSQL と Keycloak のコンテナを、全テストで共有して
-// 一度だけ起動する。Oxlint の自作 plugin の規則のテストは tools/lint-plugins にある (docs/adr/0030)。
+// テストの project は 2 つ。integration は src/ のテストで、PostgreSQL と Keycloak のコンテナを、全テストで共有して
+// 一度だけ起動する。unit (`*.unit.test.ts`) はコンテナを起動しない。入力を渡して結果を見るだけのテストは unit にする。
+// コンテナが起動しない環境でも、`vp test run --project unit` で動く (vitest は global setup の失敗を
+// `code.charCodeAt is not a function` で隠すので、integration が起動で落ちた原因はコンテナを疑う)。
+// Oxlint の自作 plugin の規則のテストは tools/lint-plugins にある (docs/adr/0030)。
 export default defineConfig({
   plugins: [devServer({ entry: "./src/index.ts" })],
   server: { port: 3000 },
@@ -16,10 +19,18 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          name: "unit",
+          include: ["src/**/*.unit.test.ts"],
+          exclude: ["**/node_modules/**", "**/__fixtures__/**"],
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: "integration",
           include: ["src/**/*.test.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
-          exclude: ["**/node_modules/**", "**/__fixtures__/**"],
+          exclude: ["**/node_modules/**", "**/__fixtures__/**", "src/**/*.unit.test.ts"],
           // Keycloak の起動に時間がかかる。
           globalSetup: ["./test/global-setup.ts"],
           hookTimeout: 240_000,

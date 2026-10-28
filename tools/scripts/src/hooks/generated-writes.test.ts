@@ -20,6 +20,12 @@ describe("generatedWriteRefusal", () => {
     ["pnpm-lock.yaml", "pnpm writes it.", "pnpm install"],
     ["mise.lock", "mise writes it (docs/adr/0009).", "mise lock --platform linux-x64"],
     [".mise/locks/pypi-semgrep/1.182.1/uv.lock", "mise writes it", "mise lock"],
+    [
+      "packages/claim/src/infrastructure/db.gen.ts",
+      "kysely-codegen generates it from the migrations",
+      "pnpm exec nx db-types api",
+    ],
+    ["packages/closing/src/infrastructure/db.gen.ts", "(docs/adr/0025)", "apps/api/db/migrations/"],
   ])("refuses %s and says why and how to regenerate it", (path, why, how) => {
     const message = generatedWriteRefusal("fs_write", path);
     expect(message).toContain(`block-generated-writes: refused fs_write on ${path}. `);
@@ -49,6 +55,10 @@ describe("generatedWriteRefusal", () => {
     "skills-lock.json.bak",
     "apps/web/src/routeTree.gen.tsx",
     "apps/web/src/xrouteTree.gen.ts",
+    "packages/claim/src/infrastructure/database.ts",
+    "packages/claim/src/db.gen.ts",
+    "packages/claim/src/infrastructure/db.gen.ts.bak",
+    "apps/api/src/infrastructure/db.gen.ts",
   ])("allows %s", (path) => {
     expect(generatedWriteRefusal("fs_write", path)).toBeUndefined();
   });

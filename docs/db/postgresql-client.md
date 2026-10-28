@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: "PostgreSQL のクライアント管理"
-description: "PostgreSQL のコネクションプール、O/R マッパ、SQL チューニング方針を定める文書。アプリから DB に接続する実装を設計するときに読む。"
+description: "PostgreSQL のコネクションプール、O/R マッパ、このリポジトリの Kysely の書き方 (接続、生成した型、テナントの設定、入力の渡し方、入れ子の結果)、SQL チューニング方針を定める文書。アプリから DB に接続する実装を設計するとき、Kysely でクエリを書くとき、モジュールの DB の型を生成し直すときに読む。"
 tags: [db, postgresql, convention, client]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html
@@ -11,7 +11,7 @@ sources:
 
 # PostgreSQL のクライアント管理
 
-コネクションプール、O/R マッパ、SQL チューニングの方針を定める。
+コネクションプール、O/R マッパ、このリポジトリの Kysely の書き方、SQL チューニングの方針を定める。
 出典は [PostgreSQL設計ガイドライン](about.md) (CC BY 4.0) で、OKF の形式に合わせて分割、変更している。
 
 ## クライアント管理
@@ -68,6 +68,18 @@ O/Rマッパ（Object-Relational Mapping）はプログラミング言語のオ�
 > - 実装方針を寄せない場合、影響度調査などのコストがあがる（静的解析などの手間も）ため、許容できない
 >   - 例えば、どのアプリケーションが、どのテーブル×カラムを利用しているか調査したい場面も多い。実装方針が統一されているとLinterだけではなく、こういった解析ツールの手間も減る
 > - 単一テーブル操作でO/Rマッパ実装を許容した場合、保守運用フェーズなどプロジェクトライフサイクルの最後まで、テーブル結合が必要になったタイミングでSQLにリライトすることが守られるかと言うと疑問であるため
+
+### このリポジトリの Kysely の書き方
+
+このリポジトリのクエリは Kysely で書く。決定と根拠は [ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md) と [ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md) にある。
+
+- **接続**: 入口のファイル (`apps/api/src/server.ts`) が `app_user` の `pg` の `Pool` を作り、`createModuleDatabases` (`apps/api/src/db/databases.ts`) が `PostgresDialect` に渡す。モジュールには、そのモジュールの DB の型 (`ClaimDatabase`、`ApprovalDatabase`、`ClosingDatabase`。各モジュールの `index.ts` が export する) の `Kysely` だけを渡す。
+- **型**: migration を流した PostgreSQL から、kysely-codegen がモジュールのスキーマごとに `packages/<モジュール>/src/infrastructure/db.gen.ts` を生成する。手で書き換えない。migration を変えたら、`pnpm exec nx db-types api` で生成し直して commit する。CI の「DB types match the migrations」が、生成し直した型と違うと失敗する ([CI](../tooling/ci.md))。
+- **表の名前**: スキーマ付きで書く (`selectFrom("claim.t_claim")`)。型にはそのモジュールのスキーマの表しかないので、ほかのモジュールの表を引くクエリはコンパイルエラーになる。ほかのモジュールのデータは、そのモジュールの `index.ts` の公開関数で読む ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。`` sql`…` `` の中の SQL は型の検査を通らないので、ほかのスキーマの表を書かない。DB のロールで止めるのは [Issue #268](https://github.com/yokozi-jp/agent-software-factory/issues/268) で足す。
+- **テナント**: テナントの表を読み書きするクエリは、`@agent-software-factory/shared` の `inTenantTransaction(db, { module, tenantId }, work)` の `work` の中で、渡されたトランザクションに対して書く。`set_config('app.current_tenant', …, true)` を自分で書かない ([ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md))。
+- **入力の値**: 値はビルダーの引数か、`` sql`…${value}` `` の bind 変数で渡す。`sql.raw`、`sql.lit`、`sql.ref`、`sql.table`、`sql.id` には入力の値を渡さない。どれも値を SQL の文に直接埋め込み、Kysely の型定義に「確かめていない入力を渡すと SQL injection になる」と書かれている (kysely 0.29.7 の `dist/raw-builder/sql.d.ts`)。並び替えの列などを入力で選ぶときは、許す名前の一覧と照らしてから使う。
+- **入れ子の結果**: 親の行ごとに子の行の配列を返すときは、`kysely/helpers/postgres` の `jsonArrayFrom` (1 行なら `jsonObjectFrom`) で、SQL の副問い合わせとして書く ([Kysely: Relations](https://kysely.dev/docs/recipes/relations))。行ごとにクエリを投げる書き方 (N+1) にしない。
+- **関連の自動の読み込み**: Kysely にはない。関連を自動で読み込む plugin やライブラリを足さない (上の O/R マッパの推奨)。
 
 ### SQLチューニング方針
 

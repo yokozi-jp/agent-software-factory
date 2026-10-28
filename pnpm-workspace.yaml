@@ -37,6 +37,10 @@ catalog:
   better-auth: ^1.7.12
   pg: ^8.23.1
   dbmate: 2.37.0
+  # Inside the peer range of Better Auth (^0.28.17 || ^0.29.0), so it and the code share one copy of kysely.
+  kysely: ^0.29.7
+  # Pinned: the generated types are committed, and a new version may write them differently (docs/adr/0025).
+  kysely-codegen: 0.20.0
   "@testcontainers/postgresql": ^12.2.1
   "@types/pg": ^8.23.1
   testcontainers: ^12.2.1
@@ -45,6 +49,7 @@ catalog:
   "@vitest/coverage-v8": 5.0.5
   smol-toml: 1.9.1
   yaml: 2.9.1
+  zod: ^4.6.7
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:

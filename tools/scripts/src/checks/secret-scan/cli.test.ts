@@ -8,7 +8,7 @@ import { gitIn, runIn, sandbox, type Sandbox } from "../../test/sandbox.ts";
 
 const cli = join(import.meta.dirname, "cli.ts");
 const zero = "0".repeat(40);
-const flags = "--redact --no-banner --config .betterleaks.toml";
+const flags = "--redact --verbose --no-banner --config .betterleaks.toml";
 
 let box: Sandbox;
 let repo: string;

@@ -48,6 +48,7 @@ docs/      ドキュメント (入口は docs/index.md)
 | web の開発サーバー (<http://localhost:5173>)                                                                     | `pnpm exec nx dev web`                                                                                                                              |
 | 全プロジェクトの lint、format、型チェック                                                                        | `pnpm check`                                                                                                                                        |
 | プロジェクトの外にあるファイルの同じ検査                                                                         | `pnpm check:root`                                                                                                                                   |
+| モジュールの DB の型を migration から生成し直す ([PostgreSQL のクライアント管理](../db/postgresql-client.md))    | `pnpm exec nx db-types api`。確かめるだけなら `pnpm exec nx db-types-check api`                                                                     |
 | Effect の検査 (実行し忘れ、Effect 3、unstable の API。[Effect の検査](effect-lint.md))                           | `pnpm exec nx run-many -t lint-effect`                                                                                                              |
 | 全プロジェクトのテスト                                                                                           | `pnpm test`                                                                                                                                         |
 | 全プロジェクトの build                                                                                           | `pnpm build`                                                                                                                                        |
@@ -74,10 +75,11 @@ docs/      ドキュメント (入口は docs/index.md)
 ## 補足
 
 - api の test (`src/` のテスト) は Docker が要ります。`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) と Keycloak (`quay.io/keycloak/keycloak:26.8.1`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します (イメージを取得済みで約 2 分、[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
+  起動に失敗すると、vitest は `No test files found` と `TypeError: code.charCodeAt is not a function` だけを出します。原因は、その上の `globalSetup (test/global-setup.ts) が失敗した:` の行にあります。Keycloak の起動の待ち (180 秒) の時間切れなら、ほかのセッションのテストで testcontainers のコンテナが多く動いていないか (`docker ps`、`uptime`) を確かめます。
 - api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。`tools/lint-plugins` の test も同じ基準で coverage を取り、`tools/lint-plugins/vite.config.ts` の下限が同じように書き換わります。
 - `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`tools/lint-plugins/src/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`tools/lint-plugins/`) は対象外です。
 - 一回限りの実行は `pnpm dlx <pkg>` を使います。リポジトリの中で `npx` を実行すると、`devEngines.packageManager` が pnpm なので `EBADDEVENGINES` で失敗します。
-- 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。
+- 依存のバージョンは `pnpm-workspace.yaml` の `catalog` で一元管理します (`catalogMode: prefer`)。`pnpm add` すると自動で catalog に追加されます。workspace の package (`@agent-software-factory/*`) への依存は `pnpm add` を使わず、`package.json` に `"workspace:*"` を書いて `pnpm install` します。`pnpm add` は catalog に `workspace:*` の行を足し、repo-policy が止めます ([CI](ci.md#ciyml-の検証))。
 - `pnpm add` で、公開から 1 日 (pnpm の `minimumReleaseAge` の既定値、1440 分) 経っていない版を指定すると、pnpm は何も表示せずに `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` にその版を書き足します。足されたら、1 日以上前に公開された版を指定し直します。
 - registry のパッケージの情報 (版、公開日、依存) は `pnpm view <pkg>` で調べます。このリポジトリでは、`npm view` は `package.json` の `devEngines` (pnpm を指定) で `EBADDEVENGINES` になります。
 - `apps/web/src/routeTree.gen.ts` は TanStack Router が生成するファイルです。手で編集せず、生成された差分を commit します。CI は build の後に差分が残ると失敗します。

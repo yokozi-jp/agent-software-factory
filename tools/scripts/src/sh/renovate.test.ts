@@ -54,7 +54,7 @@ describe("renovate.sh", () => {
   it("validate: runs the pinned renovate-config-validator --strict, and passes its exit code on", () => {
     expect(renovate(["validate"], 0).status).toBe(0);
     expect(readFileSync(record, "utf8")).toMatch(
-      /^dlx --package=renovate@\d+\.\d+\.\d+ renovate-config-validator --strict\n/,
+      /^dlx --allow-build=re2 --package=renovate@\d+\.\d+\.\d+ renovate-config-validator --strict\n/,
     );
     expect(renovate(["validate"], 1).status).toBe(1);
   });

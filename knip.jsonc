@@ -12,6 +12,9 @@
   // checked. A *.test.ts fixture is still an entry for Knip's Vitest plugin, so it must not import a dependency that
   // only the fixtures use (packages/*/src/{application,infrastructure}/__fixtures__/effect.test.ts imports no effect).
   "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**"],
+  // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
+  // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
+  "ignoreIssues": { "packages/*/src/infrastructure/db.gen.ts": ["types"] },
   "workspaces": {
     ".": {
       // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).

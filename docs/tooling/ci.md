@@ -28,12 +28,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                                                                         |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                           |
-| `scripts` | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools`                                      |
-| `nx`      | `nx affected -t check test build` (`tools/scripts` を含む)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                       |
+| job       | 内容                                                                                                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                                                                         |
+| `scripts` | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools`                                                                                                    |
+| `nx`      | `nx affected -t check test build` (`tools/scripts` を含む)、`nx affected -t db-types-check` (DB の型と migration のずれ)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
+| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                                                                     |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
@@ -47,6 +47,8 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   `ci.yml` の `main` が必須チェックをまとめる job のとき、`needs` に入っていない job は、失敗しても merge を止めません。そこで、`main` 以外の job が全て `needs` に入っていることを確認します。`needs` は 1 つの job の id でも、job の id のリストでも書けます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。リストは 1 行の配列でも、複数行のリストでも読みます。`ci.yml` がなければ失敗します。
   `tools/scripts/sh/*.sh` が、`git init`、`git clone`、`git -C`、`--git-dir`、`GIT_DIR=` で別のリポジトリを操作していないことも確認します。Git hook の中で動くと、hook を動かしたリポジトリに効くためです (理由は「スクリプトのテスト」)。別のリポジトリが要るテストは TypeScript で `gitIn` を通して書きます。TypeScript は対象外です。文字の並びでは `execFileSync("git", ["-C", …])` を見つけられないので、lint の規則と `isolation.test.ts` が守ります ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。
   `tools/scripts/sh/*.sh` の mode が `100755` であることも確認します。
+  `ci.yml` が `nx affected` と `nx run-many` の `-t` (`--targets`) で動かす Nx の target が、どれも [開発コマンド](commands.md) の inline code の nx のコマンドにあることも確認します。手で同じ検査を動かせるようにするためです (下の「検査を足すとき」の 6)。
+  `pnpm-workspace.yaml` の catalog (`catalog` と `catalogs`) に `workspace:` の版がないことも確認します。`catalogMode: prefer` の下で `pnpm add <package>@workspace:*` を実行すると、pnpm は workspace の package を catalog に入れ、`package.json` には `catalog:` を書きます。workspace の package への依存は、`package.json` に `"workspace:*"` を書いて `pnpm install` します。
   `packages/` の `shared` 以外の package が、ルートの `vite.config.ts` の `modules` にあること (ないと、その package の import を止める規則がありません)、各 package の `src/` と各モジュールの各層 (`vite.config.ts` の `layers`) の `__fixtures__/` に、`oxlint-disable-next-line no-restricted-imports` を書いた fixture があることも確認します ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。`vite.config.ts` の `layers` に `domain` があれば、各モジュールの `src/domain/__fixtures__/` に、`domain/no-throw`、`no-restricted-globals`、`no-restricted-properties` の disable のコメントを書いた fixture があることも確認します ([ADR 0027](../adr/0027-domain-model-as-pure-functions-and-unions.md))。
   [保証カタログ](assurance-catalog.md) の表と、`ci.yml` の step、ruleset の規則、`lefthook.yml` の job、`.kiro/hooks/` の hook と `tools/scripts/src/hooks/` の検査が対応していること (行のない名前、設定にない名前、2 回出る名前、「検出力の確かめ方」が空の行がない) と、ruleset の必須チェックがどれも `pull_request` で動く workflow の job の名前であることも確認します。照合の決まりはカタログの「表と設定のずれの検査」にあります。
   設定ファイル (workflow、`pnpm-workspace.yaml`、`mise.toml`、`.betterleaks.toml`、`package.json`、steering の frontmatter) は、catalog で固定したパーサー (`yaml`、`smol-toml`) と `JSON.parse` で読みます。値を取り出す検査は、引用符、コメント、1 行か複数行かで結果が変わりません。例外は steering の `fileMatchPattern` で、1 行の配列 (`["a", "b"]`) で書くことを求めます。読めないファイルは、パーサーのエラーを添えて失敗します。`vite.config.ts` は文字列として読みます。
@@ -71,10 +73,12 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   対象は `git ls-files` で選ぶので、commit していない作業用のファイルは検査しません。
   pre-commit hook では、ステージしたファイルに `vp check --fix` を実行します。
 - `pnpm lint:dup` (jscpd): `apps/` と `packages/` の JavaScript、TypeScript、CSS の重複を検査し、重複率が `.jscpd.json` の `threshold` を超えると失敗します ([ADR 0014](../adr/0014-jscpd-duplication-threshold.md))。
-  `.gitignore` の対象 (`dist`、`.tanstack/` など)、生成物 (`routeTree.gen.ts`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0014 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
+  `.gitignore` の対象 (`dist`、`.tanstack/` など)、生成物 (`routeTree.gen.ts`、`db.gen.ts`)、テストの fixture は対象外です。閾値の値と、それを決めた理由は ADR 0014 に書きます。clone はファイルをまたぐので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。意図した重複は `// jscpd:ignore-start` と `// jscpd:ignore-end` で囲み、理由を書きます。
 - `pnpm lint:unused` (Knip): pnpm workspace の全てのプロジェクトとルートで、どこからも使われていないファイル、export、依存を見つけると失敗します ([ADR 0017](../adr/0017-knip-unused-code.md))。設定は `knip.jsonc` です。
   Knip が読めない場所 (シェルスクリプト、Kiro の設定など) からだけ使うファイルや依存は、`knip.jsonc` に例外として個別に書き、理由をそのそばに書きます。意図して残す export には `/** @public */` と理由を書きます。不要になった例外も失敗します (`treatConfigHintsAsErrors`)。
   未使用かどうかはほかのファイルの import で決まるので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。
+- `nx affected -t db-types-check` (`nx` の job の「DB types match the migrations」): testcontainers の PostgreSQL に migration を流し、kysely-codegen でモジュールのスキーマごとに型を生成し直し、commit された `packages/*/src/infrastructure/db.gen.ts` と違えば失敗します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。migration を変えたら `pnpm exec nx db-types api` で型を生成し直して commit します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
+  入口は `apps/api/db/types.ts` で、ずれを見つける関数のテストは `apps/api/src/db/types.test.ts` です。PostgreSQL のコンテナを起動する (約 10 秒) ので、pre-commit の hook (`db-types`) は migration、生成した型、生成の入口、`pnpm-workspace.yaml` のどれかを変えた commit でだけ実行します。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
 ## coverage の下限
@@ -99,7 +103,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
 4. [保証カタログ](assurance-catalog.md) に行を足します。名前の列は設定の名前 (`ci.yml: <step の name>` など) にし、lefthook の job は写す行の「ローカルの写し」の列に書きます。Kiro の hook の検査は、ファイルの 1 行目を `// block-<名前>:` か `// warn-<名前>:` で始め、`kiro: <hook>/<名前>` の行を足します。行を書き忘れると repo-policy が止めます。「検出力の確かめ方」には、下の 5 で書くテストのファイルを書きます。GitHub の上でだけ動くもの (ruleset の規則、必須チェック) は、repo-policy の静的な検査と、その PR で手で一度止まることを確かめたことを書きます。lint の規則か tsconfig のフラグを足すときは、下の「lint の規則と tsconfig のフラグの fixture」に従って fixture に 1 行足し、その fixture を「検出力の確かめ方」に書きます。
 5. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にします。sh のラッパーは `tools/scripts/src/sh/<name>.test.ts` に、止める入力と通す入力を stub の道具 (`src/test/stubs.ts`) で確かめるプロセスのテストを書きます。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定を `test-tools` の `inputs` に書きます。実行権限の付け忘れは repo-policy が止めます。
-6. docs: この文書の「ci.yml の検証」に実行のしかたを、[開発コマンド](commands.md) の構成とコマンドの表に、手で実行するコマンドを書きます。
+6. docs: この文書の「ci.yml の検証」に実行のしかたを、[開発コマンド](commands.md) の構成とコマンドの表に、手で実行するコマンドを書きます。`ci.yml` の Nx の target がコマンドの表にないと、repo-policy が失敗します。
 7. 道具や設定を選んだ理由は ADR に書きます。番号は `node tools/scripts/src/checks/check-adr-number/cli.ts` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
 ## lint の規則と tsconfig のフラグの fixture

@@ -6,19 +6,24 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
-    "start": "node dist/server.js",
+    "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vp test run --coverage",
     "check": "vp check",
-    "db:migrate": "node db/migrate.ts"
+    "db:migrate": "node db/migrate.ts",
+    "db-types": "node db/types.ts",
+    "db-types-check": "node db/types.ts --check"
   },
   "dependencies": {
     "@agent-software-factory/approval": "workspace:*",
     "@agent-software-factory/claim": "workspace:*",
     "@agent-software-factory/closing": "workspace:*",
+    "@agent-software-factory/shared": "workspace:*",
     "@hono/node-server": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
-    "pg": "catalog:"
+    "kysely": "catalog:",
+    "pg": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@hono/vite-dev-server": "catalog:",
@@ -27,6 +32,7 @@
     "@types/pg": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "dbmate": "catalog:",
+    "kysely-codegen": "catalog:",
     "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
