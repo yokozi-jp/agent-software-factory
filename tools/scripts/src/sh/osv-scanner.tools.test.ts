@@ -2,7 +2,7 @@
 // vulnerability written here. It queries osv.dev, so it needs the network.
 // Reads mise.toml, mise.lock and .mise/locks/ of the workspace, the inputs of the test-tools target
 // (tools/scripts/package.json). What the script does with each exit code is in osv-scanner.test.ts.
-import { cpSync, writeFileSync } from "node:fs";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { gitIn, miseDirs, runIn, sandbox, type Sandbox } from "../test/sandbox.ts";
@@ -51,5 +51,16 @@ describe("osv-scanner.sh with the real OSV-Scanner", () => {
     const result = runIn(repo, "sh", [script], { env: { ...miseDirs(), GITHUB_ACTIONS: "" } });
     expect(result.status).toBe(0);
     expect(result.stdout + result.stderr).toContain("GHSA-35jh-r3h4-6jhm");
+  }, 300_000);
+
+  it("writes the findings as SARIF 2.1.0 when OSV_SARIF_FILE is set", () => {
+    const file = join(box.root, "osv.sarif");
+    const result = runIn(repo, "sh", [script], {
+      env: { ...miseDirs(), GITHUB_ACTIONS: "", OSV_SARIF_FILE: file },
+    });
+    expect(result.status).toBe(0);
+    const sarif = readFileSync(file, "utf8");
+    expect(sarif).toContain('"version": "2.1.0"');
+    expect(sarif).toContain("GHSA-35jh-r3h4-6jhm");
   }, 300_000);
 });

@@ -127,16 +127,46 @@ jobs:
       - name: SAST (Semgrep, new findings only)
         run: node tools/scripts/src/checks/semgrep/cli.ts
 
-      # Warns, never fails: dependency review (dependency-review.yml) is the gate for dependencies (docs/adr/0021).
-      - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
-        run: tools/scripts/sh/osv-scanner.sh
-
       # Tests of tools/scripts that run a real tool from mise.lock on a real config of this repository.
       # Their inputs (package.json of tools/scripts) name each config they read, so affected sees the change.
       - uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
 
       - name: Tool tests (tools/scripts)
         run: pnpm exec nx affected -t test-tools
+
+  # Known vulnerabilities in pnpm-lock.yaml (docs/adr/0021). Warns, never fails: dependency review
+  # (dependency-review.yml) is the gate for dependencies. It is a job of its own because it is the only one that
+  # may write to Code scanning (security-events: write); the permissions of a job replace the workflow's.
+  osv-scanner:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      # The script writes the findings here (relative to the workspace) as SARIF when this is set.
+      OSV_SARIF_FILE: osv-scanner.sarif
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          version: 2026.10.21
+          cache: false
+
+      - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
+        run: tools/scripts/sh/osv-scanner.sh
+
+      # Only on a push to main: the token of a pull request from a fork cannot write, and a pull request
+      # would add an alert each time. A scan that failed leaves no file, and the upload is skipped.
+      - name: Upload to Code scanning
+        if: ${{ github.event_name == 'push' && hashFiles(env.OSV_SARIF_FILE) != '' }}
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: ${{ env.OSV_SARIF_FILE }}
+          category: osv-scanner
 
   # The projects (apps/ and packages/): check, test and build the ones that the change affects.
   nx:
@@ -198,7 +228,7 @@ jobs:
   # (and fail) when a job it needs failed or was cancelled; without it, the job would be skipped, and a
   # skipped required check counts as passing.
   main:
-    needs: [checks, scripts, nx]
+    needs: [checks, scripts, osv-scanner, nx]
     if: ${{ always() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5

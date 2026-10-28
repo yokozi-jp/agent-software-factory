@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0021: SAST と依存の脆弱性は、PR が新しく持ち込んだ指摘だけで止め、ゲートは CodeQL と dependency review、ローカルの写しは Semgrep と OSV-Scanner にする"
-description: SAST と依存の脆弱性スキャンの決定。merge のゲートは CodeQL の default setup (ruleset の code_scanning の規則) と actions/dependency-review-action で、どちらも PR が新しく持ち込んだ指摘だけで止める。ローカルでも動く写しとして Semgrep CE と OSV-Scanner を pre-push と CI に重ねて置き、SARIF は送らない。SAST や依存のスキャンの道具、閾値、抑制の仕方を変えるとき、CodeQL と Semgrep のどちらかを外したくなったとき、Trivy や pnpm audit を足したくなったとき、private のリポジトリで使うときに読む。
+description: SAST と依存の脆弱性スキャンの決定。merge のゲートは CodeQL の default setup (ruleset の code_scanning の規則) と actions/dependency-review-action で、どちらも PR が新しく持ち込んだ指摘だけで止める。ローカルでも動く写しとして Semgrep CE と OSV-Scanner を pre-push と CI に重ねて置く。OSV-Scanner の指摘だけは、main への push のときに SARIF にして Code scanning に送る (ゲートにはしない)。SAST や依存のスキャンの道具、閾値、抑制の仕方を変えるとき、CodeQL と Semgrep のどちらかを外したくなったとき、Trivy や pnpm audit を足したくなったとき、private のリポジトリで使うときに読む。
 tags: [adr, tooling, security, sast, dependencies, github]
 ---
 
@@ -16,14 +16,15 @@ tags: [adr, tooling, security, sast, dependencies, github]
   - OSV-Scanner は `pnpm-lock.yaml` を検査し、警告だけを出します (adr-check と同じ形、[ADR 0016](0016-adr-check-warns-without-blocking.md))。CLI に基準の commit との差分を取る機能がないためです。
 - **Dependabot**: alerts と malware alerts を有効にし、すでにある指摘の一覧にします。依存を上げる PR は Renovate が出すので ([ADR 0018](0018-renovate-for-pinned-versions.md))、security updates は無効のままにします。
 - **抑制**: どの道具でも、理由を個別に書きます ([ADR 0017](0017-knip-unused-code.md) と同じ方針)。Semgrep は `# nosemgrep: <rule-id>` の後、OSV-Scanner は `osv-scanner.toml` の `reason`、CodeQL は dismiss の理由、dependency review は `allow-ghsas` の隣のコメントに書きます。
-- **証拠**: SARIF は送りません。CodeQL の default setup は GitHub 側で動くので、このリポジトリの workflow に `security-events: write` は要りません ([ADR 0012](0012-lint-workflows.md) で zizmor-action を採らなかったのと同じ理由です)。
+- **証拠**: OSV-Scanner の指摘は、SARIF にして Code scanning に送り、Security タブの alert の一覧で見て dismiss できるようにします ([Issue #313](https://github.com/yokozi-jp/agent-software-factory/issues/313))。`ci.yml` の `osv-scanner` の job が `github/codeql-action/upload-sarif` を使い、`category: osv-scanner` で CodeQL の alert と分けます。送るのは main への push のときだけです (fork の PR の token は書き込めず、PR ごとに alert が増えるのも避ける)。スキャンが失敗して SARIF がなければ、送りません。`security-events: write` を持つのはこの job だけで、ほかの job の権限は増やしません。CodeQL の default setup は GitHub 側で動くので、CodeQL のために workflow に権限は要りません。ゲートは変わらず CodeQL と dependency review です。`protect-main` の `code_scanning` の規則は道具に CodeQL だけを挙げているので、OSV-Scanner の alert で merge は止まりません。Dependabot alerts と同じ脆弱性が二重に見えることは、判断として受け入れます (public のリポジトリでは Code scanning に追加の費用はありません)。
+  - 以前は SARIF を送らず、`security-events: write` も持たない方針でした ([ADR 0012](0012-lint-workflows.md) で zizmor-action を採らなかったのと同じ理由です)。alert を一覧にも dismiss もできず、CI のログの警告だけでは扱いにくかったため、OSV-Scanner についてこの方針を変えました。
 
 ## Considered Options
 
 - **CodeQL の advanced setup**: workflow をリポジトリに置けますが、`security-events: write` が要ります。
 - **Semgrep だけ、または CodeQL だけ**: CodeQL はローカルで手軽に動きません。Semgrep CE はファイルをまたぐ解析を有償版に持たせており、GitHub の code scanning とも直結しません。SAST を2つ重ねるのは、ゲートと、エージェントが早く受け取る写しで役割が違うためです。
 - **Opengrep**: Semgrep の LGPL-2.1 の fork で、aqua で入り cosign の署名もあります。ただし公開の規則の `opengrep/opengrep-rules` は archived で、Registry の規則は Semgrep のための許諾です ([Semgrep Rules License v1.0](https://semgrep.dev/legal/rules-license))。
-- **OSV-Scanner をゲートにする**: すべての指摘で失敗するので、PR が新しく持ち込んだ指摘だけで止める方針に合いません。公式の PR 用の workflow は差分を比べますが、SARIF を送り `security-events: write` が要ります ([OSV-Scanner の GitHub Action](https://google.github.io/osv-scanner/github-action/))。
+- **OSV-Scanner をゲートにする**: すべての指摘で失敗するので、PR が新しく持ち込んだ指摘だけで止める方針に合いません。公式の PR 用の workflow は差分を比べますが、PR ごとに SARIF を送り `security-events: write` が要ります ([OSV-Scanner の GitHub Action](https://google.github.io/osv-scanner/github-action/))。ゲートにしない代わりに、SARIF の送信だけを main への push に絞って採りました。
 - **Trivy**: 2026-03 に release と action のタグを侵害されました。依存のスキャンは dependency review と、秘密情報は betterleaks と重なります。イメージと IaC の検査は、CD の流れを決めた後に決めます。
 - **`pnpm audit`**: 差分で止められず、SARIF もありません。
 
