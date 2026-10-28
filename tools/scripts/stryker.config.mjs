@@ -11,6 +11,7 @@ export default {
     "!src/**/*.test.ts",
     "!src/**/cli.ts",
     "!src/test/**",
+    // Fixtures break a lint rule on purpose and are read by the checks, not run (#43, #230).
     "!src/**/fixtures/**",
   ],
   // Reuses the results in incrementalFile for the mutants and tests that did not change.

@@ -138,10 +138,10 @@ describe("ADR 0003, 0009: one betterleaks version", () => {
   });
 });
 
-describe("#230: every lint rule that is an error has a fixture", () => {
+describe("Detection power (#43): every lint rule that is an error has a fixture", () => {
   const config = base["vite.config.ts"] ?? "";
   const noFixture = (rule: string) =>
-    `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`;
+    `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("lint の規則と tsconfig のフラグの fixture")).`;
   const withRules = (rules: string) =>
     config.replace("    overrides: [", `${rules}\n    overrides: [`);
   const fixture = (text: string, path = "apps/api/src/__fixtures__/more.ts") => ({ [path]: text });
@@ -268,9 +268,9 @@ describe("#230: every lint rule that is an error has a fixture", () => {
   );
 });
 
-describe("#230: every tsconfig flag that is on has a fixture", () => {
+describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
   const noFixture = (flag: string) =>
-    `tsconfig.json turns on ${flag}, but no fixture has a \`@ts-expect-error\` that names it. Add a line that the flag makes an error, with \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`;
+    `tsconfig.json turns on ${flag}, but no fixture has \`@ts-expect-error -- fixture: ${flag}\`. Add a line that the flag makes an error, in the form \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("lint の規則と tsconfig のフラグの fixture")).`;
   const tsconfig = (options: Record<string, unknown>) =>
     json({ compilerOptions: { noEmit: true, ...options } });
   const flagsFile = "apps/api/src/__fixtures__/tsconfig-flags.ts";
@@ -295,32 +295,32 @@ describe("#230: every tsconfig flag that is on has a fixture", () => {
     ).toEqual([expect.stringMatching(/^tsconfig\.json is not valid JSON \(/)]);
   });
 
+  // Each flag with the value that turns its check on.
   it.each([
-    "allowUnreachableCode",
-    "allowUnusedLabels",
-    "alwaysStrict",
-    "erasableSyntaxOnly",
-    "exactOptionalPropertyTypes",
-    "noFallthroughCasesInSwitch",
-    "noImplicitAny",
-    "noImplicitOverride",
-    "noImplicitReturns",
-    "noImplicitThis",
-    "noPropertyAccessFromIndexSignature",
-    "noUncheckedIndexedAccess",
-    "noUncheckedSideEffectImports",
-    "noUnusedLocals",
-    "noUnusedParameters",
-    "strict",
-    "strictBindCallApply",
-    "strictBuiltinIteratorReturn",
-    "strictFunctionTypes",
-    "strictNullChecks",
-    "strictPropertyInitialization",
-    "useUnknownInCatchVariables",
-    "verbatimModuleSyntax",
-  ])("knows %s as a checking flag, and is satisfied by its fixture", (flag) => {
-    const on = !flag.startsWith("allowUn");
+    ["allowUnreachableCode", false],
+    ["allowUnusedLabels", false],
+    ["alwaysStrict", true],
+    ["erasableSyntaxOnly", true],
+    ["exactOptionalPropertyTypes", true],
+    ["noFallthroughCasesInSwitch", true],
+    ["noImplicitAny", true],
+    ["noImplicitOverride", true],
+    ["noImplicitReturns", true],
+    ["noImplicitThis", true],
+    ["noPropertyAccessFromIndexSignature", true],
+    ["noUncheckedIndexedAccess", true],
+    ["noUncheckedSideEffectImports", true],
+    ["noUnusedLocals", true],
+    ["noUnusedParameters", true],
+    ["strict", true],
+    ["strictBindCallApply", true],
+    ["strictBuiltinIteratorReturn", true],
+    ["strictFunctionTypes", true],
+    ["strictNullChecks", true],
+    ["strictPropertyInitialization", true],
+    ["useUnknownInCatchVariables", true],
+    ["verbatimModuleSyntax", true],
+  ])("knows %s as a checking flag, and is satisfied by its fixture", (flag, on) => {
     const tsconfigText = tsconfig({ [flag]: on });
     expect(violations(repo({ "tsconfig.json": tsconfigText, [flagsFile]: "" }))).toEqual([
       noFixture(flag),
@@ -368,6 +368,12 @@ describe("#230: every tsconfig flag that is on has a fixture", () => {
     ["a flag with a longer name", flagsFixture("strictNullChecks")],
     ["a flag whose name ends the same", flagsFixture("alwaysstrict", "xstrict")],
     ["a @ts-ignore", "// @ts-ignore -- fixture: strict\n"],
+    [
+      "a name in the reason of another flag",
+      "// @ts-expect-error -- fixture: noImplicitAny: strict\n",
+    ],
+    ["a @ts-expect-error without the fixture form", "// @ts-expect-error -- strict\n"],
+    ["a @ts-expect-error without a separator", "// @ts-expect-error fixture: strict\n"],
   ])("refuses %s", (_, text) => {
     expect(
       violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
@@ -376,9 +382,8 @@ describe("#230: every tsconfig flag that is on has a fixture", () => {
 
   it.each([
     "// @ts-expect-error -- fixture: strict\n",
-    "// @ts-expect-error: strict\n",
-    "  // @ts-expect-error -- the parameter has no type (strict)\n",
-    "/* @ts-expect-error strict */\n",
+    "// @ts-expect-error -- fixture: strict: the parameter has no type\n",
+    "  // @ts-expect-error   --   fixture:   strict (noImplicitAny)\n",
   ])("accepts the flag named in %j", (text) => {
     expect(
       violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
@@ -400,7 +405,7 @@ describe("#230: every tsconfig flag that is on has a fixture", () => {
   });
 });
 
-describe("#230: a project tsconfig.json takes the checking flags from the root", () => {
+describe("ADR 0020: a project tsconfig.json takes the checking flags from the root", () => {
   const extendsRoot = (depth: number) => `${"../".repeat(depth)}tsconfig.json`;
   const project = (path: string, tsconfig: Record<string, unknown>) => ({
     [path]: json(tsconfig),
@@ -491,6 +496,13 @@ describe("#230: a project tsconfig.json takes the checking flags from the root",
     expect(
       violations(repo({ "tsconfig.json": json({ compilerOptions: { target: "es2024" } }) })),
     ).toEqual([]);
+  });
+
+  it("reads the comments of a tsconfig.json", () => {
+    const text = '{\n  // a comment\n  "compilerOptions": {}\n}\n';
+    expect(violations(repo({ "apps/web/tsconfig.json": text }))).toEqual([
+      'apps/web/tsconfig.json must have "extends": "../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
+    ]);
   });
 
   it("checks a file named tsconfig.json only, at any depth", () => {

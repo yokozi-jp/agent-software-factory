@@ -37,7 +37,7 @@ function parser(path: string): [string, (text: string) => unknown] {
       (text) => {
         // A tsconfig.json may have comments. Only a comment that fills its line is removed.
         const value: unknown = JSON.parse(
-          path.endsWith("tsconfig.json") ? text.replace(/^[ \t]*\/\/.*$/gm, "") : text,
+          /(^|\/)tsconfig\.json$/.test(path) ? text.replace(/^[ \t]*\/\/.*$/gm, "") : text,
         );
         return value;
       },
@@ -149,8 +149,6 @@ function oneBetterleaks(tree: Tree): string[] {
 // Both fail `vp check` when they are unused (`reportUnusedDisableDirectives`, TS2578), so a rule or a flag that
 // is turned off, or an override whose `files` stop reaching the file, fails the check. The fixtures of the
 // checks themselves (tools/scripts/src/checks/) are the input of their tests, not a fixture of this kind.
-// This replaces the check of ADR 0007 that looked for "error" in the text of vite.config.ts: that text does not
-// show that a rule reaches the paths it is for.
 const fixtureFile = /(?:^|\/)(?:__fixtures__|fixtures)\/(?:.*\/)?[^/]+\.tsx?$/;
 const fixtureTexts = (tree: Tree): string[] =>
   tree.paths
@@ -183,7 +181,7 @@ function lintRulesHaveFixtures(tree: Tree): string[] {
     .filter((rule) => !annotated.has(String(rule)))
     .map(
       (rule) =>
-        `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`,
+        `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("lint の規則と tsconfig のフラグの fixture")).`,
     );
 }
 
@@ -222,7 +220,7 @@ const compilerOptions = (tree: Tree, path: string): Record<string, unknown> =>
   record(record(tree.parsed(path)).compilerOptions);
 
 // Every checking flag that the root tsconfig.json turns on has a line in a fixture that it makes an error (#230):
-// a `@ts-expect-error` whose description names the flag. With the flag off, the directive is unused.
+// `@ts-expect-error -- fixture: <flag>`. With the flag off, the directive is unused.
 function tsconfigFlagsHaveFixtures(tree: Tree): string[] {
   const options = compilerOptions(tree, rootTsconfig);
   const directives = fixtureTexts(tree)
@@ -230,10 +228,15 @@ function tsconfigFlagsHaveFixtures(tree: Tree): string[] {
     .filter((line) => line.includes("@ts-expect-error"));
   return Object.entries(tsconfigChecks)
     .filter(([flag, on]) => options[flag] === on)
-    .filter(([flag]) => !directives.some((line) => new RegExp(`\\b${flag}\\b`).test(line)))
+    .filter(
+      ([flag]) =>
+        !directives.some((line) =>
+          new RegExp(`@ts-expect-error\\s+--\\s+fixture:\\s+${flag}\\b`).test(line),
+        ),
+    )
     .map(
       ([flag]) =>
-        `${rootTsconfig} turns on ${flag}, but no fixture has a \`@ts-expect-error\` that names it. Add a line that the flag makes an error, with \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`,
+        `${rootTsconfig} turns on ${flag}, but no fixture has \`@ts-expect-error -- fixture: ${flag}\`. Add a line that the flag makes an error, in the form \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("lint の規則と tsconfig のフラグの fixture")).`,
     );
 }
 
