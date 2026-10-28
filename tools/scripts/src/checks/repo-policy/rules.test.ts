@@ -2168,7 +2168,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared and module-fixtures on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2236,6 +2236,38 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     ).toEqual([
       wrong("approval", "dependencies", "approval"),
       wrong("approval", "dependencies", "closing"),
+    ]);
+  });
+
+  it("asks module-fixtures for no place in moduleOrder, and refuses any package of the workspace it depends on", () => {
+    expect(violations(repo(manifest("module-fixtures")))).toEqual([]);
+    expect(
+      violations(
+        repo(
+          manifest("module-fixtures", {
+            dependencies: { "@agent-software-factory/shared": "workspace:*", effect: "catalog:" },
+            devDependencies: workspace,
+          }),
+        ),
+      ),
+    ).toEqual([
+      wrong("module-fixtures", "dependencies", "shared"),
+      wrong("module-fixtures", "devDependencies", "claim"),
+    ]);
+  });
+
+  it("asks module-fixtures for the lint-effect script, like a module", () => {
+    expect(
+      violations(
+        repo({
+          ...manifest("module-fixtures"),
+          "packages/module-fixtures/package.json": packageJson("module-fixtures", {
+            scripts: { check: "vp check" },
+          }),
+        }),
+      ),
+    ).toEqual([
+      `packages/module-fixtures/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`,
     ]);
   });
 

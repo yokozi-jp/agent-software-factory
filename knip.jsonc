@@ -45,6 +45,9 @@
     "packages/claim": { "ignoreDependencies": ["effect"] },
     "packages/approval": { "ignoreDependencies": ["effect"] },
     "packages/closing": { "ignoreDependencies": ["effect"] },
+    // module-fixtures holds only the fixtures of the overrides that reach every module (docs/adr/0026). They import
+    // effect, and Knip does not read __fixtures__/, so the dependency always looks unused.
+    "packages/module-fixtures": { "ignoreDependencies": ["effect"] },
     "apps/api": {
       "entry": [
         // The dev server entry (@hono/vite-dev-server in vite.config.ts), also Knip's default.

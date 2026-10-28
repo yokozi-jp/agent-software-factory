@@ -15,7 +15,7 @@ _Avoid_: AI harness、開発基盤
 _Avoid_: 参照業務機能、デモ
 
 **モジュール**:
-サンプル機能の、業務の機能ごとのまとまり。`packages/` の1つの package で、公開 API の入口（`index.ts`）だけを他から見せる。申請（`claim`）、承認（`approval`）、締め（`closing`）があり、依存は「締め → 承認 → 申請」の一方向。
+サンプル機能の、業務の機能ごとのまとまり。`packages/` の1つの package で、公開 API の入口（`index.ts`）だけを他から見せる。申請（`claim`）、承認（`approval`）、締め（`closing`）があり、依存は「締め → 承認 → 申請」の一方向。`packages/shared`（モジュールが共有するコード）と `packages/module-fixtures`（モジュールの境界の検出力の fixture だけを持つ、モジュールの形をした package）はモジュールではなく、サンプル機能を消しても残る。
 _Avoid_: 機能、ドメイン、コンポーネント
 
 **サービスの型**:

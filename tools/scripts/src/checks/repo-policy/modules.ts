@@ -26,7 +26,14 @@ const manifest = (name: string): string => `packages/${name}/package.json`;
 export const packageNames = (tree: Tree): string[] =>
   tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
 
-// The names of the modules: the packages under packages/ but shared.
+// The packages under packages/ that are not modules of the sample feature, and depend on no package of the
+// workspace. shared is the code the modules share. module-fixtures has the layers of a module and holds the
+// detection-power fixtures of the overrides that reach every module (docs/adr/0026); it stays when the sample
+// feature is removed.
+const independentPackages: readonly string[] = ["shared", "module-fixtures"];
+
+// The names of the packages in the shape of a module: the packages under packages/ but shared. They have the layers
+// and run the Effect lint.
 export const moduleNames = (tree: Tree): string[] =>
   packageNames(tree).filter((name) => name !== "shared");
 
@@ -65,14 +72,14 @@ export function packageManifests(tree: Tree): string[] {
   });
 }
 
-// Every package under packages/ but shared is a module of moduleOrder, and depends on no package of the workspace
-// but shared and the modules after it. shared depends on none of them.
+// Every package under packages/ but shared and module-fixtures is a module of moduleOrder, and depends on no
+// package of the workspace but shared and the modules after it. shared and module-fixtures depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
-    const isShared = name === "shared";
+    const independent = independentPackages.includes(name);
     const position = moduleOrder.indexOf(name);
-    if (!isShared && position === -1) {
+    if (!independent && position === -1) {
       failures.push(
         `packages/${name} is not in moduleOrder in ${moduleOrderFile}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
       );
@@ -83,9 +90,10 @@ export function modulesDependOneWay(tree: Tree): string[] {
       for (const dependency of Object.keys(record(json[field]))) {
         if (!dependency.startsWith(`${scope}/`)) continue;
         const target = dependency.slice(scope.length + 1);
-        if (!isShared && (target === "shared" || moduleOrder.indexOf(target) > position)) continue;
+        if (!independent && (target === "shared" || moduleOrder.indexOf(target) > position))
+          continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared and module-fixtures on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
         );
       }
   }
