@@ -8,7 +8,7 @@
 --
 -- auth スキーマのほかの表と同じく、docs/db/ の規約 (snake_case とプレフィックスの物理名、キーワードを
 -- 避けること、共通カラム、日時の timestamptz) に従わず、Better Auth の定義のままにしている。
--- auth スキーマを規約の例外にするかは #278 で決める。
+-- 理由は docs/adr/0025 の「Better Auth の表」(docs/db の規約の例外)。
 
 -- migrate:up
 SET LOCAL lock_timeout = '5s';
