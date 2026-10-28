@@ -13,7 +13,9 @@ cd "$(git rev-parse --show-toplevel)"
 dlx() {
   tool="$1"
   shift
-  pnpm dlx --package="renovate@$renovate_version" "$tool" "$@"
+  # re2 builds its native module in an install script. pnpm dlx skips the script unless it is allowed, and
+  # Renovate then falls back to RegExp, which validates regexes less strictly than the RE2 it uses for real.
+  pnpm dlx --allow-build=re2 --package="renovate@$renovate_version" "$tool" "$@"
 }
 
 case "${1:-}" in
