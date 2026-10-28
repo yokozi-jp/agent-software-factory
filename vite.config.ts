@@ -450,6 +450,26 @@ export default defineConfig({
         files: ["apps/web/src/**"],
         rules: { "no-console": "error" },
       },
+      // Imports in apps/web/src name a file in another directory with `@/` (the paths of tsconfig.json), not with
+      // `../`; `./` stays for a file in the same directory (docs/web-frontend/component-design.md). apps/web/src
+      // has no other no-restricted-imports, so this one carries all of them.
+      {
+        files: ["apps/web/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                {
+                  regex: "^\\.\\./",
+                  message:
+                    "Import a file in another directory with `@/` (apps/web/src), not `../`.",
+                },
+              ],
+            },
+          ],
+        },
+      },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
       // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.

@@ -13,7 +13,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 - **UI 部品**: shadcn/ui の CLI で部品のコードを `apps/web/src/components/ui/` に取り込みます。取り込んだコードはこのリポジトリのコードで、直接編集します。下位ライブラリは Base UI (`@base-ui/react`) で、`pnpm dlx shadcn@latest init --base base` が選びます。`components.json` に設定が残ります。
 - **スタイル**: Tailwind CSS v4 (`tailwindcss` と `@tailwindcss/vite`) です。CSS の入口は `apps/web/src/index.css` で、`main.tsx` が読みます。CSS-in-JS は使いません。
-- **alias**: `@/*` は `apps/web/src/*` を指します。`tsconfig.json` の `paths` に書きます。shadcn が生成するコードが `@/lib/utils` のように import します。
+- **alias**: `@/*` は `apps/web/src/*` を指します。`tsconfig.json` の `paths` に書きます。shadcn が生成するコードが `@/components/ui/button` のように import します。`apps/web/src` は、別のディレクトリのファイルを `@/` で import し、`../` を使いません。`vite.config.ts` の `no-restricted-imports` が `../` を止め、`apps/web/src/__fixtures__/relative-parent.ts` が検出力を確かめます。`apps/api` と `packages/*` には適用しません。
 - **alias の実装**: `vite.config.ts` は `resolve.tsconfigPaths: true` にして、`tsconfig.json` の `paths` を Vite が読みます。`resolve.alias` は書きません (Issue #314 は `resolve.alias` を挙げていました)。[ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md) は、宣言していない package を解決させる `paths` と `alias` を repo-policy で止めています。`@/*` が指すのは自分の `./src/*` だけで、ほかの package は解決しません。そこで repo-policy は、すべての target が `./src/` の下にある `paths` を許し、空の `paths`、`..` を含む target、`baseUrl`、`alias` は止めたままにしました。ADR 0026 のほかの規則は変えません。
 - **版**: 足した依存の版は `pnpm-workspace.yaml` の catalog で固定します。`shadcn init` が足す行の引用符は `vp fmt` で整えます。
 - **置き場所**: 部品は `components/ui/` です。業務コンポーネントは置きません ([Webフロントエンドのコンポーネント設計](../web-frontend/component-design.md))。
@@ -31,7 +31,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 `shadcn add` が書くコードは、このリポジトリの検査をそのままでは通りません。
 
-- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `components/ui/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `apps/web` に、`src/components/ui/**/*.tsx` と `src/lib/utils.ts` を `entry` として書きました。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
+- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `components/ui/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `apps/web` に、`src/components/ui/**/*.tsx` と `src/lib/utils.ts` を `entry` として書きました。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
 - **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `apps/web/src/index.css` だけを足しました。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
 
 ## Considered Options
