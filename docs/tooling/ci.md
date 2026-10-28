@@ -28,13 +28,15 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `ci.yml` は 4 つの job で、`checks`、`scripts`、`nx` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` で依存を入れます。
 
-| job       | 内容                                                                                                                                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checks`  | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                                                                         |
-| `scripts` | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools`                                                                                                    |
-| `nx`      | `nx affected -t check test build` (`tools/scripts` を含む)、`nx affected -t db-types-check` (DB の型と migration のずれ)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
-| `main`    | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                                                                     |
+| job                | 内容                                                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checks`           | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                                                                         |
+| `scripts`          | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、OSV-Scanner、`nx affected -t test-tools`                                                                                                    |
+| `nx`               | `nx affected -t check test build` (`tools/scripts` を含む)、`nx affected -t db-types-check` (DB の型と migration のずれ)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
+| `main`             | `checks`、`scripts`、`nx` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                                                                     |
+| `migration-compat` | (実装前) PR の migration を適用した DB で、PR の base の版のアプリの結合テストを流す ([ADR 0037](../adr/0037-migration-compatibility-test-against-base.md))                                                                                |
 
+表の最後の行の `migration-compat` は、[更新の試験の job と harness の段を実装する](https://github.com/yokozi-jp/agent-software-factory/issues/302) で `ci.yml` に足すまで、`ci.yml` にありません。足す PR で、この表の「実装前」、上の「4 つの job」と workflow の表の「3 つの job」の数、保証カタログの行を直し、`main` の `needs` にも入れて必須にします。
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
 
@@ -79,6 +81,11 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   未使用かどうかはほかのファイルの import で決まるので、pre-commit hook でもステージした内容ではなく作業ツリー全体を検査します。
 - `nx affected -t db-types-check` (`nx` の job の「DB types match the migrations」): testcontainers の PostgreSQL に migration を流し、kysely-codegen でモジュールのスキーマごとに型を生成し直し、commit された `packages/*/src/infrastructure/db.gen.ts` と違えば失敗します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。migration を変えたら `pnpm exec nx db-types db` で型を生成し直して commit します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
   入口は `packages/db/src/types.ts` で、ずれを見つける関数のテストは `packages/db/src/types.test.ts` です。PostgreSQL のコンテナを起動する (約 10 秒) ので、pre-commit の hook (`db-types`) は migration、生成した型、生成の入口、`pnpm-workspace.yaml` のどれかを変えた commit でだけ実行します。
+- 更新の試験 (実装前。[Issue #302](https://github.com/yokozi-jp/agent-software-factory/issues/302) で足す。以下は ADR 0037 が決めた動き): PR の migration を適用した DB で、切り戻し先の前の版のアプリが動くことを確かめます。前の版は PR の base の commit で代用します ([ADR 0037](../adr/0037-migration-compatibility-test-against-base.md))。
+  - 起動と成功: すべての PR で起動し、`packages/db/migrations/**` に差分がなければ成功で終えます。base に seed の入口がなければ、`::notice::` を出して成功で終えます。
+  - 先に失敗させるもの: base にある migration の書き換えと削除は、DB の起動前に失敗させます。
+  - 流し方: base を `git worktree` に出し、その版の結合テストを coverage なしで全部流します。DB には、base の migration、seed、PR が足した migration の順に流します。
+  - 止まったとき: 前の版のアプリが新しいスキーマで動かないということです。互換を壊す変更を expand と contract に分け、contract は前の版のアプリが使わなくなってから出します ([PostgreSQL のスキーママイグレーション](../db/postgresql-migration.md#このリポジトリの-migration-の書き方))。例外のラベルはなく、緊急のときだけ ruleset の bypass で人が通します。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
 ## coverage の下限

@@ -44,6 +44,7 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - postgresql-migration.md に、このリポジトリの migration の書き方 (ファイルの置き場所、`lock_timeout`、`transaction:false`、down の書き方、前に進めるだけ、expand と contract、表の形 (複合の主キー、連番のサロゲートキー、共通カラムの型と桁)、型の生成し直し) の節を足した。原文はツールを指定せず、書き方も定めていない。決定は ADR 0025、守っているかの検査は repo-policy。
 - postgresql-migration.md に、このリポジトリの seed (置き場所、流し方、冪等にしないこと、migration と同じ PR で直すこと、本番と検証環境で流さないこと) の節を足した。原文は seed を扱わない。ADR 0036。
 - postgresql-test.md の「各テストにおけるトランザクションの扱い方」に、結合テストのテンプレートの DB に migration に続けて seed を入れること、各テストは seed にない自分のテナントでデータを書き、seed の行を読まないことを足した。原文は、各テストが利用テーブルの全レコードを DELETE して事前データを登録する前提で、テンプレートの DB の seed を想定していない。ADR 0036。
+- postgresql-migration.md の「前に進めるだけ」に、前の版のアプリが PR の migration を適用した後のスキーマで動くことを CI の更新の試験が確かめる、という説明と ADR 0037 へのリンクを足した。原文は更新の試験を定めていない。ADR 0037。
 - postgresql-keys.md の UUID を DB 側で生成する記述を、PostgreSQL 18 以降は組み込みの `uuidv7()` で拡張不要、17 以前は拡張 (またはアプリ側) が必要、とバージョンで条件づけた。PostgreSQL 18 Documentation 9.14 UUID Functions。
 - postgresql-keys.md の参考リンクのうち、到達不能 (404) の 2 件 (terra-drone.net と zenn.dev/uncode_jp/articles/dcf20a2c5b0d76) を削除した。curl による HTTP 404 の確認。
 - postgresql-column.md のデータ型で、存在しない型名 `double` を `double precision` に直し、`real` は約6桁・`double precision` は約15桁・精度指定のない `float` は `double precision` を意味する、と精度の記述を正した。PostgreSQL: Documentation 8.1 Numeric Types。
