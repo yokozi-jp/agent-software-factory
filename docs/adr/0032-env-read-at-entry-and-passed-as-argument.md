@@ -21,7 +21,7 @@ ADR 0007 の文言と実装が食い違っています。
 
 ## ルール
 
-- **読む場所**: 環境変数を読むのは入口のファイルだけです。入口が値を検査し、足りなければ起動時に失敗させます (fail closed)。検査の形 (zod の schema) は [Issue #254](https://github.com/yokozi-jp/agent-software-factory/issues/254) で入れます。
+- **読む場所**: 環境変数を読むのは入口のファイルだけです。入口が値を検査し、足りなければ起動時に失敗させます (fail closed)。検査は `apps/api/src/env.ts` の zod の schema と `loadEnv` で行い、入口が `process.env` を渡します ([Issue #254](https://github.com/yokozi-jp/agent-software-factory/issues/254))。真偽の変数は `z.stringbool()` で読みます (`z.coerce.boolean()` は `"false"` を `true` にします)。数値は `z.coerce.number()` が空文字を `0` にするので、文字列の形を先に確かめます。
 - **渡し方**: 入口が `createApp` (と、それが使うファクトリー関数) に引数で渡します。`apps/api/src` の入口以外と `packages/*/src` は、環境変数を `process` からも `c.env` からも読まず、引数で受けた値だけを使います。
 - **Cloudflare Workers**: 入口を足すときは、`fetch(request, env)` で受けた `env` を、Node.js の入口と同じ引数の形で `createApp` に渡します。アプリのコードは入口の違いを知りません。Workers の入口はまだなく、`env` は request ごとに届くので、検査の結果をいつ作って持つかは、その入口を足すときに決めます (判断)。
 - **lint**: `process` を止める Oxlint の規則 (ルートの `vite.config.ts` の `runtimeGlobals`) のメッセージを、「Read environment variables from `c.env`.」から、この決定に合わせた文言に直します。止める対象は変わりません。
@@ -36,4 +36,4 @@ ADR 0007 の文言と実装が食い違っています。
 
 - ADR 0007 を読むときは、環境変数の項目だけこの ADR が優先します。
 - `process` を止める Oxlint の規則のメッセージが変わります。`process` の fixture (`src/__fixtures__/runtime-apis.ts`) は `oxlint-disable-next-line` の有無で検査するので、メッセージの文言には依存しません。
-- 検査の実装、`.env.example` と schema の key の一致のテストは Issue #254 の範囲です。この ADR は文言と方針だけを決めます。
+- 検査の実装と、`.env.example` と schema の key の一致のテストは、`apps/api/src/env.ts` と `env.test.ts` にあります。この ADR は文言と方針だけを決めます。

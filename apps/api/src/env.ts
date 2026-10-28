@@ -1,8 +1,7 @@
 import { z } from "zod";
 
 // 環境変数の schema (ADR 0032)。入口 (server.ts) が `process.env` を渡して検査する。
-// この関数自身は `process` を読まない。
-// 真偽の変数を足すときは `z.stringbool()` を使う (`z.coerce.boolean()` は "false" を true にする)。
+// この schema と loadEnv は `process` を読まない。
 // 数値に `z.coerce.number()` を使うと空文字が 0 になるので、PORT のように文字列の形を先に確かめる。
 export const envSchema = z.object({
   PORT: z
