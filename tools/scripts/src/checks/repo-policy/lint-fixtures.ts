@@ -1,4 +1,5 @@
 // Checks that every lint rule, tsconfig flag, module layer and Effect rule has a fixture that shows it is on (#43, #230; docs/adr/0020, 0026, 0027, 0028).
+import { packageNames } from "./modules.ts";
 import { Tree, record } from "./tree.ts";
 
 // The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or
@@ -141,99 +142,89 @@ const runtimeAnnotations = [
   "oxlint-disable-next-line import/no-nodejs-modules",
 ];
 
-// Whether a file of `fixtures` (a __fixtures__/ directory) has `annotation`. A test file counts only when
-// `test` is true, because the override of the tests is not the one that the other fixtures show.
-const hasFixture = (tree: Tree, fixtures: string, annotation: string, test = false) =>
-  tree.paths.some(
-    (file) =>
-      file.startsWith(fixtures) &&
-      file.endsWith(".test.ts") === test &&
-      tree.read(file).includes(annotation),
+// The fixtures are for the overrides, not for the packages: an override reaches packages/*/src/** or
+// packages/*/src/<layer>/** of every package alike (docs/adr/0026), so a fixture in any one package shows it. The
+// fixtures in `dir` of every package under packages/ (`dir` is src or src/<layer>), and whether there is a
+// package (or a module, for the layers) to ask them of.
+function fixtures(tree: Tree, dir: string): string[] {
+  const pattern = new RegExp(`^packages/[^/]+/${dir}/__fixtures__/`);
+  return tree.paths.filter((path) => pattern.test(path));
+}
+const hasPackage = (tree: Tree, modulesOnly: boolean): boolean =>
+  packageNames(tree).some((name) => !(modulesOnly && name === "shared"));
+
+// Whether a fixture in `dir` has `annotation`. A test file counts only when `test` is true, because the override
+// of the tests is not the one that the other fixtures show.
+const hasFixture = (tree: Tree, dir: string, annotation: string, test = false) =>
+  fixtures(tree, dir).some(
+    (file) => file.endsWith(".test.ts") === test && tree.read(file).includes(annotation),
   );
 
-// ADR 0026: the boundaries of each package under packages/. vite.config.ts builds an override of
-// no-restricted-imports for each module in its `modules` object, and for each layer of its `layers` object; a
-// package left out has no boundaries. Each override has a fixture (#43) in <dir>/__fixtures__/ that the rule
-// must report: src/ of every package, and src/<layer>/ of every module. shared has its own override and no layers.
-// The runtime restrictions of docs/adr/0007 (no-restricted-globals, no-restricted-properties) reach all of
-// packages/*/src, so src/__fixtures__/ also needs a fixture for each of them and one for the tests.
+// ADR 0026: the boundaries of the packages under packages/. vite.config.ts has an override of
+// no-restricted-imports for packages/*/src/**, and one for each layer of its `layers` object. Each has a fixture
+// (#43) in some package, in <dir>/__fixtures__/, that the rule must report. The runtime restrictions of
+// docs/adr/0007 (no-restricted-globals, no-restricted-properties, import/no-nodejs-modules) reach all of
+// packages/*/src, so src/ also needs a fixture for each of them and one for the tests.
 export function moduleBoundaries(tree: Tree): string[] {
-  const config = tree.read("vite.config.ts");
-  const modules = new Set(objectKeys(config, "modules"));
-  const layers = objectKeys(config, "layers");
+  if (!hasPackage(tree, false)) return [];
+  const layers = hasPackage(tree, true) ? objectKeys(tree.read("vite.config.ts"), "layers") : [];
   const failures: string[] = [];
-  for (const path of tree.paths) {
-    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
-    if (name === undefined) continue;
-    const isModule = name !== "shared";
-    if (isModule && !modules.has(name))
+  for (const dir of ["src", ...layers.map((layer) => `src/${layer}`)])
+    if (!hasFixture(tree, dir, fixtureAnnotation))
       failures.push(
-        `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`,
+        `No packages/*/${dir}/__fixtures__/ has a fixture with \`${fixtureAnnotation}\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`,
       );
-    for (const dir of ["src", ...(isModule ? layers.map((layer) => `src/${layer}`) : [])]) {
-      const fixtures = `packages/${name}/${dir}/__fixtures__/`;
-      if (!hasFixture(tree, fixtures, fixtureAnnotation))
+  // The override of domain sets no-restricted-globals and no-restricted-properties for its own rules (docs/adr/0027),
+  // and Oxlint keeps only the last override that sets a rule, so it must carry the runtime restrictions too. The
+  // annotations of the purity fixtures (Date, Math.random) name the same rules, so the fixture has its own file.
+  if (layers.includes("domain")) {
+    const runtime = fixtures(tree, "src/domain").filter((file) =>
+      file.endsWith("/runtime-apis.ts"),
+    );
+    for (const annotation of domainRuntimeAnnotations)
+      if (!runtime.some((file) => tree.read(file).includes(annotation)))
         failures.push(
-          `${fixtures} has no fixture with \`${fixtureAnnotation}\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`,
-        );
-    }
-    // The override of domain sets no-restricted-globals and no-restricted-properties for its own rules (docs/adr/0027),
-    // and Oxlint keeps only the last override that sets a rule, so it must carry the runtime restrictions too. The
-    // annotations of the purity fixtures (Date, Math.random) name the same rules, so the fixture has its own file.
-    if (isModule && layers.includes("domain")) {
-      const runtime = `packages/${name}/src/domain/__fixtures__/runtime-apis.ts`;
-      for (const annotation of domainRuntimeAnnotations)
-        if (!tree.paths.includes(runtime) || !tree.read(runtime).includes(annotation))
-          failures.push(
-            `${runtime} has no \`${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`,
-          );
-    }
-    // The override of the tests keeps the import restrictions (docs/adr/0007).
-    const src = `packages/${name}/src/__fixtures__/`;
-    if (!hasFixture(tree, src, fixtureAnnotation, true))
-      failures.push(
-        `${src} has no *.test.ts fixture with \`${fixtureAnnotation}\`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).`,
-      );
-    for (const annotation of runtimeAnnotations)
-      if (!hasFixture(tree, src, annotation))
-        failures.push(
-          `${src} has no fixture with \`${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`,
+          `No packages/*/src/domain/__fixtures__/runtime-apis.ts has \`${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`,
         );
   }
+  // The override of the tests keeps the import restrictions (docs/adr/0007).
+  if (!hasFixture(tree, "src", fixtureAnnotation, true))
+    failures.push(
+      `No packages/*/src/__fixtures__/ has a *.test.ts fixture with \`${fixtureAnnotation}\`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).`,
+    );
+  for (const annotation of runtimeAnnotations)
+    if (!hasFixture(tree, "src", annotation))
+      failures.push(
+        `No packages/*/src/__fixtures__/ has a fixture with \`${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`,
+      );
   return failures;
 }
 
 // ADR 0027: the rules that keep domain pure, each with its name as the disable comment of its fixture. vite.config.ts
-// sets them in the override of domain for each module: `throw` (the domain/no-throw rule of
-// tools/lint-plugins/src/domain-plugin.ts), the `Date` global, and `Math.random`. Each module has a fixture (#43) for each
-// in src/domain/__fixtures__/ that the rule must report, so a rule that is turned off, or whose `files` stop
-// reaching domain/, fails `vp check`. Like the fixtures of the layers above, they are asked of the modules only,
-// and only when vite.config.ts has a domain layer. The space after the name keeps a rule of a longer name from
-// counting.
+// sets them in the override of domain: `throw` (the domain/no-throw rule of tools/lint-plugins/src/domain-plugin.ts),
+// the `Date` global, and `Math.random`. Some module has a fixture (#43) for each in src/domain/__fixtures__/ that
+// the rule must report, so a rule that is turned off, or whose `files` stop reaching domain/, fails `vp check`.
+// They are asked only when there is a module and vite.config.ts has a domain layer. The space after the name keeps
+// a rule of a longer name from counting.
 const domainRuleNames = ["domain/no-throw", "no-restricted-globals", "no-restricted-properties"];
 
 export function domainPurity(tree: Tree): string[] {
-  if (!objectKeys(tree.read("vite.config.ts"), "layers").includes("domain")) return [];
-  const failures: string[] = [];
-  for (const path of tree.paths) {
-    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
-    if (name === undefined || name === "shared") continue;
-    const fixtures = `packages/${name}/src/domain/__fixtures__/`;
-    for (const rule of domainRuleNames)
-      if (
-        !tree.paths.some(
-          (file) =>
-            file.startsWith(fixtures) &&
-            // runtime-apis.ts is the fixture of docs/adr/0007 (moduleBoundaries), and names the same two rules.
-            !file.endsWith("/runtime-apis.ts") &&
-            tree.read(file).includes(`oxlint-disable-next-line ${rule} `),
-        )
-      )
-        failures.push(
-          `${fixtures} has no fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`,
-        );
-  }
-  return failures;
+  if (
+    !hasPackage(tree, true) ||
+    !objectKeys(tree.read("vite.config.ts"), "layers").includes("domain")
+  )
+    return [];
+  // runtime-apis.ts is the fixture of docs/adr/0007 (moduleBoundaries), and names the same two rules.
+  const purity = fixtures(tree, "src/domain").filter((file) => !file.endsWith("/runtime-apis.ts"));
+  return domainRuleNames
+    .filter(
+      (rule) =>
+        !purity.some((file) => tree.read(file).includes(`oxlint-disable-next-line ${rule} `)),
+    )
+    .map(
+      (rule) =>
+        `No packages/*/src/domain/__fixtures__/ has a fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`,
+    );
 }
 
 // The fixtures of the Effect rules, and the disable comments each carries. effect-tsgo.ts has the rules of
@@ -249,26 +240,25 @@ const effectFixtures: Readonly<Record<string, readonly string[]>> = {
   ),
 };
 
-// ADR 0028: application and infrastructure of each module are checked for Effect by effect-tsgo (the lint-effect
-// target) and by vite.config.ts. Each of them has a fixture (#43) in <layer>/__fixtures__/ for each rule, so that a
-// rule turned off, or one that stops reaching the layer, fails the check. outdated-api has none: a disable comment
-// does not reach all of what it reports, so tools/scripts/src/checks/effect-lint/ tests it.
+// ADR 0028: application and infrastructure are checked for Effect by effect-tsgo (the lint-effect target of each
+// module, modulesLintEffect) and by vite.config.ts. Each layer has a fixture (#43) in some module, in
+// <layer>/__fixtures__/, for each rule, so that a rule turned off, or one that stops reaching the layer, fails the
+// check. outdated-api has none: a disable comment does not reach all of what it reports, so
+// tools/scripts/src/checks/effect-lint/ tests it.
 export function effectBoundaries(tree: Tree): string[] {
+  if (!hasPackage(tree, true)) return [];
   const layers = objectKeys(tree.read("vite.config.ts"), "layers");
   const failures: string[] = [];
-  for (const path of tree.paths) {
-    const name = /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1];
-    if (name === undefined || name === "shared") continue;
-    for (const layer of ["application", "infrastructure"].filter((l) => layers.includes(l)))
-      for (const [file, annotations] of Object.entries(effectFixtures)) {
-        const fixture = `packages/${name}/src/${layer}/__fixtures__/${file}`;
-        const text = tree.read(fixture);
-        for (const annotation of annotations)
-          if (!text.includes(annotation))
-            failures.push(
-              `${fixture} has no \`${annotation}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`,
-            );
-      }
-  }
+  for (const layer of ["application", "infrastructure"].filter((l) => layers.includes(l)))
+    for (const [file, annotations] of Object.entries(effectFixtures)) {
+      const texts = fixtures(tree, `src/${layer}`)
+        .filter((path) => path.endsWith(`/__fixtures__/${file}`))
+        .map((path) => tree.read(path));
+      for (const annotation of annotations)
+        if (!texts.some((text) => text.includes(annotation)))
+          failures.push(
+            `No packages/*/src/${layer}/__fixtures__/${file} has \`${annotation}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`,
+          );
+    }
   return failures;
 }

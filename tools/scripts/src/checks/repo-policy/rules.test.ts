@@ -4,13 +4,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   domainFixture,
-  domainRuntimeFixtures,
   factoryAgent,
   migration,
   moduleFixture,
   passingRepo,
   runtimeFixture,
-  srcFixtures,
+  lintEffect,
 } from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
@@ -273,9 +272,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
   });
 
   it("asks for nothing when vite.config.ts is missing", () => {
-    expect(violations(repo({ "vite.config.ts": undefined }))).toEqual([
-      "packages/claim is not in `modules` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).",
-    ]);
+    expect(violations(repo({ "vite.config.ts": undefined }))).toEqual([]);
   });
 
   it.each(["import/no-nodejs-modules", "no-restricted-imports", "no-restricted-globals"])(
@@ -379,7 +376,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
 
   it("reads a tsconfig.json whose comments are indented, and keeps a // inside a string", () => {
     const text =
-      '{\n    // a comment\n  "compilerOptions": {\n\t// another\n    "strict": true,\n    "baseUrl": "https://x"\n  }\n}\n';
+      '{\n    // a comment\n  "compilerOptions": {\n\t// another\n    "strict": true,\n    "rootDir": "https://x"\n  }\n}\n';
     expect(violations(repo({ "tsconfig.json": text, [flagsFile]: "" }))).toEqual([
       noFixture("strict"),
     ]);
@@ -536,30 +533,42 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
   });
 });
 
-describe("ADR 0026: every package under packages/ has its boundaries and their fixtures", () => {
+describe("ADR 0026: some package under packages/ has the fixtures of each override", () => {
   const config = base["vite.config.ts"] ?? "";
-  const notInModules = (name: string) =>
-    `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`;
-  const noFixture = (name: string, dir: string) =>
-    `packages/${name}/${dir}/__fixtures__/ has no fixture with \`oxlint-disable-next-line no-restricted-imports\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`;
-  const module = (name: string, dirs: readonly string[]) => ({
-    [`packages/${name}/package.json`]: "{}",
-    ...Object.fromEntries(
-      dirs.map((dir) => [`packages/${name}/${dir}/__fixtures__/boundaries.ts`, moduleFixture]),
-    ),
-    ...srcFixtures(name),
-    ...domainRuntimeFixtures(name),
-    // The fixtures of the rules that keep domain pure are checked on their own, below.
-    [`packages/${name}/src/domain/__fixtures__/purity.ts`]: domainFixture,
+  const noFixture = (dir: string) =>
+    `No packages/*/${dir}/__fixtures__/ has a fixture with \`oxlint-disable-next-line no-restricted-imports\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`;
+  const noRuntime = (annotation: string) =>
+    `No packages/*/src/__fixtures__/ has a fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+  const noTest =
+    "No packages/*/src/__fixtures__/ has a *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).";
+  const noDomainRuntime = (annotation: string) =>
+    `No packages/*/src/domain/__fixtures__/runtime-apis.ts has \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
+  // Every fixture of claim, moved to another package.
+  const movedTo = (name: string) =>
+    Object.fromEntries(
+      Object.entries(base).flatMap(([path, text]) => {
+        if (!path.startsWith("packages/claim/src/") || !path.includes("/__fixtures__/")) return [];
+        return [
+          [path, undefined],
+          [path.replace("packages/claim/", `packages/${name}/`), text],
+        ];
+      }),
+    );
+
+  it("passes the fixtures in any one package: an override reaches every package alike", () => {
+    expect(
+      violations(
+        repo({
+          "packages/approval/package.json": JSON.stringify({
+            scripts: { "lint-effect": lintEffect },
+          }),
+          ...movedTo("approval"),
+        }),
+      ),
+    ).toEqual([]);
   });
 
-  it("refuses a module that vite.config.ts does not list", () => {
-    expect(violations(repo(module("approval", ["src", "src/domain", "src/http"])))).toEqual([
-      notInModules("approval"),
-    ]);
-  });
-
-  it("refuses a module without the fixture of src/ or of a layer", () => {
+  it("refuses a repository without the fixture of src/ or of a layer", () => {
     expect(
       violations(
         repo({
@@ -567,7 +576,7 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
           "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
-    ).toEqual([noFixture("claim", "src"), noFixture("claim", "src/http")]);
+    ).toEqual([noFixture("src"), noFixture("src/http")]);
   });
 
   it("refuses a fixture without the disable comment of no-restricted-imports", () => {
@@ -578,30 +587,76 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
             '// oxlint-disable-next-line no-console -- fixture\nimport "@x/other";\n',
         }),
       ),
-    ).toEqual([noFixture("claim", "src/domain")]);
+    ).toEqual([noFixture("src/domain")]);
   });
 
-  it("refuses a fixture that is outside __fixtures__/ of its directory", () => {
+  it("refuses a fixture that is outside __fixtures__/ of its directory, or of a package", () => {
     expect(
       violations(
         repo({
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
           "packages/claim/src/domain/boundaries.ts": moduleFixture,
           "packages/claim/src/domain/deeper/__fixtures__/boundaries.ts": moduleFixture,
+          "apps/api/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/src/domain/__fixtures__/boundaries.ts": moduleFixture,
         }),
       ),
-    ).toEqual([noFixture("claim", "src/domain")]);
+    ).toEqual([noFixture("src/domain")]);
   });
 
-  it("asks shared for the fixture of src/ only, and not for an entry in modules", () => {
+  it("counts a fixture in a directory under __fixtures__/", () => {
     expect(
-      violations(repo({ "packages/shared/src/__fixtures__/boundaries.ts": undefined })),
-    ).toEqual([noFixture("shared", "src")]);
+      violations(
+        repo({
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/domain/__fixtures__/deeper/boundaries.ts": moduleFixture,
+        }),
+      ),
+    ).toEqual([]);
   });
 
-  it("refuses a package without the fixtures of the runtime restrictions or of the tests", () => {
-    const noRuntime = (annotation: string) =>
-      `packages/claim/src/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${annotation}\`, so nothing shows the rule reaches src/ (docs/adr/0007).`;
+  it("asks only for the fixture of src/ when the only package is shared", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/package.json": undefined,
+          ...Object.fromEntries(
+            Object.keys(base)
+              .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+              .map((path) => [path, undefined]),
+          ),
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      violations(
+        repo({
+          "packages/claim/package.json": undefined,
+          "packages/claim/src/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([noFixture("src")]);
+  });
+
+  it("asks for nothing when there is no package under packages/", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/package.json": undefined,
+          "packages/shared/package.json": undefined,
+          // The rules of vite.config.ts still need their fixtures, outside packages/.
+          "apps/api/src/__fixtures__/rules.ts": `${runtimeFixture}${moduleFixture}`,
+          ...Object.fromEntries(
+            Object.keys(base)
+              .filter((path) => path.startsWith("packages/claim/src/"))
+              .map((path) => [path, undefined]),
+          ),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses a repository without the fixtures of the runtime restrictions or of the tests", () => {
     expect(
       violations(
         repo({
@@ -612,59 +667,71 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
           "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
         }),
       ),
-    ).toEqual([
-      "packages/claim/src/__fixtures__/ has no *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).",
-      noRuntime("no-restricted-properties"),
-    ]);
+    ).toEqual([noTest, noRuntime("no-restricted-properties")]);
     expect(
-      violations(repo({ "packages/shared/src/__fixtures__/runtime-apis.ts": undefined })),
+      violations(repo({ "packages/claim/src/__fixtures__/runtime-apis.ts": undefined })),
     ).toEqual([
-      noRuntime("no-restricted-globals").replace("claim", "shared"),
-      noRuntime("no-restricted-properties").replace("claim", "shared"),
-      noRuntime("import/no-nodejs-modules").replace("claim", "shared"),
+      noRuntime("no-restricted-globals"),
+      noRuntime("no-restricted-properties"),
+      noRuntime("import/no-nodejs-modules"),
     ]);
   });
 
-  it("refuses a module whose domain fixture does not show the runtime restrictions", () => {
-    const noDomainRuntime = (annotation: string) =>
-      `packages/claim/src/domain/__fixtures__/runtime-apis.ts has no \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
+  it("does not count a test file for the runtime restrictions, nor another file for the tests", () => {
     expect(
-      violations(repo({ "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined })),
+      violations(
+        repo({
+          "packages/claim/src/__fixtures__/runtime-apis.ts": undefined,
+          "packages/claim/src/__fixtures__/runtime-apis.test.ts": runtimeFixture,
+          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+          "packages/claim/src/__fixtures__/more.ts": moduleFixture,
+        }),
+      ),
     ).toEqual([
+      noTest,
+      noRuntime("no-restricted-globals"),
+      noRuntime("no-restricted-properties"),
+      noRuntime("import/no-nodejs-modules"),
+    ]);
+  });
+
+  it("refuses a domain whose fixture does not show the runtime restrictions", () => {
+    const runtime = "packages/claim/src/domain/__fixtures__/runtime-apis.ts";
+    expect(violations(repo({ [runtime]: undefined }))).toEqual([
       noDomainRuntime("no-restricted-globals"),
       noDomainRuntime("no-restricted-properties"),
     ]);
     expect(
       violations(
-        repo({
-          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
-            "no-restricted-properties",
-            "no-console",
-          ),
-        }),
+        repo({ [runtime]: runtimeFixture.replace("no-restricted-properties", "no-console") }),
       ),
     ).toEqual([noDomainRuntime("no-restricted-properties")]);
+    expect(
+      violations(
+        repo({
+          [runtime]: undefined,
+          "packages/claim/src/domain/__fixtures__/other.ts": runtimeFixture,
+        }),
+      ),
+    ).toEqual([
+      noDomainRuntime("no-restricted-globals"),
+      noDomainRuntime("no-restricted-properties"),
+    ]);
   });
 
   it("follows the layers that vite.config.ts lists", () => {
     const threeLayers = config.replace('  http: ["domain"],', '  http: ["domain"],\n  infra: [],');
-    expect(violations(repo({ "vite.config.ts": threeLayers }))).toEqual([
-      noFixture("claim", "src/infra"),
-    ]);
+    expect(violations(repo({ "vite.config.ts": threeLayers }))).toEqual([noFixture("src/infra")]);
   });
 
-  it("refuses every module when vite.config.ts has no modules object", () => {
-    const none = config.replace("const modules", "const packages");
-    expect(violations(repo({ "vite.config.ts": none }))).toEqual([notInModules("claim")]);
-  });
-
-  it("asks a module for the fixture of src/ only when vite.config.ts has no layers object", () => {
+  it("asks for the fixture of src/ only when vite.config.ts has no layers object", () => {
     const none = config.replace("const layers", "const tiers");
     expect(
       violations(
         repo({
           "vite.config.ts": none,
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined,
           "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
@@ -672,11 +739,11 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
   });
 });
 
-describe("ADR 0027: the domain of every module has the fixtures of the rules that keep it pure", () => {
+describe("ADR 0027: some module has the fixtures of the rules that keep domain pure", () => {
   const config = base["vite.config.ts"] ?? "";
   const purity = "packages/claim/src/domain/__fixtures__/purity.ts";
-  const noFixture = (name: string, rule: string) =>
-    `packages/${name}/src/domain/__fixtures__/ has no fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`;
+  const noFixture = (rule: string) =>
+    `No packages/*/src/domain/__fixtures__/ has a fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`;
   const without = (rule: string) =>
     domainFixture
       .split("\n")
@@ -686,38 +753,40 @@ describe("ADR 0027: the domain of every module has the fixtures of the rules tha
   it.each(["domain/no-throw", "no-restricted-globals", "no-restricted-properties"])(
     "refuses a domain whose fixtures lack the disable comment of %s",
     (rule) => {
-      expect(violations(repo({ [purity]: without(rule) }))).toEqual([noFixture("claim", rule)]);
+      expect(violations(repo({ [purity]: without(rule) }))).toEqual([noFixture(rule)]);
     },
   );
 
   it("names every rule that has no fixture, in the order of the rules", () => {
     expect(violations(repo({ [purity]: undefined }))).toEqual([
-      noFixture("claim", "domain/no-throw"),
-      noFixture("claim", "no-restricted-globals"),
-      noFixture("claim", "no-restricted-properties"),
+      noFixture("domain/no-throw"),
+      noFixture("no-restricted-globals"),
+      noFixture("no-restricted-properties"),
     ]);
   });
 
   it("refuses a disable comment of a rule of a similar name", () => {
     const similar = domainFixture.replace("domain/no-throw", "other/no-throw");
-    expect(violations(repo({ [purity]: similar }))).toEqual([
-      noFixture("claim", "domain/no-throw"),
-    ]);
+    expect(violations(repo({ [purity]: similar }))).toEqual([noFixture("domain/no-throw")]);
   });
 
-  it("passes fixtures that are spread over several files of __fixtures__/", () => {
+  it("passes fixtures that are spread over several files, and over several modules", () => {
     const lines = domainFixture.split("\n");
     expect(
       violations(
         repo({
           [purity]: lines.slice(0, 2).join("\n"),
-          "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2).join("\n"),
+          "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2, 4).join("\n"),
+          "packages/approval/package.json": JSON.stringify({
+            scripts: { "lint-effect": lintEffect },
+          }),
+          "packages/approval/src/domain/__fixtures__/random.ts": lines.slice(4).join("\n"),
         }),
       ),
     ).toEqual([]);
   });
 
-  it("refuses fixtures that are outside __fixtures__/ of domain", () => {
+  it("refuses fixtures that are outside __fixtures__/ of domain, or in runtime-apis.ts", () => {
     expect(
       violations(
         repo({
@@ -725,46 +794,34 @@ describe("ADR 0027: the domain of every module has the fixtures of the rules tha
           "packages/claim/src/domain/purity.ts": domainFixture,
           "packages/claim/src/http/__fixtures__/purity.ts": domainFixture,
           "packages/claim/src/domain/deeper/__fixtures__/purity.ts": domainFixture,
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": `${runtimeFixture}${domainFixture}`,
         }),
       ),
     ).toEqual([
-      noFixture("claim", "domain/no-throw"),
-      noFixture("claim", "no-restricted-globals"),
-      noFixture("claim", "no-restricted-properties"),
+      noFixture("domain/no-throw"),
+      noFixture("no-restricted-globals"),
+      noFixture("no-restricted-properties"),
     ]);
   });
 
-  it("asks each module, and not shared", () => {
+  it("asks nothing when vite.config.ts has no domain layer, or when the only package is shared", () => {
     expect(
       violations(
         repo({
-          "packages/shared/src/__fixtures__/purity.ts": undefined,
-          "packages/approval/package.json": "{}",
-          ...srcFixtures("approval"),
-          ...domainRuntimeFixtures("approval"),
-          "packages/approval/src/domain/__fixtures__/boundaries.ts": moduleFixture,
-          "packages/approval/src/http/__fixtures__/boundaries.ts": moduleFixture,
-          "vite.config.ts": config.replace(
-            "  claim: [],\n",
-            '  claim: [],\n  approval: ["claim"],\n',
-          ),
-        }),
-      ),
-    ).toEqual([
-      noFixture("approval", "domain/no-throw"),
-      noFixture("approval", "no-restricted-globals"),
-      noFixture("approval", "no-restricted-properties"),
-    ]);
-  });
-
-  it("asks nothing when vite.config.ts has no domain layer", () => {
-    const none = config.replace("  domain: [],\n", "");
-    expect(
-      violations(
-        repo({
-          "vite.config.ts": none,
+          "vite.config.ts": config.replace("  domain: [],\n", ""),
           [purity]: undefined,
           "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      violations(
+        repo({
+          "packages/claim/package.json": undefined,
+          [purity]: undefined,
+          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined,
+          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);
@@ -789,7 +846,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     [`packages/claim/src/${layer}/__fixtures__/effect.ts`]: viteConfig,
   });
   const missing = (layer: string, file: string, comment: string) =>
-    `packages/claim/src/${layer}/__fixtures__/${file} has no \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
+    `No packages/*/src/${layer}/__fixtures__/${file} has \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
   const both = withLayers("  application: [],\n  infrastructure: [],");
 
   it("asks for nothing when vite.config.ts has neither layer", () => {
@@ -875,6 +932,22 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
       missing("application", "effect.ts", "no-restricted-properties"),
       missing("application", "effect.ts", "no-restricted-imports"),
     ]);
+  });
+
+  it("asks for nothing when the only package is shared", () => {
+    expect(
+      violations(
+        repo({
+          "vite.config.ts": both,
+          "packages/claim/package.json": undefined,
+          ...Object.fromEntries(
+            Object.keys(base)
+              .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+              .map((path) => [path, undefined]),
+          ),
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("does not ask shared", () => {
@@ -1992,39 +2065,41 @@ describe("ADR 0002: the edges", () => {
 });
 
 describe("ADR 0026: the edges", () => {
-  const notInModules = (name: string) =>
-    `packages/${name} is not in \`modules\` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).`;
   const config = base["vite.config.ts"] ?? "";
-  const noLayers = config.replace('{\n  domain: [],\n  http: ["domain"],\n}', "{}");
-  // The vite.config.ts that passes, with `body` in its modules object, no layers, and a line before modules.
-  const modulesConfig = (body: string) =>
-    `const scope = "x";\n${noLayers.replace("{\n  claim: [],\n}", `{${body}}`)}`;
-  const onlyPackage = (name: string, body: string) =>
-    repo({
-      "packages/claim/package.json": undefined,
-      [`packages/${name}/package.json`]: "{}",
-      ...srcFixtures(name),
-      "vite.config.ts": modulesConfig(body),
-    });
+  const noFixture = (dir: string) =>
+    `No packages/*/${dir}/__fixtures__/ has a fixture with \`oxlint-disable-next-line no-restricted-imports\`, so nothing shows the rule reaches ${dir}/ (docs/adr/0026).`;
+  // The repository that passes with `config` for its vite.config.ts and no fixture of a layer, so that every
+  // layer that the check reads from the config is named in a failure.
+  const layersOf = (text: string) =>
+    violations(
+      repo({
+        "vite.config.ts": text,
+        ...Object.fromEntries(
+          Object.keys(base)
+            .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+            .map((path) => [path, undefined]),
+        ),
+      }),
+    );
+  const withBody = (body: string) =>
+    config.replace('{\n  domain: [],\n  http: ["domain"],\n}', `{${body}}`);
+  // layers after a line of another const, so that only the multiline `^` finds it.
+  const after = (text: string) => text.replace("const scope", "let x;\nconst scope");
 
   it.each([
-    ["a quoted key", "foo-bar", '\n  "foo-bar": [],\n'],
-    ["a key of digits and an underscore", "a_2", "\n  a_2: [],\n"],
-    ["keys on one line", "b", ' a: ["b"], b: [] '],
-    ["a space before the colon", "c", "\n  c : [],\n"],
-  ])("reads %s", (_, name, body) => {
-    expect(violations(onlyPackage(name, body))).toEqual([]);
+    ["a quoted key", '\n  "foo-bar": [],\n', ["foo-bar"]],
+    ["a key of digits and an underscore", "\n  a_2: [],\n", ["a_2"]],
+    ["keys on one line", ' a: ["b"], b: [] ', ["a", "b"]],
+    ["a space before the colon", "\n  c : [],\n", ["c"]],
+  ])("reads %s", (_, body, layers) => {
+    expect(layersOf(after(withBody(body)))).toEqual(
+      layers.map((layer) => noFixture(`src/${layer}`)),
+    );
   });
 
-  it("does not take a module that another module may import for a key", () => {
-    expect(violations(onlyPackage("claim", '\n  approval: ["claim"],\n'))).toEqual([
-      notInModules("claim"),
-    ]);
-  });
-
-  it("reads only a top-level `const modules`, not one indented or of a longer name", () => {
-    const others = `const modules2 = { claim: [] };\n${noLayers.replace("const modules", "  const modules")}`;
-    expect(violations(repo({ "vite.config.ts": others }))).toEqual([notInModules("claim")]);
+  it("reads only a top-level `const layers`, not one indented or of a longer name", () => {
+    const others = `const layers2 = { a: [] };\n${config.replace("const layers", "  const layers")}`;
+    expect(layersOf(others)).toEqual([]);
   });
 
   it.each([
@@ -2033,6 +2108,211 @@ describe("ADR 0026: the edges", () => {
     "packages/claim/nested/package.json",
   ])("passes %s, which is not the manifest of a package under packages/", (path) => {
     expect(violations(repo({ [path]: "{}" }))).toEqual([]);
+  });
+});
+
+describe("ADR 0026: the modules depend one way, by their package.json", () => {
+  const table = "tools/scripts/src/checks/repo-policy/modules.ts";
+  const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) => ({
+    [`packages/${name}/package.json`]: JSON.stringify({
+      name: `@agent-software-factory/${name}`,
+      scripts: name === "shared" ? {} : { "lint-effect": lintEffect },
+      ...fields,
+    }),
+  });
+  const wrong = (from: string, field: string, to: string) =>
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+  const workspace = { "@agent-software-factory/claim": "workspace:*" };
+
+  it("passes each module with the modules it may depend on, and shared", () => {
+    expect(
+      violations(
+        repo({
+          ...manifest("approval", { dependencies: workspace }),
+          ...manifest("closing", {
+            dependencies: {
+              "@agent-software-factory/approval": "workspace:*",
+              "@agent-software-factory/shared": "workspace:*",
+            },
+            devDependencies: workspace,
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
+    "refuses a module that depends on a module after it, in %s",
+    (field) => {
+      expect(
+        violations(
+          repo(
+            manifest("claim", { [field]: { "@agent-software-factory/approval": "workspace:*" } }),
+          ),
+        ),
+      ).toEqual([wrong("claim", field, "approval")]);
+    },
+  );
+
+  it("refuses shared that depends on a module or on itself, and a module on another package of the workspace", () => {
+    expect(
+      violations(
+        repo({
+          ...manifest("shared", {
+            dependencies: workspace,
+            devDependencies: { "@agent-software-factory/shared": "workspace:*" },
+          }),
+          ...manifest("approval", {
+            dependencies: { "@agent-software-factory/api": "workspace:*" },
+          }),
+        }),
+      ),
+    ).toEqual([
+      wrong("approval", "dependencies", "api"),
+      wrong("shared", "dependencies", "claim"),
+      wrong("shared", "devDependencies", "shared"),
+    ]);
+  });
+
+  it("refuses a module that depends on itself, or on a module before it", () => {
+    expect(
+      violations(
+        repo(
+          manifest("approval", {
+            dependencies: {
+              "@agent-software-factory/approval": "workspace:*",
+              "@agent-software-factory/closing": "workspace:*",
+            },
+          }),
+        ),
+      ),
+    ).toEqual([
+      wrong("approval", "dependencies", "approval"),
+      wrong("approval", "dependencies", "closing"),
+    ]);
+  });
+
+  it("passes a dependency outside the workspace, and one of a longer scope", () => {
+    expect(
+      violations(
+        repo(
+          manifest("claim", {
+            dependencies: { effect: "catalog:", "@agent-software-factory-x/approval": "1.0.0" },
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses a package under packages/ that is not a module of the table", () => {
+    expect(violations(repo(manifest("billing", { dependencies: workspace })))).toEqual([
+      `packages/billing is not in moduleOrder in ${table}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
+    ]);
+  });
+});
+
+describe("ADR 0026: nothing resolves a package that a package.json does not declare", () => {
+  const resolves = (path: string, what: string) =>
+    `${path} ${what}, which lets a package resolve a package that its package.json does not declare. The direction between the modules rests on that not resolving (docs/adr/0026).`;
+  const workspace = base["pnpm-workspace.yaml"] ?? "";
+
+  it.each(["paths", "baseUrl"])(
+    "refuses a tsconfig.json that sets %s, at the root or in a project",
+    (option) => {
+      expect(
+        violations(
+          repo({
+            "tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, [option]: {} } }),
+            "packages/claim/tsconfig.json": JSON.stringify({
+              extends: "../../tsconfig.json",
+              compilerOptions: { [option]: "." },
+            }),
+          }),
+        ).filter((failure) => failure.includes("lets a package resolve")),
+      ).toEqual([
+        resolves("packages/claim/tsconfig.json", `sets compilerOptions.${option}`),
+        resolves("tsconfig.json", `sets compilerOptions.${option}`),
+      ]);
+    },
+  );
+
+  it.each([
+    ["an alias", "resolve: { alias: { x: 'y' } },"],
+    ["an alias with a space before the colon", "alias : [],"],
+  ])("refuses a vite.config.ts with %s", (_, line) => {
+    expect(
+      violations(repo({ "apps/web/vite.config.ts": `export default {\n  ${line}\n};\n` })),
+    ).toEqual([resolves("apps/web/vite.config.ts", "sets an alias")]);
+  });
+
+  it("passes the word alias that is not a key, and a key of a longer name", () => {
+    expect(
+      violations(
+        repo({
+          "apps/web/vite.config.ts":
+            "// global is an alias of globalThis\nexport default { realias: 1 };\n",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["shamefullyHoist: true", "sets shamefullyHoist"],
+    ["nodeLinker: hoisted", "sets nodeLinker: hoisted"],
+    ['publicHoistPattern:\n  - "*"', "has * in publicHoistPattern, which hoists the modules"],
+    [
+      'publicHoistPattern:\n  - "*eslint*"\n  - "@agent-software-factory/*"',
+      "has @agent-software-factory/* in publicHoistPattern, which hoists the modules",
+    ],
+    [
+      'publicHoistPattern:\n  - "@agent-software-factory/claim"',
+      "has @agent-software-factory/claim in publicHoistPattern, which hoists the modules",
+    ],
+  ])("refuses a pnpm-workspace.yaml with %s", (setting, what) => {
+    expect(violations(repo({ "pnpm-workspace.yaml": `${workspace}${setting}\n` }))).toEqual([
+      resolves("pnpm-workspace.yaml", what),
+    ]);
+  });
+
+  it.each([
+    "shamefullyHoist: false",
+    "nodeLinker: isolated",
+    'publicHoistPattern:\n  - "*eslint*"\n  - "@agent-software-factory-x/*"\n  - "@agent-software-factory/claim-x"\n  - "x@agent-software-factory/claim"\n  - 1',
+    "publicHoistPattern: '*'",
+  ])("passes a pnpm-workspace.yaml with %s", (setting) => {
+    expect(violations(repo({ "pnpm-workspace.yaml": `${workspace}${setting}\n` }))).toEqual([]);
+  });
+});
+
+describe("ADR 0028: every module runs the Effect lint", () => {
+  const missing = (name: string) =>
+    `packages/${name}/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`;
+
+  it.each([
+    ["no lint-effect script", {}],
+    [
+      "a lint-effect script of one layer",
+      { "lint-effect": lintEffect.replace(" src/infrastructure", "") },
+    ],
+    [
+      "a lint-effect script of another config",
+      { "lint-effect": lintEffect.replace("oxlint.effect", "oxlint") },
+    ],
+  ])("refuses a module with %s", (_, scripts) => {
+    expect(
+      violations(repo({ "packages/claim/package.json": JSON.stringify({ scripts }) })),
+    ).toEqual([missing("claim")]);
+  });
+
+  it("refuses a module without scripts, and does not ask shared", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/package.json": "{}",
+          "packages/shared/package.json": JSON.stringify({ scripts: { "lint-effect": "x" } }),
+        }),
+      ),
+    ).toEqual([missing("claim")]);
   });
 });
 
