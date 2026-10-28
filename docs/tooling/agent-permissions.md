@@ -99,6 +99,12 @@ file tool の deny が止めるのは file tool だけです。シェルのリ�
 
 限界があります。この規則は補助で、根本の対策は、秘密の実値をエージェントの手元に置かないことです。`--trust-all-tools` では、deny に当たらない形 (`cat .e[n]v`、`grep -r canary .`) が確認なしで `.env` を読みます。`*.env*` の deny は、`.env` を含む文字列を持つコマンドも止めます。commit メッセージ、Issue の本文、`process.env` や `import.meta.env` を含む `grep`、`.envrc`、shell での `.env.example` の操作 (`cat .env.example`、`git add .env.example`) が当たります。`.env.example` を読めるのは file tool (`read_file`、grep) だけです。
 
+止まったときは、`.env` の名前を書かない形に変えます。
+
+- commit メッセージ、PR と Issue の本文: `.env` や `process.env` の語を書かずに言い換える (「環境変数」「Node.js の env-file オプション」)。
+- `.env.example` を commit に含める: `git add apps/api` のようにディレクトリで指定する。ファイル名を書かない。
+- `process.env` を含むコードの実行や検索: file tool でスクリプトのファイルに書き、`node <ファイル>` で動かす。検索は file tool の grep を使う。
+
 ### 手元での確認
 
 「規則を変えたときの手元の確認」の手順 1 で、使い捨てのディレクトリに `factory.json` と `chat.defaultAgent` を置いたうえで、`.env` (中身は `SECRET=canary`) と `.env.example` (中身は `SECRET=`) を置きます。`kiro-cli chat --no-interactive --agent factory "…"` で次を実行させ、記録を読みます。`--agent` を付けなくても `chat.defaultAgent` で `factory` が有効になることも、`--agent` なしで 1 を実行して確かめます。

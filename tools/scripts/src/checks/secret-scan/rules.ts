@@ -34,7 +34,8 @@ export function parseTarget(argv: readonly string[]): Target | undefined {
 }
 
 // The arguments of `mise` for the only betterleaks run: the version pinned in mise.toml and mise.lock
-// (docs/adr/0009), and flags that callers cannot override (--redact, --config). Runs in the repository top.
+// (docs/adr/0009), and flags that callers cannot override (--redact, --config). --verbose with --redact prints each
+// finding's rule, path and line with the secret hidden, so a failure says where to look. Runs in the repository top.
 export function betterleaks(mode: "git" | "dir", options: readonly string[]): string[] {
   return [
     "exec",
@@ -42,6 +43,7 @@ export function betterleaks(mode: "git" | "dir", options: readonly string[]): st
     "betterleaks",
     mode,
     "--redact",
+    "--verbose",
     "--no-banner",
     "--config",
     ".betterleaks.toml",
