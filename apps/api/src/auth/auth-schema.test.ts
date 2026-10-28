@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
 
-// migration (db/migrations) を本番と同じ経路で流した DB の、表と権限を確かめる (docs/adr/0022、docs/adr/0025)。
+// migration (packages/db/migrations) を本番と同じ経路で流した DB の、表と権限を確かめる (docs/adr/0022、docs/adr/0025)。
 describe("auth スキーマの権限 (ADR 0022、ADR 0025)", () => {
   let fixture: AuthFixture;
 

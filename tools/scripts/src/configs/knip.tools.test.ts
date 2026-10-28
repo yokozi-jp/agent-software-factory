@@ -130,6 +130,31 @@ for (const name of modules) {
   apps[`packages/${name}/src/index.ts`] = "export {};\n";
 }
 
+// packages/db and the modules knip.jsonc lists in its ignoreDependencies (docs/adr/0038): db depends on them for types, and
+// only its fixtures import them, which Knip does not read.
+apps["packages/db/package.json"] = JSON.stringify(
+  {
+    name: "@agent-software-factory/db",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: { check: "vp check" },
+    devDependencies: {
+      ...Object.fromEntries(
+        ["claim", "approval", "closing"].map((name) => [
+          `@agent-software-factory/${name}`,
+          "workspace:*",
+        ]),
+      ),
+      "vite-plus": "catalog:",
+    },
+    nx: { name: "db" },
+  },
+  undefined,
+  2,
+);
+apps["packages/db/src/index.ts"] = "export {};\n";
+
 let box: Sandbox;
 let copy: string;
 
@@ -156,6 +181,7 @@ function populate(): void {
     "apps/api",
     "apps/web",
     "packages/ui",
+    "packages/db",
     "tools/scripts",
     ...modules.map((name) => `packages/${name}`),
   ])

@@ -10,10 +10,10 @@ import {
   typesFile,
   writeTypes,
   type GeneratedTypes,
-} from "../../db/types.ts";
-import { createTestDatabase, type TestDatabase } from "../../test/database.ts";
+} from "./types.ts";
+import { createTestDatabase, type TestDatabase } from "./testing/database.ts";
 
-// モジュールのスキーマごとの型の生成と、migration とのずれの検査 (db/types.ts、docs/adr/0025)。
+// モジュールのスキーマごとの型の生成と、migration とのずれの検査 (src/types.ts、docs/adr/0025)。
 // 検査の関数が、migration を変えて生成し直さない型を見つけることを確かめる (#43 の検出力)。
 // CI の「DB types match the migrations」は、同じ関数で commit された型を確かめる。
 
@@ -29,7 +29,7 @@ const typesOf = (types: readonly GeneratedTypes[], schema: string): GeneratedTyp
   return found;
 };
 
-describe("モジュールの型の生成 (db/types.ts)", () => {
+describe("モジュールの型の生成 (src/types.ts)", () => {
   let db: TestDatabase;
   let root: string;
 
