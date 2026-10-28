@@ -35,14 +35,18 @@ case "$status" in
   *) warn "the scan failed (exit $status), so the dependencies were not checked. It needs to reach osv.dev." ;;
 esac
 
+# The SARIF scan runs only when the first one ran (0 or 1). Exit 1 still writes the file.
 if [ -n "${OSV_SARIF_FILE:-}" ]; then
   rm -f "$OSV_SARIF_FILE"
-  mise exec -- osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output-file "$OSV_SARIF_FILE" >/dev/null
-  sarif_status=$?
-  # 0: no vulnerability, 1: vulnerabilities found (both write the file). Otherwise nothing valid was written.
-  case "$sarif_status" in
-    0 | 1) ;;
-    *) rm -f "$OSV_SARIF_FILE" ;;
+  case "$status" in
+    0 | 1)
+      mise exec -- osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output-file "$OSV_SARIF_FILE" >/dev/null
+      # 0 and 1 write the file. Anything else leaves nothing valid, so it is not uploaded.
+      case "$?" in
+        0 | 1) ;;
+        *) rm -f "$OSV_SARIF_FILE" ;;
+      esac
+      ;;
   esac
 fi
 exit 0

@@ -114,6 +114,12 @@ describe("osv-scanner.sh with OSV_SARIF_FILE", () => {
     expect(existsSync(file)).toBe(false);
   });
 
+  it("does not run the SARIF scan when the first scan failed", () => {
+    const { result, file } = scanWithSarif(127, 0);
+    expect(result.status).toBe(0);
+    expect(existsSync(file)).toBe(false);
+  });
+
   it("writes no SARIF when OSV_SARIF_FILE is not set", () => {
     expect(scan(1, { GITHUB_ACTIONS: "true" }).stdout).not.toContain("sarif");
   });

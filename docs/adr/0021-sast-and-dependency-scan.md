@@ -16,7 +16,12 @@ tags: [adr, tooling, security, sast, dependencies, github]
   - OSV-Scanner は `pnpm-lock.yaml` を検査し、警告だけを出します (adr-check と同じ形、[ADR 0016](0016-adr-check-warns-without-blocking.md))。CLI に基準の commit との差分を取る機能がないためです。
 - **Dependabot**: alerts と malware alerts を有効にし、すでにある指摘の一覧にします。依存を上げる PR は Renovate が出すので ([ADR 0018](0018-renovate-for-pinned-versions.md))、security updates は無効のままにします。
 - **抑制**: どの道具でも、理由を個別に書きます ([ADR 0017](0017-knip-unused-code.md) と同じ方針)。Semgrep は `# nosemgrep: <rule-id>` の後、OSV-Scanner は `osv-scanner.toml` の `reason`、CodeQL は dismiss の理由、dependency review は `allow-ghsas` の隣のコメントに書きます。
-- **証拠**: OSV-Scanner の指摘は、SARIF にして Code scanning に送り、Security タブの alert の一覧で見て dismiss できるようにします ([Issue #313](https://github.com/yokozi-jp/agent-software-factory/issues/313))。`ci.yml` の `osv-scanner` の job が `github/codeql-action/upload-sarif` を使い、`category: osv-scanner` で CodeQL の alert と分けます。送るのは main への push のときだけです (fork の PR の token は書き込めず、PR ごとに alert が増えるのも避ける)。スキャンが失敗して SARIF がなければ、送りません。`security-events: write` を持つのはこの job だけで、ほかの job の権限は増やしません。CodeQL の default setup は GitHub 側で動くので、CodeQL のために workflow に権限は要りません。ゲートは変わらず CodeQL と dependency review です。`protect-main` の `code_scanning` の規則は道具に CodeQL だけを挙げているので、OSV-Scanner の alert で merge は止まりません。Dependabot alerts と同じ脆弱性が二重に見えることは、判断として受け入れます (public のリポジトリでは Code scanning に追加の費用はありません)。
+- **証拠**: OSV-Scanner の指摘は、SARIF にして Code scanning に送り、Security タブの alert の一覧で見て dismiss できるようにします ([Issue #313](https://github.com/yokozi-jp/agent-software-factory/issues/313))。CodeQL の default setup は GitHub 側で動くので、CodeQL のために workflow に権限は要りません。
+  - `ci.yml` の `osv-scanner` の job が `github/codeql-action/upload-sarif` を使い、`category: osv-scanner` で CodeQL の alert と分けます。
+  - 送るのは main への push のときだけです。fork の PR の token は書き込めず、PR ごとに alert が増えるのも避けます。スキャンが失敗して SARIF がなければ、送りません。
+  - `security-events: write` を持つのはこの job だけで、ほかの job の権限は増やしません。
+  - ゲートは変わらず CodeQL と dependency review です。`protect-main` の `code_scanning` の規則は道具に CodeQL だけを挙げているので、OSV-Scanner の alert で merge は止まりません。
+  - Dependabot alerts と同じ脆弱性が二重に見えることは、判断として受け入れます。public のリポジトリでは Code scanning に追加の費用はありません。
   - 以前は SARIF を送らず、`security-events: write` も持たない方針でした ([ADR 0012](0012-lint-workflows.md) で zizmor-action を採らなかったのと同じ理由です)。alert を一覧にも dismiss もできず、CI のログの警告だけでは扱いにくかったため、OSV-Scanner についてこの方針を変えました。
 
 ## Considered Options
