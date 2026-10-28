@@ -39,6 +39,9 @@ sources:
 - authentication-and-authorization.md の推奨 (2) に、Web Functions の OAC が `Authorization` ヘッダーを署名に使うため Bearer と両立しない理由を足し、JWT のアクセストークンは JWKS で手元で検証できる旨の注記を足した。RFC 9068、RFC 8725。
 - authentication-and-authorization.md の（1）ベアラートークン方式の処理性能を、❌ から ⚠ にし、不透明なトークンはイントロスペクションが要り、JWT のアクセストークンは JWKS で手元で検証できる旨に直した。図 1 のイントロスペクションに「不透明なトークンの場合」と添えた。推奨 (2) に、業務アプリでは BFF が strongly recommended で、ブラウザがトークンを持つ形は not recommended である旨を足した。RFC 10017 6.1、6.3.4.3。
 - security.md の CORS に、このリポジトリが同一オリジン構成を採り CORS の middleware を入れないこと、ローカル開発は Vite の proxy で同一オリジンに見せることを注記として足した。推奨の中身は変えていない。ADR 0013、ADR 0022。
+- response-body.md のエラーの節を ADR 0035 に合わせた。例の `Content-Language: ja` を外し (`title` は英語で固定)、`type` の例を `/types/123` から `/problems/validation` にして、命名の規則 (`about:blank`、`/problems/<kebab>`、`/problems/<module>/<kebab-tag>`) と、`status` と `trace_id` の項目を足した。`errors` の項目を `detail` と `pointer` から `pointer`、zod の issue の `code`、差し込みの値にした (文面は web が出す)。「エラー詳細」の内部 API なら詳細を許容する表に、このリポジトリでは 5xx で内部の情報を出さない注記を足した。RFC 9457 3.1.1 (`type` を主な識別子にする)、ADR 0035。
+- status-codes.md の 405 に、このリポジトリでは返さず Hono の既定の 404 のままにする注記を足した。Hono に組み込みの 405 がなく、web は `hc` の型でメソッドの誤りを止める。ADR 0035。
+- authentication-and-authorization.md に、このリポジトリでは Better Auth の `/api/auth/*` だけが Problem Details の例外で、自前の middleware は Problem Details を返す注記を足した。ADR 0022、ADR 0035。
 
 ## 位置づけ
 
