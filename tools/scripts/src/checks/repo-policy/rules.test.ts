@@ -2239,9 +2239,19 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
   it.each([
     ["an alias", "resolve: { alias: { x: 'y' } },"],
     ["an alias with a space before the colon", "alias : [],"],
+    ["an alias in the shorthand", "resolve: { alias },"],
+    ["an alias in the shorthand with others", "resolve: { alias, dedupe },"],
+    ["an alias after a URL", 'base: "https://x", alias: {},'],
+    ["an alias after a comment line", "// a comment\nalias: {},"],
   ])("refuses a vite.config.ts with %s", (_, line) => {
     expect(
       violations(repo({ "apps/web/vite.config.ts": `export default {\n  ${line}\n};\n` })),
+    ).toEqual([resolves("apps/web/vite.config.ts", "sets an alias")]);
+  });
+
+  it("keeps what comes before a comment on the line of the alias", () => {
+    expect(
+      violations(repo({ "apps/web/vite.config.ts": "export default {alias}// a comment\n" })),
     ).toEqual([resolves("apps/web/vite.config.ts", "sets an alias")]);
   });
 
@@ -2250,7 +2260,7 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
       violations(
         repo({
           "apps/web/vite.config.ts":
-            "// global is an alias of globalThis\nexport default { realias: 1 };\n",
+            "// global is an alias, of globalThis: { alias }\nexport default { realias: 1, aliases: [] };\n",
         }),
       ),
     ).toEqual([]);
@@ -2259,18 +2269,45 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
   it.each([
     ["shamefullyHoist: true", "sets shamefullyHoist"],
     ["nodeLinker: hoisted", "sets nodeLinker: hoisted"],
-    ['publicHoistPattern:\n  - "*"', "has * in publicHoistPattern, which hoists the modules"],
+    [
+      'publicHoistPattern:\n  - "*"',
+      "has * in publicHoistPattern, which hoists @agent-software-factory/claim",
+    ],
     [
       'publicHoistPattern:\n  - "*eslint*"\n  - "@agent-software-factory/*"',
-      "has @agent-software-factory/* in publicHoistPattern, which hoists the modules",
+      "has @agent-software-factory/* in publicHoistPattern, which hoists @agent-software-factory/claim",
     ],
     [
       'publicHoistPattern:\n  - "@agent-software-factory/claim"',
-      "has @agent-software-factory/claim in publicHoistPattern, which hoists the modules",
+      "has @agent-software-factory/claim in publicHoistPattern, which hoists @agent-software-factory/claim",
+    ],
+    [
+      'publicHoistPattern:\n  - "*claim*"',
+      "has *claim* in publicHoistPattern, which hoists @agent-software-factory/claim",
     ],
   ])("refuses a pnpm-workspace.yaml with %s", (setting, what) => {
     expect(violations(repo({ "pnpm-workspace.yaml": `${workspace}${setting}\n` }))).toEqual([
       resolves("pnpm-workspace.yaml", what),
+    ]);
+  });
+
+  it("refuses a pattern that hoists any package under packages/, and only the packages there", () => {
+    const pattern = 'publicHoistPattern:\n  - "@agent-software-factory/closing"\n';
+    expect(violations(repo({ "pnpm-workspace.yaml": `${workspace}${pattern}` }))).toEqual([]);
+    expect(
+      violations(
+        repo({
+          "pnpm-workspace.yaml": `${workspace}${pattern}`,
+          "packages/closing/package.json": JSON.stringify({
+            scripts: { "lint-effect": lintEffect },
+          }),
+        }),
+      ),
+    ).toEqual([
+      resolves(
+        "pnpm-workspace.yaml",
+        "has @agent-software-factory/closing in publicHoistPattern, which hoists @agent-software-factory/closing",
+      ),
     ]);
   });
 
@@ -2500,8 +2537,10 @@ describe("references from docs/ to files of the code", () => {
     expect(violations(repo(cite(line)))).toEqual([]);
   });
 
-  it("skips the ADRs, which record paths as they were", () => {
-    expect(violations(repo(cite("`tools/a.ts`", "docs/adr/0002-nx.md")))).toEqual([]);
+  it("checks the ADRs too", () => {
+    expect(violations(repo(cite("`tools/a.ts`", "docs/adr/0002-nx.md")))).toEqual([
+      missing("tools/a.ts", "docs/adr/0002-nx.md"),
+    ]);
   });
 
   it("skips a file that is not Markdown, and a file outside docs/", () => {

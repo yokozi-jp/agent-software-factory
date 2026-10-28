@@ -59,8 +59,8 @@ export function docsReferences(tree: Tree): string[] {
 // is moved or removed leaves the path in the docs behind. Only a path in inline code that names a file (it
 // ends with an extension) under a top-level directory of the code is checked: a directory, a glob, a
 // placeholder, and a path with a line number are skipped, because none of them names a file the tree must
-// have. The ADRs are skipped: they record what was decided at the time, and often cite paths that have
-// since moved (docs/adr/0030 explains the move of a plugin, for one).
+// have. The ADRs count too: an ADR that names the file of a rule is read as where the rule is now. A file an
+// ADR names as it was, or as an option not taken, is written outside inline code or by its directory.
 const codePath =
   /`((?:tools|packages|apps|types|\.github|\.kiro)\/[A-Za-z0-9_./@-]*\.[A-Za-z0-9]+)`/g;
 
@@ -68,8 +68,7 @@ export function docsCodePaths(tree: Tree): string[] {
   const tracked = new Set(tree.paths);
   const failures: string[] = [];
   for (const source of tree.paths) {
-    if (!source.startsWith("docs/") || source.startsWith("docs/adr/") || !source.endsWith(".md"))
-      continue;
+    if (!source.startsWith("docs/") || !source.endsWith(".md")) continue;
     for (const match of tree.read(source).matchAll(codePath)) {
       const path = String(match[1]);
       if (!tracked.has(path))

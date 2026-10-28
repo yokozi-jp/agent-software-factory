@@ -1,5 +1,5 @@
 // Checks that every lint rule, tsconfig flag, module layer and Effect rule has a fixture that shows it is on (#43, #230; docs/adr/0020, 0026, 0027, 0028).
-import { packageNames } from "./modules.ts";
+import { moduleNames, packageNames } from "./modules.ts";
 import { Tree, record } from "./tree.ts";
 
 // The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or
@@ -151,7 +151,7 @@ function fixtures(tree: Tree, dir: string): string[] {
   return tree.paths.filter((path) => pattern.test(path));
 }
 const hasPackage = (tree: Tree, modulesOnly: boolean): boolean =>
-  packageNames(tree).some((name) => !(modulesOnly && name === "shared"));
+  (modulesOnly ? moduleNames(tree) : packageNames(tree)).length > 0;
 
 // Whether a fixture in `dir` has `annotation`. A test file counts only when `test` is true, because the override
 // of the tests is not the one that the other fixtures show.

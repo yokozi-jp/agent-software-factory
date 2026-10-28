@@ -48,7 +48,7 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 
 ## Consequences
 
-- モジュールを足すときは、`packages/<name>/` (`package.json` の `exports`、`nx.name`、依存してよいモジュールの `workspace:*`、`lint-effect` の script、`tsconfig.json`、`src/index.ts`) と、`moduleOrder` の位置を足します。fixture は要りません。どれかを忘れると repo-policy が止めます。層を足すときは `layers` と、`claim` に fixture を 1 つ足します。
+- モジュールを足すときは、`packages/<name>/` (`package.json` の `exports`、`nx.name`、依存してよいモジュールの `workspace:*`、`lint-effect` の script、`tsconfig.json`、`src/index.ts`) と、`moduleOrder` の位置を足します。fixture は要りません。repo-policy が止めるのは、`moduleOrder` にない、向きに反する依存がある、`lint-effect` の script が違う、`tsconfig.json` がルートを `extends` しない、のどれかです。`exports`、`nx.name`、`src/index.ts` は、忘れても repo-policy は止めません。層を足すときは `layers` と、`claim` に fixture を 1 つ足します。忘れると repo-policy が止めます。
 - 依存の向きに反する import のエラーは、lint の「modules depend one way」ではなく、TypeScript の「Cannot find module」です。依存を足して解決しようとすると、repo-policy が向きを説明して止めます。説明が出る場所が、import の行から `package.json` を変えるときに移ります。
 - 判定は import の文字列の照合だけです。解決した先は見ないので、許されたモジュールを経由した再 export、文字列を組み立てた動的な `import()`、`require` は見逃します。層の規則は、相対パスの `../` の並びの直後の名前だけを見ます。`domain/sub/x.ts` から `../../infrastructure/...` は止まりますが、層のファイルからモジュールの `src/index.ts` への import (`domain/x.ts` の `../index.ts`) は止まりません。`domain/sub/x.ts` の `../index.ts` (`domain/index.ts`) と文字列で見分けられないためです。`index.ts` が層を再 export すると、そこから層の方向を飛び越えられます。層の中に層と同じ名前のディレクトリ (`domain/http/` など) を作ると、そこへの `../http` も止まります。
 - 他のモジュールの表を直接読み書きしないこと (DB の表の所有) は、import の検査では見つけられません。[ADR 0029](0029-module-data-ownership-and-shared-outbox.md) が、モジュールごとの DB のロールの権限と、カタログのテストで止めると決めました。
