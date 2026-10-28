@@ -16,7 +16,12 @@ import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
-import { modulesDependOneWay, modulesLintEffect, noResolutionBypass } from "./modules.ts";
+import {
+  modulesDependOneWay,
+  modulesLintEffect,
+  noResolutionBypass,
+  packageManifests,
+} from "./modules.ts";
 import {
   domainPurity,
   effectBoundaries,
@@ -54,6 +59,7 @@ export function violations(repo: Repo): string[] {
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
     ...effectBoundaries(tree),
+    ...packageManifests(tree),
     ...modulesDependOneWay(tree),
     ...noResolutionBypass(tree),
     ...modulesLintEffect(tree),

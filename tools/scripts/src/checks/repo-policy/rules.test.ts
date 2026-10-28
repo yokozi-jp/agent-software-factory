@@ -10,6 +10,8 @@ import {
   passingRepo,
   runtimeFixture,
   lintEffect,
+  packageFiles,
+  packageJson,
 } from "./fixtures/passing-repo.ts";
 import { violations, type Repo } from "./rules.ts";
 
@@ -559,9 +561,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/approval/package.json": JSON.stringify({
-            scripts: { "lint-effect": lintEffect },
-          }),
+          ...packageFiles("approval"),
           ...movedTo("approval"),
         }),
       ),
@@ -777,9 +777,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
         repo({
           [purity]: lines.slice(0, 2).join("\n"),
           "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2, 4).join("\n"),
-          "packages/approval/package.json": JSON.stringify({
-            scripts: { "lint-effect": lintEffect },
-          }),
+          ...packageFiles("approval"),
           "packages/approval/src/domain/__fixtures__/random.ts": lines.slice(4).join("\n"),
         }),
       ),
@@ -959,7 +957,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
           ...fixtures("infrastructure"),
           "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
           "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
-          "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
+          ...packageFiles("shared"),
         }),
       ),
     ).toEqual([]);
@@ -2111,15 +2109,64 @@ describe("ADR 0026: the edges", () => {
   });
 });
 
+describe("ADR 0026: the package.json of every package under packages/", () => {
+  const path = "packages/claim/package.json";
+  const messages = {
+    name: `${path} must have the name "@agent-software-factory/claim", the scope and the directory (docs/adr/0026).`,
+    exports: `${path} must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+    index:
+      "packages/claim/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).",
+    nx: `${path} must have the Nx project name "claim" (nx.name), the name of its directory (docs/adr/0026).`,
+    check: `${path} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
+  };
+
+  it.each([
+    ["a name of another scope", { name: "@x/claim" }, messages.name],
+    ["a name of another directory", { name: "@agent-software-factory/claims" }, messages.name],
+    ["no exports", { exports: undefined }, messages.exports],
+    [
+      "exports of a subpath too",
+      { exports: { ".": "./src/index.ts", "./x": "./src/x.ts" } },
+      messages.exports,
+    ],
+    ["exports of another file", { exports: { ".": "./index.ts" } }, messages.exports],
+    ["exports as a string", { exports: "./src/index.ts" }, messages.exports],
+    ["no Nx project name", { nx: {} }, messages.nx],
+    ["an Nx project name of another directory", { nx: { name: "claims" } }, messages.nx],
+  ])("refuses a package.json with %s", (_, fields, message) => {
+    expect(violations(repo({ [path]: packageJson("claim", fields) }))).toEqual([message]);
+  });
+
+  it.each([
+    ["no check script", { "lint-effect": lintEffect }],
+    ["another check script", { check: "vp lint", "lint-effect": lintEffect }],
+  ])("refuses a package with %s", (_, scripts) => {
+    expect(violations(repo({ [path]: packageJson("claim", { scripts }) }))).toEqual([
+      messages.check,
+    ]);
+  });
+
+  it("refuses a package without its src/index.ts, and names every problem of an empty package.json", () => {
+    expect(violations(repo({ "packages/claim/src/index.ts": undefined }))).toEqual([
+      messages.index,
+    ]);
+    expect(
+      violations(repo({ "packages/shared/package.json": "{}" })).filter((failure) =>
+        failure.startsWith("packages/shared/"),
+      ),
+    ).toEqual([
+      'packages/shared/package.json must have the name "@agent-software-factory/shared", the scope and the directory (docs/adr/0026).',
+      'packages/shared/package.json must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).',
+      'packages/shared/package.json must have the Nx project name "shared" (nx.name), the name of its directory (docs/adr/0026).',
+      'packages/shared/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
+    ]);
+  });
+});
+
 describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const table = "tools/scripts/src/checks/repo-policy/modules.ts";
-  const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) => ({
-    [`packages/${name}/package.json`]: JSON.stringify({
-      name: `@agent-software-factory/${name}`,
-      scripts: name === "shared" ? {} : { "lint-effect": lintEffect },
-      ...fields,
-    }),
-  });
+  const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
+    packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
     `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
@@ -2298,9 +2345,7 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
       violations(
         repo({
           "pnpm-workspace.yaml": `${workspace}${pattern}`,
-          "packages/closing/package.json": JSON.stringify({
-            scripts: { "lint-effect": lintEffect },
-          }),
+          ...packageFiles("closing"),
         }),
       ),
     ).toEqual([
@@ -2337,16 +2382,24 @@ describe("ADR 0028: every module runs the Effect lint", () => {
     ],
   ])("refuses a module with %s", (_, scripts) => {
     expect(
-      violations(repo({ "packages/claim/package.json": JSON.stringify({ scripts }) })),
+      violations(
+        repo({
+          "packages/claim/package.json": packageJson("claim", {
+            scripts: { check: "vp check", ...scripts },
+          }),
+        }),
+      ),
     ).toEqual([missing("claim")]);
   });
 
-  it("refuses a module without scripts, and does not ask shared", () => {
+  it("refuses a module without the lint-effect script, and does not ask shared", () => {
     expect(
       violations(
         repo({
-          "packages/claim/package.json": "{}",
-          "packages/shared/package.json": JSON.stringify({ scripts: { "lint-effect": "x" } }),
+          "packages/claim/package.json": packageJson("claim", { scripts: { check: "vp check" } }),
+          "packages/shared/package.json": packageJson("shared", {
+            scripts: { check: "vp check", "lint-effect": "x" },
+          }),
         }),
       ),
     ).toEqual([missing("claim")]);

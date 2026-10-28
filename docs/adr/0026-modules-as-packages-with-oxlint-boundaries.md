@@ -12,7 +12,7 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 ## ルール
 
 - **配置**: モジュールは `packages/` の直下に、1つずつ Nx project (pnpm workspace の package) として置きます。申請は `packages/claim`、承認は `packages/approval`、締めは `packages/closing`、モジュールが共有するコードは `packages/shared` です。`apps/api` は入口のファイルと、モジュールの route を組み立てる `app.ts` だけを持つ薄い入口にし、モジュールを `workspace:*` の依存として持ちます。
-- **公開 API**: 各 package の `package.json` の `exports` は `"."` (`src/index.ts`) だけです。`@agent-software-factory/claim/src/...` のような深い import は解決できません。
+- **公開 API**: 各 package の `package.json` の `exports` は `"."` (`src/index.ts`) だけです。`@agent-software-factory/claim/src/...` のような深い import は解決できません。repo-policy が `exports` の形を確かめます。
 - **モジュールの間の方向**: 依存は「締め → 承認 → 申請」の一方向です。申請は承認と締めを、承認は締めを import しません。`shared` はどのモジュールも import しません。`apps/api` はどのモジュールの `index.ts` も import できます。
   - **止める仕組み**: モジュールは、`package.json` の依存に書いたモジュールだけを import できます。pnpm は、各 package の `node_modules` に直接の依存だけを置き、hoist しません ([pnpm の Motivation](https://pnpm.io/motivation) の "Creating a non-flat node_modules directory")。そのため、依存に書いていないモジュールの import は、型だけの import でも TypeScript が解決できず、`vp check` の型検査で失敗します。依存の宣言そのものの向きは、repo-policy (`tools/scripts/src/checks/repo-policy/modules.ts`) が、モジュールの順序 `moduleOrder` (締め、承認、申請) と照らします。各モジュールは、後ろのモジュールと `shared` にだけ依存でき、`shared` はどれにも依存できません。
   - **解決の迂回を止める**: tsconfig の `paths` と `baseUrl`、`vite.config.ts` の `alias`、pnpm の `shamefullyHoist`、`nodeLinker: hoisted`、workspace の scope を含む `publicHoistPattern` は、宣言していない package を解決できるようにします。repo-policy がこれらを止めます。
@@ -48,7 +48,7 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 
 ## Consequences
 
-- モジュールを足すときは、`packages/<name>/` (`package.json` の `exports`、`nx.name`、依存してよいモジュールの `workspace:*`、`lint-effect` の script、`tsconfig.json`、`src/index.ts`) と、`moduleOrder` の位置を足します。fixture は要りません。repo-policy が止めるのは、`moduleOrder` にない、向きに反する依存がある、`lint-effect` の script が違う、`tsconfig.json` がルートを `extends` しない、のどれかです。`exports`、`nx.name`、`src/index.ts` は、忘れても repo-policy は止めません。層を足すときは `layers` と、`claim` に fixture を 1 つ足します。忘れると repo-policy が止めます。
+- モジュールを足すときは、`packages/<name>/` (`package.json` の `name`、`exports`、`nx.name`、`check` と `lint-effect` の script、依存してよいモジュールの `workspace:*`、`tsconfig.json`、`src/index.ts`) と、`moduleOrder` の位置を足します。fixture は要りません。repo-policy (`modules.ts`) が、`package.json` の `name` (scope とディレクトリの名前)、`exports` (`"."` の `./src/index.ts` だけ)、`src/index.ts` があること、`nx.name` (ディレクトリの名前)、`check` の script (`vp check`) と `lint-effect` の script、`moduleOrder` にあること、依存の向きを確かめ、`tsconfig.json` がルートを `extends` することも確かめます。`check` の script がないと、Nx がその package の lint も型の検査も走らせず、規則と fixture が何も言えなくなります。層を足すときは `layers` と、`claim` に fixture を 1 つ足します。忘れると repo-policy が止めます。
 - 依存の向きに反する import のエラーは、lint の「modules depend one way」ではなく、TypeScript の「Cannot find module」です。依存を足して解決しようとすると、repo-policy が向きを説明して止めます。説明が出る場所が、import の行から `package.json` を変えるときに移ります。
 - 判定は import の文字列の照合だけです。解決した先は見ないので、許されたモジュールを経由した再 export、文字列を組み立てた動的な `import()`、`require` は見逃します。層の規則は、相対パスの `../` の並びの直後の名前だけを見ます。`domain/sub/x.ts` から `../../infrastructure/...` は止まりますが、層のファイルからモジュールの `src/index.ts` への import (`domain/x.ts` の `../index.ts`) は止まりません。`domain/sub/x.ts` の `../index.ts` (`domain/index.ts`) と文字列で見分けられないためです。`index.ts` が層を再 export すると、そこから層の方向を飛び越えられます。層の中に層と同じ名前のディレクトリ (`domain/http/` など) を作ると、そこへの `../http` も止まります。
 - 他のモジュールの表を直接読み書きしないこと (DB の表の所有) は、import の検査では見つけられません。[ADR 0029](0029-module-data-ownership-and-shared-outbox.md) が、モジュールごとの DB のロールの権限と、カタログのテストで止めると決めました。

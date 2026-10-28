@@ -1,5 +1,6 @@
-// Checks of the modules of the sample feature (docs/adr/0026): which module each package under packages/ depends
-// on, the settings that would let a package resolve one it does not depend on, and the Effect lint of each module.
+// Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
+// which module each depends on, the settings that would let a package resolve one it does not depend on, and the
+// Effect lint of each module.
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
@@ -28,6 +29,41 @@ export const packageNames = (tree: Tree): string[] =>
 // The names of the modules: the packages under packages/ but shared.
 export const moduleNames = (tree: Tree): string[] =>
   packageNames(tree).filter((name) => name !== "shared");
+
+// The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
+// exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
+// the name of its directory, and its `check` script runs `vp check`. Without the script, Nx runs neither the
+// lint nor the type check of the package, and the rules and the fixtures say nothing about it.
+const publicApi = { ".": "./src/index.ts" };
+
+export function packageManifests(tree: Tree): string[] {
+  return packageNames(tree).flatMap((name) => {
+    const path = manifest(name);
+    const json = record(tree.parsed(path));
+    const failures: string[] = [];
+    if (json.name !== `${scope}/${name}`)
+      failures.push(
+        `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
+      );
+    if (JSON.stringify(json.exports) !== JSON.stringify(publicApi))
+      failures.push(
+        `${path} must have the exports ${JSON.stringify(publicApi)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+      );
+    if (!tree.paths.includes(`packages/${name}/src/index.ts`))
+      failures.push(
+        `packages/${name}/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
+      );
+    if (record(json.nx).name !== name)
+      failures.push(
+        `${path} must have the Nx project name "${name}" (nx.name), the name of its directory (docs/adr/0026).`,
+      );
+    if (record(json.scripts).check !== "vp check")
+      failures.push(
+        `${path} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
+      );
+    return failures;
+  });
+}
 
 // Every package under packages/ but shared is a module of moduleOrder, and depends on no package of the workspace
 // but shared and the modules after it. shared depends on none of them.
