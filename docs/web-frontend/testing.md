@@ -103,3 +103,30 @@ flowchart TB
 > **参考**
 >
 > [テストピラミッド万歳 | POSTD](https://postd.cc/long-live-test-pyramid/)
+
+## このリポジトリの E2E の方針
+
+ここまでは原文に沿う。この節は、このリポジトリの方針で、原文にはない。理由と比べた案は [ADR 0039](../adr/0039-e2e-playwright-gate-and-ai-for-authoring.md) にある。
+
+### 道具と AI の使い方
+
+- CI のゲートになる E2E は、Playwright の決定的なコード (`.spec.ts`) で書く。実行時にモデルが判定するテストはゲートにしない。
+- AI は E2E を「書く」側に使い、CI では決定的なコードだけを流す。
+- e2e (tester.army) は、E2E を書く前に実アプリを動かして確かめる用途に限る。CI のゲートにせず、e2e の API で書いたテスト (`*.e2e.ts`) は CI に置かない。確認の後に残すテストは、Playwright の `.spec.ts` に書く。Kiro で動くことを確かめてから正式に採る。
+- 見直す条件は、e2e が 1.0 に届くこと、Playwright の `page` を公開すること、axe-core を入れられること。
+
+### PR の CI で流す範囲
+
+- E2E は PR の必須チェックにする。範囲は少数の重要な導線 (ログイン、主要な書き込み 1〜2 本) と Chromium だけにする。広い網羅は merge 後と定期の実行に回す。
+- AWS の実物には依存させない。AWS に依存する導線は、検証環境の `@smoke` だけにする。
+- retry は 1 回までにし、`flaky` の分類を見る。隔離したテストには、期限か数の上限を付ける。
+
+### 起動とログイン
+
+- 結合テストと同じ testcontainers (`postgres:17`、Keycloak、同じ realm、同じ migrate と bootstrap) を、Playwright の `globalSetup` から使う。build 済みの API と web は `webServer` で起動する。compose は足さない。
+- ログインのテストだけが Keycloak の画面を通す。業務の導線は、Better Auth の `testUtils` で作ったセッションの Cookie から始める ([ADR 0022](../adr/0022-better-auth-cookie-bff.md))。
+
+### 検証環境との分担
+
+- 1 つの Playwright のスイートを、タグで分ける。毎 PR の CI で全部を流し、検証環境 ([検証環境の流れ](../tooling/verification-environment.md)) では `@smoke` だけを流す。
+- 流す先は `PLAYWRIGHT_TEST_BASE_URL` で切り替える。
