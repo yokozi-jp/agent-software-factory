@@ -1,5 +1,6 @@
 // Detection-power fixture (#43) for the runtime-specific globals in apps/api/src (root vite.config.ts,
-// docs/adr/0007). Each line below is one that no-restricted-globals or no-restricted-properties must report.
+// docs/adr/0007). Each line below is one that no-restricted-globals, no-restricted-properties or
+// import/no-nodejs-modules must report.
 // If a rule is turned off, or its `files` stop reaching apps/api/src/, the disable comment is unused and
 // `vp check` fails (reportUnusedDisableDirectives). Knip skips __fixtures__/, and nothing imports this file.
 // oxlint-disable-next-line no-restricted-globals -- fixture: a bare global
@@ -12,3 +13,5 @@ export const viaString: unknown = globalThis["process"];
 export const viaGlobal: unknown = global;
 // oxlint-disable-next-line no-restricted-properties -- fixture: destructuring a global from globalThis
 export const { process: destructured }: { process: unknown } = globalThis;
+// oxlint-disable-next-line import/no-nodejs-modules -- fixture: a Node.js built-in module
+import "node:fs";

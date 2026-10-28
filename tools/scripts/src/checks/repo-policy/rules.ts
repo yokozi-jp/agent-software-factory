@@ -35,7 +35,10 @@ function parser(path: string): [string, (text: string) => unknown] {
     return [
       "JSON",
       (text) => {
-        const value: unknown = JSON.parse(text);
+        // A tsconfig.json may have comments. Only a comment that fills its line is removed.
+        const value: unknown = JSON.parse(
+          path.endsWith("tsconfig.json") ? text.replace(/^[ \t]*\/\/.*$/gm, "") : text,
+        );
         return value;
       },
     ];
@@ -139,13 +142,119 @@ function oneBetterleaks(tree: Tree): string[] {
       ];
 }
 
-// ADR 0007: apps/api/src uses Web standard APIs only, enforced by lint.overrides in vite.config.ts.
-// The severity is the value of the rule (`"rule": "error"`) or the first element of its array.
-function webStandardApis(tree: Tree): string[] {
-  const config = tree.read("vite.config.ts");
-  return ["import/no-nodejs-modules", "no-restricted-imports", "no-restricted-globals"]
-    .filter((rule) => !new RegExp(`"${rule}":\\s*\\[?\\s*"error"`).test(config))
-    .map((rule) => `vite.config.ts must set ${rule} to error for apps/api/src (docs/adr/0007).`);
+// The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or
+// `fixtures/` directory that breaks the rule or the flag on purpose, each such line marked with
+//   // oxlint-disable-next-line <rule>[, <rule>] -- <reason>   for a rule
+//   // @ts-expect-error -- <reason that names the flag>        for a flag
+// Both fail `vp check` when they are unused (`reportUnusedDisableDirectives`, TS2578), so a rule or a flag that
+// is turned off, or an override whose `files` stop reaching the file, fails the check. The fixtures of the
+// checks themselves (tools/scripts/src/checks/) are the input of their tests, not a fixture of this kind.
+// This replaces the check of ADR 0007 that looked for "error" in the text of vite.config.ts: that text does not
+// show that a rule reaches the paths it is for.
+const fixtureFile = /(?:^|\/)(?:__fixtures__|fixtures)\/(?:.*\/)?[^/]+\.tsx?$/;
+const fixtureTexts = (tree: Tree): string[] =>
+  tree.paths
+    .filter((path) => fixtureFile.test(path) && !path.startsWith("tools/scripts/src/checks/"))
+    .map((path) => tree.read(path));
+
+// The rules named by the `oxlint-disable-next-line` comments of a text. The comment is on a line of its own, as
+// `// ...` or `/* ... */` (also inside the braces of JSX); the rules are separated by commas, before the ` -- `
+// that starts the reason.
+const disableNextLine =
+  /^[ \t]*(?:\{[ \t]*)?(?:\/\/|\/\*)[ \t]*oxlint-disable-next-line[ \t]+(.*)$/gm;
+const annotatedRules = (text: string): string[] =>
+  Array.from(text.matchAll(disableNextLine), (match) =>
+    String(match[1])
+      .replace(/\s*\*\/\s*\}?\s*$/, "")
+      .split(/\s--(?:\s|$)/, 1)
+      .flatMap((rules) => rules.split(",").map((rule) => rule.trim())),
+  ).flat();
+
+// The rules that vite.config.ts sets to "error": the value of the rule (`"rule": "error"`) or the first element of
+// its array (`"rule": ["error", ...]`).
+const errorRule = /"([^"\s]+)"\s*:\s*(?:\[\s*)?"error"/g;
+
+// Every rule that vite.config.ts sets to "error" has a line in a fixture that it must report (#230). The fixture
+// shows that the rule is on and that it reaches the code it is for; where the fixture is shows which override.
+function lintRulesHaveFixtures(tree: Tree): string[] {
+  const annotated = new Set(fixtureTexts(tree).flatMap(annotatedRules));
+  const rules = new Set(Array.from(tree.read("vite.config.ts").matchAll(errorRule), (m) => m[1]));
+  return [...rules]
+    .filter((rule) => !annotated.has(String(rule)))
+    .map(
+      (rule) =>
+        `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`,
+    );
+}
+
+// The checking flags of tsconfig.json (docs/adr/0020), each with the value that turns the check on: the "Type
+// Checking" options of the TSConfig Reference, noUncheckedSideEffectImports (in its "Modules" section), and the
+// two that this repository adds for syntax. A flag that changes what is emitted or resolved (noEmit, module,
+// skipLibCheck, ...) checks nothing in the code and is not in the list.
+const tsconfigChecks: Readonly<Record<string, boolean>> = {
+  allowUnreachableCode: false,
+  allowUnusedLabels: false,
+  alwaysStrict: true,
+  erasableSyntaxOnly: true,
+  exactOptionalPropertyTypes: true,
+  noFallthroughCasesInSwitch: true,
+  noImplicitAny: true,
+  noImplicitOverride: true,
+  noImplicitReturns: true,
+  noImplicitThis: true,
+  noPropertyAccessFromIndexSignature: true,
+  noUncheckedIndexedAccess: true,
+  noUncheckedSideEffectImports: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true,
+  strict: true,
+  strictBindCallApply: true,
+  strictBuiltinIteratorReturn: true,
+  strictFunctionTypes: true,
+  strictNullChecks: true,
+  strictPropertyInitialization: true,
+  useUnknownInCatchVariables: true,
+  verbatimModuleSyntax: true,
+};
+
+const rootTsconfig = "tsconfig.json";
+const compilerOptions = (tree: Tree, path: string): Record<string, unknown> =>
+  record(record(tree.parsed(path)).compilerOptions);
+
+// Every checking flag that the root tsconfig.json turns on has a line in a fixture that it makes an error (#230):
+// a `@ts-expect-error` whose description names the flag. With the flag off, the directive is unused.
+function tsconfigFlagsHaveFixtures(tree: Tree): string[] {
+  const options = compilerOptions(tree, rootTsconfig);
+  const directives = fixtureTexts(tree)
+    .flatMap((text) => text.split("\n"))
+    .filter((line) => line.includes("@ts-expect-error"));
+  return Object.entries(tsconfigChecks)
+    .filter(([flag, on]) => options[flag] === on)
+    .filter(([flag]) => !directives.some((line) => new RegExp(`\\b${flag}\\b`).test(line)))
+    .map(
+      ([flag]) =>
+        `${rootTsconfig} turns on ${flag}, but no fixture has a \`@ts-expect-error\` that names it. Add a line that the flag makes an error, with \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`,
+    );
+}
+
+// The flags apply to every project through `extends`, so one fixture shows them for all. A project tsconfig.json
+// that leaves out `extends`, or sets a checking flag itself, would make the fixture say nothing about that
+// project. ADR 0020: a project sets its runtime only (target, lib, types, jsx, module).
+function projectTsconfigs(tree: Tree): string[] {
+  const failures: string[] = [];
+  for (const path of tree.named("tsconfig.json").filter((file) => file !== rootTsconfig)) {
+    const parsed = record(tree.parsed(path));
+    const expected = `${"../".repeat(path.split("/").length - 1)}${rootTsconfig}`;
+    if (parsed.extends !== expected)
+      failures.push(
+        `${path} must have "extends": "${expected}", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).`,
+      );
+    for (const flag of Object.keys(compilerOptions(tree, path)).filter((f) => f in tsconfigChecks))
+      failures.push(
+        `${path} sets ${flag}. A project sets its runtime only; put a checking flag in the root tsconfig.json, where apps/api/src/__fixtures__/tsconfig-flags.ts shows it (docs/adr/0020).`,
+      );
+  }
+  return failures;
 }
 
 // The keys of `const <name> ... = { ... };` in the text: the keys of an object literal that holds no other object.
@@ -156,9 +265,15 @@ function objectKeys(text: string, name: string): string[] {
 }
 
 const fixtureAnnotation = "oxlint-disable-next-line no-restricted-imports";
-const runtimeAnnotations = [
+// The domain override sets these two rules itself; import/no-nodejs-modules reaches domain from the override
+// of packages/*/src, so only src/ is asked for its fixture.
+const domainRuntimeAnnotations = [
   "oxlint-disable-next-line no-restricted-globals",
   "oxlint-disable-next-line no-restricted-properties",
+];
+const runtimeAnnotations = [
+  ...domainRuntimeAnnotations,
+  "oxlint-disable-next-line import/no-nodejs-modules",
 ];
 
 // Whether a file of `fixtures` (a __fixtures__/ directory) has `annotation`. A test file counts only when
@@ -202,7 +317,7 @@ function moduleBoundaries(tree: Tree): string[] {
     // annotations of the purity fixtures (Date, Math.random) name the same rules, so the fixture has its own file.
     if (isModule && layers.includes("domain")) {
       const runtime = `packages/${name}/src/domain/__fixtures__/runtime-apis.ts`;
-      for (const annotation of runtimeAnnotations)
+      for (const annotation of domainRuntimeAnnotations)
         if (!tree.paths.includes(runtime) || !tree.read(runtime).includes(annotation))
           failures.push(
             `${runtime} has no \`${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`,
@@ -1043,7 +1158,9 @@ export function violations(repo: Repo): string[] {
     ...nxRunsTasks(tree),
     ...lefthookOwnsHooks(tree),
     ...oneBetterleaks(tree),
-    ...webStandardApis(tree),
+    ...lintRulesHaveFixtures(tree),
+    ...tsconfigFlagsHaveFixtures(tree),
+    ...projectTsconfigs(tree),
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
     ...effectBoundaries(tree),

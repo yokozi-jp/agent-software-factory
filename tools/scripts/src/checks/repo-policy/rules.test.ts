@@ -138,34 +138,364 @@ describe("ADR 0003, 0009: one betterleaks version", () => {
   });
 });
 
-describe("ADR 0007: apps/api/src uses Web standard APIs only", () => {
+describe("#230: every lint rule that is an error has a fixture", () => {
   const config = base["vite.config.ts"] ?? "";
+  const noFixture = (rule: string) =>
+    `vite.config.ts sets ${rule} to error, but no fixture has \`oxlint-disable-next-line ${rule}\`. Add a line that the rule must report to a file in a __fixtures__/ directory of the project the rule is for, such as apps/api/src/__fixtures__/typed-rules.ts, so that turning the rule off, or an override that stops reaching the file, fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`;
+  const withRules = (rules: string) =>
+    config.replace("    overrides: [", `${rules}\n    overrides: [`);
+  const fixture = (text: string, path = "apps/api/src/__fixtures__/more.ts") => ({ [path]: text });
 
-  it.each(["import/no-nodejs-modules", "no-restricted-imports", "no-restricted-globals"])(
-    "refuses a vite.config.ts that turns %s off",
-    (rule) => {
-      const off = config.replace(new RegExp(`"${rule}": (\\[\\s*)?"error"`), `"${rule}": "off"`);
-      expect(violations(repo({ "vite.config.ts": off }))).toEqual([
-        `vite.config.ts must set ${rule} to error for apps/api/src (docs/adr/0007).`,
-      ]);
-    },
-  );
-
-  it("refuses a vite.config.ts that only sets a rule of a similar name", () => {
-    const other = config.replace('"no-restricted-globals"', '"my/no-restricted-globals"');
-    expect(violations(repo({ "vite.config.ts": other }))).toEqual([
-      "vite.config.ts must set no-restricted-globals to error for apps/api/src (docs/adr/0007).",
+  it.each([
+    ["a rule", '"no-console": "error",'],
+    ["a rule with options", '"no-console": ["error", { allow: ["warn"] }],'],
+    ["a rule written with a line break after the bracket", '"no-console": [\n"error"],'],
+    ["a rule on one line with others", 'rules: { "x/y": "off", "no-console": "error" },'],
+  ])("asks for the fixture of %s", (_, rule) => {
+    expect(violations(repo({ "vite.config.ts": withRules(rule) }))).toEqual([
+      noFixture("no-console"),
     ]);
   });
 
-  it("refuses a rule whose error is a later option, not its severity", () => {
-    const later = config.replace(
-      '"no-restricted-globals": ["error", { name: "process" }]',
-      '"no-restricted-globals": ["warn", "error"]',
-    );
-    expect(violations(repo({ "vite.config.ts": later }))).toEqual([
-      "vite.config.ts must set no-restricted-globals to error for apps/api/src (docs/adr/0007).",
+  it("names each rule without a fixture once, in the order of the config", () => {
+    const rules = '"b/second": "error",\n"a/first": ["error"],\n"b/second": "error",';
+    expect(violations(repo({ "vite.config.ts": withRules(rules) }))).toEqual([
+      noFixture("b/second"),
+      noFixture("a/first"),
     ]);
+  });
+
+  it.each(["off", "warn"])("asks for nothing for a rule that is %s", (severity) => {
+    const rules = `"no-console": "${severity}",\n"x/y": ["${severity}", "error"],`;
+    expect(violations(repo({ "vite.config.ts": withRules(rules) }))).toEqual([]);
+  });
+
+  it.each([
+    ["a // comment", "// oxlint-disable-next-line no-console -- fixture\nconsole.log(1);\n"],
+    ["a /* */ comment", "/* oxlint-disable-next-line no-console -- fixture */\nconsole.log(1);\n"],
+    ["a comment in JSX braces", "{/* oxlint-disable-next-line no-console -- fixture */}\n"],
+    ["an indented comment", "function f() {\n  // oxlint-disable-next-line no-console -- r\n}\n"],
+    ["a comment with no reason", "// oxlint-disable-next-line no-console\nconsole.log(1);\n"],
+    [
+      "a comment with the rule last of several",
+      "// oxlint-disable-next-line a/b, no-console -- r\n",
+    ],
+    [
+      "a comment with the rule first of several",
+      "// oxlint-disable-next-line no-console,a/b -- r\n",
+    ],
+    ["a /* */ comment of several rules", "/* oxlint-disable-next-line a/b, no-console */\n"],
+    [
+      "a comment in a file with CRLF line ends",
+      "// oxlint-disable-next-line no-console -- r\r\nx;\r\n",
+    ],
+  ])("accepts %s in a fixture", (_, text) => {
+    expect(
+      violations(repo({ "vite.config.ts": withRules('"no-console": "error",'), ...fixture(text) })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["the name of another rule", "// oxlint-disable-next-line no-console-log -- r\n"],
+    ["a longer name that ends the same", "// oxlint-disable-next-line my/no-console -- r\n"],
+    ["a rule named only in the reason", "// oxlint-disable-next-line a/b -- no-console\n"],
+    [
+      "a rule named after the reason of another",
+      "// oxlint-disable-next-line a/b -- r, no-console\n",
+    ],
+    ["oxlint-disable-line", "// oxlint-disable-line no-console -- r\n"],
+    ["oxlint-disable", "// oxlint-disable no-console -- r\n"],
+    [
+      "a comment that does not start its line",
+      "const a = 1; // oxlint-disable-next-line no-console\n",
+    ],
+    ["a comment inside a string", "const a = '// oxlint-disable-next-line no-console -- r';\n"],
+  ])("refuses %s", (_, text) => {
+    expect(
+      violations(repo({ "vite.config.ts": withRules('"no-console": "error",'), ...fixture(text) })),
+    ).toEqual([noFixture("no-console")]);
+  });
+
+  const annotation = "// oxlint-disable-next-line no-console -- fixture\n";
+  it.each([
+    "apps/web/src/__fixtures__/console.ts",
+    "apps/web/src/__fixtures__/console.tsx",
+    "tools/scripts/src/test/fixtures/console.test.ts",
+    "packages/claim/src/domain/__fixtures__/deeper/console.ts",
+    "__fixtures__/console.ts",
+  ])("counts the comment in %s", (path) => {
+    expect(
+      violations(
+        repo({ "vite.config.ts": withRules('"no-console": "error",'), [path]: annotation }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    "apps/web/src/console.ts",
+    "apps/web/src/fixtures-console.ts",
+    "apps/web/src/__fixtures__/console.md",
+    "apps/web/src/__fixtures__/console.js",
+    "apps/web/src/xfixtures/console.ts",
+    "tools/scripts/src/checks/repo-policy/fixtures/console.ts",
+    "tools/scripts/src/checks/other/__fixtures__/console.ts",
+  ])("does not count the comment in %s", (path) => {
+    expect(
+      violations(
+        repo({ "vite.config.ts": withRules('"no-console": "error",'), [path]: annotation }),
+      ),
+    ).toEqual([noFixture("no-console")]);
+  });
+
+  it("asks for nothing when vite.config.ts is missing", () => {
+    expect(violations(repo({ "vite.config.ts": undefined }))).toEqual([
+      "packages/claim is not in `modules` in vite.config.ts, so no rule stops its imports. Add it with the modules it may import (docs/adr/0026).",
+    ]);
+  });
+
+  it.each(["import/no-nodejs-modules", "no-restricted-imports", "no-restricted-globals"])(
+    "refuses a repository whose only fixture of %s is gone",
+    (rule) => {
+      const files = Object.fromEntries(
+        Object.entries(base)
+          .filter(([path]) => /\/__fixtures__\//.test(path))
+          .map(([path, text]) => [path, text.replaceAll(`next-line ${rule} `, "next-line x/y ")]),
+      );
+      expect(
+        violations(repo(files)).filter((message) => message.startsWith("vite.config.ts")),
+      ).toEqual([noFixture(rule)]);
+    },
+  );
+});
+
+describe("#230: every tsconfig flag that is on has a fixture", () => {
+  const noFixture = (flag: string) =>
+    `tsconfig.json turns on ${flag}, but no fixture has a \`@ts-expect-error\` that names it. Add a line that the flag makes an error, with \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("検査を足すとき")).`;
+  const tsconfig = (options: Record<string, unknown>) =>
+    json({ compilerOptions: { noEmit: true, ...options } });
+  const flagsFile = "apps/api/src/__fixtures__/tsconfig-flags.ts";
+  const flagsFixture = (...flags: string[]) =>
+    flags
+      .map((flag) => `// @ts-expect-error -- fixture: ${flag}: why\nexport const x = 1;`)
+      .join("\n");
+
+  it("asks for a flag that no fixture names", () => {
+    expect(
+      violations(repo({ "tsconfig.json": tsconfig({ strict: true, noImplicitAny: true }) })),
+    ).toEqual([noFixture("noImplicitAny")]);
+  });
+
+  it("asks for nothing when tsconfig.json is missing", () => {
+    expect(violations(repo({ "tsconfig.json": undefined }))).toEqual([]);
+  });
+
+  it("reports a tsconfig.json that is not valid JSON, and asks for nothing", () => {
+    expect(
+      violations(repo({ "tsconfig.json": '{ "compilerOptions": { "strict": true, }' })),
+    ).toEqual([expect.stringMatching(/^tsconfig\.json is not valid JSON \(/)]);
+  });
+
+  it.each([
+    "allowUnreachableCode",
+    "allowUnusedLabels",
+    "alwaysStrict",
+    "erasableSyntaxOnly",
+    "exactOptionalPropertyTypes",
+    "noFallthroughCasesInSwitch",
+    "noImplicitAny",
+    "noImplicitOverride",
+    "noImplicitReturns",
+    "noImplicitThis",
+    "noPropertyAccessFromIndexSignature",
+    "noUncheckedIndexedAccess",
+    "noUncheckedSideEffectImports",
+    "noUnusedLocals",
+    "noUnusedParameters",
+    "strict",
+    "strictBindCallApply",
+    "strictBuiltinIteratorReturn",
+    "strictFunctionTypes",
+    "strictNullChecks",
+    "strictPropertyInitialization",
+    "useUnknownInCatchVariables",
+    "verbatimModuleSyntax",
+  ])("knows %s as a checking flag, and is satisfied by its fixture", (flag) => {
+    const on = !flag.startsWith("allowUn");
+    const tsconfigText = tsconfig({ [flag]: on });
+    expect(violations(repo({ "tsconfig.json": tsconfigText, [flagsFile]: "" }))).toEqual([
+      noFixture(flag),
+    ]);
+    expect(
+      violations(repo({ "tsconfig.json": tsconfigText, [flagsFile]: flagsFixture(flag) })),
+    ).toEqual([]);
+  });
+
+  it("asks for the flags that are on, not for the ones that are off or that check nothing", () => {
+    const options = {
+      noEmit: true,
+      skipLibCheck: true,
+      module: "nodenext",
+      noUnusedLocals: false,
+      allowUnreachableCode: true,
+    };
+    expect(violations(repo({ "tsconfig.json": tsconfig(options), [flagsFile]: "" }))).toEqual([]);
+  });
+
+  it("asks for allowUnreachableCode and allowUnusedLabels when they are false", () => {
+    expect(
+      violations(
+        repo({
+          "tsconfig.json": tsconfig({ allowUnreachableCode: false, allowUnusedLabels: false }),
+          [flagsFile]: "",
+        }),
+      ),
+    ).toEqual([noFixture("allowUnreachableCode"), noFixture("allowUnusedLabels")]);
+  });
+
+  it("reads a tsconfig.json whose comments are indented, and keeps a // inside a string", () => {
+    const text =
+      '{\n    // a comment\n  "compilerOptions": {\n\t// another\n    "strict": true,\n    "baseUrl": "https://x"\n  }\n}\n';
+    expect(violations(repo({ "tsconfig.json": text, [flagsFile]: "" }))).toEqual([
+      noFixture("strict"),
+    ]);
+  });
+
+  it.each([
+    [
+      "a name in a line that is not a @ts-expect-error",
+      "// fixture: strict\nexport const x = 1;\n",
+    ],
+    ["a flag with a longer name", flagsFixture("strictNullChecks")],
+    ["a flag whose name ends the same", flagsFixture("alwaysstrict", "xstrict")],
+    ["a @ts-ignore", "// @ts-ignore -- fixture: strict\n"],
+  ])("refuses %s", (_, text) => {
+    expect(
+      violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
+    ).toEqual([noFixture("strict")]);
+  });
+
+  it.each([
+    "// @ts-expect-error -- fixture: strict\n",
+    "// @ts-expect-error: strict\n",
+    "  // @ts-expect-error -- the parameter has no type (strict)\n",
+    "/* @ts-expect-error strict */\n",
+  ])("accepts the flag named in %j", (text) => {
+    expect(
+      violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
+    ).toEqual([]);
+  });
+
+  it("counts a fixture in any __fixtures__/ directory, and not one outside", () => {
+    const options = { "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: undefined };
+    const text = flagsFixture("strict");
+    expect(
+      violations(repo({ ...options, "packages/claim/src/__fixtures__/flags.ts": text })),
+    ).toEqual([]);
+    expect(violations(repo({ ...options, "apps/api/src/flags.ts": text }))).toEqual([
+      noFixture("strict"),
+    ]);
+    expect(
+      violations(repo({ ...options, "tools/scripts/src/checks/x/fixtures/flags.ts": text })),
+    ).toEqual([noFixture("strict")]);
+  });
+});
+
+describe("#230: a project tsconfig.json takes the checking flags from the root", () => {
+  const extendsRoot = (depth: number) => `${"../".repeat(depth)}tsconfig.json`;
+  const project = (path: string, tsconfig: Record<string, unknown>) => ({
+    [path]: json(tsconfig),
+  });
+
+  it("passes a project that extends the root and sets its runtime only", () => {
+    expect(
+      violations(
+        repo(
+          project("apps/web/tsconfig.json", {
+            extends: extendsRoot(2),
+            compilerOptions: { target: "es2022", lib: ["dom"], jsx: "react-jsx", module: "esnext" },
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("passes a project with no compilerOptions", () => {
+    expect(
+      violations(repo(project("apps/web/tsconfig.json", { extends: extendsRoot(2) }))),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["no extends", {}],
+    ["an extends that is not the root", { extends: "../tsconfig.base.json" }],
+    ["an extends of the wrong depth", { extends: extendsRoot(1) }],
+    ["an extends that is not a string", { extends: ["../../tsconfig.json"] }],
+  ])("refuses a project with %s", (_, tsconfig) => {
+    expect(violations(repo(project("apps/web/tsconfig.json", tsconfig)))).toEqual([
+      'apps/web/tsconfig.json must have "extends": "../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
+    ]);
+  });
+
+  it("follows the depth of the project", () => {
+    expect(
+      violations(repo(project("tools/x/y/tsconfig.json", { extends: extendsRoot(3) }))),
+    ).toEqual([]);
+    expect(
+      violations(repo(project("tools/x/y/tsconfig.json", { extends: extendsRoot(2) }))),
+    ).toEqual([
+      'tools/x/y/tsconfig.json must have "extends": "../../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
+    ]);
+  });
+
+  it.each([
+    ["strict", false],
+    ["noUncheckedIndexedAccess", false],
+    ["allowUnreachableCode", true],
+  ])("refuses a project that sets %s", (flag, value) => {
+    expect(
+      violations(
+        repo(
+          project("apps/web/tsconfig.json", {
+            extends: extendsRoot(2),
+            compilerOptions: { target: "es2022", [flag]: value },
+          }),
+        ),
+      ),
+    ).toEqual([
+      `apps/web/tsconfig.json sets ${flag}. A project sets its runtime only; put a checking flag in the root tsconfig.json, where apps/api/src/__fixtures__/tsconfig-flags.ts shows it (docs/adr/0020).`,
+    ]);
+  });
+
+  it("names each problem of each project", () => {
+    expect(
+      violations(
+        repo({
+          ...project("apps/web/tsconfig.json", {
+            compilerOptions: { strict: false, noImplicitAny: false },
+          }),
+          ...project("packages/claim/tsconfig.json", {
+            extends: extendsRoot(2),
+            compilerOptions: { strict: false },
+          }),
+        }),
+      ),
+    ).toEqual([
+      'apps/web/tsconfig.json must have "extends": "../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
+      "apps/web/tsconfig.json sets strict. A project sets its runtime only; put a checking flag in the root tsconfig.json, where apps/api/src/__fixtures__/tsconfig-flags.ts shows it (docs/adr/0020).",
+      "apps/web/tsconfig.json sets noImplicitAny. A project sets its runtime only; put a checking flag in the root tsconfig.json, where apps/api/src/__fixtures__/tsconfig-flags.ts shows it (docs/adr/0020).",
+      "packages/claim/tsconfig.json sets strict. A project sets its runtime only; put a checking flag in the root tsconfig.json, where apps/api/src/__fixtures__/tsconfig-flags.ts shows it (docs/adr/0020).",
+    ]);
+  });
+
+  it("does not check the root tsconfig.json as a project", () => {
+    expect(
+      violations(repo({ "tsconfig.json": json({ compilerOptions: { target: "es2024" } }) })),
+    ).toEqual([]);
+  });
+
+  it("checks a file named tsconfig.json only, at any depth", () => {
+    expect(violations(repo(project("apps/web/tsconfig.app.json", {})))).toEqual([]);
+    expect(violations(repo(project("apps/web/xtsconfig.json", {})))).toEqual([]);
   });
 });
 
@@ -254,6 +584,7 @@ describe("ADR 0026: every package under packages/ has its boundaries and their f
     ).toEqual([
       noRuntime("no-restricted-globals").replace("claim", "shared"),
       noRuntime("no-restricted-properties").replace("claim", "shared"),
+      noRuntime("import/no-nodejs-modules").replace("claim", "shared"),
     ]);
   });
 
