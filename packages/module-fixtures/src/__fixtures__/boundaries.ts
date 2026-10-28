@@ -6,9 +6,11 @@
 // `vp check` fails (TS2578). repo-policy checks that the declarations point one way.
 // The second import is one that no-restricted-imports must report. If the rule is turned off, or its `files` stop
 // reaching packages/*/src/, the disable comment is unused and `vp check` fails (reportUnusedDisableDirectives).
+// It shows the lint rule only. That the exports of a package name its src/index.ts alone is checked by repo-policy
+// (packageManifests), not here: module-fixtures depends on no package, so no subpath of one could resolve.
 // Knip and jscpd skip __fixtures__/, and nothing imports this file.
 // @ts-expect-error -- fixture: module-fixtures does not depend on shared, so the import does not resolve
 import "@agent-software-factory/shared";
-// @ts-expect-error -- fixture: module-fixtures does not depend on shared, so the import does not resolve
+// @ts-expect-error -- fixture: module-fixtures does not depend on shared; the line is for the lint rule below
 // oxlint-disable-next-line no-restricted-imports -- fixture: a deep import
 import "@agent-software-factory/shared/src/index.ts";
