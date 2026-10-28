@@ -246,7 +246,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     "apps/web/src/__fixtures__/console.ts",
     "apps/web/src/__fixtures__/console.tsx",
     "tools/scripts/src/test/fixtures/console.test.ts",
-    "packages/claim/src/domain/__fixtures__/deeper/console.ts",
+    "packages/module-fixtures/src/domain/__fixtures__/deeper/console.ts",
     "__fixtures__/console.ts",
   ])("counts the comment in %s", (path) => {
     expect(
@@ -418,7 +418,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     const options = { "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: undefined };
     const text = flagsFixture("strict");
     expect(
-      violations(repo({ ...options, "packages/claim/src/__fixtures__/flags.ts": text })),
+      violations(repo({ ...options, "packages/module-fixtures/src/__fixtures__/flags.ts": text })),
     ).toEqual([]);
     expect(violations(repo({ ...options, "apps/api/src/flags.ts": text }))).toEqual([
       noFixture("strict"),
@@ -545,14 +545,15 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     "No packages/*/src/__fixtures__/ has a *.test.ts fixture with `oxlint-disable-next-line no-restricted-imports`, so nothing shows the override of the tests keeps the import restrictions (docs/adr/0007).";
   const noDomainRuntime = (annotation: string) =>
     `No packages/*/src/domain/__fixtures__/runtime-apis.ts has \`oxlint-disable-next-line ${annotation}\`, so nothing shows the override of domain keeps the runtime restrictions (docs/adr/0007).`;
-  // Every fixture of claim, moved to another package.
+  // Every fixture of module-fixtures, moved to another package.
   const movedTo = (name: string) =>
     Object.fromEntries(
       Object.entries(base).flatMap(([path, text]) => {
-        if (!path.startsWith("packages/claim/src/") || !path.includes("/__fixtures__/")) return [];
+        if (!path.startsWith("packages/module-fixtures/src/") || !path.includes("/__fixtures__/"))
+          return [];
         return [
           [path, undefined],
-          [path.replace("packages/claim/", `packages/${name}/`), text],
+          [path.replace("packages/module-fixtures/", `packages/${name}/`), text],
         ];
       }),
     );
@@ -572,8 +573,8 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/__fixtures__/boundaries.ts": undefined,
-          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([noFixture("src"), noFixture("src/http")]);
@@ -583,7 +584,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/domain/__fixtures__/boundaries.ts":
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts":
             '// oxlint-disable-next-line no-console -- fixture\nimport "@x/other";\n',
         }),
       ),
@@ -594,9 +595,9 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
-          "packages/claim/src/domain/boundaries.ts": moduleFixture,
-          "packages/claim/src/domain/deeper/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/domain/deeper/__fixtures__/boundaries.ts": moduleFixture,
           "apps/api/src/domain/__fixtures__/boundaries.ts": moduleFixture,
           "packages/src/domain/__fixtures__/boundaries.ts": moduleFixture,
         }),
@@ -608,8 +609,8 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
-          "packages/claim/src/domain/__fixtures__/deeper/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/deeper/boundaries.ts": moduleFixture,
         }),
       ),
     ).toEqual([]);
@@ -620,9 +621,10 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       violations(
         repo({
           "packages/claim/package.json": undefined,
+          "packages/module-fixtures/package.json": undefined,
           ...Object.fromEntries(
             Object.keys(base)
-              .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+              .filter((path) => /^packages\/module-fixtures\/src\/[^/]+\/__fixtures__\//.test(path))
               .map((path) => [path, undefined]),
           ),
         }),
@@ -632,7 +634,8 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       violations(
         repo({
           "packages/claim/package.json": undefined,
-          "packages/claim/src/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/package.json": undefined,
+          "packages/module-fixtures/src/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([noFixture("src")]);
@@ -643,12 +646,13 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       violations(
         repo({
           "packages/claim/package.json": undefined,
+          "packages/module-fixtures/package.json": undefined,
           "packages/shared/package.json": undefined,
           // The rules of vite.config.ts still need their fixtures, outside packages/.
           "apps/api/src/__fixtures__/rules.ts": `${runtimeFixture}${moduleFixture}`,
           ...Object.fromEntries(
             Object.keys(base)
-              .filter((path) => path.startsWith("packages/claim/src/"))
+              .filter((path) => path.startsWith("packages/module-fixtures/src/"))
               .map((path) => [path, undefined]),
           ),
         }),
@@ -660,16 +664,16 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
+          "packages/module-fixtures/src/__fixtures__/runtime-apis.ts": runtimeFixture.replace(
             "no-restricted-properties",
             "no-console",
           ),
-          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
+          "packages/module-fixtures/src/__fixtures__/boundaries.test.ts": undefined,
         }),
       ),
     ).toEqual([noTest, noRuntime("no-restricted-properties")]);
     expect(
-      violations(repo({ "packages/claim/src/__fixtures__/runtime-apis.ts": undefined })),
+      violations(repo({ "packages/module-fixtures/src/__fixtures__/runtime-apis.ts": undefined })),
     ).toEqual([
       noRuntime("no-restricted-globals"),
       noRuntime("no-restricted-properties"),
@@ -681,10 +685,10 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     expect(
       violations(
         repo({
-          "packages/claim/src/__fixtures__/runtime-apis.ts": undefined,
-          "packages/claim/src/__fixtures__/runtime-apis.test.ts": runtimeFixture,
-          "packages/claim/src/__fixtures__/boundaries.test.ts": undefined,
-          "packages/claim/src/__fixtures__/more.ts": moduleFixture,
+          "packages/module-fixtures/src/__fixtures__/runtime-apis.ts": undefined,
+          "packages/module-fixtures/src/__fixtures__/runtime-apis.test.ts": runtimeFixture,
+          "packages/module-fixtures/src/__fixtures__/boundaries.test.ts": undefined,
+          "packages/module-fixtures/src/__fixtures__/more.ts": moduleFixture,
         }),
       ),
     ).toEqual([
@@ -696,7 +700,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
   });
 
   it("refuses a domain whose fixture does not show the runtime restrictions", () => {
-    const runtime = "packages/claim/src/domain/__fixtures__/runtime-apis.ts";
+    const runtime = "packages/module-fixtures/src/domain/__fixtures__/runtime-apis.ts";
     expect(violations(repo({ [runtime]: undefined }))).toEqual([
       noDomainRuntime("no-restricted-globals"),
       noDomainRuntime("no-restricted-properties"),
@@ -710,7 +714,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       violations(
         repo({
           [runtime]: undefined,
-          "packages/claim/src/domain/__fixtures__/other.ts": runtimeFixture,
+          "packages/module-fixtures/src/domain/__fixtures__/other.ts": runtimeFixture,
         }),
       ),
     ).toEqual([
@@ -730,9 +734,9 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       violations(
         repo({
           "vite.config.ts": none,
-          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
-          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined,
-          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/runtime-apis.ts": undefined,
+          "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);
@@ -741,7 +745,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
 
 describe("ADR 0027: some module has the fixtures of the rules that keep domain pure", () => {
   const config = base["vite.config.ts"] ?? "";
-  const purity = "packages/claim/src/domain/__fixtures__/purity.ts";
+  const purity = "packages/module-fixtures/src/domain/__fixtures__/purity.ts";
   const noFixture = (rule: string) =>
     `No packages/*/src/domain/__fixtures__/ has a fixture with \`oxlint-disable-next-line ${rule}\`, so nothing shows the rule reaches domain/ (docs/adr/0027).`;
   const without = (rule: string) =>
@@ -776,7 +780,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
       violations(
         repo({
           [purity]: lines.slice(0, 2).join("\n"),
-          "packages/claim/src/domain/__fixtures__/clock.ts": lines.slice(2, 4).join("\n"),
+          "packages/module-fixtures/src/domain/__fixtures__/clock.ts": lines.slice(2, 4).join("\n"),
           ...packageFiles("approval"),
           "packages/approval/src/domain/__fixtures__/random.ts": lines.slice(4).join("\n"),
         }),
@@ -789,10 +793,10 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
       violations(
         repo({
           [purity]: undefined,
-          "packages/claim/src/domain/purity.ts": domainFixture,
-          "packages/claim/src/http/__fixtures__/purity.ts": domainFixture,
-          "packages/claim/src/domain/deeper/__fixtures__/purity.ts": domainFixture,
-          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": `${runtimeFixture}${domainFixture}`,
+          "packages/module-fixtures/src/domain/purity.ts": domainFixture,
+          "packages/module-fixtures/src/http/__fixtures__/purity.ts": domainFixture,
+          "packages/module-fixtures/src/domain/deeper/__fixtures__/purity.ts": domainFixture,
+          "packages/module-fixtures/src/domain/__fixtures__/runtime-apis.ts": `${runtimeFixture}${domainFixture}`,
         }),
       ),
     ).toEqual([
@@ -808,7 +812,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
         repo({
           "vite.config.ts": config.replace("  domain: [],\n", ""),
           [purity]: undefined,
-          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);
@@ -816,10 +820,11 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
       violations(
         repo({
           "packages/claim/package.json": undefined,
+          "packages/module-fixtures/package.json": undefined,
           [purity]: undefined,
-          "packages/claim/src/domain/__fixtures__/boundaries.ts": undefined,
-          "packages/claim/src/domain/__fixtures__/runtime-apis.ts": undefined,
-          "packages/claim/src/http/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
+          "packages/module-fixtures/src/domain/__fixtures__/runtime-apis.ts": undefined,
+          "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": undefined,
         }),
       ),
     ).toEqual([]);
@@ -840,8 +845,8 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     "// oxlint-disable-next-line no-restricted-imports -- fixture",
   ].join("\n");
   const fixtures = (layer: string) => ({
-    [`packages/claim/src/${layer}/__fixtures__/effect-tsgo.ts`]: effectTsgo,
-    [`packages/claim/src/${layer}/__fixtures__/effect.ts`]: viteConfig,
+    [`packages/module-fixtures/src/${layer}/__fixtures__/effect-tsgo.ts`]: effectTsgo,
+    [`packages/module-fixtures/src/${layer}/__fixtures__/effect.ts`]: viteConfig,
   });
   const missing = (layer: string, file: string, comment: string) =>
     `No packages/*/src/${layer}/__fixtures__/${file} has \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
@@ -858,8 +863,8 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
           "vite.config.ts": both,
           ...fixtures("application"),
           ...fixtures("infrastructure"),
-          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
-          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
         }),
       ),
     ).toEqual([]);
@@ -870,7 +875,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
       violations(
         repo({
           "vite.config.ts": withLayers("  application: [],"),
-          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
         }),
       ),
     ).toEqual([
@@ -888,11 +893,9 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
         repo({
           "vite.config.ts": withLayers("  infrastructure: [],"),
           ...fixtures("infrastructure"),
-          "packages/claim/src/infrastructure/__fixtures__/effect-tsgo.ts": effectTsgo.replace(
-            "effecttsgo/unstable-api-usage",
-            "effecttsgo/other",
-          ),
-          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/infrastructure/__fixtures__/effect-tsgo.ts":
+            effectTsgo.replace("effecttsgo/unstable-api-usage", "effecttsgo/other"),
+          "packages/module-fixtures/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
         }),
       ),
     ).toEqual([missing("infrastructure", "effect-tsgo.ts", "effecttsgo/unstable-api-usage")]);
@@ -903,8 +906,8 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
       violations(
         repo({
           "vite.config.ts": withLayers("  application: [],"),
-          "packages/claim/src/application/__fixtures__/effect-tsgo.ts": `${effectTsgo}\n${viteConfig}`,
-          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/application/__fixtures__/effect-tsgo.ts": `${effectTsgo}\n${viteConfig}`,
+          "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
         }),
       ),
     ).toEqual([
@@ -918,7 +921,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
       violations(
         repo({
           "vite.config.ts": withLayers("  application: [],"),
-          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
           "vendor/packages/other/package.json": "{}",
           "packages/claim/package.json.bak": "{}",
         }),
@@ -938,9 +941,10 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
         repo({
           "vite.config.ts": both,
           "packages/claim/package.json": undefined,
+          "packages/module-fixtures/package.json": undefined,
           ...Object.fromEntries(
             Object.keys(base)
-              .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+              .filter((path) => /^packages\/module-fixtures\/src\/[^/]+\/__fixtures__\//.test(path))
               .map((path) => [path, undefined]),
           ),
         }),
@@ -955,8 +959,8 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
           "vite.config.ts": both,
           ...fixtures("application"),
           ...fixtures("infrastructure"),
-          "packages/claim/src/application/__fixtures__/boundaries.ts": moduleFixture,
-          "packages/claim/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
+          "packages/module-fixtures/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
           ...packageFiles("shared"),
         }),
       ),
@@ -2074,7 +2078,7 @@ describe("ADR 0026: the edges", () => {
         "vite.config.ts": text,
         ...Object.fromEntries(
           Object.keys(base)
-            .filter((path) => /^packages\/claim\/src\/[^/]+\/__fixtures__\//.test(path))
+            .filter((path) => /^packages\/module-fixtures\/src\/[^/]+\/__fixtures__\//.test(path))
             .map((path) => [path, undefined]),
         ),
       }),
@@ -2115,7 +2119,7 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
     name: `${path} must have the name "@agent-software-factory/claim", the scope and the directory (docs/adr/0026).`,
     exports: `${path} must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).`,
     index:
-      "packages/claim/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).",
+      "packages/module-fixtures/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).",
     nx: `${path} must have the Nx project name "claim" (nx.name), the name of its directory (docs/adr/0026).`,
     check: `${path} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
   };
@@ -2147,7 +2151,7 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
   });
 
   it("refuses a package without its src/index.ts, and names every problem of an empty package.json", () => {
-    expect(violations(repo({ "packages/claim/src/index.ts": undefined }))).toEqual([
+    expect(violations(repo({ "packages/module-fixtures/src/index.ts": undefined }))).toEqual([
       messages.index,
     ]);
     expect(
@@ -2168,7 +2172,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared and module-fixtures on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2236,6 +2240,52 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     ).toEqual([
       wrong("approval", "dependencies", "approval"),
       wrong("approval", "dependencies", "closing"),
+    ]);
+  });
+
+  it("asks module-fixtures for no place in moduleOrder, and refuses any package of the workspace it depends on", () => {
+    expect(violations(repo(manifest("module-fixtures")))).toEqual([]);
+    expect(
+      violations(
+        repo(
+          manifest("module-fixtures", {
+            dependencies: { "@agent-software-factory/shared": "workspace:*", effect: "catalog:" },
+            devDependencies: workspace,
+          }),
+        ),
+      ),
+    ).toEqual([
+      wrong("module-fixtures", "dependencies", "shared"),
+      wrong("module-fixtures", "devDependencies", "claim"),
+    ]);
+  });
+
+  it("asks module-fixtures for the check script, like a module", () => {
+    expect(
+      violations(
+        repo({
+          "packages/module-fixtures/package.json": packageJson("module-fixtures", {
+            scripts: { "lint-effect": lintEffect },
+          }),
+        }),
+      ),
+    ).toEqual([
+      'packages/module-fixtures/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
+    ]);
+  });
+
+  it("asks module-fixtures for the lint-effect script, like a module", () => {
+    expect(
+      violations(
+        repo({
+          ...manifest("module-fixtures"),
+          "packages/module-fixtures/package.json": packageJson("module-fixtures", {
+            scripts: { check: "vp check" },
+          }),
+        }),
+      ),
+    ).toEqual([
+      `packages/module-fixtures/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`,
     ]);
   });
 
@@ -2554,7 +2604,7 @@ describe("references from docs/ to files of the code", () => {
     [".github/workflows/missing.yml"],
     [".kiro/hooks/missing.json"],
     ["tools/scripts/src/checks/repo-policy/cli.ts.map"],
-    ["packages/claim/src/missing.ts"],
+    ["packages/module-fixtures/src/missing.ts"],
     ["apps/api/missing.json"],
     ["types/missing.d.ts"],
     ["tools/scripts/src/a-b_c.d/@x.ts"],

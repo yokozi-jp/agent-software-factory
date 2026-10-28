@@ -87,8 +87,9 @@ const apps: Record<string, string> = {
     '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
 };
 
-// The modules named in knip.jsonc, which depend on effect before their application/ and infrastructure/ import it.
-const modules = ["claim", "approval", "closing"];
+// The packages in the shape of a module named in knip.jsonc, which depend on effect before their application/ and
+// infrastructure/ import it: the modules, and module-fixtures, whose fixtures alone import it.
+const modules = ["claim", "approval", "closing", "module-fixtures"];
 for (const name of modules) {
   apps[`packages/${name}/package.json`] = JSON.stringify(
     {

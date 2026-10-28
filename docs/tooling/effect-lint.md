@@ -48,7 +48,7 @@ pnpm exec nx run claim:lint-effect          # 1 つの package
 
 規則が外れたり、対象の層に届かなくなったりしたら失敗するように、2 つの仕組みがあります。
 
-- **fixture**: 1 つのモジュール (`claim`) の `application/__fixtures__/` と `infrastructure/__fixtures__/` に、違反の行と disable コメントを置きます。規則が止めないと、disable コメントが使われないので失敗します。設定 (`oxlint.effect.json`) はすべてのモジュールで同じなので、1 つで足ります。各モジュールが同じ範囲を lint することは、repo-policy が `lint-effect` の script で確かめます ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
+- **fixture**: モジュールの形をした `packages/module-fixtures` の `application/__fixtures__/` と `infrastructure/__fixtures__/` に、違反の行と disable コメントを置きます。規則が止めないと、disable コメントが使われないので失敗します。設定 (`oxlint.effect.json`) はすべてのモジュールで同じなので、1 つで足ります。各モジュールが同じ範囲を lint することは、repo-policy が `lint-effect` の script で確かめます ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
   - `effect-tsgo.ts`: `floating-effect`、`unstable-api-usage`、`experimental-api-usage`。`lint-effect` が検査します。`vp check` は `effecttsgo` の plugin を知らず、コメントを使われないものと報告するので、このファイルを読みません (`vite.config.ts` の `lint.ignorePatterns`)。
   - `effect.ts`: `no-restricted-properties`、`no-restricted-imports`。`vp check` が検査します。
   - repo-policy が、層ごとに 2 つのファイルと、それぞれの disable コメントがあることを確かめます。

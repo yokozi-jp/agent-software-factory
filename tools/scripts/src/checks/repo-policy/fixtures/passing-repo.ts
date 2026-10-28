@@ -140,11 +140,13 @@ export const passingRepo: Readonly<Record<string, string>> = {
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
   ...packageFiles("shared"),
   ...packageFiles("claim", { dependencies: { "@agent-software-factory/shared": "workspace:*" } }),
-  ...srcFixtures("claim"),
-  ...domainRuntimeFixtures("claim"),
-  "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
-  "packages/claim/src/domain/__fixtures__/purity.ts": domainFixture,
-  "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,
+  // The fixtures are in module-fixtures, as in the repository (docs/adr/0026).
+  ...packageFiles("module-fixtures"),
+  ...srcFixtures("module-fixtures"),
+  ...domainRuntimeFixtures("module-fixtures"),
+  "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": moduleFixture,
+  "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
+  "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',

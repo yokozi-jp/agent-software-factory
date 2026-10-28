@@ -72,6 +72,6 @@ skill をそのまま見せないのは、`parseX` が `throw` する例と「Sc
 ## 出典
 
 - 試作 (`/tmp/fdm`: zod 4.6.7、`@hono/zod-openapi` 1.6.3、TypeScript 7.0.2、Oxlint 1.89.0、ADR 0020 と同じ tsconfig、2026-10-26): `.refine` と `.transform` で `as` なしに型が届くこと、`.int().positive()` が OpenAPI に出ること、`domain` の `throw` を止める 5 行の規則が動くこと、型の注釈の `Date` は `no-restricted-globals` に掛からないこと
-- `domain` の `Date`、`Math.random`、`throw` の検査 (Oxlint 1.89.0、Vite+ 1.4.0、このリポジトリで確かめた、2026-10-27): `new Date()`、`Date.now()`、`d instanceof Date` と、`Math.random()`、`Math["random"]()`、`const { random } = Math` は止まる。型の注釈の `Date` と、`globalThis.Date.now()` は止まらない。`throw` は `domain/no-throw` が止める。`packages/claim/src/domain/__fixtures__/purity.ts` が、止まる書き方を disable のコメントで、止まらない 2 つ (型の注釈の `Date`、`globalThis.Date.now()`) をコメントなしで置き、`vp check` で確かめる
+- `domain` の `Date`、`Math.random`、`throw` の検査 (Oxlint 1.89.0、Vite+ 1.4.0、このリポジトリで確かめた、2026-10-27): `new Date()`、`Date.now()`、`d instanceof Date` と、`Math.random()`、`Math["random"]()`、`const { random } = Math` は止まる。型の注釈の `Date` と、`globalThis.Date.now()` は止まらない。`throw` は `domain/no-throw` が止める。`packages/module-fixtures/src/domain/__fixtures__/purity.ts` が、止まる書き方を disable のコメントで、止まらない 2 つ (型の注釈の `Date`、`globalThis.Date.now()`) をコメントなしで置き、`vp check` で確かめる
 - Effect 4 の `Result`、`Option`、`Exit`、`Data.TaggedError` が `_tag` を使うこと: [MIGRATION.md](https://github.com/Effect-TS/effect/blob/main/MIGRATION.md) (`catchTag` は unchanged)
 - 400 と 422 の使い分け: [`docs/web-api/status-codes.md`](../web-api/status-codes.md)

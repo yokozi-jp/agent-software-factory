@@ -70,7 +70,7 @@ const runtimeGlobalLintRules = {
 // packages/, and apps/api only assembles them. Which module may import which (closing (締め) → approval (承認)
 // → claim (申請), shared imports none) is not a lint rule: a module can resolve only the packages its
 // package.json declares (pnpm, TypeScript), and repo-policy checks the declarations. The rules here are the same
-// for every module, so one override per layer reaches them all, and one module holds the fixtures.
+// for every module, so one override per layer reaches them all, and packages/module-fixtures holds the fixtures.
 const scope = "@agent-software-factory";
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
 // shared (below).

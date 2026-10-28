@@ -1,0 +1,23 @@
+{
+  "name": "@agent-software-factory/module-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "vp check",
+    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "module-fixtures"
+  }
+}
