@@ -77,7 +77,7 @@ tags: [tooling, reference, ci, git-hooks, ruleset, sensor, guardrail]
 
 ## 表と設定のずれの検査
 
-repo-policy (`ci.yml: Repo policy (docs/adr)`) が、この表と設定を突き合わせます。規則は `tools/scripts/src/checks/repo-policy/rules.ts` にあります。
+repo-policy (`ci.yml: Repo policy (docs/adr)`) が、この表と設定を突き合わせます。規則は `tools/scripts/src/checks/repo-policy/assurance-catalog.ts` にあります。
 
 - `ci.yml` の step のうちコマンドを実行するもの (`main` の job を除く) と、ruleset の規則、必須チェック、code scanning の道具は、それぞれ自分の行を持ちます。`main` の job は、必須チェックの `ruleset: main` の行が表します。コマンドを実行する step に `name` がなければ失敗します。
 - lefthook の job と command (group の中の job を含む) は、自分の行を持つか、写す行の「ローカルの写し」の列に1回だけ名前が出ます。

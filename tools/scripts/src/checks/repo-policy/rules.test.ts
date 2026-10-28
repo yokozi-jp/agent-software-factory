@@ -151,6 +151,8 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     ["a rule with options", '"no-console": ["error", { allow: ["warn"] }],'],
     ["a rule written with a line break after the bracket", '"no-console": [\n"error"],'],
     ["a rule on one line with others", 'rules: { "x/y": "off", "no-console": "error" },'],
+    ["a rule with a space before the colon", '"no-console" : "error",'],
+    ["a rule with no space after the colon", '"no-console":"error",'],
   ])("asks for the fixture of %s", (_, rule) => {
     expect(violations(repo({ "vite.config.ts": withRules(rule) }))).toEqual([
       noFixture("no-console"),
@@ -185,6 +187,24 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
       "// oxlint-disable-next-line no-console,a/b -- r\n",
     ],
     ["a /* */ comment of several rules", "/* oxlint-disable-next-line a/b, no-console */\n"],
+    ["a /* */ comment closed with no space", "/* oxlint-disable-next-line no-console*/\n"],
+    ["a /* */ comment of CRLF line ends", "/* oxlint-disable-next-line no-console */\r\nx;\r\n"],
+    ["a /* */ comment with blanks after it", "/* oxlint-disable-next-line no-console */ \t\n"],
+    [
+      "a comment in JSX braces with a space before the brace",
+      "{/* oxlint-disable-next-line no-console */ }\n",
+    ],
+    [
+      "a comment in JSX braces with a space after the brace",
+      "{ /* oxlint-disable-next-line no-console */}\n",
+    ],
+    [
+      "a JSX comment with a blank after the brace",
+      "{/* oxlint-disable-next-line no-console */} \n",
+    ],
+    ["a comment with no space after //", "//oxlint-disable-next-line no-console -- r\n"],
+    ["a comment with several spaces", "//   oxlint-disable-next-line   no-console -- r\n"],
+    ["a comment whose reason is only the separator", "// oxlint-disable-next-line no-console --\n"],
     [
       "a comment in a file with CRLF line ends",
       "// oxlint-disable-next-line no-console -- r\r\nx;\r\n",
@@ -202,6 +222,10 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     [
       "a rule named after the reason of another",
       "// oxlint-disable-next-line a/b -- r, no-console\n",
+    ],
+    [
+      "a rule before a */ in the middle of the list",
+      "/* oxlint-disable-next-line no-console */, a/b */\n",
     ],
     ["oxlint-disable-line", "// oxlint-disable-line no-console -- r\n"],
     ["oxlint-disable", "// oxlint-disable no-console -- r\n"],
@@ -236,6 +260,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     "apps/web/src/fixtures-console.ts",
     "apps/web/src/__fixtures__/console.md",
     "apps/web/src/__fixtures__/console.js",
+    "apps/web/src/__fixtures__/console.ts.snap",
     "apps/web/src/xfixtures/console.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/console.ts",
     "tools/scripts/src/checks/other/__fixtures__/console.ts",
@@ -1805,6 +1830,12 @@ describe("configuration files that cannot be parsed", () => {
     ).toHaveLength(1);
   });
 
+  it("reads a comment line only in a tsconfig.json: in any other JSON file it is an error", () => {
+    expect(violations(repo({ "apps/api/package.json": '// comment\n{"name": "x"}\n' }))[0]).toMatch(
+      /^apps\/api\/package\.json is not valid JSON \(.+\)$/,
+    );
+  });
+
   it("names a package.json that is not JSON", () => {
     expect(violations(repo({ "apps/api/package.json": "{\n" }))[0]).toMatch(
       /^apps\/api\/package\.json is not valid JSON \(.+\)$/,
@@ -2125,6 +2156,83 @@ describe("configuration files that cannot be parsed: the messages", () => {
     expect(failures.filter((failure) => failure.startsWith("package.json is not valid"))).toEqual([
       "package.json is not valid JSON (SyntaxError: Expected property name or '}' in JSON at position 2 (line 2 column 1))",
     ]);
+  });
+});
+
+describe("references from docs/ to files of the code", () => {
+  const cite = (line: string, path = "docs/tooling/ci.md") => ({
+    [path]: `# A doc\n\n${line}\n`,
+  });
+  const missing = (path: string, source = "docs/tooling/ci.md") =>
+    `${source} cites ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`;
+
+  it.each([
+    ["a path", "`tools/a.ts`", ["tools/a.ts"]],
+    ["two paths", "`apps/a.json` and `packages/b/c.d.ts`", ["apps/a.json", "packages/b/c.d.ts"]],
+    ["a path in a dot directory", "`.github/a/b.txt`", [".github/a/b.txt"]],
+    ["a Kiro file", "`.kiro/a-b.txt`", [".kiro/a-b.txt"]],
+    ["a type file", "`types/a.d.ts`", ["types/a.d.ts"]],
+    ["a path in a sentence", "see `tools/a_b/@c.ts` for it", ["tools/a_b/@c.ts"]],
+  ])("passes %s that exists", (_, line, exists) => {
+    expect(
+      violations(repo({ ...cite(line), ...Object.fromEntries(exists.map((path) => [path, ""])) })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["tools/scripts/src/checks/repo-policy/missing.ts"],
+    [".github/workflows/missing.yml"],
+    [".kiro/hooks/missing.json"],
+    ["tools/scripts/src/checks/repo-policy/cli.ts.map"],
+    ["packages/claim/src/missing.ts"],
+    ["apps/api/missing.json"],
+    ["types/missing.d.ts"],
+    ["tools/scripts/src/a-b_c.d/@x.ts"],
+  ])("refuses `%s`, which does not exist", (path) => {
+    expect(violations(repo(cite(`\`${path}\``)))).toEqual([missing(path)]);
+  });
+
+  it("names each citing doc, and each path once per citation", () => {
+    expect(
+      violations(
+        repo({
+          ...cite("`tools/a.ts` and `tools/b.ts`", "docs/a.md"),
+          ...cite("`tools/a.ts`", "docs/tooling/b.md"),
+        }),
+      ),
+    ).toEqual([
+      missing("tools/a.ts", "docs/a.md"),
+      missing("tools/b.ts", "docs/a.md"),
+      missing("tools/a.ts", "docs/tooling/b.md"),
+    ]);
+  });
+
+  it.each([
+    ["a directory", "`tools/scripts/src/`"],
+    ["a directory without a slash", "`tools/scripts`"],
+    ["a glob", "`packages/*/src/index.ts`"],
+    ["a placeholder", "`packages/<module>/src/index.ts`"],
+    ["a path with a line number", "`tools/scripts/src/a.ts:12`"],
+    ["a path in plain text", "see tools/scripts/src/a.ts"],
+    ["a path under another top-level directory", "`scripts/a.sh` and `research/a.md`"],
+    ["a code span of several words", "`node tools/a.ts`"],
+  ])("skips %s", (_, line) => {
+    expect(violations(repo(cite(line)))).toEqual([]);
+  });
+
+  it("skips the ADRs, which record paths as they were", () => {
+    expect(violations(repo(cite("`tools/a.ts`", "docs/adr/0002-nx.md")))).toEqual([]);
+  });
+
+  it("skips a file that is not Markdown, and a file outside docs/", () => {
+    expect(
+      violations(
+        repo({
+          ...cite("`tools/a.ts`", "docs/tooling/a.txt"),
+          ...cite("`tools/a.ts`", "README.md"),
+        }),
+      ),
+    ).toEqual([]);
   });
 });
 
