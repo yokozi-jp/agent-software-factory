@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0037: migration と DB の道具は module ではない package の packages/db に置き、モジュールには型だけで依存する"
+title: "ADR 0038: migration と DB の道具は module ではない package の packages/db に置き、モジュールには型だけで依存する"
 description: apps/api/db にあった migration、bootstrap.sql、migrate、型の生成と、DB だけのテストの道具を packages/db (@agent-software-factory/db) に移す決定。ADR 0034 の手順に沿って、db を module ではない package にし、moduleOrder にも依存なしの一覧にも入れず、モジュールには import type だけで devDependencies に依存し、db に依存できるのは apps/api だけにする。exports は "." と ./seed と ./testing の 3 つで、層の規則と lint-effect は掛けず、packages/db/src ではランタイムの制限を外して深い import の禁止とモジュールの値の import の禁止を残す。migration や DB のテストの道具を足すとき、ワーカーやバッチが migration を使うとき、db の依存や exports を変えるとき、packages/ の直下に module ではない package を足すときに読む。
 tags: [adr, db, migration, monorepo, repo-policy, lint]
 ---
 
-# ADR 0037: migration と DB の道具は module ではない package の packages/db に置き、モジュールには型だけで依存する
+# ADR 0038: migration と DB の道具は module ではない package の packages/db に置き、モジュールには型だけで依存する
 
 DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`types.ts`) と `apps/api/test/` (testcontainers の起動、接続、DB の複製) にありました。[ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md) の「`apps/api` は薄い入口」から外れ、ワーカーやバッチ、migrate のタスク ([ADR 0013](0013-api-on-ecs-and-lambda-web-functions.md)) が migration を使うには `apps/api` を通るしかありませんでした。`migrate.ts` と `types.ts` は `apps/api` の coverage の対象 (`src/**/*.ts`) の外にありました。そこで [ADR 0034](0034-shared-ui-package.md) と同じく、`packages/` の直下に module ではない package を足します ([Issue #333](https://github.com/yokozi-jp/agent-software-factory/issues/333) の決定、[Issue #337](https://github.com/yokozi-jp/agent-software-factory/issues/337))。
 

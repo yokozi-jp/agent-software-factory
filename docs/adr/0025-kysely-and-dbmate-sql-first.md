@@ -12,7 +12,7 @@ tags: [adr, db, postgresql, migration, kysely, dbmate, rls]
 ## ルール
 
 - **アクセス層**: [Kysely](https://kysely.dev/) で書きます。接続は `pg` の `Pool` を `PostgresDialect` に渡します。`Pool` を作るのは入口のファイルだけです ([ADR 0007](0007-api-on-node-web-standard-app.md))。Kysely 0.29.7 の `dist` は Node の組み込みのモジュールを import しないので、`Kysely<DB>` を受け取るクエリのコードは `apps/api/src` と `packages/` に置けます。関連の自動の読み込みはないので、入れ子の結果は `jsonArrayFrom` などで SQL の副問い合わせとして明示して書きます。ビルダーで書けない構文 (ヒント句など) は `` sql`…` `` のタグ付きテンプレートで書き、値は bind 変数にします。`sql.raw` と `sql.lit` に入力の値を渡しません。
-- **置き場所**: migration、`bootstrap.sql`、`migrate`、型の生成は `packages/db` にあります ([ADR 0037](0037-db-package.md))。
+- **置き場所**: migration、`bootstrap.sql`、`migrate`、型の生成は `packages/db` にあります ([ADR 0038](0038-db-package.md))。
 - **docs/db の規約との関係**: 取り込んだガイドライン ([PostgreSQL のクライアント管理](../db/postgresql-client.md)) はクエリビルダーを使わないとしていました。その理由 (DBA が調整しにくい、関連の扱いの事故、発行される SQL がレビューで見えにくい) は SQL を隠す ORM に当たり、SQL に1対1で対応する Kysely にはほとんど当たらない、というのが判断です。ガイドラインが勧める SQL からの型の生成は、TypeScript では [sqlc-gen-typescript](https://github.com/sqlc-dev/sqlc-gen-typescript) が 0.1.3 (2024-01) の early access で止まり、[PgTyped](https://github.com/adelsz/pgtyped) も 2.4.3 (2025-03) から出ていません。そこで規約を「SQL に1対1で対応しないクエリビルダーと、関連の自動の読み込みは使わない」に改めました。
 - **スキーマの正本**: 版付きの SQL の migration ファイルだけを正本にします。TS のスキーマ定義、`.prisma`、宣言的な `ddl.sql` は置きません。テーブル、制約、RLS のポリシー、`FORCE`、`GRANT`、ロールの権限はすべて migration に書きます。
 - **型**: migration を流した PostgreSQL から [kysely-codegen](https://github.com/RobinBlomberg/kysely-codegen) で型を生成し、commit します。CI で、流して生成し直した型に差分がないことを確かめます。生成は PostgreSQL のスキーマごとに行い (`--include-pattern "<schema>.*"`)、各モジュールの package にそのモジュールのスキーマの型だけを置きます。あるモジュールの `Kysely<DB>` からは、ほかのモジュールの表が型の上で見えません。`auth` スキーマは型の生成の対象にしません (Better Auth が自分の Kysely で使います)。

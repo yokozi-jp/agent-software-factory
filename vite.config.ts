@@ -89,7 +89,7 @@ const deepMessage =
   "nothing else; export what you need from there (docs/adr/0026).";
 const dbMessage =
   "db imports the packages of the workspace by `import type` only: it knows the database types of the modules, not " +
-  "their code. Use `import type`, or move the code to apps/api (docs/adr/0037).";
+  "their code. Use `import type`, or move the code to apps/api (docs/adr/0038).";
 const layerMessage =
   "Layers point inward: domain imports nothing, application imports domain, and infrastructure and http import " +
   "application and domain but not each other (docs/adr/0026).";
@@ -166,7 +166,7 @@ const relativeDeepImport = { regex: "^\\.{1,2}/(?:.*/)?[^/]+/src(?:/|$)", messag
 const deepImports = [subpathImport, relativeDeepImport];
 
 // What the tests of apps/api may import past the index.ts of a package: the tools of the tests and the seed of
-// packages/db (docs/adr/0037). Production code in apps/api/src does not, so it stays under deepImports.
+// packages/db (docs/adr/0038). Production code in apps/api/src does not, so it stays under deepImports.
 const dbSubpaths = ["testing", "seed"];
 const testDeepImports = [
   {
@@ -384,7 +384,7 @@ export default defineConfig({
       // Module boundaries (docs/adr/0026): imports by the package name only, and the direction between the layers
       // of a module. The direction between the modules is the dependencies of their package.json.
       ...moduleOverrides,
-      // packages/db is not a module (docs/adr/0037). It runs the migrations and starts containers, so it leaves the
+      // packages/db is not a module (docs/adr/0038). It runs the migrations and starts containers, so it leaves the
       // runtime restrictions as an entry file does (docs/adr/0007), keeps the ban on deep imports, and imports the
       // packages of the workspace as types only. It has no layers, so the overrides above reach it only by
       // packages/*/src/**, which this override replaces.

@@ -2335,7 +2335,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   });
 });
 
-// The parts of the fixture of packages/db (docs/adr/0037), and a file that has all three.
+// The parts of the fixture of packages/db (docs/adr/0038), and a file that has all three.
 const dbFixtureParts = {
   value: "oxlint-disable-next-line no-restricted-imports",
   type: "import type {",
@@ -2343,7 +2343,7 @@ const dbFixtureParts = {
 };
 const dbImportsFixture = `// ${dbFixtureParts.value} -- fixture\nimport "@x/claim";\n${dbFixtureParts.type} A } from "@x/claim";\nimport { run } ${dbFixtureParts.node};\n`;
 
-describe("ADR 0037: db depends on the modules by type only, and only apps/api depends on db", () => {
+describe("ADR 0038: db depends on the modules by type only, and only apps/api depends on db", () => {
   const dbExports = {
     ".": "./src/index.ts",
     "./seed": "./src/seed/index.ts",
@@ -2361,9 +2361,9 @@ describe("ADR 0037: db depends on the modules by type only, and only apps/api de
   const claim = { "@agent-software-factory/claim": "workspace:*" };
   const dbDependency = { "@agent-software-factory/db": "workspace:*" };
   const dbHas = (dependency: string, field: string) =>
-    `packages/db/package.json has @agent-software-factory/${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency} out of db (docs/adr/0037).`;
+    `packages/db/package.json has @agent-software-factory/${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency} out of db (docs/adr/0038).`;
   const refused = (path: string, field: string) =>
-    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0037).`;
+    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
 
   it("passes db with the modules in devDependencies, without a place in moduleOrder or a lint-effect script", () => {
     expect(
@@ -2470,7 +2470,7 @@ describe("ADR 0037: db depends on the modules by type only, and only apps/api de
     ["a subpath too", { ...dbExports, "./x": "./src/x.ts" }],
   ])("refuses db with %s", (_, exports) => {
     expect(violations(repo({ ...db({ exports }) }))).toEqual([
-      `packages/db/package.json must have the exports ${JSON.stringify(dbExports)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0037).`,
+      `packages/db/package.json must have the exports ${JSON.stringify(dbExports)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038).`,
     ]);
   });
 
@@ -2484,7 +2484,7 @@ describe("ADR 0037: db depends on the modules by type only, and only apps/api de
   });
 });
 
-describe("ADR 0037: packages/db has the fixtures of its Oxlint override", () => {
+describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => {
   const part = dbFixtureParts;
   const fixture = dbImportsFixture;
   const withDb = (files: Record<string, string | undefined> = {}) =>
@@ -2501,7 +2501,7 @@ describe("ADR 0037: packages/db has the fixtures of its Oxlint override", () => 
       ...files,
     });
   const missing = (text: string, what: string) =>
-    `No packages/db/src/__fixtures__/ has \`${text}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0037).`;
+    `No packages/db/src/__fixtures__/ has \`${text}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0038).`;
 
   it("passes db with a fixture for the value import, the type import and the Node.js module", () => {
     expect(violations(withDb())).toEqual([]);

@@ -13,7 +13,7 @@ import type { TestProject } from "vite-plus/test/node";
 // 一度だけ起動して全テストで使う。テストごとに別のデータベースを作るので、並列に走らせられる (ロールはクラスタ全体で共有する)。
 declare module "vite-plus/test" {
   export interface ProvidedContext {
-    // postgresUri と templateDatabase は packages/db の testing が宣言する (docs/adr/0037)。
+    // postgresUri と templateDatabase は packages/db の testing が宣言する (docs/adr/0038)。
     keycloakBaseUrl: string;
   }
 }

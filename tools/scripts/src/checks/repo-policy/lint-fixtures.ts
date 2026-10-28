@@ -264,7 +264,7 @@ export function effectBoundaries(tree: Tree): string[] {
   return failures;
 }
 
-// ADR 0037: the override of packages/db/src in vite.config.ts stops a value import of a package of the workspace, and
+// ADR 0038: the override of packages/db/src in vite.config.ts stops a value import of a package of the workspace, and
 // lets through `import type`, a Node.js module and the other restrictions it leaves. packages/db/src/__fixtures__/ has a
 // fixture (#43) for each: a value import that the rule must report, carrying the disable comment, and an
 // `import type` of a package of the workspace and an import of node:child_process, which carry none and which Oxlint
@@ -289,6 +289,6 @@ export function dbBoundaries(tree: Tree): string[] {
     .filter(([part]) => !texts.some((text) => text.includes(part)))
     .map(
       ([part, what]) =>
-        `No packages/db/src/__fixtures__/ has \`${part}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0037).`,
+        `No packages/db/src/__fixtures__/ has \`${part}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0038).`,
     );
 }

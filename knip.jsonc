@@ -56,7 +56,7 @@
       // `exports` of package.json (./lib/*), so it needs no pattern here.
       "entry": ["src/components/**/*.tsx"],
     },
-    // db depends on the modules by `import type` only (docs/adr/0037). Nothing of it imports them yet except its
+    // db depends on the modules by `import type` only (docs/adr/0038). Nothing of it imports them yet except its
     // fixtures, which Knip does not read; the seed (#332) and the types of the module schemas will. Remove an entry
     // when a file other than a fixture imports the module.
     "packages/db": {

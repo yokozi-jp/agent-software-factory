@@ -9,7 +9,7 @@ import {
   roles,
 } from "./index.ts";
 
-// db/testing は、packages/db 自身のテストと apps/api のテストが使う道具 (docs/adr/0037)。
+// db/testing は、packages/db 自身のテストと apps/api のテストが使う道具 (docs/adr/0038)。
 describe("prepareDatabase", () => {
   it("データベースを作り、3 つのロールと migration のスキーマを用意すること", async () => {
     const base = inject("postgresUri");

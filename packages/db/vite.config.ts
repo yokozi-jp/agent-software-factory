@@ -7,7 +7,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
-    // __fixtures__/ shows that the lint rules are on; it is not a test (docs/adr/0037).
+    // __fixtures__/ shows that the lint rules are on; it is not a test (docs/adr/0038).
     exclude: ["**/node_modules/**", "**/__fixtures__/**"],
     globalSetup: ["./test/global-setup.ts"],
     hookTimeout: 240_000,

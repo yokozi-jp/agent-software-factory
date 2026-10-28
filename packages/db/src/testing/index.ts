@@ -1,4 +1,4 @@
-// The public API of `@agent-software-factory/db/testing` (docs/adr/0037): the tools that the tests of the db package and
+// The public API of `@agent-software-factory/db/testing` (docs/adr/0038): the tools that the tests of the db package and
 // of apps/api use. It imports Vitest and testcontainers, so no production code imports it.
 export {
   postgresImage,
