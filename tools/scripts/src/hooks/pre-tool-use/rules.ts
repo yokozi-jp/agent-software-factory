@@ -1,10 +1,12 @@
 // What the PreToolUse hook decides for one tool call: which checks apply to the tool, and what Kiro gets
 // back. One process runs every check, so the shell pays for one Node start per tool call (#136).
 // Kiro 2.34.0 (kas/<version>/node_modules/@kiro/agent/dist/server/acp-server.js): exit 2 refuses the
-// call and stderr goes back to the agent. The event JSON on stdin has tool_name (the tool id) and
+// call and stderr goes back to the agent; exit 0 with a permissionDecision "ask" on stdout asks the user.
+// The event JSON on stdin has tool_name (the tool id) and
 // tool_input. Other Kiro sessions in this working tree are only warned about at SessionStart (#191).
 // Each check keeps the matcher its own hook had (docs/tooling/git-hooks.md ("Kiro の hook")); the matcher
 // in .kiro/hooks/pre-tool-use.json is their union.
+import { discardChangesReason, discardsChanges } from "../discard-changes.ts";
 import { forbiddenCommand } from "../forbidden-commands.ts";
 import { refusesForcePush, forcePushMessage } from "../force-push.ts";
 import { generatedWriteRefusal } from "../generated-writes.ts";
@@ -72,11 +74,25 @@ function refusals(
 }
 
 // <event> is the parsed stdin. Anything it cannot read is allowed (fail-open, as each hook was).
+// A refusal wins over a question: Kiro stops the call on exit 2 and does not read stdout.
 export function preToolUse(event: unknown, env: PreToolUseEnv, deps: PreToolUseDeps): Decision {
   const allow: Decision = { status: 0, stdout: "", stderr: "" };
   // A tool name that is missing or not a string reads as one that no check looks at ("undefined").
   const tool = String(Reflect.get(Object(event), "tool_name"));
-  const reasons = refusals(tool, Reflect.get(Object(event), "tool_input"), env, deps);
-  if (reasons.length === 0) return allow;
-  return { status: 2, stdout: "", stderr: reasons.map((reason) => `${reason}\n`).join("") };
+  const input: unknown = Reflect.get(Object(event), "tool_input");
+  const reasons = refusals(tool, input, env, deps);
+  if (reasons.length > 0)
+    return { status: 2, stdout: "", stderr: reasons.map((reason) => `${reason}\n`).join("") };
+  const command: unknown = Reflect.get(Object(input), "command");
+  if (shellTool.test(tool) && typeof command === "string" && discardsChanges(command))
+    return { status: 0, stdout: askOutput(discardChangesReason), stderr: "" };
+  return allow;
+}
+
+// Exit 0 with this on stdout makes Kiro ask the user before the call (acp-server.js of Kiro 2.34.0 reads
+// hookSpecificOutput.permissionDecision "ask" and permissionDecisionReason).
+function askOutput(reason: string): string {
+  return JSON.stringify({
+    hookSpecificOutput: { permissionDecision: "ask", permissionDecisionReason: reason },
+  });
 }
