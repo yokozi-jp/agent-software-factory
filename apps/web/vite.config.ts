@@ -12,4 +12,8 @@ export default defineConfig({
     // API を /api/* に置くため。今の API は /health だけで、/api 以下の経路はまだない。
     proxy: { "/api": "http://localhost:3000" },
   },
+  test: {
+    // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
+    exclude: ["**/node_modules/**", "**/__fixtures__/**"],
+  },
 });

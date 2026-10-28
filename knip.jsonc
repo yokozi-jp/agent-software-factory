@@ -7,8 +7,10 @@
   "treatConfigHintsAsErrors": true,
   // Installed outside npm (docs/adr/0009). secret-scan and semgrep in tools/scripts run `mise exec`.
   "ignoreBinaries": ["mise"],
-  // Detection-power fixtures of the module boundaries (#43): each breaks a lint rule on purpose, and nothing
-  // imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not checked.
+  // Detection-power fixtures of the lint rules and tsconfig flags (#43, #230): each breaks a rule on purpose, and
+  // nothing imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not
+  // checked. A *.test.ts fixture is still an entry for Knip's Vitest plugin, so it must not import a dependency that
+  // only the fixtures use (packages/*/src/{application,infrastructure}/__fixtures__/effect.test.ts imports no effect).
   "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**"],
   // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
   // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.

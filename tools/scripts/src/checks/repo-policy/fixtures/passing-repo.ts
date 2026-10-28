@@ -25,11 +25,12 @@ export function migration(
   return `-- migrate:up${parts.upOptions ?? ""}\n${up}\n-- migrate:down\n${down}`;
 }
 
-// The fixtures of the runtime restrictions (docs/adr/0007) in packages/*/src/__fixtures__/: a global that the
-// rules must report, and an import in a test file that the override of the tests must still report.
+// The fixtures of the runtime restrictions (docs/adr/0007) in packages/*/src/__fixtures__/: a global and a Node.js
+// module that the rules must report, and an import in a test file that the override of the tests must still report.
 export const runtimeFixture =
   "// oxlint-disable-next-line no-restricted-globals -- fixture\nexport const a: unknown = process;\n" +
-  "// oxlint-disable-next-line no-restricted-properties -- fixture\nexport const b: unknown = globalThis.process;\n";
+  "// oxlint-disable-next-line no-restricted-properties -- fixture\nexport const b: unknown = globalThis.process;\n" +
+  '// oxlint-disable-next-line import/no-nodejs-modules -- fixture\nimport "node:fs";\n';
 export const srcFixtures = (name: string): Record<string, string> => ({
   [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
   [`packages/${name}/src/__fixtures__/runtime-apis.ts`]: runtimeFixture,
@@ -75,8 +76,36 @@ export const domainRuntimeFixtures = (name: string): Record<string, string> => (
   [`packages/${name}/src/domain/__fixtures__/runtime-apis.ts`]: runtimeFixture,
 });
 
+// The root tsconfig.json of the passing repository: a comment line, two checking flags that are on, one that is
+// off, and options that check nothing. It has a fixture line for each flag that is on.
+const tsconfigFlagsFixture = [
+  "// @ts-expect-error -- fixture: strict: the parameter has no type",
+  "export const a = (value) => String(value);",
+  "// @ts-expect-error -- fixture: noUncheckedIndexedAccess: the element may be undefined",
+  "export const b: string = list[0];",
+  "",
+].join("\n");
+const rootTsconfig = [
+  "{",
+  '  "compilerOptions": {',
+  '    "noEmit": true,',
+  "    // Strictness shared by every project.",
+  '    "strict": true,',
+  '    "noUncheckedIndexedAccess": true,',
+  '    "noUnusedLocals": false',
+  "  }",
+  "}",
+  "",
+].join("\n");
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
+  "tsconfig.json": rootTsconfig,
+  "apps/api/src/__fixtures__/tsconfig-flags.ts": tsconfigFlagsFixture,
+  "packages/claim/tsconfig.json": JSON.stringify({
+    extends: "../../tsconfig.json",
+    compilerOptions: { target: "es2024", lib: ["es2024"], types: [] },
+  }),
   "package.json": JSON.stringify({
     devDependencies: { nx: "catalog:" },
     engines: { node: "^24" },
