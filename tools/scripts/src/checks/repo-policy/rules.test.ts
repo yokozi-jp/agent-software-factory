@@ -2333,12 +2333,17 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
     },
   );
 
+  // Written without a slash before the star: countTests (the test-weakening check) reads that as a comment.
+  const star = "*";
+  const alias = `@/${star}`;
+  const underSrc = `./src/${star}`;
+
   it("passes a tsconfig.json whose paths only name files under its own src/", () => {
     expect(
       violations(
         repo({
           "apps/web/tsconfig.json": JSON.stringify({
-            compilerOptions: { paths: { "@/*": ["./src/*"] } },
+            compilerOptions: { paths: { [alias]: [underSrc] } },
           }),
         }),
       ).filter((failure) => failure.includes("lets a package resolve")),
@@ -2346,11 +2351,11 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
   });
 
   it.each([
-    ["a target outside src/", { "@/*": ["../../packages/closing/src/*"] }],
-    ["a target that leaves src/ with ..", { "@/*": ["./src/../../x"] }],
-    ["a target that is not a list", { "@/*": "./src/*" }],
-    ["an empty list of targets", { "@/*": [] }],
-    ["one entry outside src/", { "@/*": ["./src/*"], "#x": ["./lib/x.ts"] }],
+    ["a target outside src/", { [alias]: [`../../packages/closing/src/${star}`] }],
+    ["a target that leaves src/ with ..", { [alias]: ["./src/../../x"] }],
+    ["a target that is not a list", { [alias]: underSrc }],
+    ["an empty list of targets", { [alias]: [] }],
+    ["one entry outside src/", { [alias]: [underSrc], "#x": ["./lib/x.ts"] }],
   ])("refuses a tsconfig.json whose paths have %s", (_name, paths) => {
     expect(
       violations(
