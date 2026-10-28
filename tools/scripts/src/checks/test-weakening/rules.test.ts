@@ -156,6 +156,19 @@ describe("countTests", () => {
     expect(countTests('items./* note */it("a", () => {});')).toBe(0);
   });
 
+  it.each([
+    ["a double-quoted string", 'const glob = "@/*"; it("a", () => {});'],
+    ["a single-quoted string", "const glob = './src/*'; it('a', () => {});"],
+    ["a template literal", "const glob = `src/${name}/*`; it('a', () => {});"],
+    ["a string with an escaped quote", 'const s = "a\\"/*"; it("a", () => {});'],
+  ])("keeps a test after /* inside %s", (_name, source) => {
+    expect(countTests(source)).toBe(1);
+  });
+
+  it("still leaves out a block comment that comes after a string", () => {
+    expect(countTests('const a = "x"; /* it("b", () => {}); */ it("c", () => {});')).toBe(1);
+  });
+
   it("keeps a test after a URL in a string", () => {
     expect(countTests('const url = "https://example.com"; it("a", () => {});')).toBe(1);
   });

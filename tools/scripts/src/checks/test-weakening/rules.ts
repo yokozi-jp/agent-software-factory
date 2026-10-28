@@ -47,8 +47,12 @@ const runningModifiers = new Set([
 ]);
 // `it(`, `test(` and their chains (`it.each(`, `test.concurrent.for(`). Not `regex.test(` or `items.it(`.
 const declaration = /(?<![\w$.])(?:it|test)((?:\.\w+)*)\(/g;
-// `.` stops at the end of the line, so a line comment needs no `$`.
-const comments = /\/\*[\s\S]*?\*\/|^[ \t]*\/\/.*/gm;
+// A string or template literal, then a block comment, then a comment on a line of its own. The literal comes
+// first so that `/*` inside it ("@/*", a glob) does not start a comment: the scan reaches the quote before the
+// slash. A `'` or `"` ends at the end of its line; a regular expression with a quote in it can still confuse this,
+// which is why the number is an estimate. `.` stops at the end of the line, so a line comment needs no `$`.
+const literalsAndComments =
+  /("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\*[\s\S]*?\*\/|^[ \t]*\/\/.*/gm;
 
 // The number of test cases a test file declares, read from its text. A table (`it.each(table)("title")`)
 // counts once. Comments are left out; a declaration written inside a string still counts, so the number is
@@ -56,7 +60,9 @@ const comments = /\/\*[\s\S]*?\*\/|^[ \t]*\/\/.*/gm;
 export function countTests(source: string): number {
   let count = 0;
   // Stryker disable next-line StringLiteral: equivalent, the chain group always takes part (maybe empty).
-  for (const [, chain = ""] of source.replace(comments, "").matchAll(declaration)) {
+  for (const [, chain = ""] of source
+    .replace(literalsAndComments, (_match, literal?: string) => literal ?? "")
+    .matchAll(declaration)) {
     const modifiers = chain.split(".").slice(1);
     if (modifiers.every((modifier) => runningModifiers.has(modifier))) count += 1;
   }
