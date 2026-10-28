@@ -14,7 +14,7 @@
 import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
-import { docsReferences } from "./docs-references.ts";
+import { docsCodePaths, docsReferences } from "./docs-references.ts";
 import {
   domainPurity,
   effectBoundaries,
@@ -63,6 +63,7 @@ export function violations(repo: Repo): string[] {
     ...agentPermissions(tree),
     ...executableScripts(tree),
     ...docsReferences(tree),
+    ...docsCodePaths(tree),
     ...ciTargetsHaveCommands(tree),
     ...noWorkspaceInCatalog(tree),
   ];

@@ -1,4 +1,4 @@
-// Checks of the references to docs/ from outside docs/.
+// Checks of the references between docs/ and the code: to docs/ from outside it, and to files of the code from inside it.
 import { Tree } from "./tree.ts";
 
 // References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
@@ -49,6 +49,32 @@ export function docsReferences(tree: Tree): string[] {
       else if (heading !== undefined && !hasHeading(target, heading))
         failures.push(
           `${source} cites the heading "${heading}" in ${path}, which has no such heading.`,
+        );
+    }
+  }
+  return failures;
+}
+
+// References from docs/ to files of the code, such as `tools/scripts/src/checks/repo-policy/ci.ts`. A file that
+// is moved or removed leaves the path in the docs behind. Only a path in inline code that names a file (it
+// ends with an extension) under a top-level directory of the code is checked: a directory, a glob, a
+// placeholder, and a path with a line number are skipped, because none of them names a file the tree must
+// have. The ADRs are skipped: they record what was decided at the time, and often cite paths that have
+// since moved (docs/adr/0030 explains the move of a plugin, for one).
+const codePath =
+  /`((?:tools|packages|apps|types|\.github|\.kiro)\/[A-Za-z0-9_./@-]*\.[A-Za-z0-9]+)`/g;
+
+export function docsCodePaths(tree: Tree): string[] {
+  const tracked = new Set(tree.paths);
+  const failures: string[] = [];
+  for (const source of tree.paths) {
+    if (!source.startsWith("docs/") || source.startsWith("docs/adr/") || !source.endsWith(".md"))
+      continue;
+    for (const match of tree.read(source).matchAll(codePath)) {
+      const path = String(match[1]);
+      if (!tracked.has(path))
+        failures.push(
+          `${source} cites ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`,
         );
     }
   }
