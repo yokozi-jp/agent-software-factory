@@ -1,6 +1,7 @@
 // The rules of secret-scan (docs/tooling/secret-scan.md): what can be scanned, the one betterleaks command
 // line, which commits a push adds, what to scan or skip, and the exit code. Pure functions (plan() reads
 // git only through the Repo that cli.ts passes); cli.ts runs git and betterleaks.
+import { parsePrePush } from "../pre-push.ts";
 
 export type Target =
   | { readonly name: "staged" | "pre-push" | "all" | "worktree" }
@@ -63,24 +64,13 @@ export type PushedRef =
       readonly remote?: string;
     };
 
-const missing = /^0+$/;
-
-// Git writes four fields on every line (githooks(5)).
-const isRefLine = (fields: string[]): fields is [string, string, string, string] =>
-  fields.length === 4;
-
-// Git passes "<local ref> <local object name> <remote ref> <remote object name>" per ref to pre-push
-// (githooks(5)). The object name is all zeros for a ref that is deleted (local) or new (remote).
 export function pushedRefs(stdin: string): PushedRef[] {
-  return stdin
-    .split("\n")
-    .map((line) => line.split(" "))
-    .filter(isRefLine)
-    .map(([localRef, localSha, remoteRef, remoteSha]): PushedRef => {
-      if (missing.test(localSha)) return { kind: "deleted", remoteRef };
+  return parsePrePush(stdin).map(
+    ({ localRef, localSha, remoteRef, remoteSha, deleted, created }): PushedRef => {
+      if (deleted) return { kind: "deleted", remoteRef };
       const label = `${localRef} -> ${remoteRef}`;
       // A new branch: the commits that no remote-tracking branch has yet.
-      if (missing.test(remoteSha))
+      if (created)
         return { kind: "scan", remoteRef, label, revs: [localSha, "--not", "--remotes"] };
       return {
         kind: "scan",
@@ -89,7 +79,8 @@ export function pushedRefs(stdin: string): PushedRef[] {
         remote: remoteSha,
         revs: [`${remoteSha}..${localSha}`],
       };
-    });
+    },
+  );
 }
 
 // What plan() asks of the repository. cli.ts answers with git; plan() asks only what it needs, in order.

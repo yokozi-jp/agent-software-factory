@@ -1,7 +1,7 @@
 // The rules of test-weakening (#138): which changes to tests warn, and what the warning says. It warns and never
 // fails, like adr-check (docs/adr/0016), and shares its reading of pre-push and its annotations.
 // Pure functions; cli.ts reads git, stdin and the environment and prints what these return.
-import { annotationText, type Env, type Output } from "../adr-check/rules.ts";
+import { annotationText, type Env, type Output } from "../output.ts";
 
 // Test files, as Vitest finds them. Fixtures are files that other checks read, not tests to run.
 const testName = /\.(test|spec)\.[cm]?[jt]sx?$/;

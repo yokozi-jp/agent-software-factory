@@ -1,5 +1,6 @@
 // The rules of adr-check (docs/adr/0016): which changes warn, and what the warning says.
 // Pure functions; cli.ts reads git, stdin and the environment and prints what these return.
+import { annotationText, type Env, type Output } from "../output.ts";
 
 // Tests and fixtures are never decisions, at the root or at any depth, whatever their file name.
 const testOrFixture = /(^|\/)(test|tests|__tests__|fixtures|__fixtures__)\/|\.(test|spec)\./;
@@ -35,15 +36,6 @@ export function isDecisionPath(path: string): boolean {
   );
 }
 
-// Git passes "<local ref> <local object name> <remote ref> <remote object name>" per ref to pre-push
-// (githooks(5)). The local object name of a deleted ref is all zeros: nothing to compare.
-export function pushedTips(stdin: string): string[] {
-  return stdin
-    .split("\n")
-    .map((line) => line.split(" ")[1] ?? "")
-    .filter((sha) => /[^0]/.test(sha));
-}
-
 const addedAdr = /^docs\/adr\/[0-9]{4}-.*\.md$/;
 
 // The decision files to warn about, sorted. Each element is the `git diff --name-status --no-renames`
@@ -62,23 +54,8 @@ export function warnedPaths(diffs: readonly string[]): string[] {
   return [...warned].sort();
 }
 
-// The environment variables the messages read. GITHUB_ACTIONS is "true" in GitHub Actions.
-export interface Env {
-  readonly GITHUB_ACTIONS?: string | undefined;
-  readonly GITHUB_SERVER_URL?: string | undefined;
-  readonly GITHUB_REPOSITORY?: string | undefined;
-}
-
-export interface Output {
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
 const inCi = (env: Env): boolean => env.GITHUB_ACTIONS === "true";
 const lines = (...text: string[]): string => text.map((line) => `${line}\n`).join("");
-// A workflow command ends at a newline, and % starts an escape (Workflow commands for GitHub Actions).
-export const annotationText = (text: string): string =>
-  text.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
 
 export function warning(paths: readonly string[], env: Env): Output {
   const header =
