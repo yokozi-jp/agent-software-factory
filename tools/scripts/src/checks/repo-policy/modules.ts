@@ -26,39 +26,52 @@ const manifest = (name: string): string => `packages/${name}/package.json`;
 export const packageNames = (tree: Tree): string[] =>
   tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
 
-// The packages under packages/ that are not modules of the sample feature (GLOSSARY.md, docs/adr/0026). shared is
-// the code the modules share. module-fixtures has the layers of a module and holds the detection-power fixtures of
-// the overrides that reach every module; it stays when the sample feature is removed. Neither depends on a package
+// The packages under packages/ that are not modules of the sample feature (GLOSSARY.md, docs/adr/0026, 0034).
+// shared is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
+// fixtures of the overrides that reach every module; it stays when the sample feature is removed. ui holds the
+// shadcn/ui parts that the apps share; it has no layers, and no module depends on it. None depends on a package
 // of the workspace.
 const shared = "shared";
 const moduleFixtures = "module-fixtures";
-const dependOnNone: readonly string[] = [shared, moduleFixtures];
+const ui = "ui";
+const dependOnNone: readonly string[] = [shared, moduleFixtures, ui];
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but shared.
+// and module-fixtures. Every package under packages/ but shared and ui.
 export const modulePackageNames = (tree: Tree): string[] =>
-  packageNames(tree).filter((name) => name !== shared);
+  packageNames(tree).filter((name) => name !== shared && name !== ui);
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
 // exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
 // the name of its directory, and its `check` script runs `vp check`. Without the script, Nx runs neither the
 // lint nor the type check of the package, and the rules and the fixtures say nothing about it.
 const publicApi = { ".": "./src/index.ts" };
+// ui has no index.ts: shadcn installs each part into a file of its own and imports it by the path of the part, so
+// ui exports the folders of the parts, and the CSS that the apps import (docs/adr/0034).
+const uiPublicApi = {
+  "./globals.css": "./src/styles/globals.css",
+  "./components/*": "./src/components/*.tsx",
+  "./lib/*": "./src/lib/*.ts",
+};
 
 export function packageManifests(tree: Tree): string[] {
   return packageNames(tree).flatMap((name) => {
     const path = manifest(name);
     const json = record(tree.parsed(path));
     const failures: string[] = [];
+    const isUi = name === ui;
+    const exported = isUi ? uiPublicApi : publicApi;
     if (json.name !== `${scope}/${name}`)
       failures.push(
         `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
       );
-    if (JSON.stringify(json.exports) !== JSON.stringify(publicApi))
+    if (JSON.stringify(json.exports) !== JSON.stringify(exported))
       failures.push(
-        `${path} must have the exports ${JSON.stringify(publicApi)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+        isUi
+          ? `${path} must have the exports ${JSON.stringify(exported)}, the folders of the parts and the CSS and nothing else (docs/adr/0034).`
+          : `${path} must have the exports ${JSON.stringify(exported)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
       );
-    if (!tree.paths.includes(`packages/${name}/src/index.ts`))
+    if (!isUi && !tree.paths.includes(`packages/${name}/src/index.ts`))
       failures.push(
         `packages/${name}/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
       );
@@ -74,8 +87,8 @@ export function packageManifests(tree: Tree): string[] {
   });
 }
 
-// Every package under packages/ but shared and module-fixtures is a module of moduleOrder, and depends on no
-// package of the workspace but shared and the modules after it. shared and module-fixtures depend on none.
+// Every package under packages/ but shared, module-fixtures and ui is a module of moduleOrder, and depends on no
+// package of the workspace but shared and the modules after it. shared, module-fixtures and ui depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -95,7 +108,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
         if (!dependsOnNone && (target === shared || moduleOrder.indexOf(target) > position))
           continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared and module-fixtures on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures and ui on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
         );
       }
   }

@@ -72,6 +72,9 @@ const runtimeGlobalLintRules = {
 // package.json declares (pnpm, TypeScript), and repo-policy checks the declarations. The rules here are the same
 // for every module, so one override per layer reaches them all, and packages/module-fixtures holds the fixtures.
 const scope = "@agent-software-factory";
+// The React code: the app, and the parts it shares (packages/ui, docs/adr/0034). Their React, console and XSS rules
+// are the same.
+const webFiles = ["apps/web/src/**", "packages/ui/src/**"];
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
 // shared (below).
 const layers: Record<string, readonly string[]> = {
@@ -419,10 +422,11 @@ export default defineConfig({
       // On top of them: a key that is the index of an array, and the effects React says you might not need
       // (eslint-plugin-react-you-might-not-need-an-effect, in the catalog of pnpm-workspace.yaml). Its
       // no-derived-state reports what react/set-state-in-effect reports, and says what to compute during render
-      // instead, so the built-in rule is off. apps/web/src/__fixtures__/react.tsx fails `vp check` if one is
+      // instead, so the built-in rule is off. apps/web/src/__fixtures__/react.tsx and
+      // packages/ui/src/__fixtures__/react.tsx fail `vp check` if one is
       // turned off.
       {
-        files: ["apps/web/src/**"],
+        files: webFiles,
         plugins: ["react", "jsx-a11y"],
         jsPlugins: [
           {
@@ -447,7 +451,7 @@ export default defineConfig({
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).
       // Collect client errors with an error tracking service instead.
       {
-        files: ["apps/web/src/**"],
+        files: webFiles,
         rules: { "no-console": "error" },
       },
       // Imports in apps/web/src name a file in another directory with `@/` (the paths of tsconfig.json), not with
@@ -474,7 +478,7 @@ export default defineConfig({
       // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
       {
-        files: ["apps/web/src/**"],
+        files: webFiles,
         jsPlugins: [{ name: "web-xss", specifier: "./tools/lint-plugins/src/xss-plugin.ts" }],
         plugins: ["unicorn"],
         rules: {

@@ -48,11 +48,13 @@
     // module-fixtures holds only the fixtures of the overrides that reach every module (docs/adr/0026). They import
     // effect, and Knip does not read __fixtures__/, so the dependency always looks unused.
     "packages/module-fixtures": { "ignoreDependencies": ["effect"] },
-    "apps/web": {
-      // Parts that `shadcn add` writes into components/ui/ (docs/adr/0033). The code is the library's, so it has
+    "packages/ui": {
+      // Parts that `shadcn add` writes into components/ (docs/adr/0033, 0034). The code is the library's, so it has
       // unused exports (variants, sub-parts) by design, and the parts are not imported until a screen uses them.
       // As entries, their exports are not reported, and what they import (@base-ui/react, cn, ...) counts as used.
-      "entry": ["src/components/ui/**/*.tsx", "src/lib/utils.ts"],
+      // lib/utils.ts, the file `aliases.utils` of components.json names, is an entry too: Knip reads it from the
+      // `exports` of package.json (./lib/*), so it needs no pattern here.
+      "entry": ["src/components/**/*.tsx"],
     },
     "apps/api": {
       "entry": [

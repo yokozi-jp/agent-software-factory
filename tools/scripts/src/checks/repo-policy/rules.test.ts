@@ -2173,7 +2173,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared and module-fixtures on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures and ui on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2288,6 +2288,32 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     ).toEqual([
       `packages/module-fixtures/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`,
     ]);
+  });
+
+  it("asks ui for no place in moduleOrder, no index.ts, no lint-effect script, and its own exports", () => {
+    const uiExports = {
+      "./globals.css": "./src/styles/globals.css",
+      "./components/*": "./src/components/*.tsx",
+      "./lib/*": "./src/lib/*.ts",
+    };
+    const ui = (fields: Record<string, unknown>) => ({
+      "packages/ui/package.json": packageJson("ui", { exports: uiExports, ...fields }),
+    });
+    expect(violations(repo(ui({})))).toEqual([]);
+    expect(violations(repo(ui({ exports: { ".": "./src/index.ts" } })))).toEqual([
+      `packages/ui/package.json must have the exports ${JSON.stringify(uiExports)}, the folders of the parts and the CSS and nothing else (docs/adr/0034).`,
+    ]);
+    expect(
+      violations(repo(ui({ dependencies: { "@agent-software-factory/shared": "workspace:*" } }))),
+    ).toEqual([wrong("ui", "dependencies", "shared")]);
+  });
+
+  it("refuses a module that depends on ui", () => {
+    expect(
+      violations(
+        repo(manifest("claim", { dependencies: { "@agent-software-factory/ui": "workspace:*" } })),
+      ),
+    ).toEqual([wrong("claim", "dependencies", "ui")]);
   });
 
   it("passes a dependency outside the workspace, and one of a longer scope", () => {

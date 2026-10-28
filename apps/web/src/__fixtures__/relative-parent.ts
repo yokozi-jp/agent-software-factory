@@ -4,6 +4,6 @@
 // fails (reportUnusedDisableDirectives). Knip skips __fixtures__/, and nothing imports this file.
 
 // oxlint-disable-next-line no-restricted-imports -- fixture: a parent directory is imported with `@/`
-import type { cn } from "../lib/utils.ts";
+import type { Route } from "../routes/index.tsx";
 
-export type Cn = typeof cn;
+export type IndexRoute = typeof Route;

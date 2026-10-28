@@ -11,14 +11,14 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 ## 決定
 
-- **UI 部品**: shadcn/ui の CLI で部品のコードを `apps/web/src/components/ui/` に取り込みます。取り込んだコードはこのリポジトリのコードで、直接編集します。下位ライブラリは Base UI (`@base-ui/react`) で、`pnpm dlx shadcn@latest init --base base` が選びます。`components.json` に設定が残ります。
-- **スタイル**: Tailwind CSS v4 (`tailwindcss` と `@tailwindcss/vite`) です。CSS の入口は `apps/web/src/index.css` で、`main.tsx` が読みます。CSS-in-JS は使いません。
-- **alias**: `@/*` は `apps/web/src/*` を指します。`tsconfig.json` の `paths` に書きます。shadcn が生成するコードが `@/components/ui/button` のように import します。`apps/web/src` は、別のディレクトリのファイルを `@/` で import し、`../` を使いません。`vite.config.ts` の `no-restricted-imports` が `../` を止め、`apps/web/src/__fixtures__/relative-parent.ts` が検出力を確かめます。`apps/api` と `packages/*` には適用しません。
+- **UI 部品**: shadcn/ui の CLI で部品のコードを `packages/ui/src/components/` に取り込みます ([ADR 0034](0034-shared-ui-package.md)。最初は `apps/web/src/components/ui/` に置き、Issue #330 で移しました)。取り込んだコードはこのリポジトリのコードで、直接編集します。下位ライブラリは Base UI (`@base-ui/react`) で、`pnpm dlx shadcn@latest init --base base` が選びます。`components.json` に設定が残ります。
+- **スタイル**: Tailwind CSS v4 (`tailwindcss` と `@tailwindcss/vite`) です。テーマの CSS は `packages/ui/src/styles/globals.css` で、CSS の入口の `apps/web/src/index.css` が `@import` と `@source` で読み、`main.tsx` が `index.css` を読みます (ADR 0034)。CSS-in-JS は使いません。
+- **alias**: `@/*` は `apps/web/src/*` を指します。`tsconfig.json` の `paths` に書きます。`apps/web` の中のコードが `@/routes/...` のように import します。`packages/ui` の部品は `paths` ではなく `package.json` の `imports` (`#components/*`) と `exports` で import します (ADR 0034)。`apps/web/src` は、別のディレクトリのファイルを `@/` で import し、`../` を使いません。`vite.config.ts` の `no-restricted-imports` が `../` を止め、`apps/web/src/__fixtures__/relative-parent.ts` が検出力を確かめます。`apps/api` と `packages/*` には適用しません。
 - **alias の実装**: `vite.config.ts` は `resolve.tsconfigPaths: true` にして、`tsconfig.json` の `paths` を Vite が読みます。`resolve.alias` は書きません (Issue #314 は `resolve.alias` を挙げていました)。[ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md) は、宣言していない package を解決させる `paths` と `alias` を repo-policy で止めています。`@/*` が指すのは自分の `./src/*` だけで、ほかの package は解決しません。そこで repo-policy は、すべての target が `./src/` の下にある `paths` を許し、空の `paths`、`..` を含む target、`baseUrl`、`alias` は止めたままにしました。ADR 0026 のほかの規則は変えません。
 - **版**: 足した依存の版は `pnpm-workspace.yaml` の catalog で固定します。`shadcn init` が足す行の引用符は `vp fmt` で整えます。
-- **置き場所**: 部品は `components/ui/` です。業務コンポーネントは置きません ([Webフロントエンドのコンポーネント設計](../web-frontend/component-design.md))。
-- **story**: `components/ui/` の各部品に隣の `*.stories.tsx` を必須にします。ない部品は失敗にします。この検査は [Issue #315](https://github.com/yokozi-jp/agent-software-factory/issues/315) で作ります。業務コンポーネントは対象外です。
-- **テスト**: Storybook の story を component test にします。`*.test.tsx` と `vitest-browser-react` は使いません。`components/ui/` に専用のテストは書きません。基盤の確認は `vp check` と `vp build` です。
+- **置き場所**: 部品は `packages/ui/src/components/` です。業務コンポーネントは置きません ([Webフロントエンドのコンポーネント設計](../web-frontend/component-design.md))。
+- **story**: `packages/ui/src/components/` の各部品に隣の `*.stories.tsx` を必須にします。ない部品は失敗にします。この検査は [Issue #315](https://github.com/yokozi-jp/agent-software-factory/issues/315) で作ります。業務コンポーネントは対象外です。
+- **テスト**: Storybook の story を component test にします。`*.test.tsx` と `vitest-browser-react` は使いません。`packages/ui` に専用のテストは書きません。基盤の確認は `vp check` と `vp build` です。
 
 ## 制約
 
@@ -31,8 +31,8 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 `shadcn add` が書くコードは、このリポジトリの検査をそのままでは通りません。
 
-- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `components/ui/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `apps/web` に、`src/components/ui/**/*.tsx` と `src/lib/utils.ts` を `entry` として書きました。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
-- **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `apps/web/src/index.css` だけを足しました。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
+- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `packages/ui/src/components/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `packages/ui` に、`src/components/**/*.tsx` を `entry` として書きました (`src/lib/utils.ts` は `exports` から entry になります)。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@agent-software-factory/ui/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
+- **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `packages/ui/src/styles/globals.css` だけを足しました (移す前は `apps/web/src/index.css`)。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
 
 ## Considered Options
 
@@ -43,8 +43,8 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 ## Consequences
 
-- 部品を足すときは `pnpm dlx shadcn@latest add <部品>` を `apps/web` で実行し、`vp check` と `vp build` を通します。
+- 部品を足すときは `pnpm dlx shadcn@latest add <部品>` を `apps/web` で実行し (部品は `packages/ui` に入ります)、`vp check` と `vp build` を通します。
 - 取り込んだコードの更新は人が確かめます。Renovate の PR は出ません。
-- `index.css` には shadcn が書くダークモード用の変数と `.dark` の変種が入っています。ダークモードは使わない範囲で、決めるときは [ダークモード](../web-frontend/dark-mode.md) を読みます。
-- 部品は今 `apps/web` の中に置きます。UI を使うアプリは今は 1 つだけだからです。複数のアプリで共有するときは、shadcn の標準の構成 ([Monorepo](https://ui.shadcn.com/docs/monorepo)) に従い、`packages/ui` に移します。ADR 0026 は `packages/` の直下を module と `shared` と `module-fixtures` に限り、`exports` を `src/index.ts` だけにしているので、移す前に例外を決めます ([Issue #330](https://github.com/yokozi-jp/agent-software-factory/issues/330))。
+- `globals.css` には shadcn が書くダークモード用の変数と `.dark` の変種が入っています。ダークモードは使わない範囲で、決めるときは [ダークモード](../web-frontend/dark-mode.md) を読みます。
+- 部品は `packages/ui` に置き、複数のアプリで共有します。ADR 0026 の例外は [ADR 0034](0034-shared-ui-package.md) で決めました ([Issue #330](https://github.com/yokozi-jp/agent-software-factory/issues/330))。
 - Storybook を入れる Issue (#141) と、story の検査の Issue (#315) が、この決定の続きです。

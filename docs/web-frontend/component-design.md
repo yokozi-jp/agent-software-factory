@@ -84,14 +84,14 @@ sources:
 
 このリポジトリの共通コンポーネントは、shadcn/ui (下位ライブラリは Base UI) と Tailwind CSS v4 で作ります ([ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。上の表の「既存コンポーネントライブラリの活用」のうち、部品のコードをリポジトリに取り込んで自分たちで編集する方式です。
 
-- **置き場所**: 共通コンポーネントは `apps/web/src/components/ui/` に置きます。`apps/web` で `pnpm dlx shadcn@latest add <部品>` を実行すると、コードがそこに入ります。業務コンポーネントは置きません。
+- **置き場所**: 共通コンポーネントは `packages/ui/src/components/` に置き、`@agent-software-factory/ui/components/<部品>` から import します ([ADR 0034](../adr/0034-shared-ui-package.md))。`apps/web` で `pnpm dlx shadcn@latest add <部品>` を実行すると、コードが `packages/ui` に入ります。業務コンポーネントは置きません。
 - **編集**: 取り込んだコードは直接編集します。
-- **import**: `apps/web/src` で別のディレクトリのファイルを import するときは `@/` を使い、`../` は使いません (`vite.config.ts` の `no-restricted-imports` が止めます)。同じディレクトリのファイルは `./` で import します。`@/*` は `apps/web/src/*` を指します。他の package (`apps/api`、`packages/*`) には適用しません。
-- **`cn`**: クラス名の結合 (`cn`) は、`shadcn add` が生成する部品が npm の `cn` (shadcn-ui の公式の package) から import します。生成された import は書き換えず、`add --diff` の差分を増やしません。自分で書くコードも `cn` を使うときは `@/lib/utils` から import します。
-- **初期化**: 初期化 (`shadcn init`) は済んでいて、`apps/web/components.json` に設定があります。やり直すときは、`apps/web` で `pnpm dlx shadcn@latest init -t vite -b base -p nova -y --no-monorepo --no-rtl </dev/null` を実行します。preset (`-p`) を指定しないと入力待ちで止まります (2026-10 に shadcn 4.22.1 で確かめた)。生成した catalog の行の引用符は `vp fmt` で整えます。
+- **import**: `apps/web/src` で別のディレクトリのファイルを import するときは `@/` を使い、`../` は使いません (`vite.config.ts` の `no-restricted-imports` が止めます)。同じディレクトリのファイルは `./` で import します。`@/*` は `apps/web/src/*` を指します。他の package (`apps/api`、`packages/*`。`packages/ui` の中は `package.json` の `imports` の `#components/*` など) には適用しません。
+- **`cn`**: クラス名の結合 (`cn`) は、`shadcn add` が生成する部品が npm の `cn` (shadcn-ui の公式の package) から import します。生成された import は書き換えず、`add --diff` の差分を増やしません。自分で書くコードも `cn` を使うときは `@agent-software-factory/ui/lib/utils` から import します。
+- **初期化**: 初期化 (`shadcn init`) は済んでいて、`apps/web/components.json` と `packages/ui/components.json` に設定があります (両方で `style`、`iconLibrary`、`baseColor` を同じにします)。やり直すときは、`shadcn init` ではなく両方の `components.json` を [ADR 0034](../adr/0034-shared-ui-package.md) の alias に合わせて書きます。`init` は 1 つのアプリの構成を作るので、`packages/ui` への振り分けを壊します。
 - **更新**: 取り込んだコードは依存ではないので、Renovate は更新を知らせません。`pnpm dlx shadcn@latest add <部品> --diff` で上流との差を見て、必要な変更を手で取り込みます。
 - **CSP**: Base UI の `ScrollArea` と `Select` は `<style>` 要素を出します。使うときは、上位に Base UI の `CSPProvider` を置き、`disableStyleElements` を付けるか `nonce` を渡します。
-- **story**: `components/ui/` の部品には隣に `*.stories.tsx` を置く方針です。Storybook と検査は別の Issue で入れます ([ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。
+- **story**: `packages/ui/src/components/` の部品には隣に `*.stories.tsx` を置く方針です。Storybook と検査は別の Issue で入れます ([ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。
 
 ## コンポーネント実装方針
 
