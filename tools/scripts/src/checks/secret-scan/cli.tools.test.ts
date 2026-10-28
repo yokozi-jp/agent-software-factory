@@ -65,7 +65,10 @@ describe("secret-scan with the real betterleaks and .betterleaks.toml", () => {
     expect(scan(["staged"]).status).toBe(0);
     writeFileSync(join(repo, "leak.ts"), `export const key = "${token}";\n`);
     git("add", "leak.ts");
-    expect(scan(["staged"]).status).toBe(1);
+    const found = scan(["staged"]);
+    expect(found.status).toBe(1);
+    // --verbose: the failure names the file, so nobody scans file by file to find it.
+    expect(found.stdout + found.stderr).toContain("leak.ts");
     git("commit", "-qm", "leak");
     head = git("rev-parse", "HEAD");
   }, 120_000);

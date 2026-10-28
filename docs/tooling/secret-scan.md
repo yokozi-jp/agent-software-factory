@@ -10,6 +10,10 @@ tags: [tooling, runbook, betterleaks, security]
 betterleaks が hook と CI で秘密情報を検出します。設定は `.betterleaks.toml` で、デフォルトのルールをそのまま使います。
 誤検知は行ごとに除外し、本物の秘密情報はコードから取り除いて無効化します。
 
+## 検出された場所を読む
+
+失敗すると、betterleaks が検出ごとに規則名、path、該当行を出します。秘密の値は `--redact` で `REDACTED` に置き換わるので、出力に値は出ません。出た path と行に、下の除外か取り除きを行います。
+
 ## 誤検知を除外する
 
 次のどちらかで個別に除外します。
@@ -31,7 +35,7 @@ betterleaks が hook と CI で秘密情報を検出します。設定は `.bett
 
 ## 手動で scan する
 
-hook と CI も同じ `tools/scripts/src/checks/secret-scan/cli.ts` を使います。フラグ (`--redact`、`--config .betterleaks.toml`) はスクリプトが必ず付けるので、渡せるのは調べる対象だけです。
+hook と CI も同じ `tools/scripts/src/checks/secret-scan/cli.ts` を使います。フラグ (`--redact`、`--verbose`、`--config .betterleaks.toml`) はスクリプトが必ず付けるので、渡せるのは調べる対象だけです。
 
 ```sh
 node tools/scripts/src/checks/secret-scan/cli.ts all        # 全履歴

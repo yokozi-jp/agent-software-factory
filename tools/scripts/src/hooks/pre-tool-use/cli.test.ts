@@ -65,6 +65,17 @@ afterAll(async () => {
 });
 
 describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
+  it("asks the user with exit 0 and the decision as JSON on stdout", () => {
+    const result = hook(event("execute_bash", { command: "git checkout -- a.ts && git status" }));
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: {
+        permissionDecision: "ask",
+        permissionDecisionReason: expect.stringMatching(/^ask-discard-changes: /) as unknown,
+      },
+    });
+  });
   it("refuses a force push with exit 2 and the reason on stderr", () => {
     const result = hook(event("execute_bash", { command: "git status && git push --force" }));
     expect(result.status).toBe(2);
