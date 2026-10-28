@@ -5,6 +5,10 @@
 -- 表の定義は Better Auth 1.7 の CLI (`auth generate`) と同じ内容。権限は auth スキーマの
 -- ALTER DEFAULT PRIVILEGES (20261027000000_create_auth_schema.sql) で auth_service に付く。
 -- "lastRequest" は、最後の要求の時刻 (Unix epoch のミリ秒)。
+--
+-- auth スキーマのほかの表と同じく、docs/db/ の規約 (snake_case とプレフィックスの物理名、キーワードを
+-- 避けること、共通カラム、日時の timestamptz) に従わず、Better Auth の定義のままにしている。
+-- auth スキーマを規約の例外にするかは #278 で決める。
 
 -- migrate:up
 SET LOCAL lock_timeout = '5s';
