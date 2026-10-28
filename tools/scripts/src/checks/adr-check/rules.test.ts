@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { isDecisionPath, pushedTips, skipped, warnedPaths, warning } from "./rules.ts";
+import { isDecisionPath, skipped, warnedPaths, warning } from "./rules.ts";
 
 const guide = 'docs/knowledge/documentation-authoring.md ("ADR を書くかどうか")';
 const guideUrl =
@@ -109,25 +109,6 @@ describe("warnedPaths", () => {
 
   it("lists a file changed by two commits once", () => {
     expect(warnedPaths(["M\tpackage.json\n", "M\tpackage.json\n"])).toEqual(["package.json"]);
-  });
-});
-
-const zero = "0".repeat(40);
-const a = "a".repeat(40);
-const b = "b".repeat(40);
-
-describe("pushedTips", () => {
-  it("takes the local object name of each ref that git passes to pre-push", () => {
-    const stdin = `refs/heads/x ${a} refs/heads/x ${zero}\nrefs/heads/y ${b} refs/heads/y ${a}\n`;
-    expect(pushedTips(stdin)).toEqual([a, b]);
-  });
-
-  it("skips a deleted ref, whose local object name is all zeros", () => {
-    expect(pushedTips(`(delete) ${zero} refs/heads/x ${a}\n`)).toEqual([]);
-  });
-
-  it("reads nothing from empty input", () => {
-    expect(pushedTips("")).toEqual([]);
   });
 });
 
