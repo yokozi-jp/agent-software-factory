@@ -46,4 +46,5 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 - 部品を足すときは `pnpm dlx shadcn@latest add <部品>` を `apps/web` で実行し、`vp check` と `vp build` を通します。
 - 取り込んだコードの更新は人が確かめます。Renovate の PR は出ません。
 - `index.css` には shadcn が書くダークモード用の変数と `.dark` の変種が入っています。ダークモードは使わない範囲で、決めるときは [ダークモード](../web-frontend/dark-mode.md) を読みます。
+- 部品は今 `apps/web` の中に置きます。UI を使うアプリは今は 1 つだけだからです。複数のアプリで共有するときは、shadcn の標準の構成 ([Monorepo](https://ui.shadcn.com/docs/monorepo)) に従い、`packages/ui` に移します。ADR 0026 は `packages/` の直下を module と `shared` と `module-fixtures` に限り、`exports` を `src/index.ts` だけにしているので、移す前に例外を決めます ([Issue #330](https://github.com/yokozi-jp/agent-software-factory/issues/330))。
 - Storybook を入れる Issue (#141) と、story の検査の Issue (#315) が、この決定の続きです。
