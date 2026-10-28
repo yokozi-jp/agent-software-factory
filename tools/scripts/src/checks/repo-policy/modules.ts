@@ -115,6 +115,25 @@ const resolves = (path: string, what: string) =>
 const aliasKey = /\balias\s*[:,}]/;
 const withoutLineComments = (text: string): string => text.replace(/(^|[^:])\/\/.*/gm, "$1");
 
+// A `paths` that only names files under the package's own src/ ({ "@/*": ["./src/*"] }, docs/adr/0033). It
+// resolves nothing outside the package, so it cannot reach a module the package does not declare. An empty
+// `paths`, a target outside ./src/, and a target with `..` are not this.
+function staysInSrc(paths: unknown): boolean {
+  const entries = Object.values(record(paths));
+  return (
+    entries.length > 0 &&
+    entries.every(
+      (targets) =>
+        Array.isArray(targets) &&
+        targets.length > 0 &&
+        targets.every(
+          (target) =>
+            typeof target === "string" && target.startsWith("./src/") && !target.includes(".."),
+        ),
+    )
+  );
+}
+
 // The settings that let a package resolve a package it does not declare: the paths and baseUrl of a tsconfig.json
 // (TypeScript), an alias of a vite.config.ts (Vite and Vitest), and a hoisted node_modules (pnpm). With any of
 // them, a module could import a module that it may not depend on, and nothing would stop it.
@@ -122,8 +141,9 @@ export function noResolutionBypass(tree: Tree): string[] {
   const failures: string[] = [];
   for (const path of tree.named("tsconfig.json")) {
     const options = record(record(tree.parsed(path)).compilerOptions);
-    for (const option of ["paths", "baseUrl"])
-      if (option in options) failures.push(resolves(path, `sets compilerOptions.${option}`));
+    if ("baseUrl" in options) failures.push(resolves(path, "sets compilerOptions.baseUrl"));
+    if ("paths" in options && !staysInSrc(options.paths))
+      failures.push(resolves(path, "sets compilerOptions.paths"));
   }
   for (const path of tree.named("vite.config.ts"))
     if (aliasKey.test(withoutLineComments(tree.read(path))))

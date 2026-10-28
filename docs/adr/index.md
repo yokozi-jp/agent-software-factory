@@ -32,3 +32,4 @@
 - [ADR 0030: 自作の Oxlint plugin は tools/lint-plugins の Nx project にまとめ、app や package には置かない](0030-lint-plugins-in-tools-lint-plugins.md)：自作の Oxlint plugin を足す、直す、移すとき、plugin のテストを動かす場所を探すとき、新しい app や package に既存の plugin の規則を使いたくなったとき
 - [ADR 0031: mutation test は PR の CI から外し、1日1回の workflow で実行する](0031-mutation-testing-outside-pull-requests.md)：mutation の実行時間が重いとき、Stryker の設定や target を変えるとき、mutation を merge のゲートに戻したくなったとき
 - [ADR 0032: 環境変数は入口のファイルが読んで検査し、createApp に引数で渡す](0032-env-read-at-entry-and-passed-as-argument.md)：環境変数の読み方や検査を変えるとき、`createApp` の引数を変えるとき、アプリのコードで `c.env` や `process.env` を読みたくなったとき、Cloudflare Workers の入口を足すとき
+- [ADR 0033: web の UI は shadcn/ui (Base UI) と Tailwind CSS v4 で作り、カタログは Storybook に一本化する](0033-shadcn-base-ui-tailwind-v4-storybook.md)：web の UI 部品やスタイルの方式を変えるとき、`components/ui/` に部品を足すとき、取り込んだ部品のコードを上流に合わせて更新するとき、Storybook や component test を入れるとき、Base UI の `ScrollArea` や `Select` を使うとき、web の CSP を決めるとき
