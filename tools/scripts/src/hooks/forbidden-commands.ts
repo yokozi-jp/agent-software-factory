@@ -87,7 +87,7 @@ export function forbiddenCommand(command: string): string | undefined {
   )
     return refusal(
       "Reading credentials (credentials: ~/.aws, ~/.ssh, ~/.config/gh, .env*, `gh auth token`) leaks them to the model.",
-      "Ask the user to run the command that needs them.",
+      'Ask the user to run the command that needs them. A command that only names a path in text (sed, grep) also stops here: write the code to a file with a file tool and run that, or leave the name out (docs/tooling/agent-permissions.md, ".env を読ませない").',
     );
   if (
     some(String.raw`aws(\s|$)`).length > 0 ||

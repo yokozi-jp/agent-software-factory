@@ -161,6 +161,41 @@ describe("preToolUse: forbidden commands", () => {
   });
 });
 
+describe("preToolUse: discarding uncommitted changes", () => {
+  const ask = (reason: string) => ({
+    status: 0,
+    stdout: JSON.stringify({
+      hookSpecificOutput: { permissionDecision: "ask", permissionDecisionReason: reason },
+    }),
+    stderr: "",
+  });
+
+  const discardReason =
+    "ask-discard-changes: this git command discards uncommitted changes, which git cannot restore. The working tree may hold another session's edits or your own uncommitted ones. To undo your own edit, write the file back with the file tools, or keep the changes with `git stash` (docs/tooling/agent-permissions.md).";
+
+  it.each(["execute_bash", "shell"])(
+    "asks the user with exit 0 and the decision on stdout, from %s",
+    (tool) => {
+      expect(preToolUse(shell("git checkout -- src/a.ts", tool), {}, deps())).toEqual(
+        ask(discardReason),
+      );
+    },
+  );
+
+  it("does not ask for a command that keeps the changes", () => {
+    expect(preToolUse(shell("git restore --staged src/a.ts"), {}, deps())).toEqual(allow);
+  });
+
+  it("does not look at a tool that is not the shell", () => {
+    expect(preToolUse(write("fs_write", "git reset --hard"), {}, deps())).toEqual(allow);
+  });
+
+  it("refuses rather than asks when the command is also refused", () => {
+    const result = preToolUse(shell("git reset --hard && git push -f"), {}, deps());
+    expect(result).toEqual({ status: 2, stdout: "", stderr: `${forcePushMessage}\n` });
+  });
+});
+
 describe("preToolUse: .kiro/settings", () => {
   it.each(["fs_write", "str_replace", "fs_append", "delete_file"])("refuses %s", (tool) => {
     const event = {

@@ -34,7 +34,11 @@ const runtimeImports = {
 // into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
 // from globalThis.
 const runtimeGlobals = [
-  { name: "process", message: "Read environment variables from `c.env`." },
+  {
+    name: "process",
+    message:
+      "Read environment variables only in the entry file and pass them to the app as arguments (docs/adr/0032).",
+  },
   { name: "Bun", message: runtimeImportMessage },
   { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
 ];

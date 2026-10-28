@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
-    "start": "node dist/server.js",
+    "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vp test run --coverage",
     "check": "vp check",
     "db:migrate": "node db/migrate.ts",
@@ -22,7 +22,8 @@
     "better-auth": "catalog:",
     "hono": "catalog:",
     "kysely": "catalog:",
-    "pg": "catalog:"
+    "pg": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@hono/vite-dev-server": "catalog:",

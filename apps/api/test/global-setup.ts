@@ -19,7 +19,20 @@ declare module "vite-plus/test" {
 
 const realmFile = new URL("./keycloak/factory-realm.json", import.meta.url);
 
+// vitest 5.0.5 (Vite+ 1.4.0) は globalSetup が投げた失敗を表示できない。失敗の stack を読むと、source map で
+// 位置を直す処理が "TypeError: code.charCodeAt is not a function" を投げ、"No test files found" と一緒にそれだけが
+// 出て、元の失敗が消える。そこで、stack を読まずに String(error) (名前と message) を stderr に書いてから投げ直す。
+// コンテナの起動の待ちの時間切れ (別のセッションのテストでマシンが重いとき) などが、このメッセージで分かる。
 export default async function setup(project: TestProject) {
+  try {
+    return await start(project);
+  } catch (error) {
+    process.stderr.write(`globalSetup (test/global-setup.ts) が失敗した: ${String(error)}\n`);
+    throw error;
+  }
+}
+
+async function start(project: TestProject) {
   const [postgres, keycloak] = await Promise.all([
     new PostgreSqlContainer(postgresImage).start(),
     new GenericContainer("quay.io/keycloak/keycloak:26.8.1")

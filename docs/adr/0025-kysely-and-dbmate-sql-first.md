@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0025: DB のアクセス層は Kysely にし、スキーマの正本は dbmate で流す版付きの SQL の migration にし、型は DB から生成する"
-description: PostgreSQL のアクセス層を Kysely にし、スキーマの正本を版付きの SQL の migration ファイルにして dbmate で流し、型を migration を流した DB から kysely-codegen でスキーマごとに生成する決定。migration は前に進めるだけで、本番では CD が ECS のタスクとして migration 用のロールで流す。Better Auth の表も同じ経路で作る。表や migration を足すとき、クエリを書くとき、ORM や Drizzle、Prisma、node-pg-migrate を使いたくなったとき、down の migration を書きたくなったとき、アプリの起動時に migration を流したくなったときに読む。
+description: PostgreSQL のアクセス層を Kysely にし、スキーマの正本を版付きの SQL の migration ファイルにして dbmate で流し、型を migration を流した DB から kysely-codegen でスキーマごとに生成する決定。migration は前に進めるだけで、本番では CD が ECS のタスクとして migration 用のロールで流す。Better Auth の表も同じ経路で作る。表や migration を足すとき、クエリを書くとき、ORM や Drizzle、Prisma、node-pg-migrate を使いたくなったとき、down の migration を書きたくなったとき、アプリの起動時に migration を流したくなったとき、Better Auth の表を docs/db の命名や共通カラムの規約に合わせたくなったときに読む。
 tags: [adr, db, postgresql, migration, kysely, dbmate, rls]
 ---
 
@@ -28,6 +28,7 @@ tags: [adr, db, postgresql, migration, kysely, dbmate, rls]
   - **接続**: `migrator`、`app_user`、`auth_service` は IAM DB authentication で接続します (`@aws-sdk/rds-signer` で token を署名し、TLS 必須)。secret は RDS が管理する master user のものだけです。ただし、Outbox を送るログインできるロール `outbox_relay` ([ADR 0029](0029-module-data-ownership-and-shared-outbox.md)) は別の秘密を持つと決めたので、この記述と合いません。どちらに合わせるかは [Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) で決め、そのときにこの行を直します。
   - **ローカルと CI**: 同じ bootstrap の SQL を使い、testcontainers の superuser が master user の役をします。違いは `rds_iam` の有無だけで、ローカルはパスワードで接続します。
 - **Better Auth の表**: `npx auth generate` が出す SQL を最初の migration (`apps/api/db/migrations/`) にし、実行時に表を作る `migrateAuth()` (Better Auth の `getMigrations`) は使いません。`auth` スキーマと表は migration 用のロールが所有し、`auth_service` には `USAGE` と行の読み書き (`SELECT`、`INSERT`、`UPDATE`、`DELETE`) だけを与えます。起動時の `validateSchema` は残します。接続は `database.schemaName` ではなく、`pg.Pool` に `options: "-c search_path=auth"` を渡す形にします。Better Auth の docs は、`Pool` を直接渡すときと、接続ごとに同じスキーマを使うときの書き方として `search_path` を挙げています ([PostgreSQL adapter](https://better-auth.com/docs/adapters/postgresql#set-search_path))。`schemaName` は `pg.Pool` を直接渡す形では使えず、Kysely の dialect か instance を自分で組み立てる形が要るので、いまの `Pool` の渡し方を変えずに済む `search_path` にしました。表の作成は migration が行うので、`schemaName` の利点 (CLI の migrate がスキーマを作る) も使いません。Better Auth の版を上げて表が変わるときは、`auth generate` の差分を読んで migration を手で書きます。
+  - **docs/db の規約の例外**: `auth` スキーマの表は、Better Auth が生成する名前と型のままにし、[物理名の命名ポリシー](../db/postgresql-naming-physical.md) (snake_case とテーブル種別のプレフィックス、キーワードを避けること)、[共通カラム](../db/postgresql-keys.md)、[日時の `timestamptz`](../db/postgresql-column.md) に従いません。`"user"` や `"count"` のような、引用符の要る名前もそのままです。Better Auth の `modelName` と `fields` で表と列の名前は変えられますが、主キーの列は `id` から変えられず、型 (`rateLimit` の `lastRequest` は epoch のミリ秒の数値) も変えられません。共通カラムは、NULL を許すか既定値を持てば足せますが、Better Auth が値を入れないので、規約の目的 (調査、排他制御) に使えません。名前だけを寄せても規約には合いきらず、版を上げて Better Auth が列を足すたびに対応表を足す手間と、名前を変える使い方の不具合 (下の Considered Options) を負うので、規約の例外にしました。`auth` の表を読み書きするのは Better Auth だけで、アプリのコードとクエリからは見えません。DB の規約の検査を作るとき ([Issue #278](https://github.com/yokozi-jp/agent-software-factory/issues/278))、`auth` スキーマを命名と共通カラムの対象から外す理由は、この行です。
 - **テスト**: テストは本番と同じ dbmate の `migrate` で、`globalSetup` でテンプレートの DB に1回だけ流し、各テストは `CREATE DATABASE … TEMPLATE` で複製します。空の DB に全部を適用できることと、2回目の `migrate` で何も適用されないことを確かめます。
 - **seed**: 手で触るためのローカルのデータは migration の外の seed に置き、本番では流しません。アプリが動くのに必須のデータ (区分のコード表など) は migration に入れます。
 
@@ -40,6 +41,7 @@ tags: [adr, db, postgresql, migration, kysely, dbmate, rls]
 - **Kysely の Migrator と kysely-ctl**: 依存は増えませんが、migration は TS のファイルで、トランザクションを使わない指定 (`disableTransactions`) は実行の全体にしか効きません。kysely-ctl の peer は `kysely <0.30` です。
 - **Flyway**: 取り込んだガイドラインの例にある定番ですが、JVM が要ります。
 - **down の migration を書く**: 開発中のやり直しはテンプレートの DB を作り直せば済みます。expand を戻すと書かれたデータが消え、contract は down を書いても消えたデータが戻らず、ふだん流さない down は障害の最中に初めて流して失敗する恐れがあります。
+- **Better Auth の表の名前を、`modelName` と `fields` で docs/db の規約に寄せる**: 本番に出す前なので、最初の migration を書き直せば移行の費用はほとんどかかりません。ただし主キーの `id`、型、共通カラムは規約から外れたままです。名前を変える使い方は、既定の名前より使う人が少なく、過去に壊れています (`user.modelName` を変えるとセッションの解決が壊れた [better-auth#10695](https://github.com/better-auth/better-auth/issues/10695)、Prisma で名前を変えると `validateSchema` が誤って失敗した [better-auth#11310](https://github.com/better-auth/better-auth/issues/11310)。どちらも修正済み)。版を上げたときに壊れる危険が既定の名前より高い、というのが判断です。
 
 ## Consequences
 
@@ -55,4 +57,5 @@ tags: [adr, db, postgresql, migration, kysely, dbmate, rls]
 - kysely-codegen の `--include-pattern`: [kysely-codegen の README](https://github.com/RobinBlomberg/kysely-codegen)
 - Kysely の Migrator が lock の表を使い、`disableTransactions` が実行の全体に効くこと: kysely 0.29.7 の `dist/migration/migrator.js`
 - Better Auth の `generate` が SQL を出し、`schemaName` を扱うこと: [Better Auth CLI](https://better-auth.com/docs/concepts/cli)、[PostgreSQL adapter](https://better-auth.com/docs/adapters/postgresql)
+- Better Auth の表と列の名前を変えられる範囲: better-auth 1.7.12 の `@better-auth/core/dist/types/init-options.d.mts` (`fields` の型が `Exclude<Keys, "id">`)、`dist/db/adapter/get-default-field-name.mjs` (`id` を決め打ち)、`dist/db/schema-diff.mjs` (Better Auth が書かない列が NOT NULL で既定値もなければ `unexpected-required-column`) を読んだ (2026-10-28)
 - ライブラリの利用の規模と保守の状況: [Node.js ORMs, query builders and database libraries in 2026](https://www.prisma.io/dataguide/database-tools/top-nodejs-orms-query-builders-and-database-libraries) (Prisma 社の記事。数字は npm と GitHub の公開値)、npm の30日のダウンロード (2026-10-26)

@@ -14,7 +14,7 @@ export interface TestDatabase {
   readonly authService: Pool;
   /** 業務の処理が使うロール。auth スキーマの権限を持たない。 */
   readonly appUser: Pool;
-  /** このデータベースの接続 URI。ロールを渡さなければ superuser。 */
+  /** このデータベースの接続 URI。ロールを渡さなければ superuser。別のプロセスで動かす API にも渡す。 */
   url(role?: (typeof roles)[number]): string;
   close(): Promise<void>;
 }
