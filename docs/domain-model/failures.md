@@ -57,6 +57,8 @@ export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, 
 - スキーマで検証できる入力の誤りは 400、業務の規則の失敗は 422 です ([ステータスコード](../web-api/status-codes.md))。
 - 本文は RFC 9457 の Problem Details です ([レスポンスボディ](../web-api/response-body.md))。
 - 失敗の `_tag` を足したら、`http` の対応も足します。`switch` の網羅が漏れを止めます。
+- `type` は `/problems/<module>/<kebab-tag>` で、`_tag` から機械的に作ります (`ApprovalNotAllowed` → `/problems/expense/approval-not-allowed`)。`_tag` はモジュールをまたいで重なりうるので、モジュール名を前に付けます。
+- route は、返す `type` の一覧を `satisfies` で `domain` の失敗の `_tag` の union と突き合わせ、応答の zod schema の `type` をそのリテラルの union にします。`_tag` と `type` の過不足は型の検査が止め、web は `hc` の型から `Record<ProblemType, キー>` で文面を持ちます ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
 - 楽観排他の衝突は 409、一意制約の違反は `application` が分岐して応答を変える失敗の例です ([ADR 0028](../adr/0028-effect-in-application-and-infrastructure.md))。
 
 ## throw が許される場所

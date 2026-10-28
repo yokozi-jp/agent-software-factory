@@ -165,6 +165,8 @@ sequenceDiagram
 > - [サーバーレスなユーザー認証認可の考慮事項と実践的プラクティス紹介 / slsdays-tokyo-2024 \- Speaker Deck](https://speakerdeck.com/slsops/slsdays-tokyo-2023-3cd5886a-cee0-425b-821f-f4cd3230e1e0?slide=40)
 > - [Token Revocation (RFC 7009)はなぜ重要か？ \#API \- Qiita](https://qiita.com/yo-tabata/items/7559a7c9069ee5c167f5)
 
+このリポジトリでは、Better Auth の `/api/auth/*` だけが Problem Details の例外で、Better Auth の `{ code, message }` を返す。その前に掛かる自前の middleware (`sessionGuard`、`csrfProtection`) は Problem Details を返す ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
+
 ### ログアウト
 
 ログアウトする際は、IdP側のRevoke APIでアクセストークンを無効化すべきである。  

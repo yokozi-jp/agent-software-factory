@@ -161,38 +161,46 @@ RFC 9457 \- Problem Details for HTTP APIs（[日本語訳](https://tex2e.github.
 特記事項を以下に明記する。
 
 - 4XX、5XXのどれを選ぶかは、[HTTPステータスコード](status-codes.md#httpステータスコード) 章の記載に従う
+- このリポジトリでの `type` の名前、変換の場所、例外は [ADR 0035](../adr/0035-problem-details-for-api-errors.md) に従う
 - JSONフォーマットは以下のような形式を用いる
 
 ```json
-HTTP/1.1 422 Unprocessable Content
+HTTP/1.1 400 Bad Request
 Content-Type: application/problem+json
-Content-Language: ja
 
 {
-"type": "/types/123",
-"title": "Your request is not valid.",
-"errors": [
-            {
-              "detail": "must be a positive integer",
-              "pointer": "#/age"
-            },
-            {
-              "detail": "must be 'green', 'red' or 'blue'",
-              "pointer": "#/profile/color"
-            }
-          ]
+  "type": "/problems/validation",
+  "title": "Your request is not valid.",
+  "status": 400,
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "errors": [
+    {
+      "pointer": "#/age",
+      "code": "too_small",
+      "minimum": 1
+    },
+    {
+      "pointer": "#/profile/color",
+      "code": "invalid_value"
+    }
+  ]
 }
 ```
 
 それぞれの項目についての補足は以下。
 
-| 項目   | 分類 | 値                             | 説明                                                                                                           |
-| :----- | :--- | :----------------------------- | :------------------------------------------------------------------------------------------------------------- |
-| type   | 標準 | メッセージコードを指定する     | 相対パスのURIを指定する。RFCによるとURIは存在しなくても良い。                                                  |
-| title  |      | 開発者に伝えるエラーのタイトル | 任意の文字列を指定                                                                                             |
-| errors | 拡張 | エラー情報                     | 1つであっても、errorsの配列形式とする。内部のdetailは必須。pointerを含むその他の項目の追加、設定は任意とする。 |
+| 項目     | 分類 | 値                             | 説明                                                                                                                                                                                                                                                            |
+| :------- | :--- | :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| type     | 標準 | エラーの識別子                 | 必須。識別子は `type` だけで、`code` の拡張は足さない。ステータスだけで分かる 404、405、415、500、503 は `about:blank`。共通は `/problems/<kebab>`、業務の失敗と 409 は `/problems/<module>/<kebab-tag>` (`_tag` から作る)。相対パスの URI で、存在しなくてよい |
+| title    | 標準 | 開発者に伝えるエラーのタイトル | 必須。英語で固定し、`Content-Language` は付けない。利用者向けの文面は web が `type` から i18n で出す                                                                                                                                                            |
+| status   | 標準 | HTTP ステータスコード          | 必須。                                                                                                                                                                                                                                                          |
+| trace_id | 拡張 | 今の span の trace ID          | span があれば全ての Problem に付ける。                                                                                                                                                                                                                          |
+| errors   | 拡張 | 入力項目ごとのエラー           | 400 の検証エラーと、入力項目に結びつく 422 で使う。配列の各要素は `pointer` (JSON Pointer)、zod の issue の `code`、差し込みの値 (上の `minimum` など)。`detail` は持たず、文面は web が出す                                                                    |
 
 #### エラー詳細
+
+> [!IMPORTANT]
+> このリポジトリでは、5xx は内部の情報 (例外のメッセージ、スタックトレース) をどの環境でも返さない。利用者はブラウザの向こうの業務の利用者で、下表の「内部APIの場合」に当たらないためである。環境で出し分けると、設定の誤りで漏れる ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
 
 エラー情報の詳細（例えば、バックエンドの言語やフレームワークのスタックトレース）を、呼び出し元にフィードバックするかどうかは、公開API / 内部APIによって大きく判断が分かれる。
 
