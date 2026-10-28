@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { migrate } from "../../db/migrate.ts";
 import { bootstrapSql } from "../../test/bootstrap.ts";
-import { migratorUrl, roles } from "../../test/connection.ts";
+import { postgresImage, migratorUrl, roles } from "../../test/connection.ts";
 
 // migration を流す入口 (db/migrate.ts) と、ロールを作る bootstrap.sql (docs/adr/0025)。
 // 共有の PostgreSQL ではなく専用のコンテナを使う。rds_iam のロールはクラスタ全体のもので、作ると
@@ -25,7 +25,7 @@ describe("bootstrap.sql と migrate", () => {
     ).rows.map((row) => row.rolname);
 
   beforeAll(async () => {
-    postgres = await new PostgreSqlContainer("postgres:17").start();
+    postgres = await new PostgreSqlContainer(postgresImage).start();
     master = new Client({ connectionString: postgres.getConnectionUri() });
     await master.connect();
   });

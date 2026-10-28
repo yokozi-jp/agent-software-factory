@@ -12,7 +12,23 @@ import { createModuleDatabases } from "./databases.ts";
 // 確かめる。FORCE ROW LEVEL SECURITY なので、所有者にもポリシーが効く。
 const tenantA = "00000000-0000-4000-8000-00000000000a";
 const tenantB = "00000000-0000-4000-8000-00000000000b";
-const claimId = "00000000-0000-4000-8000-000000000001";
+
+// 申請の行。claim_id は DB が採番する。共通カラムの値は、アプリがバインドする (docs/db/postgresql-keys.md)。
+const claimRow = (tenantId: string) => {
+  const now = new Date("2026-10-28T00:00:00Z");
+  const by = { by: "test-user", pgm_cd: "tenant-transaction.test", tx_id: "test-tx" };
+  return {
+    tenant_id: tenantId,
+    created_at: now,
+    created_by: by.by,
+    created_pgm_cd: by.pgm_cd,
+    created_tx_id: by.tx_id,
+    updated_at: now,
+    updated_by: by.by,
+    updated_pgm_cd: by.pgm_cd,
+    updated_tx_id: by.tx_id,
+  };
+};
 
 describe("inTenantTransaction と claim.t_claim の RLS", () => {
   let db: TestDatabase;
@@ -33,7 +49,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
 
   const insertClaim = (tenantId: string) =>
     inTenantTransaction(claim, { module: "claim", tenantId }, (trx) =>
-      trx.insertInto("claim.t_claim").values({ tenant_id: tenantId, claim_id: claimId }).execute(),
+      trx.insertInto("claim.t_claim").values(claimRow(tenantId)).execute(),
     );
 
   it("トランザクションの中で、設定したテナントの行だけが見えること", async () => {
@@ -47,10 +63,36 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
     expect(rows).toEqual([{ tenant_id: tenantA }]);
   });
 
+  it("claim_id を DB が連番で採番し、lock_no が 1 から始まること", async () => {
+    const rows = await inTenantTransaction(claim, { module: "claim", tenantId: tenantA }, (trx) =>
+      trx
+        .insertInto("claim.t_claim")
+        .values([claimRow(tenantA), claimRow(tenantA)])
+        .returning(["claim_id", "lock_no"])
+        .execute(),
+    );
+
+    expect(rows).toEqual([
+      { claim_id: "1", lock_no: 1 },
+      { claim_id: "2", lock_no: 1 },
+    ]);
+  });
+
+  it("claim_id をアプリから入れられないこと (GENERATED ALWAYS)", async () => {
+    await expect(
+      inTenantTransaction(claim, { module: "claim", tenantId: tenantA }, (trx) =>
+        trx
+          .insertInto("claim.t_claim")
+          .values({ ...claimRow(tenantA), claim_id: "1" })
+          .execute(),
+      ),
+    ).rejects.toThrow(/cannot insert a non-DEFAULT value into column "claim_id"/);
+  });
+
   it("別のテナントの行を入れられないこと", async () => {
     await expect(
       inTenantTransaction(claim, { module: "claim", tenantId: tenantA }, (trx) =>
-        trx.insertInto("claim.t_claim").values({ tenant_id: tenantB, claim_id: claimId }).execute(),
+        trx.insertInto("claim.t_claim").values(claimRow(tenantB)).execute(),
       ),
     ).rejects.toThrow(/row-level security/);
   });
@@ -76,10 +118,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
 
     await expect(
       inTenantTransaction(claim, { module: "claim", tenantId: tenantA }, async (trx) => {
-        await trx
-          .insertInto("claim.t_claim")
-          .values({ tenant_id: tenantA, claim_id: claimId })
-          .execute();
+        await trx.insertInto("claim.t_claim").values(claimRow(tenantA)).execute();
         throw failure;
       }),
     ).rejects.toBe(failure);

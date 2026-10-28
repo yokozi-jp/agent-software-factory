@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Cli } from "kysely-codegen";
 
-import { connectionUri } from "../test/connection.ts";
+import { postgresImage, connectionUri } from "../test/connection.ts";
 import { prepareDatabase } from "../test/prepare-database.ts";
 
 /**
@@ -78,7 +78,7 @@ export async function staleTypes(
 
 if (import.meta.main) {
   const check = process.argv.includes("--check");
-  const postgres = await new PostgreSqlContainer("postgres:17").start();
+  const postgres = await new PostgreSqlContainer(postgresImage).start();
   try {
     const database = "factory_types";
     await prepareDatabase(postgres.getConnectionUri(), database);

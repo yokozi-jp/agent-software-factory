@@ -74,6 +74,20 @@ describe("モジュールの型の生成 (db/types.ts)", () => {
     expect(names.every((name) => moduleSchemas.some((s) => name.startsWith(`${s}.`)))).toBe(true);
   });
 
+  it("migration が作るスキーマが、auth と migrations のほかは、型を生成するスキーマと同じこと", async () => {
+    // migration でモジュールのスキーマを足して moduleSchemas に足し忘れると、そのスキーマの型を生成せず、
+    // CI のずれの検査も通ってしまう。public は PostgreSQL が作る。
+    const { rows } = await db.superuser.query<{ nspname: string }>(
+      `SELECT nspname FROM pg_namespace
+       WHERE nspname NOT LIKE 'pg\\_%' AND nspname NOT IN ('information_schema', 'public')
+       ORDER BY nspname`,
+    );
+
+    expect(rows.map(({ nspname }) => nspname)).toEqual(
+      [...moduleSchemas, "auth", "migrations"].toSorted(),
+    );
+  });
+
   it("書いた型と同じ migration から生成し直すと、ずれがないこと", async () => {
     await writeTypes(await generateTypes(db.url()), root);
 

@@ -3,7 +3,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { GenericContainer, Wait } from "testcontainers";
 import type { TestProject } from "vite-plus/test/node";
 
-import { templateDatabase } from "./connection.ts";
+import { postgresImage, templateDatabase } from "./connection.ts";
 import { prepareDatabase } from "./prepare-database.ts";
 
 // 結合テストは、本物の PostgreSQL と Keycloak を相手にする (docs/db/postgresql-test.md、docs/adr/0022)。
@@ -21,7 +21,7 @@ const realmFile = new URL("./keycloak/factory-realm.json", import.meta.url);
 
 export default async function setup(project: TestProject) {
   const [postgres, keycloak] = await Promise.all([
-    new PostgreSqlContainer("postgres:17").start(),
+    new PostgreSqlContainer(postgresImage).start(),
     new GenericContainer("quay.io/keycloak/keycloak:26.8.1")
       .withEnvironment({
         KC_BOOTSTRAP_ADMIN_USERNAME: "admin",
