@@ -28,7 +28,7 @@ Idempotency-Keyヘッダーという[IETF Draft（2026年10月時点ではDraft 
 - サーバーサイドは、`Idempotency-Key`が指定された場合、その値とペイロードのハッシュ値を突き合わせて、どちらの値も一致していれば処理済みとする
 - `Idempotency-Key` が処理済みだが、ペイロードハッシュ値が異なる場合は、400 (Bad Request) エラーを返す（フロントエンド側で別のUUIDを発番してもらう）
 
-このリポジトリでは、上の推奨を次のように具体化する（理由は [ADR 0036](../adr/0036-idempotency-key-in-module-schema.md)）。
+このリポジトリでは、上の推奨を次のように具体化する（理由は [ADR 0040](../adr/0040-idempotency-key-in-module-schema.md)）。
 
 - **対象**: POST と PATCH のすべてで `Idempotency-Key` を必須とする。ヘッダーがなければ 400 を返す。Better Auth の `/api/auth/*` は契約の外にあり、対象にしない
 - **ヘッダーの形式**: 値は UUID で、Structured Field の String として引用符で囲む（`Idempotency-Key: "<UUID>"`）。この形式でなければ 400 を返す
@@ -47,7 +47,7 @@ Idempotency-Keyヘッダーという[IETF Draft（2026年10月時点ではDraft 
 >
 > `crypto.randomUUID()` は secure context でしか使えない。HTTPS と `http://localhost` は使えるが、それ以外の HTTP では動かない（[MDN: Crypto.randomUUID()](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)、[MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts)）。
 
-検査は [ADR 0036 の検査](../adr/0036-idempotency-key-in-module-schema.md#検査) にある。契約のゲート、共有の関数、web の hook は、実装の Issue で足す。
+検査は [ADR 0040 の検査](../adr/0040-idempotency-key-in-module-schema.md#検査) にある。契約のゲート、共有の関数、web の hook は、実装の Issue で足す。
 
 > [!TIP]
 > **業務アプリケーションで伝統的に行われていた設計パターン**

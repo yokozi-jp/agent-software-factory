@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0036: POST と PATCH のすべてに Idempotency-Key を必須にし、キーはモジュールのスキーマの専用の表に業務の更新と同じトランザクションで書く"
+title: "ADR 0040: POST と PATCH のすべてに Idempotency-Key を必須にし、キーはモジュールのスキーマの専用の表に業務の更新と同じトランザクションで書く"
 description: API の書き込みの二重送信を防ぐ Idempotency-Key の決定。対象は POST と PATCH のすべてで、キーがなければ 400。キーはモジュールごとのスキーマの専用の表に、業務の更新と同じトランザクションで書き、一意キーは (tenant_id, user_id, idempotency_key)、行に request_hash（method、経路、クエリ文字列、本文のバイト列の SHA-256）、状態コード、本文、expires_at を持つ。ヘッダーは引用符付きの String で値は UUID。処理中の重複は lock_timeout 5 秒で待たせて切れたら 409 と Retry-After、ハッシュが違えば 400、保存期間は 24 時間、保存は 2xx だけで再試行には保存した状態コードと本文をそのまま返す。実装は packages/shared の関数を各モジュールの application の層が呼び、Hono の middleware にはしない。取り込んだ規約との違いは一意キーに tenant_id と user_id を足す 1 点。比べた案は、library（hono-idempotency）、処理中の印を別のトランザクションで書く形、業務の表のカラム、Redis と DynamoDB、任意のヘッダー、advisory lock。API の書き込みを足すとき、POST か PATCH の route を書くとき、冪等キーの表や共有の関数を書くとき、再試行のしくみを足すとき、library や Redis で冪等性を済ませたくなったとき、Hono の middleware にしたくなったときに読む。
 tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 ---
 
-# ADR 0036: POST と PATCH のすべてに Idempotency-Key を必須にし、キーはモジュールのスキーマの専用の表に業務の更新と同じトランザクションで書く
+# ADR 0040: POST と PATCH のすべてに Idempotency-Key を必須にし、キーはモジュールのスキーマの専用の表に業務の更新と同じトランザクションで書く
 
 ボタンの連打やタイムアウトの後の再送で、申請の提出や承認が二重に実行されないように、`Idempotency-Key` を採ります。取り込んだ規約 ([Web API の冪等性と PATCH の部分更新](../web-api/idempotency-and-patch.md)) に沿い、[ADR 0011](0011-tenant-id-and-rls-from-the-start.md) と衝突する一意キーの 1 点だけを直します。決定は [Issue #232](https://github.com/yokozi-jp/agent-software-factory/issues/232)、調査は [Issue #231](https://github.com/yokozi-jp/agent-software-factory/issues/231) にあります。表と共有の関数は [Issue #323](https://github.com/yokozi-jp/agent-software-factory/issues/323)、契約のゲートと web の hook は [Issue #324](https://github.com/yokozi-jp/agent-software-factory/issues/324)、期限切れの掃除は [Issue #325](https://github.com/yokozi-jp/agent-software-factory/issues/325) で実装します。
 

@@ -1191,7 +1191,7 @@ describe("ADR numbers are unique", () => {
 });
 
 describe("ADR 0025: migrations go forward only", () => {
-  const path = "apps/api/db/migrations/20260102000000_add_y.sql";
+  const path = "packages/db/migrations/20260102000000_add_y.sql";
   const downProblem = `${path} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`;
   const lockProblem = `${path} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`;
 
@@ -1332,10 +1332,10 @@ describe("ADR 0025: migrations go forward only", () => {
     expect(
       violations(repo({ [path]: migration({ up: "SELECT 1;\n", down: "" }), [other]: "" })),
     ).toEqual([
-      downProblem,
-      lockProblem,
       `${other} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`,
       `${other} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`,
+      downProblem,
+      lockProblem,
     ]);
   });
 
@@ -1343,8 +1343,8 @@ describe("ADR 0025: migrations go forward only", () => {
     expect(
       violations(
         repo({
-          "apps/api/db/bootstrap.sql": "SELECT 1;\n",
-          "apps/api/db/migrations/README.md": "",
+          "packages/db/bootstrap.sql": "SELECT 1;\n",
+          "packages/db/migrations/README.md": "",
           "docs/migrations/x.sql": "",
         }),
       ),
@@ -2332,6 +2332,234 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     expect(violations(repo(manifest("billing", { dependencies: workspace })))).toEqual([
       `packages/billing is not in moduleOrder in ${table}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
     ]);
+  });
+});
+
+// The parts of the fixture of packages/db (docs/adr/0038), and a file that has all three.
+const dbFixtureParts = {
+  value: "oxlint-disable-next-line no-restricted-imports",
+  type: "import type {",
+  node: 'from "node:child_process"',
+};
+const dbImportsFixture = `// ${dbFixtureParts.value} -- fixture\nimport "@x/claim";\n${dbFixtureParts.type} A } from "@x/claim";\nimport { run } ${dbFixtureParts.node};\n`;
+
+describe("ADR 0038: db depends on the modules by type only, and only apps/api depends on db", () => {
+  const dbExports = {
+    ".": "./src/index.ts",
+    "./seed": "./src/seed/index.ts",
+    "./testing": "./src/testing/index.ts",
+  };
+  const db = (fields: Record<string, unknown> = {}) => ({
+    "packages/db/package.json": packageJson("db", {
+      exports: dbExports,
+      scripts: { check: "vp check" },
+      ...fields,
+    }),
+    "packages/db/src/index.ts": "export {};\n",
+    "packages/db/src/__fixtures__/imports.ts": dbImportsFixture,
+  });
+  const claim = { "@agent-software-factory/claim": "workspace:*" };
+  const dbDependency = { "@agent-software-factory/db": "workspace:*" };
+  const dbHas = (dependency: string, field: string) =>
+    `packages/db/package.json has @agent-software-factory/${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency} out of db (docs/adr/0038).`;
+  const refused = (path: string, field: string) =>
+    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
+
+  it("passes db with the modules in devDependencies, without a place in moduleOrder or a lint-effect script", () => {
+    expect(
+      violations(repo({ ...db({ devDependencies: claim, dependencies: { pg: "catalog:" } }) })),
+    ).toEqual([]);
+  });
+
+  it("passes apps/api that depends on db", () => {
+    expect(
+      violations(repo({ ...db(), "apps/api/package.json": json({ dependencies: dbDependency }) })),
+    ).toEqual([]);
+  });
+
+  it.each(["dependencies", "peerDependencies", "optionalDependencies"])(
+    "refuses db that depends on a module in %s",
+    (field) => {
+      expect(violations(repo({ ...db({ [field]: claim }) }))).toEqual([dbHas("claim", field)]);
+    },
+  );
+
+  it.each(["shared", "ui", "api", "web"])(
+    "refuses db that depends on %s, even in devDependencies",
+    (name) => {
+      expect(
+        violations(
+          repo({
+            ...db({ devDependencies: { [`@agent-software-factory/${name}`]: "workspace:*" } }),
+          }),
+        ),
+      ).toEqual([dbHas(name, "devDependencies")]);
+    },
+  );
+
+  it("refuses db that depends on itself or on a package that is not a module", () => {
+    expect(
+      violations(
+        repo({
+          ...db({
+            devDependencies: {
+              "@agent-software-factory/db": "workspace:*",
+              "@agent-software-factory/billing": "workspace:*",
+            },
+          }),
+        }),
+      ),
+    ).toEqual([dbHas("db", "devDependencies"), dbHas("billing", "devDependencies")]);
+  });
+
+  it("passes db's dependencies outside the workspace, and of a longer scope", () => {
+    expect(
+      violations(
+        repo({
+          ...db({
+            devDependencies: { "@agent-software-factory-x/claim": "1.0.0", typescript: "catalog:" },
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
+    "refuses a module, shared, ui or an app other than apps/api that depends on db, in %s",
+    (field) => {
+      expect(
+        violations(
+          repo({
+            ...db(),
+            "packages/claim/package.json": packageJson("claim", { [field]: dbDependency }),
+            "packages/shared/package.json": packageJson("shared", { [field]: dbDependency }),
+            "apps/web/package.json": json({ [field]: dbDependency }),
+          }),
+        ),
+      ).toEqual([
+        refused("apps/web/package.json", field),
+        refused("packages/claim/package.json", field),
+        refused("packages/shared/package.json", field),
+      ]);
+    },
+  );
+
+  it("refuses the root package.json that depends on db", () => {
+    expect(
+      violations(
+        repo({
+          ...db(),
+          "package.json": json({
+            engines: { node: "^24" },
+            devDependencies: { nx: "catalog:", ...dbDependency },
+          }),
+        }),
+      ),
+    ).toEqual([refused("package.json", "devDependencies")]);
+  });
+
+  it("does not ask who depends on db when there is no db", () => {
+    expect(
+      violations(repo({ "apps/web/package.json": json({ dependencies: dbDependency }) })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["exports of the production entry only", { ".": "./src/index.ts" }],
+    ["no seed", { ".": "./src/index.ts", "./testing": "./src/testing/index.ts" }],
+    ["a subpath too", { ...dbExports, "./x": "./src/x.ts" }],
+  ])("refuses db with %s", (_, exports) => {
+    expect(violations(repo({ ...db({ exports }) }))).toEqual([
+      `packages/db/package.json must have the exports ${JSON.stringify(dbExports)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038).`,
+    ]);
+  });
+
+  it("asks db for the check script and src/index.ts, like every package", () => {
+    expect(
+      violations(repo({ ...db({ scripts: {} }), "packages/db/src/index.ts": undefined })),
+    ).toEqual([
+      "packages/db/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).",
+      'packages/db/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
+    ]);
+  });
+});
+
+describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => {
+  const part = dbFixtureParts;
+  const fixture = dbImportsFixture;
+  const withDb = (files: Record<string, string | undefined> = {}) =>
+    repo({
+      ...packageFiles("db"),
+      "packages/db/package.json": packageJson("db", {
+        exports: {
+          ".": "./src/index.ts",
+          "./seed": "./src/seed/index.ts",
+          "./testing": "./src/testing/index.ts",
+        },
+      }),
+      "packages/db/src/__fixtures__/imports.ts": fixture,
+      ...files,
+    });
+  const missing = (text: string, what: string) =>
+    `No packages/db/src/__fixtures__/ has \`${text}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0038).`;
+
+  it("passes db with a fixture for the value import, the type import and the Node.js module", () => {
+    expect(violations(withDb())).toEqual([]);
+  });
+
+  it("passes when the three lines are in different files", () => {
+    expect(
+      violations(
+        withDb({
+          "packages/db/src/__fixtures__/imports.ts": `// ${part.value}\n`,
+          "packages/db/src/__fixtures__/types.ts": `${part.type} A } from "@x/claim";\n`,
+          "packages/db/src/__fixtures__/node.tsx": `import x ${part.node};\n`,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("names each missing fixture", () => {
+    expect(violations(withDb({ "packages/db/src/__fixtures__/imports.ts": undefined }))).toEqual([
+      missing(
+        part.value,
+        "a value import of a package of the workspace, which the rule must report",
+      ),
+      missing(
+        part.type,
+        "an `import type` of a package of the workspace, which the rule must let through",
+      ),
+      missing(part.node, "an import of node:child_process, which the rule must let through"),
+    ]);
+  });
+
+  it("does not count a file outside packages/db/src/__fixtures__/", () => {
+    expect(
+      violations(
+        withDb({
+          "packages/db/src/__fixtures__/imports.ts": undefined,
+          "packages/db/src/imports.ts": fixture,
+          "packages/db/src/__fixtures__/deep/imports.ts": fixture,
+          "packages/db/src/__fixtures__/notes.md": fixture,
+        }),
+      ),
+    ).toHaveLength(3);
+  });
+
+  it("does not take the fixtures of db for the fixtures of the overrides of every package", () => {
+    const only = (name: string) => ({
+      ...Object.fromEntries(
+        Object.keys(base)
+          .filter((path) => path.startsWith("packages/module-fixtures/src/__fixtures__/"))
+          .map((path) => [path, undefined]),
+      ),
+      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
+    });
+    expect(
+      violations(withDb(only("db"))).some((failure) =>
+        failure.includes("packages/*/src/__fixtures__/"),
+      ),
+    ).toBe(true);
   });
 });
 

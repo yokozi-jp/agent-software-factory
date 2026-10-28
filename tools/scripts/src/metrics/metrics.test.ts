@@ -192,7 +192,7 @@ describe("around", () => {
 describe("isSampleFile, categoryOf", () => {
   it.each([
     "apps/api/src/app.ts",
-    "apps/api/db/migrations/1.sql",
+    "packages/db/migrations/1.sql",
     "apps/web/index.html",
     "packages/shared/src/index.ts",
     "apps/api/src/lint/x.ts",
