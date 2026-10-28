@@ -1,4 +1,4 @@
 @import "@agent-software-factory/ui/globals.css";
 
-/* Tailwind does not scan a workspace package that is linked into node_modules (docs/adr/0034). */
+/* Tailwind does not scan a workspace package that is linked into node_modules (docs/adr/0034). This path follows the place of packages/ui. */
 @source "../../../packages/ui/src";

@@ -31,7 +31,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 `shadcn add` が書くコードは、このリポジトリの検査をそのままでは通りません。
 
-- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `packages/ui/src/components/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `packages/ui` に、`src/components/**/*.tsx` を `entry` として書きました (`src/lib/utils.ts` は `exports` から entry になります)。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
+- **Knip** ([ADR 0017](0017-knip-unused-code.md)): `packages/ui/src/components/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `packages/ui` に、`src/components/**/*.tsx` を `entry` として書きました (`src/lib/utils.ts` は `exports` から entry になります)。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@agent-software-factory/ui/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
 - **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `packages/ui/src/styles/globals.css` だけを足しました (移す前は `apps/web/src/index.css`)。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
 
 ## Considered Options
