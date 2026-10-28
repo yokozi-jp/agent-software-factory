@@ -34,7 +34,7 @@ function parser(path: string): [string, (text: string) => unknown] {
       (text) => {
         // A tsconfig.json may have comments. Only a comment that fills its line is removed.
         const value: unknown = JSON.parse(
-          /(^|\/)tsconfig\.json$/.test(path) ? text.replace(/^[ \t]*\/\/.*$/gm, "") : text,
+          path.split("/").pop() === "tsconfig.json" ? text.replace(/^[ \t]*\/\/.*/gm, "") : text,
         );
         return value;
       },

@@ -151,6 +151,8 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     ["a rule with options", '"no-console": ["error", { allow: ["warn"] }],'],
     ["a rule written with a line break after the bracket", '"no-console": [\n"error"],'],
     ["a rule on one line with others", 'rules: { "x/y": "off", "no-console": "error" },'],
+    ["a rule with a space before the colon", '"no-console" : "error",'],
+    ["a rule with no space after the colon", '"no-console":"error",'],
   ])("asks for the fixture of %s", (_, rule) => {
     expect(violations(repo({ "vite.config.ts": withRules(rule) }))).toEqual([
       noFixture("no-console"),
@@ -185,6 +187,24 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
       "// oxlint-disable-next-line no-console,a/b -- r\n",
     ],
     ["a /* */ comment of several rules", "/* oxlint-disable-next-line a/b, no-console */\n"],
+    ["a /* */ comment closed with no space", "/* oxlint-disable-next-line no-console*/\n"],
+    ["a /* */ comment of CRLF line ends", "/* oxlint-disable-next-line no-console */\r\nx;\r\n"],
+    ["a /* */ comment with blanks after it", "/* oxlint-disable-next-line no-console */ \t\n"],
+    [
+      "a comment in JSX braces with a space before the brace",
+      "{/* oxlint-disable-next-line no-console */ }\n",
+    ],
+    [
+      "a comment in JSX braces with a space after the brace",
+      "{ /* oxlint-disable-next-line no-console */}\n",
+    ],
+    [
+      "a JSX comment with a blank after the brace",
+      "{/* oxlint-disable-next-line no-console */} \n",
+    ],
+    ["a comment with no space after //", "//oxlint-disable-next-line no-console -- r\n"],
+    ["a comment with several spaces", "//   oxlint-disable-next-line   no-console -- r\n"],
+    ["a comment whose reason is only the separator", "// oxlint-disable-next-line no-console --\n"],
     [
       "a comment in a file with CRLF line ends",
       "// oxlint-disable-next-line no-console -- r\r\nx;\r\n",
@@ -202,6 +222,10 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     [
       "a rule named after the reason of another",
       "// oxlint-disable-next-line a/b -- r, no-console\n",
+    ],
+    [
+      "a rule before a */ in the middle of the list",
+      "/* oxlint-disable-next-line no-console */, a/b */\n",
     ],
     ["oxlint-disable-line", "// oxlint-disable-line no-console -- r\n"],
     ["oxlint-disable", "// oxlint-disable no-console -- r\n"],
@@ -236,6 +260,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     "apps/web/src/fixtures-console.ts",
     "apps/web/src/__fixtures__/console.md",
     "apps/web/src/__fixtures__/console.js",
+    "apps/web/src/__fixtures__/console.ts.snap",
     "apps/web/src/xfixtures/console.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/console.ts",
     "tools/scripts/src/checks/other/__fixtures__/console.ts",
@@ -1803,6 +1828,12 @@ describe("configuration files that cannot be parsed", () => {
     expect(
       failures.filter((failure) => failure.startsWith(`${path} is not valid TOML (`)),
     ).toHaveLength(1);
+  });
+
+  it("reads a comment line only in a tsconfig.json: in any other JSON file it is an error", () => {
+    expect(violations(repo({ "apps/api/package.json": '// comment\n{"name": "x"}\n' }))[0]).toMatch(
+      /^apps\/api\/package\.json is not valid JSON \(.+\)$/,
+    );
   });
 
   it("names a package.json that is not JSON", () => {

@@ -19,7 +19,7 @@ const fixtureTexts = (tree: Tree): string[] =>
 // `// ...` or `/* ... */` (also inside the braces of JSX); the rules are separated by commas, before the ` -- `
 // that starts the reason.
 const disableNextLine =
-  /^[ \t]*(?:\{[ \t]*)?(?:\/\/|\/\*)[ \t]*oxlint-disable-next-line[ \t]+(.*)$/gm;
+  /^[ \t]*(?:\{[ \t]*)?(?:\/\/|\/\*)[ \t]*oxlint-disable-next-line[ \t]+(\S.*)/gm;
 
 const annotatedRules = (text: string): string[] =>
   Array.from(text.matchAll(disableNextLine), (match) =>
@@ -85,14 +85,12 @@ const compilerOptions = (tree: Tree, path: string): Record<string, unknown> =>
 // `@ts-expect-error -- fixture: <flag>`. With the flag off, the directive is unused.
 export function tsconfigFlagsHaveFixtures(tree: Tree): string[] {
   const options = compilerOptions(tree, rootTsconfig);
-  const directives = fixtureTexts(tree)
-    .flatMap((text) => text.split("\n"))
-    .filter((line) => line.includes("@ts-expect-error"));
+  const lines = fixtureTexts(tree).flatMap((text) => text.split("\n"));
   return Object.entries(tsconfigChecks)
     .filter(([flag, on]) => options[flag] === on)
     .filter(
       ([flag]) =>
-        !directives.some((line) =>
+        !lines.some((line) =>
           new RegExp(`@ts-expect-error\\s+--\\s+fixture:\\s+${flag}\\b`).test(line),
         ),
     )
