@@ -2,11 +2,10 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
-import { migrate } from "../../db/migrate.ts";
-import { bootstrapSql } from "../../test/bootstrap.ts";
-import { postgresImage, migratorUrl, roles } from "../../test/connection.ts";
+import { bootstrapSql, migrate } from "./index.ts";
+import { postgresImage, migratorUrl, roles } from "./testing/connection.ts";
 
-// migration を流す入口 (db/migrate.ts) と、ロールを作る bootstrap.sql (docs/adr/0025)。
+// migration を流す入口 (src/migrate.ts) と、ロールを作る bootstrap.sql (docs/adr/0025)。
 // 共有の PostgreSQL ではなく専用のコンテナを使う。rds_iam のロールはクラスタ全体のもので、作ると
 // ほかのテストのロールに影響するため。
 // it は上から順に、1 つのクラスタの状態を進める (bootstrap → rds_iam を作る → migrate)。順番を変えない。

@@ -106,7 +106,7 @@ flowchart TB
 
 ## このリポジトリの E2E の方針
 
-ここまでは原文に沿う。この節は、このリポジトリの方針で、原文にはない。理由と比べた案は [ADR 0036](../adr/0036-e2e-playwright-gate-and-ai-for-authoring.md) にある。
+ここまでは原文に沿う。この節は、このリポジトリの方針で、原文にはない。理由と比べた案は [ADR 0039](../adr/0039-e2e-playwright-gate-and-ai-for-authoring.md) にある。
 
 ### 道具と AI の使い方
 

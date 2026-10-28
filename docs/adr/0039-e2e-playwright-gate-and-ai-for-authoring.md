@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0036: ゲートの E2E は Playwright の決定的なコードで書き、AI は E2E を書く側と開発中の確認に使う"
+title: "ADR 0039: ゲートの E2E は Playwright の決定的なコードで書き、AI は E2E を書く側と開発中の確認に使う"
 description: CI のゲートになる E2E を Playwright の決定的なコード（.spec.ts）にし、実行時にモデルが判定するテストをゲートにしない決定。e2e（tester.army）は開発中の確認に限り、CI に置かない。PR の必須チェックは少数の重要な導線と Chromium だけにし、retry は 1 回までで flaky を見える状態にする。起動は testcontainers を globalSetup から使い、build 済みの API と web を webServer で起動する。1 つのスイートを @smoke のタグで分け、検証環境では @smoke だけを PLAYWRIGHT_TEST_BASE_URL で流す。E2E の道具や CI での範囲を変えるとき、e2e や AI で操作するテストを CI に入れたくなったとき、E2E の起動に compose を足したくなったとき、@smoke の範囲を変えるときに読む。
 tags: [adr, e2e, playwright, testing, ci, ai]
 ---
 
-# ADR 0036: ゲートの E2E は Playwright の決定的なコードで書き、AI は E2E を書く側と開発中の確認に使う
+# ADR 0039: ゲートの E2E は Playwright の決定的なコードで書き、AI は E2E を書く側と開発中の確認に使う
 
 E2E の道具として、Playwright だけで書くか、e2e（tester.army）のように AI で操作する framework を併用するかを比べました。CI のゲートになる E2E は Playwright の決定的なコードにします。AI は E2E を書く側と、書く前の確認に使い、CI では決定的なコードだけを流します。比べた結果は [#222](https://github.com/yokozi-jp/agent-software-factory/issues/222)、[#304](https://github.com/yokozi-jp/agent-software-factory/issues/304)、[#305](https://github.com/yokozi-jp/agent-software-factory/issues/305) に、決めた経緯は [E2E テストの道具を決める](https://github.com/yokozi-jp/agent-software-factory/issues/223) の解決コメントにあります。検証環境の E2E の流れは [検証環境の流れ](../tooling/verification-environment.md) にあります。
 

@@ -17,12 +17,14 @@ import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
 import {
+  dbDependencies,
   modulesDependOneWay,
   modulesLintEffect,
   noResolutionBypass,
   packageManifests,
 } from "./modules.ts";
 import {
+  dbBoundaries,
   domainPurity,
   effectBoundaries,
   lintRulesHaveFixtures,
@@ -59,8 +61,10 @@ export function violations(repo: Repo): string[] {
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
     ...effectBoundaries(tree),
+    ...dbBoundaries(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
+    ...dbDependencies(tree),
     ...noResolutionBypass(tree),
     ...modulesLintEffect(tree),
     ...steeringFrontmatter(tree),

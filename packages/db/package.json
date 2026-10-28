@@ -1,0 +1,37 @@
+{
+  "name": "@agent-software-factory/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./seed": "./src/seed/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "check": "vp check",
+    "test": "vp test run --coverage",
+    "db:migrate": "node src/migrate.ts",
+    "db-types": "node src/types.ts",
+    "db-types-check": "node src/types.ts --check"
+  },
+  "dependencies": {
+    "dbmate": "catalog:",
+    "pg": "catalog:"
+  },
+  "devDependencies": {
+    "@agent-software-factory/approval": "workspace:*",
+    "@agent-software-factory/claim": "workspace:*",
+    "@agent-software-factory/closing": "workspace:*",
+    "@testcontainers/postgresql": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "kysely-codegen": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "db"
+  }
+}

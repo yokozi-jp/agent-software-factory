@@ -109,17 +109,19 @@ pre-commit:
         - ".node-version"
         - ".kiro/hooks/*.json"
       run: pnpm exec nx test scripts
-    # The Kysely types of the module schemas match the migrations (apps/api/db/types.ts, docs/adr/0025). It starts a
+    # The Kysely types of the module schemas match the migrations (packages/db/src/types.ts, docs/adr/0025). It starts a
     # PostgreSQL container (about 10 s), so it runs only when a migration, a generated type file, the generator or the
     # version of kysely-codegen (pnpm-workspace.yaml) changes. Nx skips the run when the cached result still holds.
     - name: db-types
       glob:
-        - "apps/api/db/**"
+        - "packages/db/migrations/**"
+        - "packages/db/bootstrap.sql"
+        - "packages/db/src/types.ts"
         - "packages/*/src/infrastructure/db.gen.ts"
-        - "apps/api/test/connection.ts"
-        - "apps/api/test/prepare-database.ts"
+        - "packages/db/src/testing/connection.ts"
+        - "packages/db/src/testing/prepare-database.ts"
         - "pnpm-workspace.yaml"
-      run: pnpm exec nx db-types-check api
+      run: pnpm exec nx db-types-check db
     # effect-tsgo on application and infrastructure of the modules (oxlint.effect.json, docs/tooling/effect-lint.md).
     # The lint target (vp check) does not load its plugin. Nx skips the run when the cached result still holds.
     - name: lint-effect

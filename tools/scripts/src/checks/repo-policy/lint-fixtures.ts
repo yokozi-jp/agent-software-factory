@@ -146,8 +146,9 @@ const runtimeAnnotations = [
 // packages/*/src/<layer>/** of every package alike (docs/adr/0026), so a fixture in any one package shows it. The
 // fixtures in `dir` of every package under packages/ (`dir` is src or src/<layer>), and whether there is a
 // package (or a module, for the layers) to ask them of.
+// db has fixtures of its own (dbBoundaries); its override is not one of packages/*/src/**, so they say nothing about these.
 function fixtures(tree: Tree, dir: string): string[] {
-  const pattern = new RegExp(`^packages/[^/]+/${dir}/__fixtures__/`);
+  const pattern = new RegExp(`^packages/(?!db/)[^/]+/${dir}/__fixtures__/`);
   return tree.paths.filter((path) => pattern.test(path));
 }
 const hasPackage = (tree: Tree, modulePackagesOnly: boolean): boolean =>
@@ -261,4 +262,33 @@ export function effectBoundaries(tree: Tree): string[] {
           );
     }
   return failures;
+}
+
+// ADR 0038: the override of packages/db/src in vite.config.ts stops a value import of a package of the workspace, and
+// lets through `import type`, a Node.js module and the other restrictions it leaves. packages/db/src/__fixtures__/ has a
+// fixture (#43) for each: a value import that the rule must report, carrying the disable comment, and an
+// `import type` of a package of the workspace and an import of node:child_process, which carry none and which Oxlint
+// must not report.
+const dbFixtureDir = /^packages\/db\/src\/__fixtures__\/[^/]+\.tsx?$/;
+const dbFixtureParts: readonly (readonly [string, string])[] = [
+  [
+    `oxlint-disable-next-line no-restricted-imports`,
+    "a value import of a package of the workspace, which the rule must report",
+  ],
+  [
+    "import type {",
+    "an `import type` of a package of the workspace, which the rule must let through",
+  ],
+  ['from "node:child_process"', "an import of node:child_process, which the rule must let through"],
+];
+
+export function dbBoundaries(tree: Tree): string[] {
+  if (!packageNames(tree).includes("db")) return [];
+  const texts = tree.paths.filter((path) => dbFixtureDir.test(path)).map((path) => tree.read(path));
+  return dbFixtureParts
+    .filter(([part]) => !texts.some((text) => text.includes(part)))
+    .map(
+      ([part, what]) =>
+        `No packages/db/src/__fixtures__/ has \`${part}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0038).`,
+    );
 }

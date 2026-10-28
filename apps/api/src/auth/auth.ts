@@ -76,7 +76,7 @@ export function authOptions(config: AuthConfig) {
     // 保存先は DB にする。API は複数のインスタンスで動き、メモリだとインスタンスごとに別々に数えるため (#236)。
     // 窓と上限は Better Auth の既定 (全体は 10 秒に 100 回、/sign-in などは 10 秒に 3 回)。
     // 期限の切れた行は、Better Auth が、窓の切れた行を数え直すたびに、最も長い窓より古い行をまとめて消す。
-    // 振る舞いは src/auth/rate-limit.test.ts が確かめる。表は db/migrations の migration で作る。
+    // 振る舞いは src/auth/rate-limit.test.ts が確かめる。表は packages/db/migrations の migration で作る。
     rateLimit: { enabled: config.rateLimit?.enabled ?? true, storage: "database" },
     advanced: {
       database: { validateSchema: config.validateSchema ?? true, generateId: "uuid" },
