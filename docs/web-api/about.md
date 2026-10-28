@@ -31,6 +31,8 @@ sources:
 - versioning.md の `Deprecation` ヘッダーの値を、`true` から構造化フィールドの Date (`@1688169599`) にし、説明と推奨も合わせた。RFC 9745 (The Deprecation HTTP Response Header Field)。
 - idempotency-and-patch.md の JSON Merge Patch の RFC 番号を、7386 から 7396 にした。RFC 7396 (7386 を obsolete)。
 - idempotency-and-patch.md の Idempotency-Key の IETF Draft のバージョンを、05 (2024年12月) から 08 (2026年10月) にした。IETF Datatracker (draft-ietf-httpapi-idempotency-key-header-08)。
+- idempotency-and-patch.md の Idempotency-Key のユニーク制約を、キーのカラムだけから `(tenant_id, user_id, Idempotency-Key)` の組にした。ADR 0011 が一意キーに `tenant_id` を求め、キーのカラムだけだと別のテナントの同じキーで行は RLS で見えないのに挿入だけが拒まれる。PostgreSQL 63.5 Index Uniqueness Checks、ADR 0011、ADR 0040。
+- idempotency-and-patch.md に、このリポジトリでの決まりを足した。POST と PATCH のすべてで必須でヘッダーがなければ 400（原文は「指定された場合」）、ヘッダーの値は引用符で囲んだ String の UUID、保存先はモジュールごとのスキーマの専用の表、ペイロードのハッシュは HTTPメソッド・パス・クエリ文字列・ボディのバイト列の SHA-256、処理中の重複は 5 秒まで待って 409 と `Retry-After`、保存期間は 24 時間、保存するのは 2xx だけで再試行には保存した応答をそのまま返す。ペイロードが違うときの 400 と、POST と PATCH のすべてへの適用は原文のまま（IETF Draft 08 は 422 だが、このリポジトリは 400 を残した）。IETF Draft 08 の 2.1、2.7、ADR 0040。
 - status-codes.md の HTTP ステータスコードの出典を、RFC 7231 から RFC 9110 (Section 15) にした。RFC 9110 (7231 を obsolete)。
 - http-methods.md の HTTP メソッドの出典を RFC 7231 から RFC 9110 (Section 9) に、リクエストライン長 (8000 オクテット) の出典を RFC 7230 から RFC 9112 (Section 3) にした。RFC 9110・RFC 9112 (7231・7230 の該当部分を obsolete)。
 - security.md の Strict-Transport-Security の推奨値で閉じ忘れていたバッククォートを足した (`max-age=63072000; includeSubDomains`)。値は変えていない。
