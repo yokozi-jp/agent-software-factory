@@ -88,8 +88,8 @@ const deepMessage =
   `Import another package by its name only (${scope}/<name>). Its package.json exports its src/index.ts and ` +
   "nothing else; export what you need from there (docs/adr/0026).";
 const dbMessage =
-  `db imports the modules by \`import type\` only, and no other package of the workspace: it knows their database ` +
-  "types, not their code. Use `import type`, or move the code to apps/api (docs/adr/0037).";
+  "db imports the packages of the workspace by `import type` only: it knows the database types of the modules, not " +
+  "their code. Use `import type`, or move the code to apps/api (docs/adr/0037).";
 const layerMessage =
   "Layers point inward: domain imports nothing, application imports domain, and infrastructure and http import " +
   "application and domain but not each other (docs/adr/0026).";

@@ -41,6 +41,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 - migration を足すときは `packages/db/migrations/` に書き、`pnpm exec nx db-types db` で型を生成し直します ([PostgreSQL のマイグレーション](../db/postgresql-migration.md))。
 - ワーカー、バッチ、migrate のタスクは `@agent-software-factory/db` の `migrate` を import できます。本番の入口の形 (rds-signer、bootstrap、dbmate の 2 段、イメージへの入れ方) は、サンプル機能とインフラの spec で決めます。
 - `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。
+- `db:seed` の Nx target は、まだ seed がないので持ちません。seed を実装する [Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332) が足します。
 - seed ([Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332)) を実装するとき、`src/seed/` を coverage の除外から外し、`knip.jsonc` の `packages/db` の `ignoreDependencies` から、使ったモジュールを外します。
 
 ## 出典
