@@ -31,7 +31,7 @@ export const runtimeFixture =
   "// oxlint-disable-next-line no-restricted-globals -- fixture\nexport const a: unknown = process;\n" +
   "// oxlint-disable-next-line no-restricted-properties -- fixture\nexport const b: unknown = globalThis.process;\n" +
   '// oxlint-disable-next-line import/no-nodejs-modules -- fixture\nimport "node:fs";\n';
-export const srcFixtures = (name: string): Record<string, string> => ({
+const srcFixtures = (name: string): Record<string, string> => ({
   [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
   [`packages/${name}/src/__fixtures__/runtime-apis.ts`]: runtimeFixture,
   [`packages/${name}/src/__fixtures__/boundaries.test.ts`]: moduleFixture,
@@ -71,8 +71,30 @@ export const factoryAgent: {
   },
 };
 
+// The Effect lint that every module runs (docs/adr/0028).
+export const lintEffect =
+  "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure";
+
+// The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
+// its src/index.ts. A module also runs the Effect lint.
+export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    name: `@agent-software-factory/${name}`,
+    exports: { ".": "./src/index.ts" },
+    scripts: { check: "vp check", ...(name === "shared" ? {} : { "lint-effect": lintEffect }) },
+    nx: { name },
+    ...fields,
+  });
+export const packageFiles = (
+  name: string,
+  fields: Record<string, unknown> = {},
+): Record<string, string> => ({
+  [`packages/${name}/package.json`]: packageJson(name, fields),
+  [`packages/${name}/src/index.ts`]: "export {};\n",
+});
+
 // The fixture of a module whose domain override must keep the runtime restrictions (docs/adr/0007).
-export const domainRuntimeFixtures = (name: string): Record<string, string> => ({
+const domainRuntimeFixtures = (name: string): Record<string, string> => ({
   [`packages/${name}/src/domain/__fixtures__/runtime-apis.ts`]: runtimeFixture,
 });
 
@@ -116,18 +138,16 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
-  "packages/shared/package.json": JSON.stringify({ name: "@x/shared" }),
-  ...srcFixtures("shared"),
-  "packages/claim/package.json": JSON.stringify({ name: "@x/claim" }),
+  ...packageFiles("shared"),
+  ...packageFiles("claim", { dependencies: { "@agent-software-factory/shared": "workspace:*" } }),
   ...srcFixtures("claim"),
   ...domainRuntimeFixtures("claim"),
   "packages/claim/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/claim/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/claim/src/http/__fixtures__/boundaries.ts": moduleFixture,
   "vite.config.ts": [
-    "const modules: Record<string, readonly string[]> = {",
-    "  claim: [],",
-    "};",
+    // An object before layers, so that a check reads layers by its name.
+    'const scope = { name: "@x" };',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',

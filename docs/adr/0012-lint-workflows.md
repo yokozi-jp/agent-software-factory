@@ -20,7 +20,7 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 
 最初 (2026-10-23) は upstream の actionlint 1.7.12 を使い、jactionlint は下の「Considered Options」の理由で採りませんでした。2026-10-24 に、すべての workflow の runner を環境構築の手順と同じ `ubuntu-26.04` にしたところ、actionlint 1.7.12 が `label "ubuntu-26.04" is unknown` と報告しました。`ubuntu-26.04` は 2026-09-17 に GA になった GitHub-hosted runner です ([GitHub changelog](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/))。upstream の main もこの label を知らず、対応を求める Issue (#682) と PR (#683、#723、#743) は 2026-06 から閉じられていません。最後の commit は 2026-04-19、最後の release は 2026-03-30 の v1.7.12 です。下の Consequences に書いていた「upstream の actionlint が、使いたい runner label で誤った指摘を出し、直らない」に当たるので、jactionlint に移しました。
 
-- `.github/actionlint.yaml` の `self-hosted-runner.labels` に `ubuntu-26.04` を足す回避も考えました。1行で済みますが、self-hosted runner のための設定を GitHub-hosted runner に流用することになり、upstream が休止したままなので外す時期も来ません。
+- actionlint の設定ファイル (採らなかったので置いていない。置くなら `.github/` の `actionlint.yaml`) の `self-hosted-runner.labels` に `ubuntu-26.04` を足す回避も考えました。1行で済みますが、self-hosted runner のための設定を GitHub-hosted runner に流用することになり、upstream が休止したままなので外す時期も来ません。
 - jactionlint 2.3.0 の `correctness` profile で今の workflow を検査し、指摘がないことを確かめました。`tools/scripts/src/sh/lint-workflows.tools.test.ts` の、わざと誤りを入れた workflow は、actionlint のときと同じく失敗します。
 - 入れ方は upstream と同じ aqua backend (`"aqua:jdx/jactionlint"`) で、`mise.lock` に checksum と github-attestations の provenance が記録されます。mise の registry の短い名前 `jactionlint` は github backend を指すので使いません。
 - zizmor は併用を続けます。jactionlint の `default` profile の security と policy の規則は使いません。
@@ -32,7 +32,7 @@ zizmor は `--offline` で動かします。zizmor は `GH_TOKEN` か `GITHUB_TO
 - **jactionlint (`jdx/jactionlint`)**: mise の作者の jdx が 2026-10-05 に作った actionlint の fork です。upstream で merge されていない修正、新しい構文 (parallel steps など)、zizmor の audit に倣った security と policy の規則を足しています。mise は同じ日の v2026.10.3 で `actionlint` を非推奨にし、jactionlint を勧めています。ただし、registry にこの推奨を入れたのは jdx 本人です。jactionlint は 2026-10-07 から aqua registry にも入っているので、upstream と同じく aqua backend で入れられ、`mise.lock` に attestation の検証を記録できます。
   upstream の `rhysd/actionlint` は archive されておらず、保守の終了も宣言されていません。ただし main への commit は 2026-04-19 が最後で、作者の不在を尋ねた Issue #719 にも作者の rhysd は返信していません。事実上休止している、と判断します。
   2026-10-23 の時点では upstream を使いました。これは判断でした。jactionlint は作られて 3 週間で、作って 4 日後の 2026-10-09 に v2.0.0 を出しています。`--profile` を指定しないと security と policy の規則も動き、v2.0.0 から v2.2.0 までの minor の版ごとに規則が足されています。fork 後の commit のほとんどは jdx 一人のものです。lint の版を上げるたびに指摘が変わると、hook と CI で同じスクリプトを使うこの構成では、版を上げる作業が重くなります。一方で、今の workflow は jactionlint 2.3.0 で検査しても指摘がないことを確かめました (actionlint 1.7.12 でも同じです)。upstream の休止で困ることは、まだ起きていません。jactionlint は zizmor の audit をすべて持つと主張していますが、これは jactionlint 自身の比較で、自分で欠けを挙げてもいます。そのため zizmor の代わりにもしません。
-- **upstream の actionlint に `.github/actionlint.yaml` で label を足して使い続ける**: 上の経緯のとおり採りませんでした。
+- **upstream の actionlint に、その設定ファイルで label を足して使い続ける**: 上の経緯のとおり採りませんでした。
 - **pip や uvx で zizmor を入れる**: Python の環境が要ります。mise の aqua backend は、registry の定義に従って checksum や attestation を検証して入れるので、ほかの道具と入れ方を揃えられます。
 
 ## Consequences

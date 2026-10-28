@@ -1,5 +1,5 @@
 // Detection-power fixture (#43) for how domain is written (root vite.config.ts, docs/adr/0027). Each statement
-// below is one that a rule must report in packages/claim/src/domain/: `throw` (domain/no-throw), `new Date()` and
+// below is one that a rule must report in packages/*/src/domain/: `throw` (domain/no-throw), `new Date()` and
 // `Date.now()` (no-restricted-globals), and `Math.random()` (no-restricted-properties). If a rule is turned
 // off, or its `files` stop reaching this directory, the disable comment is unused and `vp check` fails
 // (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/, and nothing imports this file.

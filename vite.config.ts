@@ -67,15 +67,11 @@ const runtimeGlobalLintRules = {
 } satisfies Record<string, ["error", ...Record<string, string>[]]>;
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
-// packages/, and apps/api only assembles them. A module may import the modules listed for it here, and they
-// point one way: closing (締め) → approval (承認) → claim (申請). shared imports no module.
-// repo-policy checks that every project under packages/ other than shared is a key here and has the fixtures.
+// packages/, and apps/api only assembles them. Which module may import which (closing (締め) → approval (承認)
+// → claim (申請), shared imports none) is not a lint rule: a module can resolve only the packages its
+// package.json declares (pnpm, TypeScript), and repo-policy checks the declarations. The rules here are the same
+// for every module, so one override per layer reaches them all, and one module holds the fixtures.
 const scope = "@agent-software-factory";
-const modules: Record<string, readonly string[]> = {
-  claim: [],
-  approval: ["claim"],
-  closing: ["approval", "claim"],
-};
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
 // shared (below).
 const layers: Record<string, readonly string[]> = {
@@ -85,12 +81,6 @@ const layers: Record<string, readonly string[]> = {
   http: ["application", "domain"],
 };
 
-const moduleNames = Object.keys(modules);
-const packageNames = ["shared", ...moduleNames];
-const moduleMessage = (from: string, to: string) =>
-  `${from} must not import ${to}: modules depend one way, closing → approval → claim, and shared imports none. ` +
-  `Move the code that needs ${to} into a module that may import it, or move what both need into shared ` +
-  "(docs/adr/0026).";
 const deepMessage =
   `Import another package by its name only (${scope}/<name>). Its package.json exports its src/index.ts and ` +
   "nothing else; export what you need from there (docs/adr/0026).";
@@ -163,20 +153,17 @@ const effectRunMessage =
   "dependency types. Run it in http, an entry point or a test (docs/adr/0028).";
 
 // Imports that reach past the index.ts of another package: a subpath of the package name, or a relative path
-// into <package>/src. The package.json exports stop the first from resolving, and this rule names both.
+// into the src/ of a package or an app. The package.json exports stop the first from resolving, and this rule
+// names both.
 const deepImports = [
   { regex: `^${scope}/[^/]+/`, message: deepMessage },
-  { regex: `^\\.{1,2}/(?:.*/)?(?:${packageNames.join("|")})/src(?:/|$)`, message: deepMessage },
+  { regex: "^\\.{1,2}/(?:.*/)?[^/]+/src(?:/|$)", message: deepMessage },
 ];
-const forbiddenModules = (from: string, allowed: readonly string[]) =>
-  moduleNames
-    .filter((name) => name !== from && !allowed.includes(name))
-    .map((name) => ({ name: `${scope}/${name}`, message: moduleMessage(from, name) }));
 
-// The options of no-restricted-imports for a file of module `name`, in `layer` (undefined: src/index.ts and
-// other files outside the layers). Oxlint keeps only the last override that sets a rule for a file, so each
+// The options of no-restricted-imports for a file of a package in `layer` (undefined: src/index.ts and other
+// files outside the layers, and shared). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
-function moduleImports(name: string, layer?: string) {
+function moduleImports(layer?: string) {
   const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
@@ -195,10 +182,7 @@ function moduleImports(name: string, layer?: string) {
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
-  const paths: RestrictedPath[] = [
-    ...runtimeImports.paths,
-    ...forbiddenModules(name, modules[name] ?? []),
-  ];
+  const paths: RestrictedPath[] = [...runtimeImports.paths];
   if (layer !== "domain") paths.push(...effectPaths);
   if (layer === "application" || layer === "infrastructure")
     paths.push({
@@ -246,15 +230,15 @@ const domainPurityRules = {
   },
 } satisfies Pick<OxlintOverride, "jsPlugins" | "rules">;
 
-const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
+const moduleOverrides: OxlintOverride[] = [
   {
-    files: [`packages/${name}/src/**`],
-    rules: { "no-restricted-imports": ["error", moduleImports(name)] },
+    files: ["packages/*/src/**"],
+    rules: { "no-restricted-imports": ["error", moduleImports()] },
   },
   ...Object.keys(layers).map((layer): OxlintOverride => {
-    const files = [`packages/${name}/src/${layer}/**`];
+    const files = [`packages/*/src/${layer}/**`];
     const imports: NonNullable<OxlintOverride["rules"]> = {
-      "no-restricted-imports": ["error", moduleImports(name, layer)],
+      "no-restricted-imports": ["error", moduleImports(layer)],
     };
     return layer === "domain"
       ? {
@@ -264,7 +248,7 @@ const moduleOverrides = moduleNames.flatMap((name): OxlintOverride[] => [
         }
       : { files, rules: imports };
   }),
-]);
+];
 
 // What the entry files and the tests of the runtime-specific rules turn off.
 const runtimeRulesOff = {
@@ -381,14 +365,8 @@ export default defineConfig({
         plugins: ["import"],
         rules: runtimeRulesOff,
       },
-      // Module boundaries (docs/adr/0026): the direction between the modules, imports by the package name only,
-      // and the direction between the layers of a module.
-      {
-        files: ["packages/shared/src/**"],
-        rules: {
-          "no-restricted-imports": ["error", moduleImports("shared")],
-        },
-      },
+      // Module boundaries (docs/adr/0026): imports by the package name only, and the direction between the layers
+      // of a module. The direction between the modules is the dependencies of their package.json.
       ...moduleOverrides,
       // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
       // fixture in <layer>/__fixtures__/effect.ts that this rule must report (repo-policy checks it).

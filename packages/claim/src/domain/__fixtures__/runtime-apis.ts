@@ -1,4 +1,4 @@
-// Detection-power fixture (#43) for the runtime-specific globals in packages/claim/src/domain (root vite.config.ts,
+// Detection-power fixture (#43) for the runtime-specific globals in packages/*/src/domain (root vite.config.ts,
 // docs/adr/0007). The domain override sets no-restricted-globals and no-restricted-properties for its own rules
 // (docs/adr/0027), and must keep the runtime restrictions as well. If it drops them, the disable comments are unused
 // and `vp check` fails (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/, and nothing imports this file.

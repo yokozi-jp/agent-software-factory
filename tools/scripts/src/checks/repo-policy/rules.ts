@@ -6,7 +6,8 @@
 //   ci.ts                CI workflows and the ruleset of main
 //   assurance-catalog.ts the assurance catalog and the configs
 //   agent-permissions.ts the permission rules of the agents
-//   docs-references.ts   references to docs/ from outside docs/
+//   docs-references.ts   references to docs/ from outside docs/, and to the code from docs/
+//   modules.ts           the dependencies between the modules, and how each resolves and lints them
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
 // vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
@@ -15,6 +16,12 @@ import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
+import {
+  modulesDependOneWay,
+  modulesLintEffect,
+  noResolutionBypass,
+  packageManifests,
+} from "./modules.ts";
 import {
   domainPurity,
   effectBoundaries,
@@ -52,6 +59,10 @@ export function violations(repo: Repo): string[] {
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
     ...effectBoundaries(tree),
+    ...packageManifests(tree),
+    ...modulesDependOneWay(tree),
+    ...noResolutionBypass(tree),
+    ...modulesLintEffect(tree),
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),
