@@ -56,8 +56,7 @@ const noSessionSetting = defineRule({
         if (
           callee.type === "MemberExpression" &&
           !callee.computed &&
-          callee.object.type === "Identifier" &&
-          callee.object.name === "sql" &&
+          isSqlTag(callee.object) &&
           callee.property.type === "Identifier" &&
           callee.property.name === "raw" &&
           sessionSetting.test(staticText(node.arguments[0]))
