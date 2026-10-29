@@ -15,6 +15,16 @@ export const domainFixture = [
   "",
 ].join("\n");
 
+// The fixture of the imports that bypass the Outbox and the transaction (docs/adr/0029): one import per package of
+// `bypassPackages` in vite.config.ts, each under the disable comment that the rule must make used.
+export const bypassFixture = [
+  "// oxlint-disable-next-line no-restricted-imports -- fixture: sqs",
+  'import "@x/sqs";',
+  "// oxlint-disable-next-line no-restricted-imports -- fixture: pg",
+  'import "pg";',
+  "",
+].join("\n");
+
 // A dbmate migration that passes the check of migrations (docs/adr/0025). The tests of rules.ts change one
 // section of it.
 export function migration(
@@ -165,9 +175,17 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
+  // The two overrides that stop the imports that bypass the Outbox and the transaction each have a fixture.
+  "packages/module-fixtures/src/application/__fixtures__/bypass.ts": bypassFixture,
+  "apps/api/src/__fixtures__/bypass.ts": bypassFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',
+    // The packages that bypass the Outbox and the transaction (docs/adr/0029), one fixture each.
+    "const bypassPackages = [",
+    '  "@x/sqs",',
+    '  "pg",',
+    "];",
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',

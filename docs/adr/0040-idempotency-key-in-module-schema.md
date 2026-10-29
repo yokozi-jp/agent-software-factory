@@ -72,7 +72,7 @@ web が使う `crypto.randomUUID()` は secure context (HTTPS) でしか使え�
 
 - 書き込みの route は、キーの検証と共有の関数への委譲が前提になります。web のすべての mutation は、キーを持って送ります。
 - 同じキーの 2 つ目の要求は、最大 5 秒、接続を 1 本使って待ちます。同時の再送が多いと、接続プールを圧迫します (判断)。Lambda から Aurora への接続の数に響く場合は、待たずに 409 を返す形 (advisory lock) を見直します。
-- 外への副作用は、Outbox を通さないと二重になります。業務の処理の中で外へ直接呼ばないでください。
+- 外への副作用は、Outbox を通さないと二重になります。業務の処理の中で外へ直接呼ばないでください。SQS、SES などの SDK のクライアントの import は、`no-restricted-imports` で止めます ([ADR 0029](0029-module-data-ownership-and-shared-outbox.md) の「検査」の規則 8)。
 - 期限切れで、まだ掃除されていない行の扱いは、この ADR では決めていません (「確かめられなかったこと」)。
 
 ## 確かめられなかったこと

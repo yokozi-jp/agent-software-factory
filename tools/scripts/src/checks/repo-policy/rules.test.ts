@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   apiDependencies,
+  bypassFixture,
   domainFixture,
   factoryAgent,
   migration,
@@ -60,8 +61,13 @@ const noModules: Record<string, undefined> = {
   "packages/approval/package.json": undefined,
   "packages/closing/package.json": undefined,
 };
+// The tests that remove every fixture of the overrides would also hear that the fixtures of the imports that bypass
+// the Outbox are gone (bypassGuards); those have their own tests, which call `violations`.
+const bypassFailure = (failure: string): boolean => failure.includes(" (bypassPackages)");
 const violationsWithoutOrder = (repository: Repo): string[] =>
-  violations(repository).filter((failure) => !failure.includes(" is in moduleOrder in "));
+  violations(repository).filter(
+    (failure) => !failure.includes(" is in moduleOrder in ") && !bypassFailure(failure),
+  );
 
 describe("violations", () => {
   it("finds nothing in a repository that keeps every rule", () => {
@@ -310,7 +316,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
           .map(([path, text]) => [path, text.replaceAll(`next-line ${rule} `, "next-line x/y ")]),
       );
       expect(
-        violations(repo(files)).filter((message) => message.startsWith("vite.config.ts")),
+        violations(repo(files)).filter((message) => message.startsWith("vite.config.ts sets")),
       ).toEqual([noFixture(rule)]);
     },
   );
@@ -2116,7 +2122,7 @@ describe("ADR 0026: the edges", () => {
             .map((path) => [path, undefined]),
         ),
       }),
-    );
+    ).filter((failure) => !bypassFailure(failure));
   const withBody = (body: string) =>
     config.replace('{\n  domain: [],\n  http: ["domain"],\n}', `{${body}}`);
   // layers after a line of another const, so that only the multiline `^` finds it.
@@ -3431,5 +3437,107 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(violations(repo({ [catalogPath]: extra }))).toEqual([
       `${catalogPath} names \`kiro-agent: gone\`, which is not in an agent of .kiro/agents/<name>.json.`,
     ]);
+  });
+});
+
+describe("ADR 0029: the imports that bypass the Outbox and the transaction have a fixture", () => {
+  const viteConfig = String(base["vite.config.ts"]);
+  const packagesFile = "packages/module-fixtures/src/application/__fixtures__/bypass.ts";
+  const apiFile = "apps/api/src/__fixtures__/bypass.ts";
+  const missing = (name: string, place: string, file: string) =>
+    `vite.config.ts stops the import of ${name} (bypassPackages) in ${place}, but no fixture there has \`oxlint-disable-next-line no-restricted-imports\` on the line above an import of it. Add one to ${file}, so that an override that stops reaching ${place}, or a rule that drops ${name}, fails \`vp check\` (docs/adr/0029).`;
+  const missingInPackages = (name: string) =>
+    missing(
+      name,
+      "packages/*/src",
+      "packages/module-fixtures/src/application/__fixtures__/bypass.ts",
+    );
+  const missingInApi = (name: string) =>
+    missing(name, "apps/api/src", "apps/api/src/__fixtures__/bypass.ts");
+
+  it("passes when both overrides have a fixture for every package of bypassPackages", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("names each package that has no fixture, in each override", () => {
+    expect(violations(repo({ [packagesFile]: undefined, [apiFile]: undefined }))).toEqual([
+      missingInPackages("@x/sqs"),
+      missingInPackages("pg"),
+      missingInApi("@x/sqs"),
+      missingInApi("pg"),
+    ]);
+  });
+
+  it("names the package that was added to bypassPackages without a fixture", () => {
+    const added = viteConfig.replace('  "pg",', '  "pg",\n  "@x/ses",');
+    expect(violations(repo({ "vite.config.ts": added }))).toEqual([
+      missingInPackages("@x/ses"),
+      missingInApi("@x/ses"),
+    ]);
+  });
+
+  it("does not take the fixture of one override for the other", () => {
+    expect(violations(repo({ [apiFile]: undefined }))).toEqual([
+      missingInApi("@x/sqs"),
+      missingInApi("pg"),
+    ]);
+  });
+
+  it("does not count a disable comment that is not on the line above the import", () => {
+    const apart = bypassFixture.replace('\nimport "pg";', '\n\nimport "pg";');
+    expect(violations(repo({ [packagesFile]: apart }))).toEqual([missingInPackages("pg")]);
+  });
+
+  it("does not count a type import, which the rule would let through for pg", () => {
+    const typeOnly = bypassFixture.replace('import "pg";', 'import type { Pool } from "pg";');
+    expect(violations(repo({ [packagesFile]: typeOnly }))).toEqual([missingInPackages("pg")]);
+  });
+
+  it("does not count a disable comment of another rule", () => {
+    const other = bypassFixture.replace(
+      "disable-next-line no-restricted-imports -- fixture: sqs",
+      "disable-next-line no-restricted-globals -- fixture: sqs",
+    );
+    expect(violations(repo({ [packagesFile]: other }))).toEqual([missingInPackages("@x/sqs")]);
+  });
+
+  it("does not count a file outside a __fixtures__/ directory", () => {
+    expect(
+      violations(
+        repo({
+          [packagesFile]: undefined,
+          "packages/module-fixtures/src/application/bypass.ts": bypassFixture,
+        }),
+      ),
+    ).toEqual([missingInPackages("@x/sqs"), missingInPackages("pg")]);
+  });
+
+  it("fails when vite.config.ts has no bypassPackages, so that removing the list does not turn the check off", () => {
+    const removed = viteConfig.replace(/const bypassPackages = \[[^\]]*\];/, "");
+    expect(violations(repo({ "vite.config.ts": removed }))).toEqual([
+      "vite.config.ts has no bypassPackages array. It lists the packages that bypass the Outbox and the transaction (the SDK clients of SQS and SES, and pg), which no-restricted-imports stops (docs/adr/0029).",
+    ]);
+  });
+
+  it("asks for nothing of packages/*/src when there is no package under packages/", () => {
+    const failures = violations(
+      repo({
+        ...noModules,
+        "packages/module-fixtures/package.json": undefined,
+        "packages/shared/package.json": undefined,
+        [packagesFile]: undefined,
+      }),
+    );
+    expect(failures.filter((failure) => failure.includes("packages/*/src"))).toEqual([]);
+  });
+
+  it("asks for nothing of apps/api/src when the repository has no file in it", () => {
+    const withoutApiSource = Object.fromEntries(
+      Object.keys(base)
+        .filter((path) => path.startsWith("apps/api/src/"))
+        .map((path) => [path, undefined]),
+    );
+    const failures = violations(repo(withoutApiSource));
+    expect(failures.filter((failure) => failure.includes("(bypassPackages)"))).toEqual([]);
   });
 });

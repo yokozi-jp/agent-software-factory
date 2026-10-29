@@ -25,6 +25,7 @@ import {
   packageManifests,
 } from "./modules.ts";
 import {
+  bypassGuards,
   dbBoundaries,
   domainPurity,
   effectBoundaries,
@@ -63,6 +64,7 @@ export function violations(repo: Repo): string[] {
     ...domainPurity(tree),
     ...effectBoundaries(tree),
     ...dbBoundaries(tree),
+    ...bypassGuards(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
     ...modulesAreRegistered(tree),

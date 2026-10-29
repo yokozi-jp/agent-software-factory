@@ -30,6 +30,36 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
 
+// Imports that bypass the Outbox and the transaction (docs/adr/0029). A request or a module that calls SQS, SES and the
+// like directly sends before the transaction commits, or twice on a retry; a module that opens a connection of its own
+// skips the tenant setting and the module role of inTenantTransaction. The names are listed in one array, and
+// repo-policy checks that every one has a fixture in packages/module-fixtures and in apps/api (#43). The places that
+// may send are the entry files and the tests below, where the override leaves these `paths` out; add the entry file of
+// the relay and of the consumers there when they exist. packages/db opens the connections and is not restricted
+// (docs/adr/0038). This is a guardrail: a `fetch` to an AWS endpoint and a dynamic import are not stopped.
+const bypassPackages = [
+  "@aws-sdk/client-sqs",
+  "@aws-sdk/client-ses",
+  "@aws-sdk/client-sesv2",
+  "@aws-sdk/client-sns",
+  "@aws-sdk/client-eventbridge",
+  "@aws-sdk/client-lambda",
+  "@aws-sdk/client-sfn",
+  "pg",
+];
+const outboxBypassMessage =
+  "Do not send to SQS, SES, SNS, EventBridge, Lambda or Step Functions from a module or a request: put the event in " +
+  "the Outbox with enqueueOutbox, in the same transaction as the update, and let the relay or a consumer send it " +
+  "(docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.";
+const connectionMessage =
+  "Do not open a connection of your own: it skips the tenant setting and the module role. Open a transaction with " +
+  "inTenantTransaction (docs/adr/0011, docs/adr/0029). A type import is fine; the pool is made in the entry file.";
+const bypassPaths: RestrictedPath[] = bypassPackages.map((name) =>
+  name === "pg"
+    ? { name, allowTypeImports: true, message: connectionMessage }
+    : { name, message: outboxBypassMessage },
+);
+
 // Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
 // into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
 // from globalThis.
@@ -125,6 +155,7 @@ interface RestrictedPath {
   name: string;
   message: string;
   importNames?: string[];
+  allowTypeImports?: boolean;
 }
 // Added to every layer but domain, which may import no library at all (domainMessage above).
 const effectPaths: RestrictedPath[] = [
@@ -198,7 +229,7 @@ function moduleImports(layer?: string) {
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
-  const paths: RestrictedPath[] = [...runtimeImports.paths];
+  const paths: RestrictedPath[] = [...runtimeImports.paths, ...bypassPaths];
   if (layer !== "domain") paths.push(...effectPaths);
   if (layer === "application" || layer === "infrastructure")
     paths.push({
@@ -356,7 +387,7 @@ export default defineConfig({
           "no-restricted-imports": [
             "error",
             {
-              paths: runtimeImports.paths,
+              paths: [...runtimeImports.paths, ...bypassPaths],
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
