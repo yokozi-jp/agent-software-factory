@@ -13,6 +13,9 @@ export function readApiInstant(value: string): Temporal.Instant {
 
 /** A calendar date in a response body: `YYYY-MM-DD`. It has no time zone and is never converted. */
 export function readApiDate(value: string): Temporal.PlainDate {
+  // `PlainDate.from` also reads "2026-03-31T10:00:00" and drops the time, so a date-time is refused here.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+    throw new RangeError(`not a calendar date (YYYY-MM-DD): ${value}`);
   return Temporal.PlainDate.from(value);
 }
 

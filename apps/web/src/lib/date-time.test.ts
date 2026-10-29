@@ -42,6 +42,10 @@ describe("API の値の読み込み (readApiInstant と readApiDate)", () => {
     expect(() => readApiInstant("2026-03-31")).toThrow(RangeError);
   });
 
+  it("時刻の付いた暦日は読まない", () => {
+    expect(() => readApiDate("2026-03-31T10:00:00")).toThrow(RangeError);
+  });
+
   it("オフセット付きの瞬間は読まない", () => {
     expect(() => readApiInstant("2026-04-01T00:30:00.000+09:00")).toThrow(RangeError);
   });
