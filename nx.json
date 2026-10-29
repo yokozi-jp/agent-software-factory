@@ -39,6 +39,10 @@
       "cache": true,
       "inputs": ["default", "^production"]
     },
+    "i18n-keys": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/packages/i18n/**/*", "{workspaceRoot}/pnpm-lock.yaml"]
+    },
     "lint-effect": {
       "cache": true,
       "inputs": [

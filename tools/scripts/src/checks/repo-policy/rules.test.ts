@@ -2221,7 +2221,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures and ui on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2362,6 +2362,27 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
         repo(manifest("claim", { dependencies: { "@agent-software-factory/ui": "workspace:*" } })),
       ),
     ).toEqual([wrong("claim", "dependencies", "ui")]);
+  });
+
+  it("asks i18n for no place in moduleOrder, no lint-effect script, and refuses a workspace package it depends on", () => {
+    const i18n = (fields: Record<string, unknown>) => ({
+      "packages/i18n/package.json": packageJson("i18n", fields),
+      "packages/i18n/src/index.ts": "",
+    });
+    expect(violations(repo(i18n({})))).toEqual([]);
+    expect(
+      violations(repo(i18n({ dependencies: { "@agent-software-factory/shared": "workspace:*" } }))),
+    ).toEqual([wrong("i18n", "dependencies", "shared")]);
+  });
+
+  it("refuses a module that depends on i18n", () => {
+    expect(
+      violations(
+        repo(
+          manifest("claim", { dependencies: { "@agent-software-factory/i18n": "workspace:*" } }),
+        ),
+      ),
+    ).toEqual([wrong("claim", "dependencies", "i18n")]);
   });
 
   it("passes a dependency outside the workspace, and one of a longer scope", () => {

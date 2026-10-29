@@ -209,6 +209,12 @@ jobs:
       - name: DB types match the migrations (kysely-codegen, nx affected)
         run: pnpm exec nx affected -t db-types-check
 
+      # The keys of the texts (packages/i18n/src/locales) match the keys that the code uses: no key is missing in a
+      # language, none is unused (i18next-cli status, status --unused; docs/adr/0044). The target is web's: it
+      # depends on packages/i18n, so a change to either makes it affected, and the project graph has no cycle.
+      - name: Text keys match the code (i18next-cli, nx affected)
+        run: pnpm exec nx affected -t i18n-keys
+
       # effect-tsgo on application and infrastructure of the modules: an Effect that is never run, and the Effect 3,
       # unstable and experimental APIs (oxlint.effect.json, docs/tooling/effect-lint.md, docs/adr/0028).
       - name: Effect checks (effect-tsgo, nx affected)

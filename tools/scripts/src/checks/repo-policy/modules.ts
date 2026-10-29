@@ -31,10 +31,13 @@ export const packageNames = (tree: Tree): string[] =>
 // fixtures of the overrides that reach every module; it stays when the sample feature is removed. ui holds the
 // shadcn/ui parts that the apps share; it has no layers, and no module depends on it. None depends on a package
 // of the workspace.
+// i18n holds the texts of the screens (the resources of ja and en, the setup of i18next) that web shares with the
+// packages; it has no layers, and no module depends on it (docs/adr/0044).
 const shared = "shared";
 const moduleFixtures = "module-fixtures";
 const ui = "ui";
-const dependOnNone: readonly string[] = [shared, moduleFixtures, ui];
+const i18n = "i18n";
+const dependOnNone: readonly string[] = [shared, moduleFixtures, ui, i18n];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
 // has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api depends on it
 // (docs/adr/0038). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
@@ -42,9 +45,11 @@ const db = "db";
 const dbApp = "apps/api";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but shared, ui and db.
+// and module-fixtures. Every package under packages/ but shared, ui, i18n and db.
 export const modulePackageNames = (tree: Tree): string[] =>
-  packageNames(tree).filter((name) => name !== shared && name !== ui && name !== db);
+  packageNames(tree).filter(
+    (name) => name !== shared && name !== ui && name !== i18n && name !== db,
+  );
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
 // exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
@@ -103,8 +108,8 @@ export function packageManifests(tree: Tree): string[] {
   });
 }
 
-// Every package under packages/ but shared, module-fixtures and ui is a module of moduleOrder, and depends on no
-// package of the workspace but shared and the modules after it. shared, module-fixtures and ui depend on none.
+// Every package under packages/ but shared, module-fixtures, ui and i18n is a module of moduleOrder, and depends on no
+// package of the workspace but shared and the modules after it. shared, module-fixtures, ui and i18n depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -127,7 +132,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
         if (!dependsOnNone && (target === shared || moduleOrder.indexOf(target) > position))
           continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures and ui on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
         );
       }
   }
