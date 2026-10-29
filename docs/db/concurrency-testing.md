@@ -7,7 +7,7 @@ tags: [db, postgresql, testing, concurrency, runbook]
 
 # 競合と原子性のテストの書き方
 
-競合のテストは、本物の PostgreSQL に対して、application の公開関数を呼んで確かめます。
+競合のテストは、本物の PostgreSQL に対して、application の公開 API の関数を呼んで確かめます。
 この文書は、このリポジトリが決めた書き方です。取り込んだ [PostgreSQL の排他制御](postgresql-concurrency.md) には、テストの書き方がありません。
 決定と根拠は [Issue #352](https://github.com/yokozi-jp/agent-software-factory/issues/352) の解決コメントにあります。
 
