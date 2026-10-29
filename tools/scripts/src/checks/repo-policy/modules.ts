@@ -113,7 +113,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
     const position = moduleOrder.indexOf(name);
     if (!dependsOnNone && position === -1) {
       failures.push(
-        `packages/${name} is not in moduleOrder in ${moduleOrderFile}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
+        `packages/${name} is not in moduleOrder in ${moduleOrderFile}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026, docs/domain-model/add-module.md).`,
       );
       continue;
     }

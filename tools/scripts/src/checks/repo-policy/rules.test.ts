@@ -2367,7 +2367,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
 
   it("refuses a package under packages/ that is not a module of the table", () => {
     expect(violations(repo(manifest("billing", { dependencies: workspace })))).toEqual([
-      `packages/billing is not in moduleOrder in ${table}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
+      `packages/billing is not in moduleOrder in ${table}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026, docs/domain-model/add-module.md).`,
     ]);
   });
 });
@@ -2392,7 +2392,7 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
     expect(
       violations(repo(packageFiles("extra", { nx: { name: "extra", tags: ["type:module"] } }))),
     ).toEqual([
-      `packages/extra is not in moduleOrder in ${order}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
+      `packages/extra is not in moduleOrder in ${order}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026, docs/domain-model/add-module.md).`,
       `packages/extra has the tag type:module but is not in moduleOrder in ${order}. ${guide}`,
       'apps/api/package.json must have @agent-software-factory/extra: "workspace:*" in dependencies, since packages/extra has the tag type:module. ' +
         guide,
