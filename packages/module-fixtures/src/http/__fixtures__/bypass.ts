@@ -31,3 +31,11 @@ import "@aws-sdk/client-sfn";
 // @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: a connection that skips inTenantTransaction
 import "pg";
+// The raw SQL of Kysely (root vite.config.ts, `sqlImportNames`, docs/adr/0029). kysely is not a dependency of this package
+// either, so the directive says the same.
+// @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
+// oxlint-disable-next-line no-restricted-imports -- fixture: raw SQL that skips the types of the builder
+export { sql } from "kysely";
+// @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
+// oxlint-disable-next-line no-restricted-imports -- fixture: a compiled query that skips the types of the builder
+export { CompiledQuery } from "kysely";
