@@ -31,6 +31,9 @@ sources:
 - ワークフローエンジン (`workflow-engine.md`) の製品比較表で、タスク間パラメータ連携の Step Functions 列と Airflow 列が入れ替わっていたのを直した。`InputPath`/`ResultPath` を Step Functions 列、XCom を Airflow 列にした。AWS Step Functions デベロッパーガイド、Apache Airflow XComs ドキュメント。
 - ワークフローエンジン (`workflow-engine.md`) の製品比較表の Airflow 列の `schedule_interval` を `schedule` に直し、Airflow 3.0 でこの引数が変わった旨の注記を表の前に足した。Apache Airflow Cron & Time Intervals ドキュメント。
 - ワークフローエンジン (`workflow-engine.md`) の Step Functions の個別タスクのリランのサポート年を、アナウンス日 (2023-11-15) に合わせて「2024年」から「2023年」に直した。AWS の What's New アナウンス。
+- 業務日付 (`business-date.md`) は業務日付マスタを RDB の表で持ち、切り替えのジョブで進める前提だが、このリポジトリの締めのバッチ ([ADR 0042](../adr/0042-closing-batch-catches-up-daily-without-locks.md)) はマスタと切り替えのジョブを置かず、締めの表の「最後に締めた月」から締める月を決める。この構成での判断である。
+- バッチのテスト観点 (`test.md`) の「ワークフローエンジンの実装はテストコードによるUTが困難」に、AWS Step Functions では TestState API（2025年11月の強化で、モック付きの `.sync`、Map、`Retry` の回数指定を試せる）が使えることを書き足した。AWS Step Functions デベロッパーガイド（[Using TestState API to test a state](https://docs.aws.amazon.com/step-functions/latest/dg/test-state-isolation.html)）。
+- ワークフローエンジン (`workflow-engine.md`) のスケジューラとの比較表の「リラン操作」で、再実行（新しい実行を始める）と redrive（失敗した状態から同じ入力で続ける）を書き分けた。redrive は Standard の実行だけで、開始から 14 日以内などの条件がある。AWS Step Functions デベロッパーガイド（[Redriving state machine executions](https://docs.aws.amazon.com/step-functions/latest/dg/redrive-executions.html)）。
 
 ## 位置づけ
 

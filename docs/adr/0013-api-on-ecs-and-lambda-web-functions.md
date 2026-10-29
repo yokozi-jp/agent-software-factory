@@ -17,7 +17,7 @@ Lambda の構成でも DB は VPC の中にあるので、Web Functions は egre
 
 - 業務の処理は共通のコードにし、実行する場所の違いは入口のファイルで吸収します（ADR 0007 の方針を広げたもの）。入口は、API の `server.ts`（ECS と Web Functions で共通。Web Functions では `AWS_LAMBDA_HTTP_ENDPOINT` を listen する）、ECS のワーカー（SQS を読む繰り返し）、Lambda のワーカー（Event Functions の `handler(event)`。`batchItemFailures` を返す）、締めのバッチです。
 - ECS では、API、ワーカー、バッチを1つのコンテナイメージにします。Lambda では、API（Web Functions）とワーカー（Event Functions、`nodejs24.x`）を zip で置きます。Web Functions の実行環境は Arm64 なので、native のモジュールを含む依存は Linux Arm64 用に作ります。
-- 締めのバッチは ECS のタスク（EventBridge Scheduler → Step Functions → RunTask）だけで動かします。Lambda は1回の実行が15分で切れるためです。
+- 締めのバッチは ECS のタスク（EventBridge Scheduler → Step Functions → RunTask）だけで動かします。Lambda は1回の実行が15分で切れるためです。Scheduler は毎日起動し、最初にテナントの一覧を返すタスクを `RunTask.waitForTaskToken` で起動します。その一覧を Map で回し、テナントごとに締めのタスクを `RunTask.sync` で起動します。失敗は `Retry` で 2 回まで再試行し、Step Functions の実行名を `tx_id` に渡します（[ADR 0042](0042-closing-batch-catches-up-daily-without-locks.md)）。
 - 入口は CloudFront 1つにし、web（S3 と OAC）と `/api/*` を同じオリジンにまとめます。`/api/*` の転送先は、ECS なら ALB、Lambda なら Web Functions のエンドポイント（OAC、`IamAuth`、origin request policy は `AllViewerExceptHostHeader`）です。認証は Cookie のセッションで行い（ADR 0022）、`Authorization` ヘッダーは OAC の SigV4 の署名が使うので、アプリでは使いません。`/api/*` の cache policy は `CachingDisabled` にし、Cookie を転送します。AI のチャットのような応答は SSE の streaming で書き、WebSocket を使う機能は ECS の構成でだけ扱います。
 - Web Functions の `timeoutSeconds`（既定 30 秒、最大 900 秒）は stream 全体に効き、CloudFront の origin response timeout（既定 30 秒）はパケットの間に効きます。長い streaming の応答では、`timeoutSeconds` を上げ、30 秒より短い間隔で何かを送ります。
 - DB は Aurora PostgreSQL Serverless v2 を VPC の中に置き、最小を 0 ACU にします。Web Functions は `maxEnvironments`（最小は 2）で実行環境の数を抑えて接続プールを持ち、Event Functions のワーカーは同時実行数に上限を付けて接続プールを1本にします。
