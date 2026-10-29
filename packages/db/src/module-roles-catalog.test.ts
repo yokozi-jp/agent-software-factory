@@ -1,9 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createTestDatabase, type TestDatabase } from "./testing/index.ts";
 import { checkModuleRoles, type ModuleReads } from "./module-roles-catalog.ts";
+import { moduleSchemas } from "./types.ts";
 
 // モジュールのロールと表の所有を DB のカタログで確かめる検査 (docs/adr/0029)。依存の方向は 締め → 承認 → 申請。
 const reads: ModuleReads = {
@@ -33,17 +32,10 @@ describe("checkModuleRoles", () => {
     expect(await checkModuleRoles(db.superuser, reads)).toEqual([]);
   });
 
-  it("モジュールの package (type:module) の名前ごとに、スキーマとロールがあること", () => {
-    const packages = join(import.meta.dirname, "../..");
-    const names = readdirSync(packages).filter((name) => {
-      try {
-        return readFileSync(join(packages, name, "package.json"), "utf8").includes('"type:module"');
-      } catch {
-        return false;
-      }
-    });
-
-    expect(names.toSorted()).toEqual(Object.keys(reads).toSorted());
+  it("モジュールの package (type:module) の名前ごとに、依存の方向の表があること", () => {
+    // 名前は型の生成 (types.ts) が package.json の tag から読むものと同じ。ここの reads の手書きの写しとずれたら失敗する。
+    // ModuleName (shared) の型で結び付けないのは、db が shared に依存しないため (ADR 0038)。
+    expect(Object.keys(reads).toSorted()).toEqual([...moduleSchemas].toSorted());
   });
 
   // 検出力: わざと規則を破った DB で、検査が失敗を返すこと (#30)。DDL は表の所有者の migrator、GRANT などは superuser。
