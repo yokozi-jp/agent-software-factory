@@ -30,6 +30,31 @@ export const bypassFixture = [
   "",
 ].join("\n");
 
+// The fixture of the raw SQL of Kysely that a module may not import (`sqlImportNames`): the places of the packages ask
+// for it on top of bypassFixture.
+export const bypassModuleFixture = [
+  bypassFixture.trimEnd(),
+  "// oxlint-disable-next-line no-restricted-imports -- fixture: sql",
+  'export { sql } from "kysely";',
+  "",
+].join("\n");
+
+// The fixture of withTables outside infrastructure/ (docs/adr/0029): a call that the rule must report.
+export const withTablesFixture = [
+  "// oxlint-disable-next-line no-restricted-properties -- fixture: withTables",
+  "export const tables = trx.withTables();",
+  "",
+].join("\n");
+// The call that infrastructure/ may make: no disable comment.
+export const withTablesAllowedFixture = "export const tables = trx.withTables();\n";
+
+// The fixture of SQL that sets the role or the tenant outside the helper of the transaction (docs/adr/0029).
+export const sessionSettingFixture = [
+  "// oxlint-disable-next-line tenant-sql/no-session-setting -- fixture: set role",
+  "export const setRole = sql`SET LOCAL ROLE x`;",
+  "",
+].join("\n");
+
 // A dbmate migration that passes the check of migrations (docs/adr/0025). The tests of rules.ts change one
 // section of it.
 export function migration(
@@ -183,10 +208,17 @@ export const passingRepo: Readonly<Record<string, string>> = {
   // Each override that stops the imports that bypass the Outbox and the transaction has a fixture: src/ and the
   // layers of the packages (domain stops every library already), the files of apps/api/src, and its entry files and
   // tests.
-  "packages/module-fixtures/src/__fixtures__/bypass.ts": bypassFixture,
-  "packages/module-fixtures/src/http/__fixtures__/bypass.ts": bypassFixture,
+  "packages/module-fixtures/src/__fixtures__/bypass.ts": bypassModuleFixture,
+  "packages/module-fixtures/src/http/__fixtures__/bypass.ts": bypassModuleFixture,
   "apps/api/src/__fixtures__/bypass.ts": bypassFixture,
   "apps/api/src/__fixtures__/bypass.test.ts": bypassOutboxFixture,
+  // withTables is called in infrastructure/ only: each other place has a fixture that the rule must report.
+  "packages/module-fixtures/src/__fixtures__/with-tables.ts": withTablesFixture,
+  "packages/module-fixtures/src/domain/__fixtures__/with-tables.ts": withTablesFixture,
+  "packages/module-fixtures/src/http/__fixtures__/with-tables.ts": withTablesFixture,
+  // The rule that stops SQL that sets the role or the tenant reaches packages/shared/src and apps/api/src.
+  "packages/shared/src/__fixtures__/session-setting.ts": sessionSettingFixture,
+  "apps/api/src/__fixtures__/session-setting.ts": sessionSettingFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',
@@ -195,9 +227,15 @@ export const passingRepo: Readonly<Record<string, string>> = {
     '  "@x/sqs",',
     "];",
     'const connectionPackages = ["pg"];',
+    // The raw SQL of Kysely, which a module may not import.
+    'const sqlImportNames = ["sql"];',
     // The messages of those imports say what to write instead, and name the ADR.
     'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
     'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',
+    'const sqlMessage = "Read it through the public API function (docs/adr/0029).";',
+    'const withTablesMessage = "Call it in infrastructure, in the public API function (docs/adr/0029).";',
+    'const withTablesEntry = { property: "withTables" };',
+    'const tenantRule = { "tenant-sql/no-session-setting": "error" };',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',

@@ -26,6 +26,8 @@ import {
 } from "./modules.ts";
 import {
   bypassGuards,
+  withTablesGuards,
+  sessionSettingGuards,
   dbBoundaries,
   domainPurity,
   effectBoundaries,
@@ -65,6 +67,8 @@ export function violations(repo: Repo): string[] {
     ...effectBoundaries(tree),
     ...dbBoundaries(tree),
     ...bypassGuards(tree),
+    ...withTablesGuards(tree),
+    ...sessionSettingGuards(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
     ...modulesAreRegistered(tree),
