@@ -21,13 +21,16 @@ type Claim = { submitted: boolean; submittedAt?: string };
 // 可: 有効な状態だけを表す
 type Claim =
   | { readonly _tag: "Draft"; readonly id: ClaimId }
-  | { readonly _tag: "Submitted"; readonly id: ClaimId; readonly submittedAt: Instant };
+  | { readonly _tag: "Submitted"; readonly id: ClaimId; readonly submittedAt: Temporal.Instant };
 ```
 
-遷移の関数は、受け取る型を遷移できる状態に絞り、新しい状態を値で返します。時刻と ID は引数で受けます。`domain` は現在時刻も乱数も持ちません。
+遷移の関数は、受け取る型を遷移できる状態に絞り、新しい状態を値で返します。時刻 (`Temporal.Instant`) と ID は引数で受けます。`domain` は現在時刻も乱数も持ちません。
 
 ```ts
-export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, SubmitError> => {
+export const submit = (args: {
+  claim: Draft;
+  now: Temporal.Instant;
+}): Result<Submitted, SubmitError> => {
   /* ... */
 };
 ```
@@ -40,13 +43,14 @@ export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, 
 
 ## 値の型
 
-値の型は `__brand` を持つ交差型と、claim を検証する型述語で書きます。型を作るために `as` は書きません。`domain` は何も import しません。
+値の型は `__brand` を持つ交差型と、claim を検証する型述語で書きます (日時は例外で、`Temporal.Instant` と `Temporal.PlainDate` を使います)。型を作るために `as` は書きません。`domain` は何も import しません。
 
 ```ts
 export type ClaimId = string & { readonly __brand: "ClaimId" };
 export const isClaimId = (input: string): input is ClaimId => /^[0-9a-f]{8}-/.test(input);
 ```
 
+- 日時には自前の `__brand` の型を作らず、`Temporal.Instant` (瞬間) と `Temporal.PlainDate` (暦日) を、import せずに global の型で受けます。`Temporal` は不変で、不正な値を作れないので、brand で足すものがありません ([ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。
 - 型述語は主張を検証します。検証しない述語は、`as` より悪いものです。名前が安全だと言っているので、バグが隠れます。名前は `isX` か `hasX` にします。
 - `__brand` の形を変えません。別の書き方を作りません。
 - `throw` する `parseX` は `infrastructure` だけに置きます (DB の行を `domain` の型にする失敗。[失敗の書き方](failures.md))。`domain` では `throw` を止めます。
@@ -58,11 +62,11 @@ export const isClaimId = (input: string): input is ClaimId => /^[0-9a-f]{8}-/.te
 
 不正な値を作れない形を選びます。実行時の検査を呼び出し側に繰り返させません。
 
-| 制約           | 書き方                                                |
-| -------------- | ----------------------------------------------------- |
-| 空でない       | `type NonEmpty<T> = [T, ...T[]]`                      |
-| 偶数個         | `type Pairs<T> = [T, T][]`                            |
-| 開始が終了以前 | `{ start: Instant; durationMs: number }` で終了を導く |
+| 制約           | 書き方                                                         |
+| -------------- | -------------------------------------------------------------- |
+| 空でない       | `type NonEmpty<T> = [T, ...T[]]`                               |
+| 偶数個         | `type Pairs<T> = [T, T][]`                                     |
+| 開始が終了以前 | `{ start: Temporal.Instant; durationMs: number }` で終了を導く |
 
 `T[]` のまま全ての操作が全域なら (空でも `sum` が 0 になるなど)、強くしません。`!`、`arr[0] as T`、「起きない」はずの `throw` が要るときに強くします。
 
