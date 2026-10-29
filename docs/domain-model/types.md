@@ -43,7 +43,7 @@ export const submit = (args: {
 
 ## 値の型
 
-値の型は `__brand` を持つ交差型と、claim を検証する型述語で書きます。型を作るために `as` は書きません。`domain` は何も import しません。
+値の型は `__brand` を持つ交差型と、claim を検証する型述語で書きます (日時は例外で、`Temporal.Instant` と `Temporal.PlainDate` を使います)。型を作るために `as` は書きません。`domain` は何も import しません。
 
 ```ts
 export type ClaimId = string & { readonly __brand: "ClaimId" };

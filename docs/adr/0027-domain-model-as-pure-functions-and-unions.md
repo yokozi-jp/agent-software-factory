@@ -66,7 +66,7 @@ skill をそのまま見せないのは、`parseX` が `throw` する例と「Sc
 - `domain` は、時刻、乱数、`throw`、library、他のモジュールを持てません。必要なものは引数で受けるか、`application` に置きます。
 - 業務の失敗の `_tag` を足したら、`http` の 422 への対応も足します。`switch` の網羅が漏れを止めます。
 - 型述語が claim を検証しているかは、型検査では確かめられません。境界値のテストで確かめます。
-- `domain` の `throw` (Q10)、`Date` の値と `Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。型の注釈の `Date` は止まりません。`globalThis.Date.now()` のようにグローバルオブジェクトを通した `Date` は、ADR 0043 で `no-restricted-properties` に `globalThis.Date` と `globalThis.Temporal` を足して止めるようにしました。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
+- `domain` の `throw` (Q10)、`Date` の値、`Temporal.Now`、`Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。型の注釈の `Date` は止まりません。`globalThis.Date.now()` のようにグローバルオブジェクトを通した `Date` は、ADR 0043 で `no-restricted-properties` に `globalThis.Date` と `globalThis.Temporal` を足して止めるようにしました。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
 - `Result` を Effect に変える `fromResult` と、Effect の使い方は [ADR 0028](0028-effect-in-application-and-infrastructure.md) で決めます。
 
 ## 出典

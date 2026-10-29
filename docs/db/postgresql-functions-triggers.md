@@ -31,7 +31,7 @@ $BODY$
 LANGUAGE sql;
 ```
 
-このリポジトリでは、この `sysdate()` のように現在時刻とタイムゾーンを DB の関数に持たせず、SQL の中で `AT TIME ZONE`、`::date`、`date_trunc` を使って日時から暦日や境界を作らない。現在時刻は入口が読んで引数で渡し、境界は TypeScript の純粋な関数が求める（[ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md)）。
+この例は Oracle の資産流用向けで、このリポジトリでは使わない。`sysdate()` のように現在時刻とタイムゾーンを DB の関数に持たせず、SQL の中で `AT TIME ZONE`、`::date`、`date_trunc` を使って日時から暦日や境界を作らない。現在時刻は入口が読んで引数で渡し、境界は TypeScript の純粋な関数が求める（[ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md)）。
 
 その他、データ構造上避けられないビジネス共通ロジック的な処理も許容する。例えば、体系を持つSKUコードから品番 / カラー / サイズを取得するヘルパー関数である。
 
