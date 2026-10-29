@@ -50,7 +50,7 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - postgresql-keys.md の UUID を DB 側で生成する記述を、PostgreSQL 18 以降は組み込みの `uuidv7()` で拡張不要、17 以前は拡張 (またはアプリ側) が必要、とバージョンで条件づけた。PostgreSQL 18 Documentation 9.14 UUID Functions。
 - postgresql-keys.md の参考リンクのうち、到達不能 (404) の 2 件 (terra-drone.net と zenn.dev/uncode_jp/articles/dcf20a2c5b0d76) を削除した。curl による HTTP 404 の確認。
 - postgresql-column.md のデータ型で、存在しない型名 `double` を `double precision` に直し、`real` は約6桁・`double precision` は約15桁・精度指定のない `float` は `double precision` を意味する、と精度の記述を正した。PostgreSQL: Documentation 8.1 Numeric Types。
-- モジュールごとの `NOLOGIN` のロール (`claim_module` など) を使い、自分のスキーマの読み書きと依存の方向のスキーマの `SELECT` だけを与えることは、postgresql-roles.md の「テーブル単位で細かく権限制御しすぎないようにする」からはみ出す。原文の理由は、権限の管理の手間が運用の事故になることである。このリポジトリでは、モジュールの表の所有を型だけでなく DB で止める必要があり、権限はスキーマ単位で `GRANT` と `ALTER DEFAULT PRIVILEGES` にまとめ、表ごとには書かない。権限の形は、カタログのテストが毎回確かめる。ADR 0029、Issue #268。
+- モジュールごとの `NOLOGIN` のロール (`claim_module` など) を使い、自分のスキーマの読み書きと依存の方向のスキーマの `SELECT` だけを与えることは、postgresql-roles.md の「テーブル単位で細かく権限制御しすぎないようにする」からはみ出す。原文はこの推奨の理由を書いていないので、権限が細かいと管理が難しくなることを避ける趣旨と読む (判断)。このリポジトリでは、モジュールの表の所有を型だけでなく DB で止める必要があり、権限はスキーマ単位で `GRANT` と `ALTER DEFAULT PRIVILEGES` にまとめ、表ごとには書かない。権限の形は、カタログのテストが毎回確かめる。ADR 0029、Issue #268。
 - concurrency-testing.md を足した。競合と原子性を確かめる結合テストの書き方 (`pg_blocking_pids` で待ちを確かめる手順、対照、行数の前後比較) で、原文にない。Issue #352 の決定。
 
 ## 位置づけ

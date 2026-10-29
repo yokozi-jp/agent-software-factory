@@ -48,11 +48,14 @@ tags: [adr, architecture, modules, db, postgresql, outbox, rls, roles]
 
 検出力は、lint の規則を fixture で、カタログのテストを、わざと規則を破る SQL を流した使い捨ての DB で確かめます ([センサーの検出力を確かめる方式を決める](https://github.com/yokozi-jp/agent-software-factory/issues/43))。[保証カタログ](../tooling/assurance-catalog.md) には、「モジュールの表の所有」「Outbox の権限」「受信の重複除去」の 3 行を足します。検査の実装がそろうまで、行は「これから足す行」の節に置きます。
 
-止まらないものがあります。lint の規則はガードレールで、境界ではありません ([エージェントの権限の線引きを決める](https://github.com/yokozi-jp/agent-software-factory/issues/33) と同じ扱いです)。境界は DB のロールの権限です。
+止まらないものがあります。lint の規則はガードレールで、境界ではありません (操作を止めても、迂回できる抜け道が残るものです。[エージェントの権限の線引きを決める](https://github.com/yokozi-jp/agent-software-factory/issues/33) も同じ扱いです)。境界は DB のロールの権限です。
 
 - コードが意図して別のモジュールのロールへ `SET ROLE` することは、`shared` の補助関数の中なら止まりません。補助関数は `ModuleName` の固定の表から、ロール名を選びます。
 - `tenant-sql/no-session-setting` が読むのは、`sql` のタグ付きテンプレートと `sql.raw` の、lint の時点で分かる文字列だけです。変数で組み立てた文字列と、別の名前で import した `sql` は見ません。モジュールの package では `sql` の import を止めているので、モジュールからは届きません。`shared` と `apps/api` では、レビューで守ります。
 - `sql` や `CompiledQuery` を、理由付きの disable コメントで import することは止まりません。ほかのモジュールの表には、DB のロールの権限が効きます。
+- `tenant-sql/no-session-setting` は、補助関数のテスト (`apps/api/src/db/tenant-transaction.test.ts`) では外してあります。ロールとテナントを確かめるために、そのテストが `SET LOCAL ROLE` を書くためです。ほかのテストでは効きます。
+- `withTables` は、`infrastructure/` の外で止めます。`shared` と `apps/api` も含みます。`infrastructure/` のテストは、規則を外してあります。
+- 検査の表の規則 3 は、`messaging.outbox` の `INSERT` を見ません。表を作る [Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) で足します。シーケンスと関数の `EXECUTE` も見ません (今はどちらもありません)。
 - `fetch` で AWS のエンドポイントを呼ぶことと、動的 import は、SDK の import の規則 (規則 8) では止まりません。
 
 ## 標準との違い
@@ -83,7 +86,7 @@ tags: [adr, architecture, modules, db, postgresql, outbox, rls, roles]
 - 表を足すモジュールは、自分のスキーマに表を置き、`<module>_module` のロールに権限を与えます。別のモジュールの表を読みたくなったら、公開 API の関数かイベントにします。
 - 結果整合になるので、モジュールをまたぐ変更は、受け取る側が途中の状態を見ても壊れないように書きます。受け取る側は、同じメッセージを何度受け取っても結果が変わらないようにします (`processed_message`)。
 - [ADR 0025](0025-kysely-and-dbmate-sql-first.md) は、アプリのロールを `migrator`、`app_user`、`auth_service` とし、「secret は RDS が管理する master user のものだけ」としています。`outbox_relay` は別の秘密を持つので、この記述と合いません。どちらに合わせるか (別の秘密を置くか、IAM DB authentication にして秘密を置かず IAM の権限で分けるか) は、[Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) で決め、ADR 0025 を直します。
-- 規則 1 から 4 と 8 の検査は [Issue #268](https://github.com/yokozi-jp/agent-software-factory/issues/268) までに入りました。規則 5 から 7 の検査は、実装 ([Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) など) までは働きません。それまではレビューで守ります。
+- 規則 1 から 4 と 8 の検査は [Issue #268](https://github.com/yokozi-jp/agent-software-factory/issues/268) で入りました。規則 5 と 6 の検査は [Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) まで、規則 7 の検査は CDK の stack を書くときまで働きません。それまではレビューで守ります。
 
 ## 確かめられなかったこと
 
