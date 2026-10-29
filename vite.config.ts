@@ -59,11 +59,32 @@ const runtimePropertyEntries = runtimeGlobals.map(({ name, message }) => ({
   property: name,
   message: `${message} (\`globalThis.${name}\` is the same global.)`,
 }));
+// Reading the clock (docs/adr/0043). Only an entry point reads the current time, once, from the Effect `Clock` (currentInstant
+// of packages/shared), and passes it down as `now`. So `Date` as a value (`new Date()`, `Date.now()`) and
+// `Temporal.Now` are stopped, also from globalThis (a `Date` in a type annotation is not reported). A library that
+// needs a `Date` takes a disable comment with the reason.
+const clockMessage = (instead: string) =>
+  `Do not read the clock here: ${instead}, so that a test fixes the time and one request has one time ` +
+  "(docs/adr/0043, docs/domain-model/application-effect.md).";
+const entryClockMessage = clockMessage(
+  "an entry point reads it once with currentInstant of @agent-software-factory/shared and passes it down as `now`",
+);
+function clockEntries(message: string) {
+  return {
+    globals: [{ name: "Date", message }],
+    properties: [
+      { object: "Temporal", property: "Now", message },
+      { object: "globalThis", property: "Temporal", message },
+      { object: "globalThis", property: "Date", message },
+    ],
+  };
+}
+const entryClockLint = clockEntries(entryClockMessage);
 // The domain override sets the same two rules for its own purposes (domainPurityRules), and Oxlint keeps only
 // the last override that sets a rule, so it spreads the entries above into its lists.
 const runtimeGlobalLintRules = {
-  "no-restricted-globals": ["error", ...runtimeGlobalEntries],
-  "no-restricted-properties": ["error", ...runtimePropertyEntries],
+  "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...entryClockLint.globals],
+  "no-restricted-properties": ["error", ...runtimePropertyEntries, ...entryClockLint.properties],
 } satisfies Record<string, ["error", ...Record<string, string>[]]>;
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
@@ -200,6 +221,12 @@ function moduleImports(layer?: string) {
   if (layer !== "domain") patterns.push(...effectPatterns);
   const paths: RestrictedPath[] = [...runtimeImports.paths];
   if (layer !== "domain") paths.push(...effectPaths);
+  // application takes `now` as an argument; an entry point reads the Clock (docs/adr/0043).
+  if (layer === "application")
+    paths.push(
+      { name: "effect", importNames: ["Clock"], message: entryClockMessage },
+      { name: "effect/Clock", message: entryClockMessage },
+    );
   if (layer === "application" || layer === "infrastructure")
     paths.push({
       name: "effect/Effect",
@@ -210,30 +237,27 @@ function moduleImports(layer?: string) {
 }
 
 // How domain is written (docs/adr/0027): pure functions that return a Result. domain takes the time and the
-// randomness as arguments, and returns a failure instead of throwing it. `Date` is stopped as a value only
-// (`new Date()`, `Date.now()`); the type `Date` in an annotation is not reported (checked with Oxlint 1.89.0,
-// see the 出典 of docs/adr/0027).
+// randomness as arguments, and returns a failure instead of throwing it. The clock restrictions of clockEntries
+// apply (`Date` as a value, `Temporal.Now`); the type `Date` in an annotation is not reported (checked with
+// Oxlint 1.89.0, see the 出典 of docs/adr/0027).
 // These rules join the no-restricted-imports of the domain override of each module, in the same object: Oxlint
 // keeps only the last override that sets a rule for a file, so a second override for domain would drop one of
 // the two (docs/adr/0026). Each rule has a fixture in packages/*/src/domain/__fixtures__/purity.ts (#43).
 const domainPurityMessage = (what: string, instead: string) =>
   `${what} makes a domain function depend on something other than its arguments. ${instead}, ` +
   "and let application supply it (docs/adr/0027, docs/domain-model/types.md).";
+const domainClockLint = clockEntries(
+  domainPurityMessage("The current time", "Take the time as an argument, a `Temporal.Instant`"),
+);
 const domainPurityRules = {
   jsPlugins: [{ name: "domain", specifier: "./tools/lint-plugins/src/domain-plugin.ts" }],
   rules: {
     "domain/no-throw": "error",
-    "no-restricted-globals": [
-      "error",
-      ...runtimeGlobalEntries,
-      {
-        name: "Date",
-        message: domainPurityMessage("`Date`", "Take the time as an argument, a branded `Instant`"),
-      },
-    ],
+    "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...domainClockLint.globals],
     "no-restricted-properties": [
       "error",
       ...runtimePropertyEntries,
+      ...domainClockLint.properties,
       {
         object: "Math",
         property: "random",
@@ -412,6 +436,10 @@ export default defineConfig({
           "no-restricted-properties": [
             "error",
             ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
+            // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
+            // carries that override's runtime globals and clock too.
+            ...runtimePropertyEntries,
+            ...entryClockLint.properties,
           ],
         },
       },

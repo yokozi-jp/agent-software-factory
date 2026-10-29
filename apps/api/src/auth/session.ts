@@ -26,6 +26,9 @@ export function sessionGuard(auth: Auth): MiddlewareHandler<{ Variables: Session
     });
 
     if (session !== null) {
+      // Better Auth gives `createdAt` as a Date, and this middleware is an entry point that reads the clock itself.
+      // Issue #404 replaces this with the Clock of the entry point once the entry passes a ManagedRuntime.
+      // oxlint-disable-next-line no-restricted-globals -- the absolute lifetime compares with Better Auth's Date
       const ageMs = Date.now() - session.session.createdAt.getTime();
       if (ageMs > auth.absoluteSessionSeconds * 1000) {
         // DB の行と Cookie を消す。

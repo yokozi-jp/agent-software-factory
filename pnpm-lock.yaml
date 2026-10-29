@@ -296,6 +296,9 @@ catalogs:
     tailwindcss:
       specifier: ^4.3.3
       version: 4.3.3
+    temporal-polyfill:
+      specifier: 1.0.6
+      version: 1.0.6
     testcontainers:
       specifier: ^12.2.1
       version: 12.2.1
@@ -403,6 +406,9 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.23.1
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.6
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -581,7 +587,13 @@ importers:
       kysely:
         specifier: 'catalog:'
         version: 0.29.7
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.6
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -6057,6 +6069,15 @@ packages:
 
   teex@1.0.1:
     resolution: {integrity: sha512-eYE6iEI62Ni1H8oIa7KlDU6uQBtqr4Eajni3wX7rpfXD8ysFx8z0+dri+KWEPWpBsxXfxu58x/0jvTVT1ekOSg==}
+
+  temporal-polyfill@1.0.6:
+    resolution: {integrity: sha512-tYyEry1HLGUDbm2356W3iYD0OZdo7rlP7h98Zr/EnjqLZQwTAfcBDUvJnJbfA15v/vQad57hJZScG5O0W2oKEA==}
+
+  temporal-spec@1.0.1:
+    resolution: {integrity: sha512-wxVoanmDeavXie1vu2JaQ3WIc3JZnWAOYFBsJyATaVsXsycKYUflGsyBmrRSnoCpZJpwPyr38VpgSUlQ8CbFxg==}
+
+  temporal-utils@1.0.3:
+    resolution: {integrity: sha512-9jbTSX3HvkOWvDpNpFzwX/d1mkCrgQgwLmVTOEiuocZGKHsrQJtttGZFmybJ2zYP5zCSZuU5ZyeS8+eOEPABiQ==}
 
   testcontainers@12.2.1:
     resolution: {integrity: sha512-JfbCyOvLdzatwgqUI3AvYCwRW0P5mCkKQVBPO8U5qSH1efC2kHvnfWmi9VHloy1rAFG2MEqWZObRH4bq0gU1kQ==}
@@ -11887,6 +11908,15 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  temporal-polyfill@1.0.6:
+    dependencies:
+      temporal-spec: 1.0.1
+      temporal-utils: 1.0.3
+
+  temporal-spec@1.0.1: {}
+
+  temporal-utils@1.0.3: {}
 
   testcontainers@12.2.1(supports-color@7.2.0):
     dependencies:

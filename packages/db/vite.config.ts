@@ -6,6 +6,9 @@ import { defineConfig } from "vite-plus";
 // when the tests fail to start, suspect the container.
 export default defineConfig({
   test: {
+    // コードがプロセスの TZ に頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
+    // 効いていることは packages/shared の src/time.test.ts と apps/api の src/timezone.unit.test.ts が確かめる。
+    env: { TZ: "America/New_York" },
     include: ["src/**/*.test.ts"],
     // __fixtures__/ shows that the lint rules are on; it is not a test (docs/adr/0038).
     exclude: ["**/node_modules/**", "**/__fixtures__/**"],
