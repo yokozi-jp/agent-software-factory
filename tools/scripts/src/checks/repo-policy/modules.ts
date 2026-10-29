@@ -134,6 +134,50 @@ export function modulesDependOneWay(tree: Tree): string[] {
   return failures;
 }
 
+// The mark of a module in package.json: nx.tags has "type:module". The type generation of packages/db reads it too
+// (moduleSchemas in packages/db/src/types.ts, which cannot import this file: keep the two values the same), so the
+// tag is the second list of the modules besides moduleOrder.
+const moduleTag = "type:module";
+const addModuleGuide = "docs/domain-model/add-module.md";
+const apiManifest = "apps/api/package.json";
+const apiFiles = ["apps/api/src/db/databases.ts", "apps/api/src/app.ts"];
+
+// Every package that has the tag is in moduleOrder, and every name of moduleOrder is a package that has the tag.
+// A tagged module is also a dependency of apps/api, and databases.ts and app.ts import it: a module copied from
+// another and left out of one of these has no database, or no route, and nothing else says so (docs/adr/0026).
+export function modulesAreRegistered(tree: Tree): string[] {
+  const failures: string[] = [];
+  const guide = `Follow ${addModuleGuide}.`;
+  const names = packageNames(tree);
+  const tagged = names.filter((name) =>
+    list(record(record(tree.parsed(manifest(name))).nx).tags).includes(moduleTag),
+  );
+  for (const name of tagged)
+    if (!moduleOrder.includes(name))
+      failures.push(
+        `packages/${name} has the tag ${moduleTag} but is not in moduleOrder in ${moduleOrderFile}. ${guide}`,
+      );
+  for (const name of moduleOrder)
+    if (!tagged.includes(name))
+      failures.push(
+        `${name} is in moduleOrder in ${moduleOrderFile}, but no package under packages/ named ${name} has the tag ${moduleTag} in nx.tags of its package.json. ${guide}`,
+      );
+  const api = record(tree.parsed(apiManifest)).dependencies;
+  for (const name of tagged) {
+    if (record(api)[`${scope}/${name}`] !== "workspace:*")
+      failures.push(
+        `${apiManifest} must have ${scope}/${name}: "workspace:*" in dependencies, since packages/${name} has the tag ${moduleTag}. ${guide}`,
+      );
+    const importPattern = new RegExp(`(?:from|import)\\s*["']${scope}/${name}["']`);
+    for (const path of apiFiles)
+      if (!importPattern.test(tree.read(path)))
+        failures.push(
+          `${path} must import ${scope}/${name}, since packages/${name} has the tag ${moduleTag}. ${guide}`,
+        );
+  }
+  return failures;
+}
+
 // db depends on the modules, in devDependencies and for their types, and on no other package of the workspace. Only
 // apps/api depends on db: the modules and shared have no use for the tools of the database, and apps/web and the
 // tools must not reach them (docs/adr/0038).

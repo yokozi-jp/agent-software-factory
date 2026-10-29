@@ -19,6 +19,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "closing"
+    "name": "closing",
+    "tags": [
+      "type:module"
+    ]
   }
 }

@@ -3,6 +3,7 @@
 // working tree (and the staged mode) is in cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
 import {
+  apiDependencies,
   domainFixture,
   factoryAgent,
   migration,
@@ -48,6 +49,20 @@ function repo(files: Record<string, string | undefined> = {}, options: Options =
 
 const json = (value: unknown): string => JSON.stringify(value, undefined, 2);
 
+// The package.json of apps/api with `fields`, and the modules it depends on (docs/adr/0026).
+const apiManifest = (fields: Record<string, unknown> = {}): string =>
+  json({ dependencies: apiDependencies, ...fields });
+
+// Files that remove every module of the passing repository, and the failures other than that moduleOrder names
+// a module that is gone. A test of the fixtures of the overrides starts from a repository with no module.
+const noModules: Record<string, undefined> = {
+  "packages/claim/package.json": undefined,
+  "packages/approval/package.json": undefined,
+  "packages/closing/package.json": undefined,
+};
+const violationsWithoutOrder = (repository: Repo): string[] =>
+  violations(repository).filter((failure) => !failure.includes(" is in moduleOrder in "));
+
 describe("violations", () => {
   it("finds nothing in a repository that keeps every rule", () => {
     expect(violations(repo())).toEqual([]);
@@ -59,7 +74,15 @@ describe("ADR 0002: Nx runs the tasks", () => {
     "refuses @nx/vite in %s of any package.json",
     (field) => {
       expect(
-        violations(repo({ "apps/api/package.json": json({ [field]: { "@nx/vite": "24.0.0" } }) })),
+        violations(
+          repo({
+            "apps/api/package.json": apiManifest(
+              field === "dependencies"
+                ? { dependencies: { ...apiDependencies, "@nx/vite": "24.0.0" } }
+                : { [field]: { "@nx/vite": "24.0.0" } },
+            ),
+          }),
+        ),
       ).toEqual([
         "apps/api/package.json depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).",
       ]);
@@ -68,7 +91,7 @@ describe("ADR 0002: Nx runs the tasks", () => {
 
   it("passes a package.json that names @nx/vite outside its dependencies", () => {
     expect(
-      violations(repo({ "apps/api/package.json": json({ description: "not @nx/vite" }) })),
+      violations(repo({ "apps/api/package.json": apiManifest({ description: "not @nx/vite" }) })),
     ).toEqual([]);
   });
 
@@ -619,9 +642,9 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
 
   it("asks only for the fixture of src/ when the only package is shared", () => {
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
-          "packages/claim/package.json": undefined,
+          ...noModules,
           "packages/module-fixtures/package.json": undefined,
           ...Object.fromEntries(
             Object.keys(base)
@@ -632,9 +655,9 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       ),
     ).toEqual([]);
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
-          "packages/claim/package.json": undefined,
+          ...noModules,
           "packages/module-fixtures/package.json": undefined,
           "packages/module-fixtures/src/__fixtures__/boundaries.ts": undefined,
         }),
@@ -644,9 +667,9 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
 
   it("asks for nothing when there is no package under packages/", () => {
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
-          "packages/claim/package.json": undefined,
+          ...noModules,
           "packages/module-fixtures/package.json": undefined,
           "packages/shared/package.json": undefined,
           // The rules of vite.config.ts still need their fixtures, outside packages/.
@@ -809,7 +832,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
 
   it("asks nothing when vite.config.ts has no domain layer, or when the only package is shared", () => {
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
           "vite.config.ts": config.replace("  domain: [],\n", ""),
           [purity]: undefined,
@@ -818,9 +841,9 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
       ),
     ).toEqual([]);
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
-          "packages/claim/package.json": undefined,
+          ...noModules,
           "packages/module-fixtures/package.json": undefined,
           [purity]: undefined,
           "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": undefined,
@@ -938,10 +961,10 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
 
   it("asks for nothing when the only package is shared", () => {
     expect(
-      violations(
+      violationsWithoutOrder(
         repo({
           "vite.config.ts": both,
-          "packages/claim/package.json": undefined,
+          ...noModules,
           "packages/module-fixtures/package.json": undefined,
           ...Object.fromEntries(
             Object.keys(base)
@@ -2045,13 +2068,23 @@ describe("ADR 0002: the edges", () => {
     ["pnpm.overrides", { pnpm: { overrides: { "@nx/vite": "-" } } }],
     ["a list", { pnpm: { packageExtensions: [{}, { x: { "@nx/vite": "-" } }] } }],
   ])("refuses @nx/vite as a key in %s", (_, manifest) => {
-    expect(violations(repo({ "apps/api/package.json": json(manifest) }))).toEqual([
+    expect(violations(repo({ "apps/api/package.json": apiManifest(manifest) }))).toEqual([
       "apps/api/package.json depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).",
     ]);
   });
 
   it("passes dependency fields that are null", () => {
-    expect(violations(repo({ "apps/api/package.json": json({ dependencies: null }) }))).toEqual([]);
+    expect(
+      violations(
+        repo({
+          "apps/api/package.json": apiManifest({
+            devDependencies: null,
+            peerDependencies: null,
+            optionalDependencies: null,
+          }),
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("refuses a run block with spaces before its colon", () => {
@@ -2136,8 +2169,12 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
     ],
     ["exports of another file", { exports: { ".": "./index.ts" } }, messages.exports],
     ["exports as a string", { exports: "./src/index.ts" }, messages.exports],
-    ["no Nx project name", { nx: {} }, messages.nx],
-    ["an Nx project name of another directory", { nx: { name: "claims" } }, messages.nx],
+    ["no Nx project name", { nx: { tags: ["type:module"] } }, messages.nx],
+    [
+      "an Nx project name of another directory",
+      { nx: { name: "claims", tags: ["type:module"] } },
+      messages.nx,
+    ],
   ])("refuses a package.json with %s", (_, fields, message) => {
     expect(violations(repo({ [path]: packageJson("claim", fields) }))).toEqual([message]);
   });
@@ -2343,6 +2380,83 @@ const dbFixtureParts = {
 };
 const dbImportsFixture = `// ${dbFixtureParts.value} -- fixture\nimport "@x/claim";\n${dbFixtureParts.type} A } from "@x/claim";\nimport { run } ${dbFixtureParts.node};\n`;
 
+describe("ADR 0026: a module with the tag type:module is registered everywhere", () => {
+  const order = "tools/scripts/src/checks/repo-policy/modules.ts";
+  const guide = "Follow docs/domain-model/add-module.md.";
+
+  it("passes the modules of the passing repository, each in moduleOrder, the dependencies of apps/api and both files", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("refuses a package with the tag that is not in moduleOrder", () => {
+    expect(
+      violations(repo(packageFiles("extra", { nx: { name: "extra", tags: ["type:module"] } }))),
+    ).toEqual([
+      `packages/extra is not in moduleOrder in ${order}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026).`,
+      `packages/extra has the tag type:module but is not in moduleOrder in ${order}. ${guide}`,
+      'apps/api/package.json must have @agent-software-factory/extra: "workspace:*" in dependencies, since packages/extra has the tag type:module. ' +
+        guide,
+      `apps/api/src/db/databases.ts must import @agent-software-factory/extra, since packages/extra has the tag type:module. ${guide}`,
+      `apps/api/src/app.ts must import @agent-software-factory/extra, since packages/extra has the tag type:module. ${guide}`,
+    ]);
+  });
+
+  it.each([
+    ["no tag", { nx: { name: "claim" } }],
+    ["another tag", { nx: { name: "claim", tags: ["type:util"] } }],
+    ["tags that are not a list", { nx: { name: "claim", tags: "type:module" } }],
+  ])("refuses a name of moduleOrder whose package has %s", (_, fields) => {
+    expect(violations(repo(packageFiles("claim", fields)))).toEqual([
+      `claim is in moduleOrder in ${order}, but no package under packages/ named claim has the tag type:module in nx.tags of its package.json. ${guide}`,
+    ]);
+  });
+
+  it("refuses a name of moduleOrder that has no package", () => {
+    expect(violations(repo({ "packages/closing/package.json": undefined }))).toEqual([
+      `closing is in moduleOrder in ${order}, but no package under packages/ named closing has the tag type:module in nx.tags of its package.json. ${guide}`,
+    ]);
+  });
+
+  it("refuses a module that apps/api lacks in dependencies, lists with a version, or lists only in devDependencies", () => {
+    const { "@agent-software-factory/claim": _, ...others } = apiDependencies;
+    const message = `apps/api/package.json must have @agent-software-factory/claim: "workspace:*" in dependencies, since packages/claim has the tag type:module. ${guide}`;
+    const withApi = (fields: Record<string, unknown>) =>
+      violations(repo({ "apps/api/package.json": json(fields) }));
+    expect(withApi({ dependencies: others })).toEqual([message]);
+    expect(
+      withApi({ dependencies: { ...others, "@agent-software-factory/claim": "1.0.0" } }),
+    ).toEqual([message]);
+    expect(
+      withApi({
+        dependencies: others,
+        devDependencies: { "@agent-software-factory/claim": "workspace:*" },
+      }),
+    ).toEqual([message]);
+  });
+
+  it.each(["apps/api/src/db/databases.ts", "apps/api/src/app.ts"])(
+    "refuses %s that does not import a module",
+    (path) => {
+      expect(violations(repo({ [path]: 'import "@agent-software-factory/approval";\n' }))).toEqual([
+        expect.stringContaining(`${path} must import @agent-software-factory/claim,`),
+        expect.stringContaining(`${path} must import @agent-software-factory/closing,`),
+      ]);
+      expect(violations(repo({ [path]: undefined }))).toHaveLength(3);
+    },
+  );
+
+  it("takes a type import, a side-effect import and an import of several lines", () => {
+    const imports = [
+      'import type { X } from "@agent-software-factory/claim";',
+      'import "@agent-software-factory/approval";',
+      'import {\n  Y,\n} from "@agent-software-factory/closing";',
+    ].join("\n");
+    expect(
+      violations(repo({ "apps/api/src/app.ts": imports, "apps/api/src/db/databases.ts": imports })),
+    ).toEqual([]);
+  });
+});
+
 describe("ADR 0038: db depends on the modules by type only, and only apps/api depends on db", () => {
   const dbExports = {
     ".": "./src/index.ts",
@@ -2373,7 +2487,14 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
 
   it("passes apps/api that depends on db", () => {
     expect(
-      violations(repo({ ...db(), "apps/api/package.json": json({ dependencies: dbDependency }) })),
+      violations(
+        repo({
+          ...db(),
+          "apps/api/package.json": apiManifest({
+            dependencies: { ...apiDependencies, ...dbDependency },
+          }),
+        }),
+      ),
     ).toEqual([]);
   });
 
@@ -2657,11 +2778,11 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
     ["nodeLinker: hoisted", "sets nodeLinker: hoisted"],
     [
       'publicHoistPattern:\n  - "*"',
-      "has * in publicHoistPattern, which hoists @agent-software-factory/claim",
+      "has * in publicHoistPattern, which hoists @agent-software-factory/approval",
     ],
     [
       'publicHoistPattern:\n  - "*eslint*"\n  - "@agent-software-factory/*"',
-      "has @agent-software-factory/* in publicHoistPattern, which hoists @agent-software-factory/claim",
+      "has @agent-software-factory/* in publicHoistPattern, which hoists @agent-software-factory/approval",
     ],
     [
       'publicHoistPattern:\n  - "@agent-software-factory/claim"',
@@ -2678,21 +2799,21 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
   });
 
   it("refuses a pattern that hoists any package under packages/, and only the packages there", () => {
-    const pattern = 'publicHoistPattern:\n  - "@agent-software-factory/closing"\n';
+    const pattern = 'publicHoistPattern:\n  - "@agent-software-factory/extra"\n';
     expect(violations(repo({ "pnpm-workspace.yaml": `${workspace}${pattern}` }))).toEqual([]);
     expect(
       violations(
         repo({
           "pnpm-workspace.yaml": `${workspace}${pattern}`,
-          ...packageFiles("closing"),
+          ...packageFiles("extra"),
         }),
       ),
-    ).toEqual([
+    ).toContainEqual(
       resolves(
         "pnpm-workspace.yaml",
-        "has @agent-software-factory/closing in publicHoistPattern, which hoists @agent-software-factory/closing",
+        "has @agent-software-factory/extra in publicHoistPattern, which hoists @agent-software-factory/extra",
       ),
-    ]);
+    );
   });
 
   it.each([

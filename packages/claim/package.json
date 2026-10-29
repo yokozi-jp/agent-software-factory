@@ -19,6 +19,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "claim"
+    "name": "claim",
+    "tags": [
+      "type:module"
+    ]
   }
 }
