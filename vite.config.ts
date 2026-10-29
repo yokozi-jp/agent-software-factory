@@ -79,12 +79,12 @@ function clockEntries(message: string) {
     ],
   };
 }
-const clock = clockEntries(entryClockMessage);
+const entryClockLint = clockEntries(entryClockMessage);
 // The domain override sets the same two rules for its own purposes (domainPurityRules), and Oxlint keeps only
 // the last override that sets a rule, so it spreads the entries above into its lists.
 const runtimeGlobalLintRules = {
-  "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...clock.globals],
-  "no-restricted-properties": ["error", ...runtimePropertyEntries, ...clock.properties],
+  "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...entryClockLint.globals],
+  "no-restricted-properties": ["error", ...runtimePropertyEntries, ...entryClockLint.properties],
 } satisfies Record<string, ["error", ...Record<string, string>[]]>;
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
@@ -246,18 +246,18 @@ function moduleImports(layer?: string) {
 const domainPurityMessage = (what: string, instead: string) =>
   `${what} makes a domain function depend on something other than its arguments. ${instead}, ` +
   "and let application supply it (docs/adr/0027, docs/domain-model/types.md).";
-const domainClock = clockEntries(
+const domainClockLint = clockEntries(
   domainPurityMessage("The current time", "Take the time as an argument, a `Temporal.Instant`"),
 );
 const domainPurityRules = {
   jsPlugins: [{ name: "domain", specifier: "./tools/lint-plugins/src/domain-plugin.ts" }],
   rules: {
     "domain/no-throw": "error",
-    "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...domainClock.globals],
+    "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...domainClockLint.globals],
     "no-restricted-properties": [
       "error",
       ...runtimePropertyEntries,
-      ...domainClock.properties,
+      ...domainClockLint.properties,
       {
         object: "Math",
         property: "random",
@@ -439,7 +439,7 @@ export default defineConfig({
             // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
             // carries that override's runtime globals and clock too.
             ...runtimePropertyEntries,
-            ...clock.properties,
+            ...entryClockLint.properties,
           ],
         },
       },
