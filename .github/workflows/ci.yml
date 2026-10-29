@@ -200,8 +200,12 @@ jobs:
 
       # The mutation target (Stryker) is not here: it runs daily in mutation.yml (docs/adr/0031).
       # The name is the row of the assurance catalog (docs/tooling/assurance-catalog.md).
+      # Chromium is for the web tests (Vitest browser mode with Playwright, apps/web/vite.config.ts), the same browser
+      # as the E2E (docs/adr/0039). It is installed every time, because the affected projects are known only to nx.
       - name: Check, test and build (nx affected)
-        run: pnpm exec nx affected -t check test build
+        run: |
+          pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium
+          pnpm exec nx affected -t check test build
 
       # The Kysely types of the module schemas (packages/*/src/infrastructure/db.gen.ts) are generated from the
       # migrations and committed. Runs the migrations on a fresh PostgreSQL, generates the types again and fails if

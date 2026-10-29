@@ -52,6 +52,9 @@ catalog:
   zod: ^4.6.7
   # The Temporal global for Node.js 24 and the browsers without it. Node.js 26 has it built in.
   temporal-polyfill: 1.0.6
+  # apps/web: Vitest browser mode with Playwright, to test display in a browser with a time zone of its own (docs/adr/0043).
+  "@vitest/browser-playwright": 5.0.5
+  playwright: 1.64.1
   # apps/web and packages/ui: Tailwind CSS v4 and the dependencies `shadcn init` added (docs/adr/0033, 0034).
   "@tailwindcss/vite": ^4.3.3
   tailwindcss: ^4.3.3

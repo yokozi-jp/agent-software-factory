@@ -2,6 +2,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "temporal-polyfill/global";
 import "./index.css";
 import { routeTree } from "./routeTree.gen.ts";
 

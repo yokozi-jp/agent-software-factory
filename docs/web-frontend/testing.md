@@ -130,3 +130,7 @@ flowchart TB
 
 - 1 つの Playwright のスイートを、タグで分ける。毎 PR の CI で全部を流し、検証環境 ([検証環境の流れ](../tooling/verification-environment.md)) では `@smoke` だけを流す。
 - 流す先は `PLAYWRIGHT_TEST_BASE_URL` で切り替える。
+
+### 日時の表示のテスト
+
+`apps/web` の Vitest は browser mode で、Playwright の Chromium を使う。`contextOptions.timezoneId` を `America/New_York` にして流すので、表示が業務のタイムゾーン (`Asia/Tokyo`) でなくブラウザのタイムゾーンに頼っていれば、テストが落ちる。設定が効いていることは `apps/web/src/lib/date-time.test.ts` が確かめる。理由は [ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md)。手元で Chromium を入れるには `pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium` を実行する。
