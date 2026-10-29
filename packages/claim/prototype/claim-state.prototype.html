@@ -1,0 +1,1001 @@
+<!doctype html>
+<!-- PROTOTYPE（使い捨て）: 申請の状態と操作を確かめるためのデモ。main に merge しない。 -->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>【試作】経費精算の申請の状態と操作</title>
+    <style>
+      :root {
+        --accent: #2f6fb3;
+        --bad: #b3261e;
+        --ok: #1e7d3a;
+        --line: #d9dde3;
+        --muted: #667085;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+        margin: 0;
+        color: #1d2433;
+        background: #f7f8fa;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 0 0 10px;
+      }
+      .intro {
+        color: #333;
+        margin: 0 0 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      section {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      label {
+        font-size: 0.9rem;
+      }
+      .opt {
+        margin-bottom: 10px;
+      }
+      .opt b {
+        display: block;
+        font-size: 0.9rem;
+      }
+      button {
+        font: inherit;
+        font-size: 0.88rem;
+        padding: 5px 10px;
+        margin: 3px 4px 3px 0;
+        border: 1px solid var(--accent);
+        background: #fff;
+        color: var(--accent);
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #eef4fb;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      select,
+      input {
+        font: inherit;
+        font-size: 0.88rem;
+        padding: 3px 6px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .msg {
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 0.92rem;
+      }
+      .msg.ok {
+        background: #e8f5ec;
+        color: var(--ok);
+      }
+      .msg.bad {
+        background: #fbeaea;
+        color: var(--bad);
+      }
+      .claim {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+      .claim.changed {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px #cfe0f3;
+      }
+      .status {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        background: #eef4fb;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.85rem;
+        margin: 6px 0;
+      }
+      td,
+      th {
+        border-bottom: 1px solid #eee;
+        padding: 2px 6px;
+        text-align: left;
+      }
+      td.num {
+        text-align: right;
+      }
+      .hist {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      .tabs button.active {
+        background: var(--accent);
+        color: #fff;
+      }
+      .steps button.done {
+        border-color: #aaa;
+        color: #888;
+      }
+      .steps button.next {
+        background: var(--accent);
+        color: #fff;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>【試作】経費精算の申請の状態と操作</h1>
+      <p class="intro">
+        <b>確かめたい問い:</b> 申請はどの状態を持ち、誰がどの操作でどの状態へ移すか。
+        左の「選び方」で次の 4 つの案を切り替え、同じシナリオがどう変わるかを見てください。 ①
+        申請中を 1 つの状態にして段で表すか、承認待ちと確認待ちの 2 つの状態に分けるか。 ②
+        差戻しの後の再申請を、上長の承認からやり直すか、差し戻した段から再開するか。 ③
+        取下げを、上長の承認の前だけ許すか、経理の確認の前まで許すか。 ④
+        明細を申請より先に登録できるか。 選び方を変えると、申請はすべて消えて最初からになります。
+      </p>
+
+      <div class="grid">
+        <div>
+          <section>
+            <h2>選び方（案）</h2>
+            <div id="options"></div>
+          </section>
+          <section>
+            <h2>自由に操作する</h2>
+            <div class="row">
+              <label
+                >操作する人
+                <select id="actor"></select
+              ></label>
+            </div>
+            <div class="row">
+              <label
+                >対象の申請
+                <select id="claim"></select
+              ></label>
+            </div>
+            <div class="row">
+              <button data-a="create">下書きを作る</button>
+              <button data-a="submit">申請する（再申請）</button>
+              <button data-a="withdraw">取り下げる</button>
+            </div>
+            <div class="row">
+              <button data-a="approve">承認する（上長）</button>
+              <button data-a="confirm">確認する（経理）</button>
+              <button data-a="return">差し戻す</button>
+            </div>
+            <div class="row">
+              <button data-a="correct">締め済みの申請を直す申請を作る</button>
+            </div>
+            <hr />
+            <div class="row">
+              <select id="kind">
+                <option>交通</option>
+                <option>宿泊</option>
+                <option>会議費</option>
+              </select>
+              <input id="date" type="date" value="2026-05-18" />
+              <input id="amount" type="number" value="1200" style="width: 90px" /> 円
+            </div>
+            <div class="row">
+              <button data-a="addItem">申請に明細を足す</button>
+              <button data-a="addPool">明細だけ先に登録する</button>
+              <button data-a="moveFromPool">先に登録した明細を申請に入れる</button>
+              <button data-a="removeItem">申請の最後の明細を消す</button>
+            </div>
+            <hr />
+            <div class="row">
+              <button data-a="advance1">業務日付を 1 日進める</button>
+              <button data-a="advance10">10 日進める</button>
+              <button data-a="close">前の月を締める</button>
+              <button data-a="reset">最初に戻す</button>
+            </div>
+          </section>
+        </div>
+
+        <div>
+          <section>
+            <h2>シナリオ</h2>
+            <div class="tabs" id="tabs"></div>
+            <div id="scenario"></div>
+          </section>
+          <div id="msg"></div>
+          <section>
+            <h2>今の状態</h2>
+            <div id="state"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // ===== 取り出せる部分: 申請の状態と操作の純粋なモデル（DOM に触れない） =====
+      const ClaimModel = (() => {
+        const USERS = {
+          A: { name: "佐藤（申請者）", boss: "B" },
+          D: { name: "鈴木（申請者）", boss: "B" },
+          B: { name: "田中（上長）", boss: null },
+          C: { name: "高橋（経理）", accounting: true },
+        };
+        const LIMITS = { 宿泊: 15000, 交通: 50000, 会議費: 10000 }; // 明細 1 件の上限（円）
+        const DEADLINE_DAYS = 30; // 利用日から何日以内に申請するか
+
+        const OPTIONS = {
+          pendingShape: {
+            label: "① 申請中の表し方",
+            choices: { one: "申請中 1 つ + 段", two: "承認待ちと確認待ちの 2 状態" },
+          },
+          resubmitFrom: {
+            label: "② 再申請の再開点",
+            choices: { first: "上長の承認からやり直す", returned: "差し戻した段から再開する" },
+          },
+          withdrawUntil: {
+            label: "③ 取下げできる間",
+            choices: { boss: "上長の承認の前だけ", accounting: "経理の確認の前まで" },
+          },
+          itemPool: {
+            label: "④ 明細の先行登録",
+            choices: { no: "申請の中でだけ作る", yes: "先に登録して後で申請に入れる" },
+          },
+        };
+
+        const day = (s) => new Date(s + "T00:00:00Z");
+        const fmt = (d) => d.toISOString().slice(0, 10);
+        const addDays = (s, n) => {
+          const d = day(s);
+          d.setUTCDate(d.getUTCDate() + n);
+          return fmt(d);
+        };
+        const diffDays = (a, b) => Math.round((day(b) - day(a)) / 86400000);
+        const prevMonth = (s) => {
+          const d = day(s.slice(0, 7) + "-01");
+          d.setUTCDate(0);
+          return fmt(d).slice(0, 7);
+        };
+        const lastDay = (m) => {
+          const d = day(m + "-01");
+          d.setUTCMonth(d.getUTCMonth() + 1);
+          d.setUTCDate(0);
+          return fmt(d);
+        };
+
+        function initial(options) {
+          return {
+            options,
+            today: "2026-05-20",
+            claims: [],
+            pool: [],
+            closings: [],
+            nextId: 1,
+            nextItem: 1,
+          };
+        }
+
+        // 画面に出す状態の名前（① の案で変わる）
+        function statusLabel(c, options) {
+          const base = {
+            draft: "下書き",
+            returned: "差戻し",
+            approved: "承認済み",
+            closed: "締め済み",
+          }[c.phase];
+          if (base) return base;
+          const stage = c.stage === "boss" ? "上長の承認待ち" : "経理の確認待ち";
+          return options.pendingShape === "two" ? stage : `申請中（${stage}）`;
+        }
+
+        const fail = (state, error) => ({ state, error });
+        const done = (state, message, changed) => ({ state, message, changed });
+
+        function dispatch(prev, action) {
+          const s = structuredClone(prev);
+          const o = s.options;
+          const who = USERS[action.by];
+          const c = s.claims.find((x) => x.id === action.claimId);
+          const log = (claim, text) =>
+            claim.history.push(`${s.today} ${who ? who.name : "システム"}: ${text}`);
+          const mine = () => c && c.applicant === action.by;
+          const needClaim = () => (c ? null : "対象の申請がありません");
+
+          switch (action.type) {
+            case "create": {
+              if (who.accounting) return fail(prev, "経理は申請を作らない想定です");
+              const claim = {
+                id: s.nextId++,
+                applicant: action.by,
+                phase: "draft",
+                stage: null,
+                items: [],
+                approver: null,
+                returnedFrom: null,
+                confirmedOn: null,
+                closedMonth: null,
+                corrects: null,
+                history: [],
+              };
+              log(claim, "下書きを作った");
+              s.claims.push(claim);
+              return done(s, `申請 ${claim.id} の下書きを作りました`, claim.id);
+            }
+            case "addItem": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "自分の申請にだけ明細を足せます");
+              if (!["draft", "returned"].includes(c.phase))
+                return fail(prev, `${statusLabel(c, o)} の申請の明細は変えられません`);
+              c.items.push({
+                id: s.nextItem++,
+                kind: action.kind,
+                date: action.date,
+                amount: action.amount,
+              });
+              log(c, `明細を足した（${action.kind} ${action.amount} 円）`);
+              return done(s, "明細を足しました", c.id);
+            }
+            case "removeItem": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "自分の申請の明細だけ消せます");
+              if (!["draft", "returned"].includes(c.phase))
+                return fail(prev, `${statusLabel(c, o)} の申請の明細は変えられません`);
+              if (c.items.length === 0) return fail(prev, "消す明細がありません");
+              const it = c.items.pop();
+              log(c, `明細を消した（${it.kind} ${it.amount} 円）`);
+              return done(s, "明細を消しました", c.id);
+            }
+            case "addPool": {
+              if (o.itemPool !== "yes")
+                return fail(prev, "この案では、明細は申請の中でだけ作れます（④）");
+              if (who.accounting) return fail(prev, "経理は明細を登録しない想定です");
+              s.pool.push({
+                id: s.nextItem++,
+                owner: action.by,
+                kind: action.kind,
+                date: action.date,
+                amount: action.amount,
+              });
+              return done(s, "明細だけを先に登録しました");
+            }
+            case "moveFromPool": {
+              if (o.itemPool !== "yes")
+                return fail(prev, "この案では、明細を先に登録できません（④）");
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "自分の申請にだけ入れられます");
+              if (!["draft", "returned"].includes(c.phase))
+                return fail(prev, `${statusLabel(c, o)} の申請には入れられません`);
+              const i = s.pool.findIndex((p) => p.owner === action.by);
+              if (i < 0) return fail(prev, "先に登録した明細がありません");
+              const [it] = s.pool.splice(i, 1);
+              c.items.push({ id: it.id, kind: it.kind, date: it.date, amount: it.amount });
+              log(c, `先に登録した明細を入れた（${it.kind} ${it.amount} 円）`);
+              return done(s, "先に登録した明細を申請に入れました", c.id);
+            }
+            case "submit": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "申請者だけが申請できます");
+              if (!["draft", "returned"].includes(c.phase))
+                return fail(prev, `${statusLabel(c, o)} の申請は申請できません`);
+              if (c.items.length === 0) return fail(prev, "明細が 1 件もありません");
+              for (const it of c.items) {
+                if (it.amount === 0) return fail(prev, "金額が 0 円の明細があります");
+                if (it.amount < 0 && c.corrects == null)
+                  return fail(prev, "負の金額は、締め済みの申請を直す申請でだけ使えます");
+                if (it.amount > LIMITS[it.kind])
+                  return fail(
+                    prev,
+                    `${it.kind} の明細は 1 件 ${LIMITS[it.kind].toLocaleString()} 円までです（${it.amount.toLocaleString()} 円）`,
+                  );
+                if (diffDays(it.date, s.today) < 0)
+                  return fail(prev, `利用日 ${it.date} が業務日付より後です`);
+                if (diffDays(it.date, s.today) > DEADLINE_DAYS)
+                  return fail(
+                    prev,
+                    `利用日 ${it.date} から ${DEADLINE_DAYS} 日を過ぎています（期限切れ）`,
+                  );
+              }
+              const boss = USERS[c.applicant].boss;
+              if (!boss)
+                return fail(
+                  prev,
+                  "人事システムに申請者の上長がいません（上長自身の申請をどうするかは未定）",
+                );
+              const resubmit = c.phase === "returned";
+              c.approver = boss;
+              c.stage = resubmit && o.resubmitFrom === "returned" ? c.returnedFrom : "boss";
+              c.phase = "pending";
+              log(
+                c,
+                resubmit ? `再申請した → ${statusLabel(c, o)}` : `申請した → ${statusLabel(c, o)}`,
+              );
+              return done(
+                s,
+                `${resubmit ? "再申請" : "申請"}しました → ${statusLabel(c, o)}`,
+                c.id,
+              );
+            }
+            case "withdraw": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "申請者だけが取り下げられます");
+              if (c.phase !== "pending")
+                return fail(prev, `${statusLabel(c, o)} の申請は取り下げられません`);
+              if (c.stage === "accounting" && o.withdrawUntil === "boss")
+                return fail(prev, "上長の承認の後は取り下げられません（③）");
+              c.phase = "draft";
+              c.stage = null;
+              log(c, "取り下げた → 下書き");
+              return done(
+                s,
+                "取り下げました → 下書き（上長の承認の記録は残るが、次の申請は上長から）",
+                c.id,
+              );
+            }
+            case "approve": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (c.phase !== "pending" || c.stage !== "boss")
+                return fail(prev, `${statusLabel(c, o)} の申請は承認できません`);
+              if (action.by !== c.approver)
+                return fail(
+                  prev,
+                  `この申請を承認できるのは上長（${USERS[c.approver].name}）だけです`,
+                );
+              c.stage = "accounting";
+              log(c, `承認した → ${statusLabel(c, o)}`);
+              return done(s, `承認しました → ${statusLabel(c, o)}`, c.id);
+            }
+            case "confirm": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!who.accounting) return fail(prev, "確認できるのは経理だけです");
+              if (c.phase !== "pending" || c.stage !== "accounting")
+                return fail(prev, `${statusLabel(c, o)} の申請は確認できません`);
+              c.phase = "approved";
+              c.stage = null;
+              c.confirmedOn = s.today;
+              log(c, "確認した → 承認済み");
+              return done(s, "確認しました → 承認済み", c.id);
+            }
+            case "return": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (c.phase !== "pending")
+                return fail(prev, `${statusLabel(c, o)} の申請は差し戻せません`);
+              if (c.stage === "boss" && action.by !== c.approver)
+                return fail(prev, "上長の承認待ちの申請を差し戻せるのは上長だけです");
+              if (c.stage === "accounting" && !who.accounting)
+                return fail(prev, "経理の確認待ちの申請を差し戻せるのは経理だけです");
+              c.returnedFrom = c.stage;
+              c.phase = "returned";
+              c.stage = null;
+              log(c, `差し戻した（${c.returnedFrom === "boss" ? "上長" : "経理"}から）→ 差戻し`);
+              return done(s, "差し戻しました → 差戻し", c.id);
+            }
+            case "advance": {
+              s.today = addDays(s.today, action.days);
+              return done(s, `業務日付を ${s.today} にしました`);
+            }
+            case "close": {
+              const month = prevMonth(s.today);
+              if (s.closings.some((x) => x.month === month))
+                return fail(prev, `${month} はもう締めてあります`);
+              const end = lastDay(month);
+              const targets = s.claims.filter(
+                (x) => x.phase === "approved" && x.confirmedOn <= end,
+              );
+              let total = 0;
+              for (const t of targets) {
+                t.phase = "closed";
+                t.closedMonth = month;
+                total += t.items.reduce((a, it) => a + it.amount, 0);
+                t.history.push(`${s.today} システム: ${month} の締めで締め済み`);
+              }
+              s.closings.push({ month, count: targets.length, total, on: s.today });
+              return done(
+                s,
+                `${month} を締めました（${targets.length} 件、${total.toLocaleString()} 円）`,
+                targets[0] && targets[0].id,
+              );
+            }
+            case "correct": {
+              if (needClaim()) return fail(prev, needClaim());
+              if (!mine()) return fail(prev, "申請者だけが直す申請を作れます");
+              if (c.phase !== "closed")
+                return fail(prev, "直す申請を作れるのは締め済みの申請だけです");
+              const claim = {
+                id: s.nextId++,
+                applicant: action.by,
+                phase: "draft",
+                stage: null,
+                items: c.items.map((it) => ({ ...it, id: s.nextItem++, amount: -it.amount })),
+                approver: null,
+                returnedFrom: null,
+                confirmedOn: null,
+                closedMonth: null,
+                corrects: c.id,
+                history: [],
+              };
+              log(claim, `申請 ${c.id} を直す申請を作った（逆の金額の明細を写した）`);
+              s.claims.push(claim);
+              return done(s, `申請 ${c.id} を直す申請 ${claim.id} を作りました`, claim.id);
+            }
+            default:
+              return fail(prev, "知らない操作です");
+          }
+        }
+
+        return { USERS, OPTIONS, LIMITS, DEADLINE_DAYS, initial, dispatch, statusLabel };
+      })();
+
+      // ===== シナリオ（画面の外でも読める、操作の並び） =====
+      const SCENARIOS = [
+        {
+          title: "基本の流れ",
+          text: "申請者が明細 2 件で申請し、上長が承認、経理が確認し、月が明けて締めるまで。状態の名前が ① の案でどう出るかを見てください。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "交通 1,200 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 1200,
+              },
+            ],
+            [
+              "宿泊 12,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "宿泊",
+                date: "2026-05-18",
+                amount: 12000,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["高橋が確認する", { type: "confirm", by: "C", claimId: 1 }],
+            ["業務日付を 6/1 にする", { type: "advance", days: 12 }],
+            ["5 月を締める", { type: "close" }],
+          ],
+        },
+        {
+          title: "経理が差し戻す",
+          text: "上長の承認の後に経理が差し戻し、申請者が直して再申請する。② の案で、再申請の後にまず誰が見るかが変わります。上長は、自分が承認した後に変わった明細を見なくてよいか。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "宿泊 12,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "宿泊",
+                date: "2026-05-18",
+                amount: 12000,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["高橋が差し戻す", { type: "return", by: "C", claimId: 1 }],
+            [
+              "佐藤が交通 3,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-19",
+                amount: 3000,
+              },
+            ],
+            ["再申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する（② で結果が変わる）", { type: "approve", by: "B", claimId: 1 }],
+            ["高橋が確認する", { type: "confirm", by: "C", claimId: 1 }],
+          ],
+        },
+        {
+          title: "取下げの時期",
+          text: "上長の承認の後、経理の確認の前に申請者が取り下げようとする。③ の案で通るかどうかが変わります。取り下げた後の再申請は、上長からになります。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "交通 1,200 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 1200,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["佐藤が取り下げる（③ で結果が変わる）", { type: "withdraw", by: "A", claimId: 1 }],
+            ["佐藤が再申請する", { type: "submit", by: "A", claimId: 1 }],
+          ],
+        },
+        {
+          title: "上限と期限",
+          text: "明細の上限（宿泊は 1 件 15,000 円まで）と、利用日から 30 日以内という期限で、申請が止まる。止めるのは申請の時か、明細を足す時か。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "宿泊 18,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "宿泊",
+                date: "2026-05-18",
+                amount: 18000,
+              },
+            ],
+            ["申請する（上限で止まる）", { type: "submit", by: "A", claimId: 1 }],
+            ["その明細を消す", { type: "removeItem", by: "A", claimId: 1 }],
+            [
+              "4/1 の交通 3,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-04-01",
+                amount: 3000,
+              },
+            ],
+            ["申請する（期限で止まる）", { type: "submit", by: "A", claimId: 1 }],
+          ],
+        },
+        {
+          title: "締め日をまたぐ",
+          text: "2 件の申請のうち、1 件は 5 月中に確認され、もう 1 件は上長の承認が 5 月で経理の確認が 6/1。5 月の締めに入るのは、経理の確認が締め日までの申請だけ。基準は確認の日でよいか（申請の日や利用日ではないか）。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "交通 1,200 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 1200,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["高橋が確認する", { type: "confirm", by: "C", claimId: 1 }],
+            ["鈴木が下書きを作る", { type: "create", by: "D" }],
+            [
+              "交通 800 円を足す",
+              {
+                type: "addItem",
+                by: "D",
+                claimId: 2,
+                kind: "交通",
+                date: "2026-05-19",
+                amount: 800,
+              },
+            ],
+            ["申請する", { type: "submit", by: "D", claimId: 2 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 2 }],
+            ["業務日付を 6/1 にする", { type: "advance", days: 12 }],
+            ["高橋が鈴木の申請を確認する（6/1）", { type: "confirm", by: "C", claimId: 2 }],
+            ["5 月を締める", { type: "close" }],
+          ],
+        },
+        {
+          title: "締め済みを直す",
+          text: "締め済みの申請の誤りを、逆の金額の申請で直す。直す申請も上長の承認と経理の確認を通るか。元の利用日が古いと 30 日の期限に掛かる。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "宿泊 12,000 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "宿泊",
+                date: "2026-05-18",
+                amount: 12000,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["高橋が確認する", { type: "confirm", by: "C", claimId: 1 }],
+            ["業務日付を 6/1 にする", { type: "advance", days: 12 }],
+            ["5 月を締める", { type: "close" }],
+            ["業務日付を 6/21 にする", { type: "advance", days: 20 }],
+            ["佐藤が申請 1 を直す申請を作る", { type: "correct", by: "A", claimId: 1 }],
+            ["直す申請を出す（期限で止まる）", { type: "submit", by: "A", claimId: 2 }],
+          ],
+        },
+        {
+          title: "してはいけない操作",
+          text: "別の申請者や役割が操作しようとして止まること。上長自身が申請するときは、上長がいないので止まる。",
+          steps: [
+            ["佐藤が下書きを作る", { type: "create", by: "A" }],
+            [
+              "交通 1,200 円を足す",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 1200,
+              },
+            ],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+            ["鈴木が承認しようとする", { type: "approve", by: "D", claimId: 1 }],
+            ["高橋が上長より先に確認しようとする", { type: "confirm", by: "C", claimId: 1 }],
+            [
+              "佐藤が申請中の明細を変えようとする",
+              {
+                type: "addItem",
+                by: "A",
+                claimId: 1,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 500,
+              },
+            ],
+            ["田中が承認する", { type: "approve", by: "B", claimId: 1 }],
+            ["佐藤が自分で確認しようとする", { type: "confirm", by: "A", claimId: 1 }],
+            ["田中が自分の下書きを作る", { type: "create", by: "B" }],
+            [
+              "交通 900 円を足す",
+              {
+                type: "addItem",
+                by: "B",
+                claimId: 2,
+                kind: "交通",
+                date: "2026-05-18",
+                amount: 900,
+              },
+            ],
+            ["田中が申請する（上長がいない）", { type: "submit", by: "B", claimId: 2 }],
+          ],
+        },
+        {
+          title: "明細を先に登録する",
+          text: "④ で「先に登録」を選んだときだけ通る。出張の途中で明細を貯め、後で 1 つの申請にまとめる使い方。要るか。",
+          steps: [
+            [
+              "佐藤が交通 1,200 円だけを登録する",
+              { type: "addPool", by: "A", kind: "交通", date: "2026-05-18", amount: 1200 },
+            ],
+            [
+              "佐藤が宿泊 12,000 円だけを登録する",
+              { type: "addPool", by: "A", kind: "宿泊", date: "2026-05-18", amount: 12000 },
+            ],
+            ["下書きを作る", { type: "create", by: "A" }],
+            ["先に登録した明細を入れる", { type: "moveFromPool", by: "A", claimId: 1 }],
+            ["もう 1 件入れる", { type: "moveFromPool", by: "A", claimId: 1 }],
+            ["申請する", { type: "submit", by: "A", claimId: 1 }],
+          ],
+        },
+      ];
+
+      // ===== 画面（使い捨て） =====
+      const $ = (id) => document.getElementById(id);
+      let options = {
+        pendingShape: "one",
+        resubmitFrom: "first",
+        withdrawUntil: "boss",
+        itemPool: "no",
+      };
+      let state = ClaimModel.initial(options);
+      let last = null;
+      let tab = null,
+        stepIndex = 0;
+
+      function apply(action) {
+        last = ClaimModel.dispatch(state, action);
+        state = last.state;
+        render();
+      }
+
+      function renderOptions() {
+        $("options").innerHTML = Object.entries(ClaimModel.OPTIONS)
+          .map(
+            ([k, def]) =>
+              `<div class="opt"><b>${def.label}</b>` +
+              Object.entries(def.choices)
+                .map(
+                  ([v, l]) =>
+                    `<label><input type="radio" name="${k}" value="${v}" ${options[k] === v ? "checked" : ""}> ${l}</label><br>`,
+                )
+                .join("") +
+              "</div>",
+          )
+          .join("");
+        $("options")
+          .querySelectorAll("input")
+          .forEach((el) =>
+            el.addEventListener("change", () => {
+              options = { ...options, [el.name]: el.value };
+              state = ClaimModel.initial(options);
+              last = null;
+              stepIndex = 0;
+              render();
+            }),
+          );
+      }
+
+      function renderState() {
+        const U = ClaimModel.USERS;
+        const changed = last && last.changed;
+        let h = `<p><b>業務日付:</b> ${state.today}　<span class="muted">上限: 宿泊 15,000 円、交通 50,000 円、会議費 10,000 円／件。期限: 利用日から ${ClaimModel.DEADLINE_DAYS} 日。</span></p>`;
+        if (state.claims.length === 0) h += `<p class="muted">申請はまだありません。</p>`;
+        for (const c of state.claims) {
+          const total = c.items.reduce((a, it) => a + it.amount, 0);
+          h += `<div class="claim ${changed === c.id ? "changed" : ""}">
+      <b>申請 ${c.id}</b>　${U[c.applicant].name}　<span class="status">${ClaimModel.statusLabel(c, state.options)}</span>
+      ${c.corrects ? `　<span class="muted">申請 ${c.corrects} を直す申請</span>` : ""}
+      ${c.approver ? `　<span class="muted">承認する上長: ${U[c.approver].name}</span>` : ""}
+      ${c.confirmedOn ? `　<span class="muted">確認の日: ${c.confirmedOn}</span>` : ""}
+      ${c.closedMonth ? `　<span class="muted">締めの月: ${c.closedMonth}</span>` : ""}
+      ${c.phase === "returned" ? `　<span class="muted">差し戻した段: ${c.returnedFrom === "boss" ? "上長" : "経理"}</span>` : ""}
+      <table><tr><th>種類</th><th>利用日</th><th class="num">金額</th></tr>
+      ${c.items.map((it) => `<tr><td>${it.kind}</td><td>${it.date}</td><td class="num">${it.amount.toLocaleString()} 円</td></tr>`).join("") || `<tr><td colspan="3" class="muted">明細なし</td></tr>`}
+      <tr><td></td><td><b>合計</b></td><td class="num"><b>${total.toLocaleString()} 円</b></td></tr></table>
+      <div class="hist">${c.history.join("<br>")}</div></div>`;
+        }
+        if (state.pool.length)
+          h += `<p><b>先に登録した明細:</b> ${state.pool.map((p) => `${U[p.owner].name} ${p.kind} ${p.amount.toLocaleString()} 円`).join("、")}</p>`;
+        if (state.closings.length)
+          h += `<p><b>締めの結果:</b> ${state.closings.map((x) => `${x.month}（${x.on} に実行）${x.count} 件 ${x.total.toLocaleString()} 円`).join("、")}</p>`;
+        $("state").innerHTML = h;
+        $("msg").innerHTML = last
+          ? last.error
+            ? `<div class="msg bad">✖ 止まった: ${last.error}</div>`
+            : `<div class="msg ok">✔ ${last.message}</div>`
+          : "";
+      }
+
+      function renderSelectors() {
+        const actor = $("actor").value || "A";
+        $("actor").innerHTML = Object.entries(ClaimModel.USERS)
+          .map(
+            ([k, u]) => `<option value="${k}" ${k === actor ? "selected" : ""}>${u.name}</option>`,
+          )
+          .join("");
+        const cur = Number($("claim").value) || (state.claims.at(-1) || {}).id;
+        $("claim").innerHTML =
+          state.claims
+            .map(
+              (c) =>
+                `<option value="${c.id}" ${c.id === cur ? "selected" : ""}>申請 ${c.id}（${ClaimModel.statusLabel(c, state.options)}）</option>`,
+            )
+            .join("") || `<option value="">なし</option>`;
+      }
+
+      function renderScenario() {
+        $("tabs").innerHTML = SCENARIOS.map(
+          (sc, i) =>
+            `<button class="${tab === i ? "active" : ""}" data-tab="${i}">${sc.title}</button>`,
+        ).join("");
+        $("tabs")
+          .querySelectorAll("button")
+          .forEach((b) =>
+            b.addEventListener("click", () => {
+              tab = Number(b.dataset.tab);
+              stepIndex = 0;
+              state = ClaimModel.initial(options);
+              last = null;
+              render();
+            }),
+          );
+        if (tab === null) {
+          $("scenario").innerHTML =
+            `<p class="muted">タブを選ぶと、最初の状態に戻してシナリオを始めます。</p>`;
+          return;
+        }
+        const sc = SCENARIOS[tab];
+        $("scenario").innerHTML =
+          `<p>${sc.text}</p><div class="steps">` +
+          sc.steps
+            .map(
+              ([label], i) =>
+                `<button data-step="${i}" class="${i < stepIndex ? "done" : i === stepIndex ? "next" : ""}" ${i === stepIndex ? "" : "disabled"}>${i + 1}. ${label}</button>`,
+            )
+            .join("") +
+          "</div>";
+        $("scenario")
+          .querySelectorAll("button[data-step]")
+          .forEach((b) =>
+            b.addEventListener("click", () => {
+              const i = Number(b.dataset.step);
+              stepIndex = i + 1;
+              apply(sc.steps[i][1]);
+            }),
+          );
+      }
+
+      function render() {
+        renderSelectors();
+        renderState();
+        renderScenario();
+      }
+
+      document.querySelectorAll("button[data-a]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const by = $("actor").value,
+            claimId = Number($("claim").value);
+          const item = {
+            kind: $("kind").value,
+            date: $("date").value,
+            amount: Number($("amount").value),
+          };
+          const a = b.dataset.a;
+          if (a === "reset") {
+            state = ClaimModel.initial(options);
+            last = null;
+            return render();
+          }
+          if (a === "advance1") return apply({ type: "advance", days: 1 });
+          if (a === "advance10") return apply({ type: "advance", days: 10 });
+          if (a === "close") return apply({ type: "close" });
+          if (a === "addPool") return apply({ type: "addPool", by, ...item });
+          if (a === "addItem") return apply({ type: "addItem", by, claimId, ...item });
+          apply({ type: a, by, claimId });
+        }),
+      );
+
+      renderOptions();
+      render();
+    </script>
+  </body>
+</html>
