@@ -38,7 +38,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-09-12T14:46:16.234+09:00",
+  "timestamp": "2025-09-12T05:46:16.234Z",
   "severity.text": "ERROR",
   "message": "Error processing payment.",
   "service.name": "payment-service",
@@ -89,7 +89,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-08-26T10:36:17.123+09:00",
+  "timestamp": "2025-08-26T01:36:17.123Z",
   "severity.text": "INFO",
   "message": "カート追加時の在庫引当が失敗しました。",
   "user.id": "user-456",
@@ -101,7 +101,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-08-26T10:36:17.123+09:00",
+  "timestamp": "2025-08-26T01:36:17.123Z",
   "severity.text": "INFO",
   "message": "カート追加時の在庫引当が失敗しました。（ユーザーID:user-456 SKU:ABC-123-XYZ-RED-L）"
 }
@@ -111,7 +111,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-08-26T10:36:17.123+09:00",
+  "timestamp": "2025-08-26T01:36:17.123Z",
   "severity.text": "INFO",
   "message": "カート追加時の在庫引当が失敗しました。",
   "details": {
@@ -136,7 +136,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-08-26T11:45:10.880+09:00",
+  "timestamp": "2025-08-26T02:45:10.880Z",
   "severity.text": "WARN",
   "message.code": "BIZ-W-1001",
   "message": "Inventory update failed due to a data conflict (optimistic lock). Please retry the operation.",
@@ -153,7 +153,7 @@ sources:
 
 ```json
 {
-  "timestamp": "2025-08-26T11:45:10.880+09:00",
+  "timestamp": "2025-08-26T02:45:10.880Z",
   "severity.text": "WARN",
   "message.code": "BIZ-W-1001",
   "message": "Inventory update failed due to a data conflict (optimistic lock). Please retry the operation.",

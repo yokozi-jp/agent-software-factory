@@ -12,7 +12,7 @@ tags: [adr, batch, closing, step-functions, ecs, idempotency, outbox]
 ## ルール
 
 - **締める月の決め方**: EventBridge Scheduler が、業務のタイムゾーンの毎日 10:00 に起動します。ジョブは「最後に締めた月の次の月」から「起動した時刻の前の月」までを、古い順に締めます。締める月がなければ INFO のログを出して何もせずに終わります。テナントの最初の月は、締めていない承認済みの申請のうち、いちばん古いものの月です。手動のときは、環境変数 `CLOSING_MONTH` で「どの月まで締めるか」を渡します。業務日付マスタと日付を切り替えるジョブは置きません。締めの表が「最後に締めた月」を持ち、その役をします。
-- **対象と境界**: 月 M の対象は、経理の確認が境界より前で、まだどの締めにも入っていない申請です。境界は「業務のタイムゾーンの翌月 1 日 00:00」で、範囲は「以上、未満」で書きます（`BETWEEN` は使いません）。境界は、IANA のタイムゾーン名から計算する純粋な関数が求め、プロセスと DB のセッションのタイムゾーンに頼りません。業務のタイムゾーンをどこから取るかは、[システム全体の日時とタイムゾーンの扱いを決める](https://github.com/yokozi-jp/agent-software-factory/issues/365) で決めます。この ADR は決めません。
+- **対象と境界**: 月 M の対象は、経理の確認が境界より前で、まだどの締めにも入っていない申請です。境界は「業務のタイムゾーンの翌月 1 日 00:00」で、範囲は「以上、未満」で書きます（`BETWEEN` は使いません）。境界は、IANA のタイムゾーン名から計算する純粋な関数が求め、プロセスと DB のセッションのタイムゾーンに頼りません。業務のタイムゾーンは、システムで 1 つの `Asia/Tokyo` です ([ADR 0043](0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。
 - **ワークフロー**: ADR 0013 のとおり、Scheduler → Step Functions → RunTask と挟みます。Step Functions の実行名を環境変数でタスクに渡し、共通カラムの `tx_id` に入れます。
 - **テナントの回し方**: 最初に、テナントの一覧を返すタスクを `RunTask.waitForTaskToken` で起動します（タスクは `SendTaskSuccess` で一覧を返す）。その一覧を Map で回し、テナントごとに締めのタスクを `RunTask.sync` で起動します。1 つのテナントが失敗しても、ほかのテナントは止まりません。失敗したテナントは redrive できます。ジョブの中身（`application` と `infrastructure`）は Effect で書きます ([ADR 0028](0028-effect-in-application-and-infrastructure.md))。
 - **テナントの一覧の権限**: `closing_module` に、`auth."organization"` の `id` の列だけの `SELECT` を与えます。ADR 0022 の「アプリ用のロールは `auth` を読めない」の例外です。ほかの列とほかの `auth` の表は読めません。

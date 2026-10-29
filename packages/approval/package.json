@@ -19,6 +19,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "approval"
+    "name": "approval",
+    "tags": [
+      "type:module"
+    ]
   }
 }
