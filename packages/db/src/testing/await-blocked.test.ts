@@ -62,14 +62,48 @@ describe("awaitBlocked", () => {
     expect(await valueOfItem()).toEqual({ val: "waiter", lock_no: 1 });
   });
 
-  it("待たせる側がいないままで上限の時間が過ぎると、2 つの pid を示して失敗すること", async () => {
+  it("一意索引の待ち (commit していない同じ値の INSERT) も検出し、commit の後で 23505 になること", async () => {
+    await holder.query("BEGIN");
+    await holder.query("INSERT INTO race_item VALUES (2, 'holder', 1)");
+
+    const waiterInsert = waiter.query("INSERT INTO race_item VALUES (2, 'waiter', 1)").then(
+      () => "inserted",
+      (error: { code?: string }) => error.code,
+    );
+    await awaitBlocked(db.superuser, pids);
+    await holder.query("COMMIT");
+
+    expect(await waiterInsert).toBe("23505");
+  });
+
+  it("待つ側が何も待っていないまま上限の時間が過ぎると、2 つの pid を示して失敗すること", async () => {
     await expect(awaitBlocked(db.superuser, pids, { timeoutMs: 200 })).rejects.toThrow(
-      new RegExp(`${pids.waiter}.*${pids.holder}`),
+      new RegExp(`${pids.waiter}.*${pids.holder}.*待たせている接続: なし`),
     );
   });
 
   // 対照: 同じ手順で、lock_no の条件がない更新は両方成功して片方の更新が失われ、条件がある更新は 0 行になる。
   // 競合のテストが、本当に競合を作れていることの証明になる (docs/db/concurrency-testing.md)。
+  it("別の接続が待たせているときは、失敗のメッセージにその接続を示すこと", async () => {
+    const third = await db.superuser.connect();
+    try {
+      const thirdPid = await backendPid(third);
+      await third.query("BEGIN");
+      await third.query("UPDATE race_item SET val = 'third' WHERE id = 1");
+      const waiterUpdate = waiter.query("UPDATE race_item SET val = 'waiter' WHERE id = 1");
+      await awaitBlocked(db.superuser, { waiter: pids.waiter, holder: thirdPid });
+
+      await expect(awaitBlocked(db.superuser, pids, { timeoutMs: 200 })).rejects.toThrow(
+        new RegExp(`待たせている接続: ${thirdPid}`),
+      );
+
+      await third.query("COMMIT");
+      await waiterUpdate;
+    } finally {
+      third.release();
+    }
+  });
+
   it("対照: lock_no の条件がない更新は、待った後に両方成功して、先の更新が失われること", async () => {
     await holder.query("BEGIN");
     await holder.query("UPDATE race_item SET val = 'holder', lock_no = lock_no + 1 WHERE id = 1");

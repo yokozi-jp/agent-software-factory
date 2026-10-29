@@ -50,6 +50,36 @@ describe("snapshotRowCounts と diffRowCounts", () => {
     expect(counts["claim.t_claim"]).toBe(0);
   });
 
+  it("superuser でない接続は、RLS で行が見えなくなり少なく数えるので、数える前に失敗すること", async () => {
+    await expect(snapshotRowCounts(db.appUser)).rejects.toThrow(/superuser/);
+  });
+
+  it("別の接続の一時テーブルがあっても失敗せず、数えないこと", async () => {
+    const other = await db.superuser.connect();
+    try {
+      await other.query("CREATE TEMP TABLE scratch_rows (id int)");
+      await other.query("INSERT INTO scratch_rows VALUES (1)");
+
+      const counts = await snapshotRowCounts(db.superuser);
+
+      expect(Object.keys(counts).filter((name) => name.includes("scratch_rows"))).toEqual([]);
+    } finally {
+      other.release();
+    }
+  });
+
+  it("パーティション表の行を、親と子で二重に数えないこと", async () => {
+    await db.superuser.query("CREATE TABLE part_item (id int, kind int) PARTITION BY LIST (kind)");
+    await db.superuser.query("CREATE TABLE part_item_a PARTITION OF part_item FOR VALUES IN (1)");
+    const before = await snapshotRowCounts(db.superuser);
+
+    await db.superuser.query("INSERT INTO part_item VALUES (1, 1)");
+
+    expect(diffRowCounts(before, await snapshotRowCounts(db.superuser))).toEqual({
+      "public.part_item_a": 1,
+    });
+  });
+
   it("行を消した表は負の数で、現れた表と消えた表は 0 からの差で表すこと", () => {
     const before = { "a.t": 3, "a.gone": 1 };
     const after = { "a.t": 1, "a.new": 2 };
