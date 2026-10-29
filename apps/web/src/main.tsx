@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 
+import "temporal-polyfill/global";
 import "./index.css";
 import { routeTree } from "./routeTree.gen.ts";
 

@@ -46,3 +46,6 @@ coverage
 # Stryker: its sandbox copies of a project, and the results it reuses with --incremental
 .stryker-tmp
 stryker-incremental.json
+
+# Vitest browser mode: screenshots of a failed test
+.vitest/

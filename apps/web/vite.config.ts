@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
+import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
   // The router plugin must come before the React plugin.
@@ -16,6 +17,15 @@ export default defineConfig({
     proxy: { "/api": "http://localhost:3000" },
   },
   test: {
+    setupFiles: ["./test/temporal.ts"],
+    // 表示が実行環境のタイムゾーンに頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
+    // 効いていることは src/lib/date-time.test.ts が確かめる (docs/adr/0043)。
+    browser: {
+      enabled: true,
+      headless: true,
+      provider: playwright({ contextOptions: { timezoneId: "America/New_York" } }),
+      instances: [{ browser: "chromium" }],
+    },
     // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
     exclude: ["**/node_modules/**", "**/__fixtures__/**"],
   },
