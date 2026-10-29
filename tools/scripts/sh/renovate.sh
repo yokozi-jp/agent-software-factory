@@ -7,7 +7,7 @@
 set -eu
 
 # Renovate updates this version itself (the regex manager in renovate.jsonc).
-renovate_version="44.181.1"
+renovate_version="44.182.2"
 
 cd "$(git rev-parse --show-toplevel)"
 dlx() {
