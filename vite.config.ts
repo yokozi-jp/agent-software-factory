@@ -436,7 +436,9 @@ export default defineConfig({
           "no-restricted-properties": [
             "error",
             ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
-            // This override replaces the list above for these two layers, so it carries the clock too.
+            // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
+            // carries that override's runtime globals and clock too.
+            ...runtimePropertyEntries,
             ...clock.properties,
           ],
         },
