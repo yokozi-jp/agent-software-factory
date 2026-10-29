@@ -1,8 +1,8 @@
 // Detection-power fixture (#43) for the imports that bypass the Outbox and the transaction in apps/api/src (root
-// vite.config.ts, `bypassPackages`, docs/adr/0029). Each import below is one that no-restricted-imports must report.
-// If the rule is turned off, drops a package, or the override stops reaching apps/api/src/, the disable comment is
-// unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy checks that every package of
-// `bypassPackages` has a line here.
+// vite.config.ts, `outboxPackages` and `connectionPackages`, docs/adr/0029). Each import below is one that
+// no-restricted-imports must report. If the rule is turned off, drops a package, or the override stops reaching
+// apps/api/src/, the disable comment is unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy
+// checks that every package of the two lists has a line here.
 // apps/api declares pg, so that import resolves; the SDK clients are not dependencies of the app yet, so each one
 // does not resolve, and the @ts-expect-error says so. When the app depends on one, remove the directive of that line.
 // Knip and jscpd skip __fixtures__/, and nothing imports this file.

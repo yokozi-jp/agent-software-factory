@@ -1,8 +1,8 @@
-// Detection-power fixture (#43) for the imports that bypass the Outbox and the transaction (root vite.config.ts,
-// `bypassPackages`, docs/adr/0029). It is the one for every package: the override reaches packages/*/src/**.
-// Each import below is one that no-restricted-imports must report. If the rule is turned off, drops a package, or its
-// `files` stop reaching packages/*/src/, the disable comment is unused and `vp check` fails
-// (reportUnusedDisableDirectives). repo-policy checks that every package of `bypassPackages` has a line here.
+// Detection-power fixture (#43) for the imports that bypass the Outbox and the transaction in packages/*/src/application (root
+// vite.config.ts, `outboxPackages` and `connectionPackages`, docs/adr/0029). Each import below is one that
+// no-restricted-imports must report. If the rule is turned off, drops a package, or its `files` stop reaching
+// packages/*/src/application, the disable comment is unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy checks
+// that every package of the two lists has a line here.
 // module-fixtures declares none of these packages, so each import does not resolve; the @ts-expect-error says so, and
 // if a package becomes resolvable here (a declared dependency, a hoisted node_modules) the directive is unused and
 // `vp check` fails (TS2578). Knip and jscpd skip __fixtures__/, and nothing imports this file.

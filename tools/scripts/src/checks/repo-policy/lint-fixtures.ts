@@ -147,9 +147,11 @@ const runtimeAnnotations = [
 // fixtures in `dir` of every package under packages/ (`dir` is src or src/<layer>), and whether there is a
 // package (or a module, for the layers) to ask them of.
 // db has fixtures of its own (dbBoundaries); its override is not one of packages/*/src/**, so they say nothing about these.
+// bypass.ts is the fixture of the paths that stop the imports bypassing the Outbox (bypassGuards), not of the import
+// boundaries or the other rules asked of a directory.
 function fixtures(tree: Tree, dir: string): string[] {
   const pattern = new RegExp(`^packages/(?!db/)[^/]+/${dir}/__fixtures__/`);
-  return tree.paths.filter((path) => pattern.test(path));
+  return tree.paths.filter((path) => pattern.test(path) && !path.endsWith("/bypass.ts"));
 }
 const hasPackage = (tree: Tree, modulePackagesOnly: boolean): boolean =>
   (modulePackagesOnly ? modulePackageNames(tree) : packageNames(tree)).length > 0;
@@ -293,39 +295,80 @@ export function dbBoundaries(tree: Tree): string[] {
     );
 }
 
-// ADR 0029: the imports that bypass the Outbox (the SDK clients of SQS, SES and the like) and the transaction (`pg`,
-// which opens a connection of its own). vite.config.ts stops them with no-restricted-imports in the override of
-// packages/*/src/** and the one of apps/api/src/**, and lists their package names in `bypassPackages`. Each
-// override has its own `paths`, so each has a fixture (#43) for every name: an import of it on the line below
-// `oxlint-disable-next-line no-restricted-imports`. A name dropped from the list, or an override that stops
-// reaching the file, leaves the comment unused and fails `vp check`. A type import does not count: the rule lets it
-// through for `pg`, and the comment would be unused. packages/db is not asked: it opens the connections
-// (docs/adr/0038).
-interface BypassOverride {
-  readonly place: string;
+// ADR 0029: the imports that bypass the Outbox (`outboxPackages`: the SDK clients of SQS, SES and the like) and the
+// transaction (`connectionPackages`: `pg`, which opens a connection of its own). vite.config.ts stops them with
+// no-restricted-imports `paths`, and Oxlint keeps only the last override that sets the rule for a file, so each
+// override carries its own copy. Each override has a fixture (#43) for every name it stops: an import of it on the
+// line below `oxlint-disable-next-line no-restricted-imports`. A name dropped from a list, or an override that
+// stops reaching the file, leaves the comment unused and fails `vp check`. A type import does not count: the rule
+// lets it through for `pg`, and the comment would be unused.
+//
+// What each override stops:
+//   packages/*/src and each layer but domain  the SDK clients and `pg` (domain stops every library already)
+//   apps/api/src, but not the entry files and the tests  the SDK clients and `pg`
+//   the entry files and the tests of apps/api/src, and packages/db/src  the SDK clients only: they open the
+//     connections (docs/adr/0038), but a send from there skips the Outbox as well.
+interface BypassPlace {
+  readonly name: string;
   // Where a fixture is added when one is missing; any file in a __fixtures__/ directory of the place counts.
-  readonly fixtureFile: string;
-  readonly fixtureDir: RegExp;
-  readonly asked: (tree: Tree) => boolean;
+  readonly hint: string;
+  readonly fixtureFile: RegExp;
+  readonly connection: boolean;
 }
-const bypassOverrides: readonly BypassOverride[] = [
-  {
-    place: "packages/*/src",
-    fixtureFile: "packages/module-fixtures/src/application/__fixtures__/bypass.ts",
-    fixtureDir: /^packages\/(?!db\/)[^/]+\/src\/(?:.*\/)?__fixtures__\/[^/]+\.tsx?$/,
-    asked: (tree) => hasPackage(tree, false),
-  },
-  {
-    place: "apps/api/src",
-    fixtureFile: "apps/api/src/__fixtures__/bypass.ts",
-    fixtureDir: /^apps\/api\/src\/(?:.*\/)?__fixtures__\/[^/]+\.tsx?$/,
-    asked: (tree) => tree.paths.some((path) => path.startsWith("apps/api/src/")),
-  },
-];
 
-// The strings of `const <name> ... = [ ... ];` in the text, or undefined when there is no such array.
+const apiFixtures = /^apps\/api\/src\/(?:.*\/)?__fixtures__\/[^/]+\.tsx?$/;
+
+function bypassPlaces(tree: Tree): BypassPlace[] {
+  const places: BypassPlace[] = [];
+  if (hasPackage(tree, false))
+    places.push({
+      name: "packages/*/src",
+      hint: "packages/module-fixtures/src/__fixtures__/bypass.ts",
+      fixtureFile: /^packages\/(?!db\/)[^/]+\/src\/__fixtures__\/(?:.*\/)?[^/]+\.tsx?$/,
+      connection: true,
+    });
+  if (hasPackage(tree, true))
+    for (const layer of objectKeys(tree.read("vite.config.ts"), "layers").filter(
+      (name) => name !== "domain",
+    ))
+      places.push({
+        name: `packages/*/src/${layer}`,
+        hint: `packages/module-fixtures/src/${layer}/__fixtures__/bypass.ts`,
+        fixtureFile: new RegExp(
+          `^packages/(?!db/)[^/]+/src/${layer}/__fixtures__/(?:.*/)?[^/]+\\.tsx?$`,
+        ),
+        connection: true,
+      });
+  if (tree.paths.some((path) => path.startsWith("apps/api/src/")))
+    places.push(
+      {
+        name: "apps/api/src",
+        hint: "apps/api/src/__fixtures__/bypass.ts",
+        fixtureFile: apiFixtures,
+        connection: true,
+      },
+      {
+        name: "the entry files and the tests of apps/api/src",
+        hint: "apps/api/src/__fixtures__/bypass.test.ts",
+        fixtureFile: apiFixtures,
+        connection: false,
+      },
+    );
+  if (packageNames(tree).includes("db"))
+    places.push({
+      name: "packages/db/src",
+      hint: "packages/db/src/__fixtures__/bypass.ts",
+      fixtureFile: /^packages\/db\/src\/__fixtures__\/[^/]+\.tsx?$/,
+      connection: false,
+    });
+  return places;
+}
+
+// The strings of `const <name> ... = [ ... ];` in the text (a `//` comment is skipped), or undefined when there is no
+// such array.
 function stringArray(text: string, name: string): string[] | undefined {
-  const body = new RegExp(`^const ${name}\\b[^=]*=\\s*\\[([^\\]]*)\\]`, "m").exec(text)?.[1];
+  const uncommented = text.replace(/\/\/[^\n]*/g, "");
+  const body = new RegExp(`^const ${name}\\b[^=]*=\\s*\\[([^\\]]*)\\]`, "m").exec(uncommented)?.[1];
   if (body === undefined) return undefined;
   return Array.from(body.matchAll(/"([^"]+)"/g), (match) => String(match[1]));
 }
@@ -340,21 +383,31 @@ const importUnderDisableComment = (name: string): RegExp =>
 
 export function bypassGuards(tree: Tree): string[] {
   const config = tree.read("vite.config.ts");
-  const names = stringArray(config, "bypassPackages");
-  if (names === undefined)
-    return config === ""
-      ? []
-      : [
-          "vite.config.ts has no bypassPackages array. It lists the packages that bypass the Outbox and the transaction (the SDK clients of SQS and SES, and pg), which no-restricted-imports stops (docs/adr/0029).",
-        ];
-  return bypassOverrides.flatMap(({ place, fixtureFile, fixtureDir, asked }) => {
-    if (!asked(tree)) return [];
-    const texts = tree.paths.filter((path) => fixtureDir.test(path)).map((path) => tree.read(path));
-    return names
+  if (config === "") return [];
+  const outbox = stringArray(config, "outboxPackages");
+  const connection = stringArray(config, "connectionPackages");
+  const absent = [
+    ["outboxPackages", outbox],
+    ["connectionPackages", connection],
+  ]
+    .filter(([, names]) => names === undefined)
+    .map(
+      ([list]) =>
+        `vite.config.ts has no ${String(list)} array. It lists the packages that bypass the Outbox and the transaction (the SDK clients of SQS and SES, and pg), which no-restricted-imports stops (docs/adr/0029).`,
+    );
+  if (outbox === undefined || connection === undefined) return absent;
+  return bypassPlaces(tree).flatMap(({ name: place, hint, fixtureFile, connection: stopsPg }) => {
+    const texts = tree.paths
+      .filter(
+        (path) =>
+          fixtureFile.test(path) && path.endsWith(".test.ts") === place.startsWith("the entry"),
+      )
+      .map((path) => tree.read(path));
+    return [...outbox, ...(stopsPg ? connection : [])]
       .filter((name) => !texts.some((text) => importUnderDisableComment(name).test(text)))
       .map(
         (name) =>
-          `vite.config.ts stops the import of ${name} (bypassPackages) in ${place}, but no fixture there has \`oxlint-disable-next-line no-restricted-imports\` on the line above an import of it. Add one to ${fixtureFile}, so that an override that stops reaching ${place}, or a rule that drops ${name}, fails \`vp check\` (docs/adr/0029).`,
+          `vite.config.ts stops the import of ${name} in ${place}, but no fixture there has \`oxlint-disable-next-line no-restricted-imports\` on the line above an import of it. Add one to ${hint}, so that an override that stops reaching ${place}, or a rule that drops ${name}, fails \`vp check\` (docs/adr/0029).`,
       );
   });
 }

@@ -15,11 +15,16 @@ export const domainFixture = [
   "",
 ].join("\n");
 
-// The fixture of the imports that bypass the Outbox and the transaction (docs/adr/0029): one import per package of
-// `bypassPackages` in vite.config.ts, each under the disable comment that the rule must make used.
-export const bypassFixture = [
+// The fixtures of the imports that bypass the Outbox and the transaction (docs/adr/0029): one import per package of
+// `outboxPackages` and `connectionPackages` in vite.config.ts, each under the disable comment that the rule must
+// make used. The entry files and the tests may open a connection but not send, so their fixture has the SDK only.
+export const bypassOutboxFixture = [
   "// oxlint-disable-next-line no-restricted-imports -- fixture: sqs",
   'import "@x/sqs";',
+  "",
+].join("\n");
+export const bypassFixture = [
+  bypassOutboxFixture.trimEnd(),
   "// oxlint-disable-next-line no-restricted-imports -- fixture: pg",
   'import "pg";',
   "",
@@ -175,17 +180,21 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
-  // The two overrides that stop the imports that bypass the Outbox and the transaction each have a fixture.
-  "packages/module-fixtures/src/application/__fixtures__/bypass.ts": bypassFixture,
+  // Each override that stops the imports that bypass the Outbox and the transaction has a fixture: src/ and the
+  // layers of the packages (domain stops every library already), the files of apps/api/src, and its entry files and
+  // tests.
+  "packages/module-fixtures/src/__fixtures__/bypass.ts": bypassFixture,
+  "packages/module-fixtures/src/http/__fixtures__/bypass.ts": bypassFixture,
   "apps/api/src/__fixtures__/bypass.ts": bypassFixture,
+  "apps/api/src/__fixtures__/bypass.test.ts": bypassOutboxFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',
     // The packages that bypass the Outbox and the transaction (docs/adr/0029), one fixture each.
-    "const bypassPackages = [",
+    "const outboxPackages = [",
     '  "@x/sqs",',
-    '  "pg",',
     "];",
+    'const connectionPackages = ["pg"];',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',
