@@ -64,3 +64,7 @@ FIFO で厳密な順序保証が必要な場合は DLQ を使わない。回復�
 > **参考**
 >
 > [Amazon SQS でのデッドレターキューの使用](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html) に、「メッセージまたは操作の正確な順序を維持する必要がある場合は、FIFOキューでデッドレターキューを使用しないでください」とある。
+
+## このリポジトリのキュー
+
+このリポジトリは、順序制御を必要としない設計を原則にし、キューを既定で標準キューにしている。FIFO キューは、業務に順序が要る処理にだけ使い、そのときに DLQ の扱い（即時停止かスキップか）を決める。決定は [ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md) にある。この文書の推奨は、ADR と食い違う場合は ADR に従う。
