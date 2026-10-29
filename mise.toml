@@ -2,7 +2,7 @@
 # Only [tools] with exact versions: Node.js and pnpm belong to Vite+, tasks to Nx.
 # After changing a version, run `mise lock --platform linux-x64` and commit mise.lock.
 [tools]
-"aqua:jdx/jactionlint" = "2.3.0"
+"aqua:jdx/jactionlint" = "2.4.0"
 # Must equal betterleaksMinVersion in .betterleaks.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts). v1 only (docs/adr/0003).
 betterleaks = "1.9.0"
 osv-scanner = "2.7.0"
