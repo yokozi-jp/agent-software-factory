@@ -41,7 +41,7 @@
     },
     "i18n-keys": {
       "cache": true,
-      "inputs": ["default", "{workspaceRoot}/apps/web/src/**/*", "{workspaceRoot}/pnpm-lock.yaml"]
+      "inputs": ["default", "{workspaceRoot}/packages/i18n/**/*", "{workspaceRoot}/pnpm-lock.yaml"]
     },
     "lint-effect": {
       "cache": true,

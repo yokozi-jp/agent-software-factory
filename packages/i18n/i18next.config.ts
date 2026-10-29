@@ -2,7 +2,7 @@ import { defineConfig } from "i18next-cli";
 
 // キーの検査 (`i18next-cli status` と `status --unused`) の設定 (docs/adr/0044)。
 // パスは、この package のディレクトリが cwd のときの相対パス。検出力の fixture は、同じ配置を fixture の中に作り、
-// cwd を変えて同じ設定で流す (src/keys.test.ts)。
+// cwd を変えて同じ設定で流す (test/keys.test.ts)。
 export default defineConfig({
   locales: ["ja", "en"],
   extract: {

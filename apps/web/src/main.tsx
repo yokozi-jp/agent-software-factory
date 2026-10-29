@@ -19,7 +19,19 @@ const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root not found");
 
 // 言語はブラウザの言語で決める。アプリの中の切り替えと保存は作らない (docs/adr/0044)。
-const i18n = await createI18n(resolveLanguage(navigator.languages));
+const language = resolveLanguage(navigator.languages);
+// index.html の lang は固定なので、決めた言語に合わせる (スクリーンリーダー、字形、ハイフネーションが使う)。
+document.documentElement.lang = language;
+
+// 文言は同梱のリソースで、通信しないので、初期化はほぼ失敗しない。失敗したら、文言なしでも分かる表示を出し、
+// エラーは投げ直す (ブラウザのコンソールとエラー収集に届く)。
+let i18n;
+try {
+  i18n = await createI18n(language);
+} catch (error) {
+  rootElement.textContent = "Failed to start the application. Please reload the page.";
+  throw error;
+}
 
 createRoot(rootElement).render(
   <StrictMode>

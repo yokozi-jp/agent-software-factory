@@ -8,7 +8,8 @@
     "build": "vp build",
     "preview": "vp preview",
     "test": "vp test run --passWithNoTests",
-    "check": "vp check"
+    "check": "vp check",
+    "i18n-keys": "cd ../../packages/i18n && i18next-cli status && i18next-cli status --unused"
   },
   "dependencies": {
     "@agent-software-factory/i18n": "workspace:*",
@@ -25,6 +26,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "i18next-cli": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

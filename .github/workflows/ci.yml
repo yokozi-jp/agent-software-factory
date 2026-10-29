@@ -210,8 +210,8 @@ jobs:
         run: pnpm exec nx affected -t db-types-check
 
       # The keys of the texts (packages/i18n/src/locales) match the keys that the code uses: no key is missing in a
-      # language, none is unused (i18next-cli status, status --unused; docs/adr/0044). packages/i18n depends on web
-      # by `nx.implicitDependencies`, so a change to a screen makes it affected.
+      # language, none is unused (i18next-cli status, status --unused; docs/adr/0044). The target is web's: it
+      # depends on packages/i18n, so a change to either makes it affected, and the project graph has no cycle.
       - name: Text keys match the code (i18next-cli, nx affected)
         run: pnpm exec nx affected -t i18n-keys
 

@@ -9,7 +9,6 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --exclude \"**/__fixtures__/**\" --exclude \"**/node_modules/**\"",
-    "i18n-keys": "i18next-cli status && i18next-cli status --unused",
     "i18n-lint": "i18next-cli lint"
   },
   "dependencies": {
@@ -22,9 +21,6 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "i18n",
-    "implicitDependencies": [
-      "web"
-    ]
+    "name": "i18n"
   }
 }
