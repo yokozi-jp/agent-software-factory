@@ -3,7 +3,11 @@ import type { Pool } from "pg";
 /** `<スキーマ>.<表>` をキーにした、表ごとの行数。 */
 export type RowCounts = Readonly<Record<string, number>>;
 
-// 数えないスキーマ。auth は Better Auth が、migrations は dbmate が書く。業務の処理の原子性とは関係がない (ADR 0025)。
+/** `<スキーマ>.<表>` をキーにした、増えた行数 (減ったら負の数)。差がない表は含まない。 */
+export type RowCountDiff = Readonly<Record<string, number>>;
+
+// 数えないスキーマ。auth は Better Auth の表 (ADR 0022)、migrations は dbmate の履歴の表 (ADR 0025) で、
+// どちらも業務の処理の原子性とは関係がない。
 const excludedSchemas = ["pg_catalog", "information_schema", "pg_toast", "auth", "migrations"];
 
 /**
@@ -15,10 +19,10 @@ const excludedSchemas = ["pg_catalog", "information_schema", "pg_toast", "auth",
  * 行数だけを比べる。既存の行の更新や、行を 1 つ足して 1 つ消す変化は、差に出ない。
  */
 export async function snapshotRowCounts(pool: Pool): Promise<RowCounts> {
-  const { rows: roles } = await pool.query<{ superuser: boolean }>(
-    "SELECT current_setting('is_superuser') = 'on' AS superuser",
+  const { rows: sessions } = await pool.query<{ isSuperuser: boolean }>(
+    `SELECT current_setting('is_superuser') = 'on' AS "isSuperuser"`,
   );
-  if (roles[0]?.superuser !== true) {
+  if (sessions[0]?.isSuperuser !== true) {
     throw new Error(
       "snapshotRowCounts は superuser の接続で呼ぶこと: そうでない接続は RLS で行が見えず、少なく数える",
     );
@@ -41,7 +45,7 @@ export async function snapshotRowCounts(pool: Pool): Promise<RowCounts> {
 }
 
 /** 前後の行数の差。差がある表だけを、増えた行数 (減ったら負の数) で返す。現れた表と消えた表は 0 からの差にする。 */
-export function diffRowCounts(before: RowCounts, after: RowCounts): Record<string, number> {
+export function diffRowCounts(before: RowCounts, after: RowCounts): RowCountDiff {
   const diff: Record<string, number> = {};
   for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
     const change = (after[name] ?? 0) - (before[name] ?? 0);

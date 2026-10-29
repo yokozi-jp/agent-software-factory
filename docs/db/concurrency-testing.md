@@ -35,11 +35,12 @@ DB を使う結合テストは `apps/api/src/**/*.test.ts` に置きます ([ADR
 
 使わない書き方があります。
 
-- 素の `sleep` で待つ。短いと偶然に通り、長いとテストが遅くなります ([Fowler, Eradicating Non-Determinism in Tests](https://martinfowler.com/articles/nonDeterminism.html))。
+- 素の `sleep` で待つ。長くすればテストが遅くなり、短くすれば環境しだいで偽の失敗になります ([Fowler, Eradicating Non-Determinism in Tests](https://martinfowler.com/articles/nonDeterminism.html) が、素の sleep を使わず、コールバックかポーリングを使うよう勧めています)。
 - `Promise.all` で同時に走らせ、重なるのを期待する。重ならなければ、競合を確かめないまま通ります。
 - `pg_locks` を自己結合して待ちを調べる。PostgreSQL の文書が、正しく書くのが難しいとして `pg_blocking_pids()` を勧めています ([pg_locks](https://www.postgresql.org/docs/current/view-pg-locks.html))。
 
-`awaitBlocked` が見つけられるのは、相手のトランザクションの終わりを待つ状態です。行ロックの待ちも、一意索引の待ちも、これに当たります。
+`awaitBlocked` が見つけられるのは、重いロックの待ちだけです ([isolationtester の README](https://github.com/postgres/postgres/blob/master/src/test/isolation/README))。行ロックの待ちは、相手の transactionid の待ちとして見えます ([pg_locks](https://www.postgresql.org/docs/current/view-pg-locks.html))。一意索引の待ちも、相手のトランザクションの終わりを待つので、これに当たります。
+重いロックでない待ち (入出力や軽量ロックの待ち) は見えません。その待ちを再現したいときは、`awaitBlocked` は上限の時間まで待って失敗するので、別の手順を考えます。
 `pg_blocking_pids()` を呼ぶ接続は、待ち合わせに使う 2 つの接続とは別にします。
 
 ## 対照を付ける

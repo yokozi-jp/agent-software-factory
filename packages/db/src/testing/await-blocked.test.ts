@@ -1,4 +1,4 @@
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResult } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
@@ -7,6 +7,11 @@ import {
   type BlockedSessions,
   type TestDatabase,
 } from "./index.ts";
+
+// B の文の結果。成功も失敗も値として持つ。
+type Outcome =
+  | { status: "fulfilled"; value: QueryResult }
+  | { status: "rejected"; reason: unknown };
 
 // 競合を決定的に再現する手順 (docs/db/concurrency-testing.md): A が commit せずに止め、B を別の接続で走らせ、
 // awaitBlocked で B の待ちを確かめてから A を commit する。使い捨ての表 race_item で確かめる。
@@ -44,36 +49,46 @@ describe("awaitBlocked", () => {
     return rows[0];
   };
 
-  it("待たせる側が commit するまで待つ更新を検出し、commit の後でその更新が進むこと", async () => {
+  // A が更新して止め、B の文を流し、B が A を待つことを確かめてから A を commit する。B の結果は、成功も失敗も
+  // 値として返す (失敗した Promise を受け取る側が処理するまでの間、未処理の拒否にしないため)。
+  const raceAgainstHolder = async (
+    holderSql: string,
+    waiterSql: string,
+  ): Promise<{ finishedBeforeCommit: boolean; outcome: Outcome }> => {
     await holder.query("BEGIN");
-    await holder.query("UPDATE race_item SET val = 'holder' WHERE id = 1");
-
-    let waiterFinished = false;
-    const waiterUpdate = waiter
-      .query("UPDATE race_item SET val = 'waiter' WHERE id = 1")
-      .finally(() => {
-        waiterFinished = true;
-      });
+    await holder.query(holderSql);
+    let finished = false;
+    const result = waiter.query(waiterSql).finally(() => {
+      finished = true;
+    });
     await awaitBlocked(db.superuser, pids);
-
-    expect(waiterFinished).toBe(false);
+    const finishedBeforeCommit = finished;
     await holder.query("COMMIT");
-    expect((await waiterUpdate).rowCount).toBe(1);
+    const outcome = await result.then(
+      (value): Outcome => ({ status: "fulfilled", value }),
+      (reason: unknown): Outcome => ({ status: "rejected", reason }),
+    );
+    return { finishedBeforeCommit, outcome };
+  };
+
+  it("待たせる側が commit するまで待つ更新を検出し、commit の後でその更新が進むこと", async () => {
+    const { finishedBeforeCommit, outcome } = await raceAgainstHolder(
+      "UPDATE race_item SET val = 'holder' WHERE id = 1",
+      "UPDATE race_item SET val = 'waiter' WHERE id = 1",
+    );
+
+    expect(finishedBeforeCommit).toBe(false);
+    expect(outcome).toMatchObject({ status: "fulfilled", value: { rowCount: 1 } });
     expect(await valueOfItem()).toEqual({ val: "waiter", lock_no: 1 });
   });
 
   it("一意索引の待ち (commit していない同じ値の INSERT) も検出し、commit の後で 23505 になること", async () => {
-    await holder.query("BEGIN");
-    await holder.query("INSERT INTO race_item VALUES (2, 'holder', 1)");
-
-    const waiterInsert = waiter.query("INSERT INTO race_item VALUES (2, 'waiter', 1)").then(
-      () => "inserted",
-      (error: { code?: string }) => error.code,
+    const { outcome } = await raceAgainstHolder(
+      "INSERT INTO race_item VALUES (2, 'holder', 1)",
+      "INSERT INTO race_item VALUES (2, 'waiter', 1)",
     );
-    await awaitBlocked(db.superuser, pids);
-    await holder.query("COMMIT");
 
-    expect(await waiterInsert).toBe("23505");
+    expect(outcome).toMatchObject({ status: "rejected", reason: { code: "23505" } });
   });
 
   it("待つ側が何も待っていないまま上限の時間が過ぎると、2 つの pid を示して失敗すること", async () => {
@@ -82,9 +97,7 @@ describe("awaitBlocked", () => {
     );
   });
 
-  // 対照: 同じ手順で、lock_no の条件がない更新は両方成功して片方の更新が失われ、条件がある更新は 0 行になる。
-  // 競合のテストが、本当に競合を作れていることの証明になる (docs/db/concurrency-testing.md)。
-  it("別の接続が待たせているときは、失敗のメッセージにその接続を示すこと", async () => {
+  it("待つ側が別の接続に待たされ、A の止まりが解けないときは、上限の時間で失敗してその接続を示すこと", async () => {
     const third = await db.superuser.connect();
     try {
       const thirdPid = await backendPid(third);
@@ -104,29 +117,25 @@ describe("awaitBlocked", () => {
     }
   });
 
+  // 対照: 同じ手順で、lock_no の条件がない更新は両方成功して片方の更新が失われ、条件がある更新は 0 行になる。
+  // 競合のテストが、本当に競合を作れていることの証明になる (docs/db/concurrency-testing.md)。
   it("対照: lock_no の条件がない更新は、待った後に両方成功して、先の更新が失われること", async () => {
-    await holder.query("BEGIN");
-    await holder.query("UPDATE race_item SET val = 'holder', lock_no = lock_no + 1 WHERE id = 1");
+    const { outcome } = await raceAgainstHolder(
+      "UPDATE race_item SET val = 'holder', lock_no = lock_no + 1 WHERE id = 1",
+      "UPDATE race_item SET val = 'waiter' WHERE id = 1",
+    );
 
-    const waiterUpdate = waiter.query("UPDATE race_item SET val = 'waiter' WHERE id = 1");
-    await awaitBlocked(db.superuser, pids);
-    await holder.query("COMMIT");
-
-    expect((await waiterUpdate).rowCount).toBe(1);
+    expect(outcome).toMatchObject({ status: "fulfilled", value: { rowCount: 1 } });
     expect(await valueOfItem()).toEqual({ val: "waiter", lock_no: 2 });
   });
 
   it("lock_no の条件がある更新は、待った後に 0 行になり、先の更新が残ること", async () => {
-    await holder.query("BEGIN");
-    await holder.query("UPDATE race_item SET val = 'holder', lock_no = lock_no + 1 WHERE id = 1");
-
-    const waiterUpdate = waiter.query(
+    const { outcome } = await raceAgainstHolder(
+      "UPDATE race_item SET val = 'holder', lock_no = lock_no + 1 WHERE id = 1",
       "UPDATE race_item SET val = 'waiter', lock_no = lock_no + 1 WHERE id = 1 AND lock_no = 1",
     );
-    await awaitBlocked(db.superuser, pids);
-    await holder.query("COMMIT");
 
-    expect((await waiterUpdate).rowCount).toBe(0);
+    expect(outcome).toMatchObject({ status: "fulfilled", value: { rowCount: 0 } });
     expect(await valueOfItem()).toEqual({ val: "holder", lock_no: 2 });
   });
 });

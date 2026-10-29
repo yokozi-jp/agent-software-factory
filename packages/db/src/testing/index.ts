@@ -12,4 +12,9 @@ export { rolePassword } from "./credentials.ts";
 export { createTestDatabase, type TestDatabase } from "./database.ts";
 export { reportSetupFailure } from "./global-setup.ts";
 export { prepareDatabase } from "./prepare-database.ts";
-export { diffRowCounts, snapshotRowCounts, type RowCounts } from "./row-counts.ts";
+export {
+  diffRowCounts,
+  snapshotRowCounts,
+  type RowCountDiff,
+  type RowCounts,
+} from "./row-counts.ts";
