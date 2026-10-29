@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
+    "prototype": "vp dev --open /prototype",
     "build": "vp build",
     "preview": "vp preview",
     "test": "vp test run --passWithNoTests",
@@ -14,6 +15,7 @@
     "@agent-software-factory/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
