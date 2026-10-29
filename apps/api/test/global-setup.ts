@@ -42,7 +42,7 @@ async function start(project: TestProject) {
       .withExposedPorts(8080)
       .withWaitStrategy(
         Wait.forHttp("/realms/factory/.well-known/openid-configuration", 8080).withStartupTimeout(
-          180_000,
+          300_000,
         ),
       )
       .start(),
