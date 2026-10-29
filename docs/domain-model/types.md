@@ -32,7 +32,7 @@ export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, 
 };
 ```
 
-状態の粒度 (申請中を 2 段に分けるか)、下書きの明細の要否、集約の境界は、サンプル機能の仕様で決めます。
+申請の状態は、下書き、承認待ち、確認待ち、差戻し、承認済み、締め済みの 6 つです。申請中は承認待ちと確認待ちをまとめた呼び名で、`_tag` にしません ([申請の状態と操作を決める](https://github.com/yokozi-jp/agent-software-factory/issues/384))。集約の境界は、サンプル機能の仕様で決めます。
 
 ## 判別のフィールドは `_tag`
 
