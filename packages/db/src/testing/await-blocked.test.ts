@@ -58,17 +58,22 @@ describe("awaitBlocked", () => {
     await holder.query("BEGIN");
     await holder.query(holderSql);
     let finished = false;
-    const result = waiter.query(waiterSql).finally(() => {
-      finished = true;
-    });
+    // 結果は、Promise を作ったその場で値に変える。拒否のまま持つと、COMMIT を待つ間に失敗したとき、
+    // ハンドラが付く前の未処理の拒否になる。
+    const outcome = waiter.query(waiterSql).then(
+      (value): Outcome => {
+        finished = true;
+        return { status: "fulfilled", value };
+      },
+      (reason: unknown): Outcome => {
+        finished = true;
+        return { status: "rejected", reason };
+      },
+    );
     await awaitBlocked(db.superuser, pids);
     const finishedBeforeCommit = finished;
     await holder.query("COMMIT");
-    const outcome = await result.then(
-      (value): Outcome => ({ status: "fulfilled", value }),
-      (reason: unknown): Outcome => ({ status: "rejected", reason }),
-    );
-    return { finishedBeforeCommit, outcome };
+    return { finishedBeforeCommit, outcome: await outcome };
   };
 
   it("待たせる側が commit するまで待つ更新を検出し、commit の後でその更新が進むこと", async () => {
