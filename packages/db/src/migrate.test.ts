@@ -18,7 +18,7 @@ describe("bootstrap.sql と migrate", () => {
       await master.query<{ rolname: string }>(
         `SELECT r.rolname FROM pg_auth_members m
          JOIN pg_roles r ON r.oid = m.roleid
-         WHERE m.member = $1::regrole ORDER BY r.rolname`,
+         WHERE m.member = $1::regrole AND r.rolname NOT LIKE '%\\_module' ORDER BY r.rolname`,
         [role],
       )
     ).rows.map((row) => row.rolname);
@@ -53,6 +53,19 @@ describe("bootstrap.sql と migrate", () => {
     await master.query(bootstrapSql);
 
     for (const role of roles) expect(await memberships(role)).toEqual(["rds_iam"]);
+  });
+
+  it("app_user が 3 つのモジュールのロールに入っていること (memberships は *_module を除く)", async () => {
+    const { rows } = await master.query<{ rolname: string }>(
+      `SELECT r.rolname FROM pg_auth_members m
+       JOIN pg_roles r ON r.oid = m.roleid
+       WHERE m.member = 'app_user'::regrole AND r.rolname LIKE '%\\_module' ORDER BY r.rolname`,
+    );
+    expect(rows.map((row) => row.rolname)).toEqual([
+      "approval_module",
+      "claim_module",
+      "closing_module",
+    ]);
   });
 
   it("migrate が全部を適用し、2 回目は何も適用せず成功すること", async () => {
