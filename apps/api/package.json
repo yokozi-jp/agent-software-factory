@@ -21,6 +21,7 @@
     "hono": "catalog:",
     "kysely": "catalog:",
     "pg": "catalog:",
+    "temporal-polyfill": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

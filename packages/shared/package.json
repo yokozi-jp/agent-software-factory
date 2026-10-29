@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "effect": "catalog:",
-    "kysely": "catalog:"
+    "kysely": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "temporal-polyfill": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

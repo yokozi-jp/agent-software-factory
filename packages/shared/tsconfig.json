@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "es2024",
-    "lib": ["es2024"],
+    "lib": ["es2024", "esnext.temporal"],
     "types": []
   },
-  "include": ["src"]
+  "include": ["src", "test", "vite.config.ts"]
 }

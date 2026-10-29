@@ -15,6 +15,11 @@ export default defineConfig({
     target: "node24",
   },
   test: {
+    // Node.js 24 には Temporal がないので、polyfill の global を入れる (src/server.ts と同じ import)。
+    setupFiles: ["./test/temporal.ts"],
+    // コードがプロセスの TZ に頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
+    // 効いていることは src/timezone.unit.test.ts が確かめる (Vitest の既定の pool は forks)。
+    env: { TZ: "America/New_York" },
     projects: [
       {
         extends: true,
