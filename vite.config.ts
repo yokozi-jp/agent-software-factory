@@ -39,7 +39,9 @@ const runtimeImports = {
 //   - the entry files and the tests of apps/api/src, and packages/db/src, may open a connection (they make the pool,
 //     docs/adr/0038) but not send, so they stop the SDK clients only. Add the entry file of the relay and of the
 //     consumers to the override of the entry files when they exist, and remove the SDK clients from it there.
-// This is a guardrail: a `fetch` to an AWS endpoint and a dynamic import are not stopped.
+// A file that has to open a connection, such as a databases.ts that makes the pool (today it only imports the type
+// of Pool), is an entry file: add it to the override of the entry files below. This is a guardrail: a `fetch` to an AWS
+// endpoint and a dynamic import are not stopped.
 const outboxPackages = [
   "@aws-sdk/client-sqs",
   "@aws-sdk/client-ses",
@@ -56,7 +58,7 @@ const outboxBypassMessage =
   "(docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.";
 const connectionMessage =
   "Do not open a connection of your own: it skips the tenant setting and the module role. Open a transaction with " +
-  "inTenantTransaction (docs/adr/0011, docs/adr/0029). A type import is fine; the pool is made in the entry file.";
+  "inTenantTransaction (docs/adr/0011, docs/adr/0029 rule 2). A type import is fine; the pool is made in the entry file.";
 const outboxPaths: RestrictedPath[] = outboxPackages.map((name) => ({
   name,
   message: outboxBypassMessage,

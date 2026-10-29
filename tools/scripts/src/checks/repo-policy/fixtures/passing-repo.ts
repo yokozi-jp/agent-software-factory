@@ -195,6 +195,9 @@ export const passingRepo: Readonly<Record<string, string>> = {
     '  "@x/sqs",',
     "];",
     'const connectionPackages = ["pg"];',
+    // The messages of those imports say what to write instead, and name the ADR.
+    'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
+    'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',
@@ -224,6 +227,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     "---\ninclusion: auto\nname: external-docs\ndescription: when to read the docs.\n---\n\n# Docs\n",
   "docs/adr/0001-lefthook.md": "# ADR 0001\n",
   "docs/adr/0002-nx.md": "# ADR 0002\n",
+  "docs/adr/0029-outbox.md": "# ADR 0029\n",
   "docs/local-env-setup/setup.md": "# Setup\n\n## 3. Ubuntu の初期セットアップ\n",
   "tools/scripts/sh/guard-push.sh": "#!/bin/sh\ngit push --dry-run\n",
   ".github/workflows/ci.yml": [

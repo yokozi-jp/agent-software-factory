@@ -3593,6 +3593,39 @@ describe("ADR 0029: the imports that bypass the Outbox and the transaction have 
     },
   );
 
+  it.each([
+    ["outboxBypassMessage", "enqueueOutbox"],
+    ["connectionMessage", "inTenantTransaction"],
+  ])("fails when %s does not name what to write instead (%s)", (name, fix) => {
+    const without = viteConfig.replace(fix, "something");
+    expect(violationsWithBypass(repo({ "vite.config.ts": without }))).toEqual([
+      `vite.config.ts: ${name} does not mention ${fix}. The message of an import that would bypass the Outbox and the transaction says what to write instead and names the ADR (docs/adr/0029).`,
+    ]);
+  });
+
+  it.each(["outboxBypassMessage", "connectionMessage"])(
+    "fails when %s does not name the ADR",
+    (name) => {
+      const without = viteConfig.replace(
+        new RegExp(`(const ${name} = "[^"]*?)\\(docs/adr/0029[^)]*\\)`),
+        "$1(see the docs)",
+      );
+      expect(violationsWithBypass(repo({ "vite.config.ts": without }))).toEqual([
+        `vite.config.ts: ${name} does not mention docs/adr/0029. The message of an import that would bypass the Outbox and the transaction says what to write instead and names the ADR (docs/adr/0029).`,
+      ]);
+    },
+  );
+
+  it.each(["outboxBypassMessage", "connectionMessage"])(
+    "fails when vite.config.ts has no %s",
+    (name) => {
+      const removed = viteConfig.replace(new RegExp(`const ${name} = "[^"]*";`), "");
+      expect(violationsWithBypass(repo({ "vite.config.ts": removed }))).toEqual([
+        `vite.config.ts has no ${name}. The message of an import that would bypass the Outbox and the transaction says what to write instead and names the ADR (docs/adr/0029).`,
+      ]);
+    },
+  );
+
   it("asks nothing of packages/*/src when there is no package under packages/", () => {
     const failures = violationsWithBypass(
       repo({
