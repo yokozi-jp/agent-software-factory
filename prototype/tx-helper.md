@@ -444,3 +444,312 @@ export function neverCalled(
 
 await main();
 ```
+
+## 第 2 回: モジュールごとの Tx の型、ロールと RLS、接続プールが空のとき
+
+`exp.ts`。実行は上と同じ。非スーパーユーザーの `app_user` で接続し、`SET LOCAL ROLE <module>_module` と RLS を入れている。最後に、後始末していない pool の接続が切れた旨のエラーが出るが、試作の後始末の不備で結果には関係しない。
+
+```ts
+// PROTOTYPE (Issue #351), round 2: throwaway. Checks the three things round 1 did not:
+//  A. a per-module transaction tag, so no cast in the modules and a claim transaction cannot run approval code
+//  B. SET LOCAL ROLE <module>_module + RLS with a non-superuser app role (docs/adr/0029, 0011)
+//  C. what happens when the connection pool is empty and the caller times out
+import { PostgreSqlContainer } from "@testcontainers/postgresql";
+import { Context, Data, Effect, Exit, Layer, ManagedRuntime } from "effect";
+import { Kysely, PostgresDialect, sql, type Transaction } from "kysely";
+import pg from "pg";
+
+// ---------------- shared (candidate, variant B) ----------------
+export type ModuleName = "claim" | "approval";
+export class Database extends Context.Service<Database, { readonly db: Kysely<unknown> }>()(
+  "shared/Database",
+) {}
+
+/** A module's transaction tag: carries the module name (for the role) and its own DB type (no casts in modules). */
+export type ModuleTx = Context.Key<any, Transaction<any>> & { readonly module: ModuleName };
+type TxId<K> = K extends Context.Key<infer I, any> ? I : never;
+type TxShape<K> = K extends Context.Key<any, infer S> ? S : never;
+
+export const inTenantTransaction = <K extends ModuleTx, A, E, R>(
+  tx: K,
+  scope: { readonly tenantId: string },
+  work: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, Exclude<R, TxId<K>> | Database> =>
+  Effect.acquireUseRelease(
+    Effect.gen(function* () {
+      const { db } = yield* Database;
+      return yield* Effect.tryPromise(async () => {
+        const trx = await db.startTransaction().execute();
+        try {
+          await sql`SELECT set_config('app.current_tenant', ${scope.tenantId}, true)`.execute(trx);
+          // `tx.module` is a closed union, never user input: sql.raw is safe here (docs/adr/0025).
+          await sql.raw(`SET LOCAL ROLE ${tx.module}_module`).execute(trx);
+          return trx;
+        } catch (error) {
+          await trx.rollback().execute();
+          throw error;
+        }
+      }).pipe(Effect.orDie);
+    }),
+    // the one cast lives here, in shared: the pool is untyped, the module's tag says which DB type it is
+    (trx) =>
+      work.pipe(Effect.provideService(tx, trx as unknown as TxShape<K>)) as Effect.Effect<
+        A,
+        E,
+        Exclude<R, TxId<K>>
+      >,
+    (trx, exit) =>
+      Effect.tryPromise(() =>
+        Exit.isSuccess(exit) ? trx.commit().execute() : trx.rollback().execute(),
+      ).pipe(Effect.orDie),
+  );
+
+// ---------------- modules own their DB type and their tag ----------------
+interface ClaimDB {
+  "claim.t_claim": { tenant_id: string; claim_id: number; title: string };
+  "messaging.outbox": { tenant_id: string; type: string; payload: string };
+}
+interface ApprovalDB {
+  "approval.t_approval": { tenant_id: string; claim_id: number };
+}
+export class ClaimTx extends Context.Service<ClaimTx, Transaction<ClaimDB>>()("claim/Tx") {
+  static readonly module = "claim" as const;
+}
+export class ApprovalTx extends Context.Service<ApprovalTx, Transaction<ApprovalDB>>()(
+  "approval/Tx",
+) {
+  static readonly module = "approval" as const;
+}
+
+const T = (n: number) => `00000000-0000-0000-0000-00000000000${n}`;
+
+const insertClaim = (tenantId: string, title: string) =>
+  Effect.gen(function* () {
+    const trx = yield* ClaimTx; // typed Transaction<ClaimDB>, no cast
+    return yield* Effect.tryPromise(() =>
+      trx
+        .insertInto("claim.t_claim")
+        .values({ tenant_id: tenantId, title } as never)
+        .execute(),
+    ).pipe(Effect.orDie);
+  });
+const readApproval = Effect.gen(function* () {
+  const trx = yield* ApprovalTx;
+  return yield* Effect.tryPromise(() =>
+    trx.selectFrom("approval.t_approval").selectAll().execute(),
+  ).pipe(Effect.orDie);
+});
+const currentUser = (tx: typeof ClaimTx) =>
+  Effect.gen(function* () {
+    const trx = yield* tx;
+    return (yield* Effect.tryPromise(() =>
+      sql<{ u: string }>`SELECT current_user u`.execute(trx),
+    ).pipe(Effect.orDie)).rows[0]!.u;
+  });
+
+// compile-time proof: approval code inside a claim transaction does not type-check
+export function neverCalled(rt: ManagedRuntime.ManagedRuntime<Database, never>) {
+  // @ts-expect-error readApproval needs ApprovalTx, a claim transaction only provides ClaimTx
+  return rt.runPromise(inTenantTransaction(ClaimTx, { tenantId: T(1) }, readApproval));
+}
+
+// ---------------- harness ----------------
+class Marker extends Data.TaggedError("Marker")<{}> {}
+
+async function main() {
+  const container = await new PostgreSqlContainer("postgres:17-alpine").start();
+  const admin = new pg.Pool({ connectionString: container.getConnectionUri(), max: 2 });
+  const adminDb = new Kysely<unknown>({ dialect: new PostgresDialect({ pool: admin }) });
+  await sql
+    .raw(
+      `CREATE SCHEMA claim; CREATE SCHEMA approval; CREATE SCHEMA messaging;
+       CREATE TABLE claim.t_claim (tenant_id uuid NOT NULL, claim_id bigint GENERATED ALWAYS AS IDENTITY, title text NOT NULL, PRIMARY KEY (tenant_id, claim_id));
+       CREATE TABLE approval.t_approval (tenant_id uuid NOT NULL, claim_id bigint NOT NULL);
+       CREATE TABLE messaging.outbox (tenant_id uuid NOT NULL, type text NOT NULL, payload text NOT NULL);
+       ALTER TABLE claim.t_claim ENABLE ROW LEVEL SECURITY; ALTER TABLE claim.t_claim FORCE ROW LEVEL SECURITY;
+       ALTER TABLE approval.t_approval ENABLE ROW LEVEL SECURITY; ALTER TABLE approval.t_approval FORCE ROW LEVEL SECURITY;
+       ALTER TABLE messaging.outbox ENABLE ROW LEVEL SECURITY; ALTER TABLE messaging.outbox FORCE ROW LEVEL SECURITY;
+       CREATE POLICY tenant_isolation ON claim.t_claim USING (tenant_id = current_setting('app.current_tenant')::uuid);
+       CREATE POLICY tenant_isolation ON approval.t_approval USING (tenant_id = current_setting('app.current_tenant')::uuid);
+       CREATE POLICY tenant_insert ON messaging.outbox FOR INSERT WITH CHECK (tenant_id = current_setting('app.current_tenant')::uuid);
+       CREATE ROLE claim_module NOLOGIN; CREATE ROLE approval_module NOLOGIN;
+       GRANT USAGE ON SCHEMA claim TO claim_module; GRANT SELECT, INSERT, UPDATE, DELETE ON claim.t_claim TO claim_module;
+       GRANT USAGE ON SCHEMA approval TO approval_module; GRANT SELECT, INSERT, UPDATE, DELETE ON approval.t_approval TO approval_module;
+       GRANT USAGE ON SCHEMA messaging TO claim_module, approval_module; GRANT INSERT ON messaging.outbox TO claim_module, approval_module;
+       CREATE ROLE app_user LOGIN PASSWORD 'pw';
+       GRANT claim_module TO app_user WITH INHERIT FALSE, SET TRUE;
+       GRANT approval_module TO app_user WITH INHERIT FALSE, SET TRUE;`,
+    )
+    .execute(adminDb);
+
+  const base = new URL(container.getConnectionUri());
+  const appUri = (extra = "") => `postgres://app_user:pw@${base.host}${base.pathname}${extra}`;
+  const mk = (pool: pg.Pool) =>
+    ManagedRuntime.make(
+      Layer.succeed(
+        Database,
+        Database.of({ db: new Kysely<unknown>({ dialect: new PostgresDialect({ pool }) }) }),
+      ),
+    );
+  const show = (l: string, v: unknown) =>
+    console.log(
+      `\n■ ${l}\n  ${JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? Number(x) : x))}`,
+    );
+  const kind = (e: Exit.Exit<unknown, unknown>) =>
+    Exit.isSuccess(e)
+      ? { ok: e.value }
+      : {
+          failed: (
+            e.cause as unknown as {
+              reasons: {
+                _tag: string;
+                defect?: {
+                  message?: string;
+                  code?: string;
+                  cause?: { code?: string; message?: string };
+                };
+              }[];
+            }
+          ).reasons.map(
+            (r) =>
+              `${r._tag}${r.defect ? `(${r.defect.cause?.code ?? ""} ${r.defect.cause?.message})` : ""}`,
+          ),
+        };
+
+  // ---- B: role + RLS (one pooled connection, to see that the role does not leak into the next transaction)
+  const rt = mk(new pg.Pool({ connectionString: appUri(), max: 1 }));
+  show(
+    "B1. inside a claim tx, current_user is claim_module",
+    await rt.runPromise(inTenantTransaction(ClaimTx, { tenantId: T(1) }, currentUser(ClaimTx))),
+  );
+  show(
+    "B2. same pooled connection, next tx: the role did not leak (back to app_user outside tx)",
+    await rt.runPromise(
+      Effect.gen(function* () {
+        const { db } = yield* Database;
+        return (yield* Effect.promise(() => sql<{ u: string }>`SELECT current_user u`.execute(db)))
+          .rows[0]!.u;
+      }),
+    ),
+  );
+  show(
+    "B3. claim tx inserts own-tenant row",
+    kind(
+      await rt.runPromiseExit(
+        inTenantTransaction(ClaimTx, { tenantId: T(1) }, insertClaim(T(1), "x")),
+      ),
+    ),
+  );
+  show(
+    "B4. claim tx inserts ANOTHER tenant's row -> RLS rejects (defect)",
+    kind(
+      await rt.runPromiseExit(
+        inTenantTransaction(ClaimTx, { tenantId: T(1) }, insertClaim(T(2), "y")),
+      ),
+    ),
+  );
+  show(
+    "B5. tenant 2 cannot see tenant 1's row",
+    await rt.runPromise(
+      inTenantTransaction(
+        ClaimTx,
+        { tenantId: T(2) },
+        Effect.gen(function* () {
+          const trx = yield* ClaimTx;
+          return (yield* Effect.promise(() =>
+            trx.selectFrom("claim.t_claim").selectAll().execute(),
+          )).length;
+        }),
+      ),
+    ),
+  );
+  show(
+    "B6. a claim tx forced to read approval's table (cast around the types) -> permission denied",
+    kind(
+      await rt.runPromiseExit(
+        inTenantTransaction(
+          ClaimTx,
+          { tenantId: T(1) },
+          Effect.gen(function* () {
+            const trx = (yield* ClaimTx) as unknown as Transaction<ApprovalDB>;
+            return yield* Effect.tryPromise(() =>
+              trx.selectFrom("approval.t_approval").selectAll().execute(),
+            ).pipe(Effect.orDie);
+          }),
+        ),
+      ),
+    ),
+  );
+  show("B7. claim role can INSERT into messaging.outbox but not SELECT it", {
+    insert: kind(
+      await rt.runPromiseExit(
+        inTenantTransaction(
+          ClaimTx,
+          { tenantId: T(1) },
+          Effect.gen(function* () {
+            const trx = yield* ClaimTx;
+            yield* Effect.promise(() =>
+              trx
+                .insertInto("messaging.outbox")
+                .values({ tenant_id: T(1), type: "t", payload: "{}" })
+                .execute(),
+            );
+          }),
+        ),
+      ),
+    ),
+    select: kind(
+      await rt.runPromiseExit(
+        inTenantTransaction(
+          ClaimTx,
+          { tenantId: T(1) },
+          Effect.gen(function* () {
+            const trx = yield* ClaimTx;
+            yield* Effect.tryPromise(() =>
+              trx.selectFrom("messaging.outbox").selectAll().execute(),
+            ).pipe(Effect.orDie);
+          }),
+        ),
+      ),
+    ),
+  });
+  await rt.dispose();
+
+  // ---- C: empty pool + timeout
+  for (const [label, opts] of [
+    ["C1. no connectionTimeoutMillis", {}],
+    ["C2. connectionTimeoutMillis=500", { connectionTimeoutMillis: 500 }],
+  ] as const) {
+    const pool = new pg.Pool({ connectionString: appUri(), max: 1, ...opts });
+    const rtc = mk(pool);
+    // fiber 1 holds the only connection for 2.5 s
+    const holder = rtc.runPromise(
+      inTenantTransaction(ClaimTx, { tenantId: T(1) }, Effect.sleep("2500 millis")),
+    );
+    await new Promise((r) => setTimeout(r, 200));
+    const t0 = Date.now();
+    const exit = await rtc.runPromiseExit(
+      inTenantTransaction(ClaimTx, { tenantId: T(1) }, Effect.void).pipe(
+        Effect.timeout("300 millis"),
+      ),
+    );
+    const ms = Date.now() - t0;
+    await holder;
+    const idle = await sql<{
+      n: string;
+    }>`SELECT count(*)::text n FROM pg_stat_activity WHERE state = 'idle in transaction'`.execute(
+      adminDb,
+    );
+    show(label, {
+      callerWaitedMs: ms,
+      result: kind(exit),
+      idleInTransactionAfter: idle.rows[0]!.n,
+    });
+    await rtc.dispose();
+  }
+  void Marker;
+  await adminDb.destroy();
+  await container.stop();
+}
+await main();
+```
