@@ -61,7 +61,7 @@ tags: [adr, async, sqs, dlq, idempotency, mail, ses, lambda, ecs]
 
 ## 確かめられなかったこと
 
-- ElasticMQ が、redrive の方針 (`maxReceiveCount` による DLQ への移動) と `StartMessageMoveTask` をどこまで再現するかは確かめていません。実装の前に確かめます。
+- ElasticMQ の振る舞いは、[ElasticMQ が SQS の FIFO と DLQ を本物と同じに動かすかを調べる](https://github.com/yokozi-jp/agent-software-factory/issues/347) の調査 (ElasticMQ 1.7.1) によります。可視性タイムアウトでの再配送と `maxReceiveCount` での DLQ 行きは、SQS の記述どおりに動きました。`MessageRetentionPeriod` は効かないので、保持期間はローカルでは試せません。`StartMessageMoveTask` は FIFO で何も移さないことが分かっていますが、標準キューで移すかは確かめていません。endpoint を上書きした SDK は `AWS_USE_DUALSTACK_ENDPOINT=true` をエラーにするので、ローカルと CI ではこの変数を渡せません。
 - SES の 1 回の呼び出しにかかる時間 (数百ミリ秒の見込み) は、測っていません。
 - ワーカーのコードは書いていません。
 
