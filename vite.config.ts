@@ -72,8 +72,8 @@ const bypassPaths = [...outboxPaths, ...connectionPaths];
 
 // Raw SQL and the way around the module's types (docs/adr/0029). A module reads and writes its own tables through the
 // typed Kysely builder. The `sql` tag and `CompiledQuery` take any text, so they could reach the table of another
-// module with a type that nobody checks; the module role of the database stops that at runtime, and this stops it
-// before. shared (the helper of the transaction) and apps/api are outside this list: shared owns the SQL that sets the
+// module with a type that nobody checks; the module role of the database stops that at runtime (docs/adr/0029), and
+// this stops it before. shared (the helper of the transaction) and apps/api are outside this list: shared owns the SQL that sets the
 // role and the tenant, and the rule of tools/lint-plugins/src/tenant-sql-plugin.ts reads what they write.
 const sqlImportNames = ["sql", "CompiledQuery"];
 const sqlMessage =
@@ -563,9 +563,9 @@ export default defineConfig({
       },
       // SQL that changes the role or the tenant of the connection is written in the helper of the transaction only
       // (docs/adr/0029). shared and apps/api are the places that may use `sql`; the modules may not (sqlPaths). The
-      // rule is in tools/lint-plugins/src/tenant-sql-plugin.ts. The helper is the one file that sets them, and a
-      // test sets and reads them to check the helper, so both are outside the rule. Fixtures that this rule must
-      // report: apps/api/src/__fixtures__/session-setting.ts and packages/shared/src/__fixtures__/session-setting.ts.
+      // rule is in tools/lint-plugins/src/tenant-sql-plugin.ts. The helper is the one file that sets them, and its
+      // test sets and reads them to check the helper, so both are outside the rule; every other test is under it.
+      // Fixtures that this rule must report: apps/api/src/__fixtures__/session-setting.ts and packages/shared/src/__fixtures__/session-setting.ts.
       {
         files: ["packages/shared/src/**", "apps/api/src/**"],
         jsPlugins: [
@@ -574,7 +574,10 @@ export default defineConfig({
         rules: { "tenant-sql/no-session-setting": "error" },
       },
       {
-        files: ["packages/shared/src/tenant-transaction.ts", "**/*.test.ts"],
+        files: [
+          "packages/shared/src/tenant-transaction.ts",
+          "apps/api/src/db/tenant-transaction.test.ts",
+        ],
         jsPlugins: [
           { name: "tenant-sql", specifier: "./tools/lint-plugins/src/tenant-sql-plugin.ts" },
         ],

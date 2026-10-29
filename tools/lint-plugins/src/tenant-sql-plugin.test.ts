@@ -50,6 +50,7 @@ tester.run("no-session-setting", rule, {
     // sql.raw と sql.lit の文字列。
     { code: "const q = sql.raw('SET ROLE x');", errors: error },
     { code: "const q = sql.raw(`set_config('x', 'y', true)`);", errors: error },
+    { code: "const q = kysely.sql.raw('SET ROLE x');", errors: error },
     // 別の名前を付けて import した sql は追えないが、メンバー経由のタグは追う。
     { code: "const q = kysely.sql`SET ROLE x`;", errors: error },
   ],
