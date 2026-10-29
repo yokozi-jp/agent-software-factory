@@ -59,13 +59,13 @@ const runtimePropertyEntries = runtimeGlobals.map(({ name, message }) => ({
   property: name,
   message: `${message} (\`globalThis.${name}\` is the same global.)`,
 }));
-// Reading the clock (#365). Only an entry point reads the current time, once, from the Effect `Clock` (currentInstant
+// Reading the clock (docs/adr/0043). Only an entry point reads the current time, once, from the Effect `Clock` (currentInstant
 // of packages/shared), and passes it down as `now`. So `Date` as a value (`new Date()`, `Date.now()`) and
 // `Temporal.Now` are stopped, also from globalThis (a `Date` in a type annotation is not reported). A library that
 // needs a `Date` takes a disable comment with the reason.
 const clockMessage = (instead: string) =>
   `Do not read the clock here: ${instead}, so that a test fixes the time and one request has one time ` +
-  "(#365, docs/domain-model/application-effect.md).";
+  "(docs/adr/0043, docs/domain-model/application-effect.md).";
 const entryClockMessage = clockMessage(
   "an entry point reads it once with currentInstant of @agent-software-factory/shared and passes it down as `now`",
 );
@@ -221,7 +221,7 @@ function moduleImports(layer?: string) {
   if (layer !== "domain") patterns.push(...effectPatterns);
   const paths: RestrictedPath[] = [...runtimeImports.paths];
   if (layer !== "domain") paths.push(...effectPaths);
-  // application takes `now` as an argument; an entry point reads the Clock (#365).
+  // application takes `now` as an argument; an entry point reads the Clock (docs/adr/0043).
   if (layer === "application")
     paths.push(
       { name: "effect", importNames: ["Clock"], message: entryClockMessage },

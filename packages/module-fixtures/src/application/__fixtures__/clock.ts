@@ -1,4 +1,4 @@
-// Detection-power fixture (#43) for the clock restrictions of vite.config.ts (#365). application takes the
+// Detection-power fixture (#43) for the clock restrictions of vite.config.ts (docs/adr/0043). application takes the
 // time as the `now` argument, and an entry point reads the Clock. Each line below is one that the rule must
 // report. If a rule is turned off, or its `files` stop reaching this directory, the disable comments are unused
 // and `vp check` fails (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/.
