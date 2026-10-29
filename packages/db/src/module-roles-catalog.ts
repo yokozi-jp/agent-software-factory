@@ -3,7 +3,11 @@ import type { Pool } from "pg";
 /** モジュールの名前と、そのモジュールが読んでよいモジュール (依存の方向。締め → 承認 → 申請) (docs/adr/0029)。 */
 export type ModuleReads = Readonly<Record<string, readonly string[]>>;
 
-const tablePrivileges = ["SELECT", "INSERT", "UPDATE", "DELETE"] as const;
+// モジュールのロールが持ってよいのは、自分のスキーマの読み書き (ownPrivileges) と、依存の方向の SELECT だけ。
+// TRUNCATE は RLS を迂回して全テナントの行を消せるので、DELETE と同じ重さで見る。
+const ownPrivileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+const tablePrivileges = [...ownPrivileges, "TRUNCATE", "REFERENCES", "TRIGGER"];
+const columnPrivileges = ["SELECT", "INSERT", "UPDATE", "REFERENCES"];
 
 /** 締めのバッチがテナントの一覧を読むために、列を限って権限を持つ表と列 (docs/adr/0022 の例外)。 */
 const tenantList = { role: "closing_module", schema: "auth", table: "organization", column: "id" };
@@ -16,8 +20,9 @@ const roleOf = (module: string) => `${module}_module`;
  *
  * 確かめること:
  * - ロールは NOLOGIN で、superuser でも BYPASSRLS でもない。`app_user` が INHERIT FALSE、SET TRUE で入っている。
- * - 権限は、自分のスキーマの読み書きと、依存の方向のスキーマの SELECT だけ。ほかのスキーマには USAGE もない。
- * - `app_user` はモジュールのスキーマに権限を持たない。
+ * - 権限は、自分のスキーマの読み書きと、依存の方向のスキーマの SELECT だけ (TRUNCATE、REFERENCES、TRIGGER もない)。
+ *   ほかのスキーマには USAGE もない。シーケンスと関数の EXECUTE は、まだ見ない (今はどちらもない)。
+ * - `app_user` はモジュールのスキーマに権限を持たない。モジュールのロールはほかのロールのメンバーにならない。
  * - 締めのロールの `auth` の権限は、`auth.organization` の `id` の SELECT だけ。ほかのロールは `auth` に権限がない。
  * - モジュールのスキーマに、所有者の権限で動く view と `SECURITY DEFINER` の関数、スキーマをまたぐ外部キーがない。
  *
@@ -55,6 +60,17 @@ export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<
       failures.push(`app_user が ${role} に INHERIT FALSE、SET TRUE で入っていない`);
     }
   }
+
+  // モジュールのロールは、ほかのロールのメンバーにならない。INHERIT FALSE でも SET で入れてしまう。
+  const { rows: memberships } = await pool.query<{ member: string; roleName: string }>(
+    `SELECT mr.rolname AS member, gr.rolname AS "roleName"
+       FROM pg_auth_members m
+       JOIN pg_roles mr ON mr.oid = m.member
+       JOIN pg_roles gr ON gr.oid = m.roleid
+      WHERE mr.rolname = ANY($1)`,
+    [roles],
+  );
+  for (const row of memberships) failures.push(`${row.member} が ${row.roleName} のメンバー`);
 
   const { rows: schemaRows } = await pool.query<{ nspname: string }>(
     `SELECT nspname FROM pg_namespace WHERE nspname = ANY($1)`,
@@ -111,13 +127,14 @@ export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<
        JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
        CROSS JOIN unnest($3::text[]) AS p(privilege)
       WHERE n.nspname = ANY($2)`,
-    [[...roles, "app_user"], modules, tablePrivileges],
+    [[...roles, "app_user"], [...modules, "auth"], tablePrivileges],
   );
   for (const row of tablePrivilegeRows) {
-    // 自分のスキーマは読み書き、依存の方向のスキーマは SELECT だけ。
+    // auth の表には、表全体の権限を誰にも与えない。締めの id の SELECT は列の権限で、下で調べる。
     const want =
       canUse(row.rolname, row.nspname) &&
-      (row.privilege === "SELECT" || row.rolname === roleOf(row.nspname));
+      (row.privilege === "SELECT" ||
+        (row.rolname === roleOf(row.nspname) && ownPrivileges.includes(row.privilege)));
     if (row.has !== want) {
       failures.push(
         `${row.rolname} の ${row.nspname}.${row.relname} の ${row.privilege} が${row.has ? "ある" : "ない"}`,
@@ -131,15 +148,17 @@ export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<
     usage: boolean;
     relname: string | null;
     attname: string | null;
+    privilege: string | null;
     has: boolean | null;
   }>(
     `SELECT r.rolname, has_schema_privilege(r.rolname, 'auth', 'USAGE') AS usage,
-            c.relname, a.attname,
-            has_column_privilege(r.rolname, c.oid, a.attnum, 'SELECT') AS has
+            c.relname, a.attname, p.privilege,
+            has_column_privilege(r.rolname, c.oid, a.attnum, p.privilege) AS has
        FROM unnest($1::text[]) AS r(rolname)
+       CROSS JOIN unnest($2::text[]) AS p(privilege)
        LEFT JOIN pg_class c ON c.relnamespace = 'auth'::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
        LEFT JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped`,
-    [[...roles, "app_user"]],
+    [[...roles, "app_user"], columnPrivileges],
   );
   const authUsage = new Map(authRows.map((row) => [row.rolname, row.usage]));
   for (const [role, usage] of authUsage) {
@@ -150,12 +169,13 @@ export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<
   for (const row of authRows) {
     if (row.relname === null || row.attname === null) continue;
     const want =
+      row.privilege === "SELECT" &&
       row.rolname === tenantList.role &&
       row.relname === tenantList.table &&
       row.attname === tenantList.column;
     if (row.has !== want) {
       failures.push(
-        `${row.rolname} の auth.${row.relname}.${row.attname} の SELECT が${row.has ? "ある" : "ない"}`,
+        `${row.rolname} の auth.${row.relname}.${row.attname} の ${row.privilege} が${row.has ? "ある" : "ない"}`,
       );
     }
   }

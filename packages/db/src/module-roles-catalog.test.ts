@@ -23,7 +23,8 @@ describe("checkModuleRoles", () => {
     // ロールの属性とメンバーシップはクラスタ全体のもので、複製した DB に閉じない。壊した検出力のテストの後に戻す。
     await db.superuser.query(
       `ALTER ROLE claim_module NOLOGIN NOSUPERUSER NOBYPASSRLS;
-       GRANT claim_module TO app_user WITH INHERIT FALSE, SET TRUE`,
+       GRANT claim_module TO app_user WITH INHERIT FALSE, SET TRUE;
+       REVOKE migrator FROM claim_module`,
     );
     await db.close();
   });
@@ -81,6 +82,22 @@ describe("checkModuleRoles", () => {
       name: "締めの auth の USAGE の欠け",
       run: (d) => d.superuser.query(`REVOKE USAGE ON SCHEMA auth FROM closing_module`),
       expected: "closing_module の auth スキーマの USAGE がない",
+    },
+    {
+      name: "TRUNCATE の GRANT",
+      run: (d) => d.superuser.query(`GRANT TRUNCATE ON claim.t_claim TO approval_module`),
+      expected: "approval_module の claim.t_claim の TRUNCATE がある",
+    },
+    {
+      name: "締めの auth.organization への UPDATE の GRANT",
+      run: (d) =>
+        d.superuser.query(`GRANT UPDATE ("name") ON auth."organization" TO closing_module`),
+      expected: "closing_module の auth.organization.name の UPDATE がある",
+    },
+    {
+      name: "モジュールのロールをほかのロールに入れる",
+      run: (d) => d.superuser.query(`GRANT migrator TO claim_module WITH INHERIT FALSE, SET TRUE`),
+      expected: "claim_module が migrator のメンバー",
     },
     {
       name: "ほかのスキーマへの GRANT",
