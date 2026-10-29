@@ -31,6 +31,7 @@ sources:
 - keys.md の DB 拡張スキーマのキーを、`db.system`→`db.system.name`、`db.statement`→`db.query.text`、`db.operation`→`db.operation.name` にした。OpenTelemetry Semantic Conventions レジストリ (いずれも非推奨で置き換え先が指定されている)。
 - keys.md の `db.duration` (OTel に存在しない属性) を、メトリクス `db.client.operation.duration` (単位は秒、例を `0.015`) にした。OpenTelemetry Semantic Conventions (データベースメトリクス、単位は `s`)。
 - web-api.md の処理時間の単位を、ミリ秒推奨から秒推奨にした。OpenTelemetry Semantic Conventions (HTTP メトリクス、単位は `s`)。
+- web-api.md、keys.md、messages.md、startup.md のタイムスタンプを、UTC か JST の許容と JST の例 (`+09:00`)、ナノ秒の例から、UTC (`Z`) のミリ秒3桁だけにした。環境によって `Z` と `+09:00` が混ざると、並べて読むときに比べ間違える。OpenTelemetry のログのデータモデルの `Timestamp` も、UNIX エポックからの値でタイムゾーンを持たない。OpenTelemetry Logs Data Model、ADR 0043。
 - keys.md と messages.md の例外属性キーを、`exception.stack_trace` から `exception.stacktrace` にした。OpenTelemetry Semantic Conventions レジストリ (exception 属性、Stable)。
 
 ## 適用範囲と前提条件

@@ -20,6 +20,7 @@
 - [PostgreSQL の海外対応](postgresql-i18n.md)：多言語対応や複数タイムゾーンのデータを扱うとき
 - [PostgreSQL のマルチテナント](postgresql-multitenancy.md)：マルチテナントのシステムで DB を設計するとき
 - [PostgreSQL の排他制御](postgresql-concurrency.md)：排他制御を設計するとき
+- [競合と原子性のテストの書き方](concurrency-testing.md)：競合や原子性を確かめる結合テストを書くとき、sleep や Promise.all で競合を作りたくなったとき
 - [PostgreSQL のテスト](postgresql-test.md)：DB を含むテストを設計するとき
 - [PostgreSQL のスキーママイグレーション](postgresql-migration.md)：スキーマを変更するとき、seed を足す、直すとき
 - [PostgreSQL のバージョン](postgresql-version.md)：利用バージョンやアップグレードを計画するとき

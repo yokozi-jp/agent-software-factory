@@ -14,7 +14,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 - **配置**: `packages/db` (`@agent-software-factory/db`、Nx project 名は `db`) に置きます。
   - `migrations/*.sql` と `bootstrap.sql`: package の直下。
   - `src/migrate.ts` (入口 `migrate`)、`src/bootstrap.ts` (`bootstrapSql`)、`src/types.ts` (型の生成の CLI と、ずれを見つける関数)。
-  - `src/testing/`: `connection.ts`、`credentials.ts`、`prepare-database.ts`、`database.ts`、globalSetup の失敗の表示 (`global-setup.ts`)。
+  - `src/testing/`: `connection.ts`、`credentials.ts`、`prepare-database.ts`、`database.ts`、globalSetup の失敗の表示 (`global-setup.ts`)、競合の待ち合わせ (`await-blocked.ts`) と行数の前後比較 (`row-counts.ts`。[競合と原子性のテストの書き方](../db/concurrency-testing.md))。
   - `src/seed/`: [Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332) が中身を置く。今は `./seed` の exports を満たす空のファイルだけ。
   - `apps/api/test/` には、`apps/api` のコードを試す道具 (Keycloak、`auth-fixtures.ts`、`browser.ts`、`server-process.ts`、Keycloak のユーザー) を残します。`apps/api/test/global-setup.ts` は `@agent-software-factory/db/testing` の `prepareDatabase` を呼びます。
 - **exports**: `"."` (`migrate` と `bootstrapSql`)、`"./seed"`、`"./testing"` の 3 つ。faker、testcontainers、Vitest を、本番のコードが import する `"."` に持ち込まないために分けます。repo-policy が形を確かめます。
