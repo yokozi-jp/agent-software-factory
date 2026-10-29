@@ -27,6 +27,9 @@ const roleOf = (module: string) => `${module}_module`;
  * - モジュールのスキーマに、所有者の権限で動く view と `SECURITY DEFINER` の関数、スキーマをまたぐ外部キーがない。
  *
  * `messaging.outbox` の INSERT は、表を作る Issue #269 で足す。
+ *
+ * この検査はテスト専用で、migrate や CI の別の段からは呼ばない。migration を流した DB に対する結合テスト
+ * (module-roles-catalog.test.ts) が、毎回これを呼んで問題が空であることを確かめる。
  */
 export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<string[]> {
   const modules = Object.keys(reads);

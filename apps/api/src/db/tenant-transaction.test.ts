@@ -185,7 +185,12 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
   beforeEach(async () => {
     db = await createTestDatabase();
     await db.migrator.query(
-      `CREATE TABLE approval.t_probe (id int); CREATE TABLE closing.t_probe (id int)`,
+      `CREATE TABLE approval.t_probe (tenant_id uuid, id int);
+       CREATE TABLE closing.t_probe (id int);
+       ALTER TABLE approval.t_probe ENABLE ROW LEVEL SECURITY;
+       CREATE POLICY tenant_isolation ON approval.t_probe
+         USING (tenant_id = current_setting('app.current_tenant')::uuid);
+       INSERT INTO approval.t_probe VALUES ('${tenantA}', 1), ('${tenantB}', 2)`,
     );
     pool = new Pool({ connectionString: db.url("app_user"), max: 1 });
     databases = createModuleDatabases(pool);
@@ -226,14 +231,15 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
     ).rejects.toThrow(/permission denied for table t_claim/);
   });
 
-  it("締めのトランザクションから、承認の表を読めて、書けないこと", async () => {
-    await inTenantTransaction(databases.closing, scope("closing"), (trx) =>
-      sql`SELECT * FROM approval.t_probe`.execute(trx),
+  it("締めのトランザクションから、承認の表をテナントを効かせて読めて、書けないこと", async () => {
+    const { rows } = await inTenantTransaction(databases.closing, scope("closing"), (trx) =>
+      sql<{ id: number }>`SELECT id FROM approval.t_probe`.execute(trx),
     );
+    expect(rows).toEqual([{ id: 1 }]);
 
     await expect(
       inTenantTransaction(databases.closing, scope("closing"), (trx) =>
-        sql`INSERT INTO approval.t_probe VALUES (1)`.execute(trx),
+        sql`INSERT INTO approval.t_probe VALUES (${tenantA}, 3)`.execute(trx),
       ),
     ).rejects.toThrow(/permission denied for table t_probe/);
   });
