@@ -73,6 +73,14 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
   `Blocked by` の行で依存を書いた子は、この条件では見分けられないので、本文の先頭を読む。
 
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
+- **前の調査を探す**: claim の後、チケットを解く前に、地図の閉じた `wayfinder:research` の子をチケットの語 (道具やサービスの名前など) で探し、当たった子の解決コメントを読む。チケットの本文が前提の調査にリンクしていないことがあり、読まずに解くと、確かめ済みの事実を「確かめていない」と書くか、同じ調査をやり直す。語は、チケットに出る固有名を `|` でつなぐ。
+
+  ```sh
+  gh api --paginate repos/<owner>/<repo>/issues/<map>/sub_issues \
+    --jq '.[] | select(.state=="closed" and any(.labels[]; .name=="wayfinder:research")) | "#\(.number) \(.title)"' \
+    | grep -i -E '<語1>|<語2>'
+  ```
+
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
 - **Edit the map body**: `gh issue edit <map> --body-file` replaces the whole body, and other sessions edit the same map concurrently. Re-read the body (`gh issue view <map> --json body --jq .body`) right before writing; if it differs from the copy you edited, reapply your change on top of the fresh body, so another session's lines survive.
 
