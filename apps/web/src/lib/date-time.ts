@@ -5,8 +5,9 @@
  */
 const BUSINESS_TIME_ZONE = "Asia/Tokyo";
 
-/** A moment in a response body: RFC 3339 in UTC (`Z`). A calendar date (`YYYY-MM-DD`) is refused. */
+/** A moment in a response body: RFC 3339 in UTC (`Z`). An offset and a calendar date (`YYYY-MM-DD`) are refused. */
 export function readApiInstant(value: string): Temporal.Instant {
+  if (!value.endsWith("Z")) throw new RangeError(`not a moment in UTC (Z): ${value}`);
   return Temporal.Instant.from(value);
 }
 
