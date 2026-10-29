@@ -145,6 +145,7 @@ cd agent-software-factory
 mise install --locked   # mise.toml の道具を、mise.lock の版と checksum で検証して入れる
 vp env install          # .node-version の Node.js と、package.json の pnpm
 pnpm install            # 依存と、prepare スクリプトで lefthook の hook
+pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium   # web のテストのブラウザ
 
 mise ls --current --missing         # 何も表示しない (mise.toml の道具がすべて入っている)
 node -v                             # v24.x
@@ -163,6 +164,8 @@ cd /home/projects/agent-software-factory
 
 - `pnpm install` の最後の `sync hooks: ✔️ (pre-commit, commit-msg, pre-push)` (hook が設定された)
 - `pnpm check`、`pnpm test`、`pnpm build` がエラーなしで終わる
+
+web のテストは Vitest の browser mode で、Playwright の Chromium を使います ([ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。`--with-deps` が Chromium の共有ライブラリを apt で入れるので、`sudo` のパスワードを聞かれることがあります。入れ忘れると、`pnpm test` と `git push` の hook で web のテストが `error while loading shared libraries` で止まります。
 
 IWE (`iwe`、`iwec`) は devDependency として入るので、別に入れる必要はありません。
 `PATH` に別の版の同じ道具があっても、hook と CI は `mise exec` 経由で `mise.toml` の版を使います。
