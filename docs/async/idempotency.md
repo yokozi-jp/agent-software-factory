@@ -34,3 +34,7 @@ SQSを利用する場合の重複排除（Exactly once）の仕組みには以�
 
 - 原則、（1）を採用する。FIFOキュー利用によるクラウド利用費用の増加は多くのケースで誤差レベルであると考えられるため
 - スループットが重視されるケース（数千～数万TPS）や[SQS FIFOキューの重複排除ウィンドウである5分間](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html)を超える必要があるケースは（2）を採用する
+
+## このリポジトリのキュー
+
+このリポジトリは（2）を既定にしている。Lambda の構成の Outbox を送る処理は取りこぼしを 15 分ごとに拾うので、送り直しが 5 分の重複排除ウィンドウを超えるためである。重複は ADR 0029 の `processed_message` で除く。決定は [ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md) にある。この文書の推奨は、ADR と食い違う場合は ADR に従う。
