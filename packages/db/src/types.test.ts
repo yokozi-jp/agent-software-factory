@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   generateTypes,
   moduleSchemas,
+  moduleSchemasOf,
   staleTypes,
   typesFile,
   writeTypes,
@@ -47,8 +48,8 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     const types = await generateTypes(db.url());
 
     expect(types.map(({ file }) => file)).toEqual([
-      "packages/claim/src/infrastructure/db.gen.ts",
       "packages/approval/src/infrastructure/db.gen.ts",
+      "packages/claim/src/infrastructure/db.gen.ts",
       "packages/closing/src/infrastructure/db.gen.ts",
     ]);
   });
@@ -75,7 +76,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
   });
 
   it("migration が作るスキーマが、auth と migrations のほかは、型を生成するスキーマと同じこと", async () => {
-    // migration でモジュールのスキーマを足して moduleSchemas に足し忘れると、そのスキーマの型を生成せず、
+    // migration でモジュールのスキーマを足して package.json の tag `type:module` を付け忘れると、そのスキーマの型を生成せず、
     // CI のずれの検査も通ってしまう。public は PostgreSQL が作る。
     const { rows } = await db.superuser.query<{ nspname: string }>(
       `SELECT nspname FROM pg_namespace
@@ -114,5 +115,40 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     expect(await staleTypes(types, root)).toEqual([
       "packages/approval/src/infrastructure/db.gen.ts",
     ]);
+  });
+});
+
+describe("型を生成するスキーマ (moduleSchemas)", () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "db-schemas-"));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const addPackage = async (directory: string, manifest: unknown): Promise<void> => {
+    await mkdir(join(root, "packages", directory), { recursive: true });
+    await writeFile(join(root, "packages", directory, "package.json"), JSON.stringify(manifest));
+  };
+
+  it("tag type:module を持つ package の名前を、名前順で返すこと", async () => {
+    await addPackage("b", { nx: { name: "b", tags: ["type:module"] } });
+    await addPackage("a", { nx: { name: "a", tags: ["scope:x", "type:module"] } });
+
+    expect(moduleSchemasOf(root)).toEqual(["a", "b"]);
+  });
+
+  it("tag のない package、別の tag だけの package、nx のない package、名前のない package、package.json のないディレクトリを含めないこと", async () => {
+    await addPackage("none", { nx: { name: "none" } });
+    await addPackage("other", { nx: { name: "other", tags: ["type:util"] } });
+    await addPackage("no-nx", {});
+    await mkdir(join(root, "packages", "empty-directory"), { recursive: true });
+    await addPackage("no-array", { nx: { name: "no-array", tags: "type:module" } });
+    await addPackage("unnamed", { nx: { tags: ["type:module"] } });
+
+    expect(moduleSchemasOf(root)).toEqual([]);
   });
 });

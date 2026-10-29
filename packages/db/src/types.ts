@@ -2,6 +2,7 @@
 //   node src/types.ts          testcontainers の PostgreSQL に migration を流し、型のファイルを書く
 //   node src/types.ts --check  同じく生成し、commit された型と違えば失敗する (CI の「DB types match the migrations」)
 // Nx の target は `db-types` と `db-types-check` (packages/db/package.json)。
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,13 +12,37 @@ import { Cli } from "kysely-codegen";
 import { postgresImage, connectionUri } from "./testing/connection.ts";
 import { prepareDatabase } from "./testing/prepare-database.ts";
 
+const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
+
+/** モジュールの印。各モジュールの `package.json` の `nx.tags` に書く (docs/domain-model/add-module.md)。 */
+export const moduleTag = "type:module";
+
 /**
- * 型を生成するスキーマ。モジュールの名前 (GLOSSARY.md、vite.config.ts の `modules`) と同じ。
+ * `root` の `packages/*` のうち、`nx.tags` に `type:module` を持つ package の Nx project の名前 (`nx.name`、
+ * ディレクトリの名前と同じ)。名前順。モジュールの名前 (GLOSSARY.md) とスキーマの名前は同じ。
+ */
+export function moduleSchemasOf(root: string): string[] {
+  return readdirSync(`${root}/packages`)
+    .toSorted()
+    .filter((directory) => existsSync(`${root}/packages/${directory}/package.json`))
+    .flatMap((directory) => {
+      const manifest: unknown = JSON.parse(
+        readFileSync(`${root}/packages/${directory}/package.json`, "utf8"),
+      );
+      const nx = isRecord(manifest) ? manifest.nx : undefined;
+      if (!isRecord(nx) || !Array.isArray(nx.tags) || !nx.tags.includes(moduleTag)) return [];
+      return typeof nx.name === "string" ? [nx.name] : [];
+    });
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+/**
+ * 型を生成するスキーマ。tag `type:module` を持つ package の名前から求める。
  * `auth` (Better Auth が自分の Kysely で使う) と `migrations` (dbmate の履歴) は対象にしない。
  */
-export const moduleSchemas = ["claim", "approval", "closing"] as const;
-
-const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
+export const moduleSchemas: readonly string[] = moduleSchemasOf(repositoryRoot);
 
 /** スキーマの型を書くファイル。リポジトリのルートからの相対の path。 */
 export const typesFile = (schema: string): string =>

@@ -77,12 +77,19 @@ export const lintEffect =
 
 // The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
 // its src/index.ts. A module also runs the Effect lint.
+// The modules of the passing repository carry the tag that marks a module (docs/domain-model/add-module.md).
+const modules: readonly string[] = ["claim", "approval", "closing"];
+// What apps/api depends on in the passing repository: hono, and every module (docs/adr/0026).
+export const apiDependencies: Record<string, string> = {
+  hono: "catalog:",
+  ...Object.fromEntries(modules.map((name) => [`@agent-software-factory/${name}`, "workspace:*"])),
+};
 export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
     exports: { ".": "./src/index.ts" },
     scripts: { check: "vp check", ...(name === "shared" ? {} : { "lint-effect": lintEffect }) },
-    nx: { name },
+    nx: { name, ...(modules.includes(name) ? { tags: ["type:module"] } : {}) },
     ...fields,
   });
 export const packageFiles = (
@@ -132,7 +139,14 @@ export const passingRepo: Readonly<Record<string, string>> = {
     devDependencies: { nx: "catalog:" },
     engines: { node: "^24" },
   }),
-  "apps/api/package.json": JSON.stringify({ dependencies: { hono: "catalog:" } }),
+  "apps/api/package.json": JSON.stringify({ dependencies: apiDependencies }),
+  // apps/api imports each module in the files that assemble them.
+  "apps/api/src/db/databases.ts": modules
+    .map((name) => `import type { X } from "@agent-software-factory/${name}";\n`)
+    .join(""),
+  "apps/api/src/app.ts": modules
+    .map((name) => `import "@agent-software-factory/${name}";\n`)
+    .join(""),
   "packages/db/migrations/20260101000000_create_x.sql": migration(),
   "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
@@ -140,6 +154,10 @@ export const passingRepo: Readonly<Record<string, string>> = {
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
   ...packageFiles("shared"),
   ...packageFiles("claim", { dependencies: { "@agent-software-factory/shared": "workspace:*" } }),
+  ...packageFiles("approval", { dependencies: { "@agent-software-factory/claim": "workspace:*" } }),
+  ...packageFiles("closing", {
+    dependencies: { "@agent-software-factory/approval": "workspace:*" },
+  }),
   // The fixtures are in module-fixtures, as in the repository (docs/adr/0026).
   ...packageFiles("module-fixtures"),
   ...srcFixtures("module-fixtures"),
