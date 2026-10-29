@@ -36,7 +36,10 @@ export type SubmitError =
   | { readonly _tag: "NoLines" }
   | { readonly _tag: "TotalExceedsLimit"; readonly limit: Money };
 
-export const submit = (args: { claim: Draft; now: Instant }): Result<Submitted, SubmitError> =>
+export const submit = (args: {
+  claim: Draft;
+  now: Temporal.Instant;
+}): Result<Submitted, SubmitError> =>
   args.claim.lines.length === 0
     ? { _tag: "Err", error: { _tag: "NoLines" } }
     : { _tag: "Ok", value: { _tag: "Submitted", id: args.claim.id, submittedAt: args.now } };

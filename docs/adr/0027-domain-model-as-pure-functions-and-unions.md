@@ -31,7 +31,7 @@ tags: [adr, architecture, domain-model, typescript, result, lint]
 
 - **`Result`** (Q9): `Result` の型は `shared` に置き、`domain` は `import type` で使います。値は `{ _tag: "Ok", value }` / `{ _tag: "Err", error }` の object literal で作り、`ok()` と `err()` は置きません。
 - **業務の失敗の応答** (Q11): `http` が失敗の `_tag` ごとに 422 の Problem Details にします ([ステータスコード](../web-api/status-codes.md)、[レスポンスボディ](../web-api/response-body.md))。
-- **時刻と乱数** (Q23): `domain` では `Date` の値 (`new Date()`、`Date.now()`) と `Math.random` を止めます。`domain` の override の `no-restricted-globals` (`Date`) と `no-restricted-properties` (`Math.random`) が止めます ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md)、[Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。`crypto` などは `packages/*/tsconfig.json` の `types: []` で型検査が止めます。
+- **時刻と乱数** (Q23): `domain` では `Date` の値 (`new Date()`、`Date.now()`)、`Temporal.Now`、`Math.random` を止めます。`Date` と `Temporal.Now` は `domain` だけでなく `apps/api/src` と `packages/*/src` の全体で止めます ([ADR 0043](0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。時刻の型は `Temporal.Instant` と `Temporal.PlainDate` で、自前の branded の `Instant` は作りません。`domain` の override の `no-restricted-globals` (`Date`) と `no-restricted-properties` (`Temporal.Now`、`Math.random`) が止めます ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md)、[Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。`crypto` などは `packages/*/tsconfig.json` の `types: []` で型検査が止めます。
 - **`domain` の `throw`** (Q10): 自作の Oxlint の plugin ([ADR 0019](0019-custom-oxlint-plugin-for-xss.md) と同じ形、`tools/lint-plugins/src/domain-plugin.ts` の `domain/no-throw`) で止めます ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。
 - **嘘をつく型述語** (Q12): 新しいゲートは足しません。`domain` の変異テストのゲートと、[境界値のテストのガイド](../domain-model/testing.md)で補います ([テストの強さの基準を決める](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定 3、4)。
 - **識別子の言語** (Q22): `domain` と `application` の識別子は英語にし、`GLOSSARY.md` の言葉との対応表を [docs/domain-model/](../domain-model/glossary-mapping.md) に置きます。DB の列、URL、OpenAPI、library の名前と揃うためです (判断)。用語集には実装の詳細を書きません。
@@ -66,7 +66,7 @@ skill をそのまま見せないのは、`parseX` が `throw` する例と「Sc
 - `domain` は、時刻、乱数、`throw`、library、他のモジュールを持てません。必要なものは引数で受けるか、`application` に置きます。
 - 業務の失敗の `_tag` を足したら、`http` の 422 への対応も足します。`switch` の網羅が漏れを止めます。
 - 型述語が claim を検証しているかは、型検査では確かめられません。境界値のテストで確かめます。
-- `domain` の `throw` (Q10)、`Date` の値と `Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。`globalThis.Date.now()` のように、グローバルオブジェクトを通した `Date` は見つけられません。型の注釈の `Date` は止まりません。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
+- `domain` の `throw` (Q10)、`Date` の値と `Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。型の注釈の `Date` は止まりません。`globalThis.Date.now()` のようにグローバルオブジェクトを通した `Date` は、ADR 0043 で `no-restricted-properties` に `globalThis.Date` と `globalThis.Temporal` を足して止めるようにしました。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
 - `Result` を Effect に変える `fromResult` と、Effect の使い方は [ADR 0028](0028-effect-in-application-and-infrastructure.md) で決めます。
 
 ## 出典

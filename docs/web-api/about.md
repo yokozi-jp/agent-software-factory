@@ -29,6 +29,7 @@ sources:
 - 原文の章へのリンクを、分割後の文書へのリンクにした。このリポジトリに取り込んだ他のガイドラインへのリンクは、その docs/ の文書へのリンクにした。取り込んでいないガイドライン (AWS、Terraform、データマネジメント、Git ブランチフロー) へのリンクは、原文のサイトの URL にした。
 - 原文で mermaid.ink の画像として埋め込まれていた図 (楽観ロックや認証のフロー図) は、mermaid のコードブロックに戻した。OpenAPI の廃止予定を示す Swagger UI のスクリーンショットは、何が写っているかの文章に置き換えた。
 - versioning.md の `Deprecation` ヘッダーの値を、`true` から構造化フィールドの Date (`@1688169599`) にし、説明と推奨も合わせた。RFC 9745 (The Deprecation HTTP Response Header Field)。
+- response-body.md の日付フォーマットで、例の `order_date` を暦日の `full-date` (`2023-09-30`) にし、瞬間は UTC (`Z`) のミリ秒3桁、暦日は `full-date` で返す推奨を足した。原文は暦日を UTC の 0 時の日時 (`2023-09-30T00:00:00Z`) で返していて、UTC より西のタイムゾーンで前日に見える。RFC 3339 (`date-time` と `full-date`)、ADR 0043。
 - idempotency-and-patch.md の JSON Merge Patch の RFC 番号を、7386 から 7396 にした。RFC 7396 (7386 を obsolete)。
 - idempotency-and-patch.md の Idempotency-Key の IETF Draft のバージョンを、05 (2024年12月) から 08 (2026年10月) にした。IETF Datatracker (draft-ietf-httpapi-idempotency-key-header-08)。
 - idempotency-and-patch.md の Idempotency-Key のユニーク制約を、キーのカラムだけから `(tenant_id, user_id, Idempotency-Key)` の組にした。ADR 0011 が一意キーに `tenant_id` を求め、キーのカラムだけだと別のテナントの同じキーで行は RLS で見えないのに挿入だけが拒まれる。PostgreSQL 63.5 Index Uniqueness Checks、ADR 0011、ADR 0040。
