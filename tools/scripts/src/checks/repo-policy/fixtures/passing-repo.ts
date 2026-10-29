@@ -15,6 +15,21 @@ export const domainFixture = [
   "",
 ].join("\n");
 
+// The fixtures of the imports that bypass the Outbox and the transaction (docs/adr/0029): one import per package of
+// `outboxPackages` and `connectionPackages` in vite.config.ts, each under the disable comment that the rule must
+// make used. The entry files and the tests may open a connection but not send, so their fixture has the SDK only.
+export const bypassOutboxFixture = [
+  "// oxlint-disable-next-line no-restricted-imports -- fixture: sqs",
+  'import "@x/sqs";',
+  "",
+].join("\n");
+export const bypassFixture = [
+  bypassOutboxFixture.trimEnd(),
+  "// oxlint-disable-next-line no-restricted-imports -- fixture: pg",
+  'import "pg";',
+  "",
+].join("\n");
+
 // A dbmate migration that passes the check of migrations (docs/adr/0025). The tests of rules.ts change one
 // section of it.
 export function migration(
@@ -165,9 +180,24 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
+  // Each override that stops the imports that bypass the Outbox and the transaction has a fixture: src/ and the
+  // layers of the packages (domain stops every library already), the files of apps/api/src, and its entry files and
+  // tests.
+  "packages/module-fixtures/src/__fixtures__/bypass.ts": bypassFixture,
+  "packages/module-fixtures/src/http/__fixtures__/bypass.ts": bypassFixture,
+  "apps/api/src/__fixtures__/bypass.ts": bypassFixture,
+  "apps/api/src/__fixtures__/bypass.test.ts": bypassOutboxFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',
+    // The packages that bypass the Outbox and the transaction (docs/adr/0029), one fixture each.
+    "const outboxPackages = [",
+    '  "@x/sqs",',
+    "];",
+    'const connectionPackages = ["pg"];',
+    // The messages of those imports say what to write instead, and name the ADR.
+    'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
+    'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
     '  http: ["domain"],',
@@ -197,6 +227,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     "---\ninclusion: auto\nname: external-docs\ndescription: when to read the docs.\n---\n\n# Docs\n",
   "docs/adr/0001-lefthook.md": "# ADR 0001\n",
   "docs/adr/0002-nx.md": "# ADR 0002\n",
+  "docs/adr/0029-outbox.md": "# ADR 0029\n",
   "docs/local-env-setup/setup.md": "# Setup\n\n## 3. Ubuntu の初期セットアップ\n",
   "tools/scripts/sh/guard-push.sh": "#!/bin/sh\ngit push --dry-run\n",
   ".github/workflows/ci.yml": [

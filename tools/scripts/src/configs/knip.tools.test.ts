@@ -51,6 +51,15 @@ const skipped = new Set([
 // The apps of the copy. knip.jsonc names apps/api (its entries src/index.ts and src/server.ts, and the dependencies
 // it keeps) and the workspaces of pnpm-workspace.yaml; small apps written here take the place of the real ones, so
 // that a change to the code of the apps does not make the tools tests run (docs/tooling/ci.md).
+const sdkClients = [
+  "@aws-sdk/client-eventbridge",
+  "@aws-sdk/client-lambda",
+  "@aws-sdk/client-ses",
+  "@aws-sdk/client-sesv2",
+  "@aws-sdk/client-sfn",
+  "@aws-sdk/client-sns",
+  "@aws-sdk/client-sqs",
+];
 const apps: Record<string, string> = {
   "apps/api/package.json": JSON.stringify(
     {
@@ -106,6 +115,12 @@ const apps: Record<string, string> = {
   // A detection-power fixture of the module boundaries, which nothing imports (ignoreFiles in knip.jsonc).
   "apps/api/src/__fixtures__/boundaries.ts":
     '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "../../../../packages/x/src/index.ts";\n',
+  // The fixture of the entry files and the tests: a *.test.ts file, which Knip reads even in __fixtures__/, and which
+  // imports the SDK clients that no-restricted-imports stops. The app depends on none of them, so knip.jsonc keeps
+  // them in ignoreDependencies of apps/api; without the file, Knip would report those entries as unused.
+  "apps/api/src/__fixtures__/bypass.test.ts": sdkClients
+    .map((name) => `import "${name}";\n`)
+    .join(""),
 };
 
 // The packages in the shape of a module named in knip.jsonc, which depend on effect before their application/ and
@@ -241,7 +256,11 @@ describe("Knip with knip.jsonc", () => {
   // treatConfigHintsAsErrors: an exception that is no longer needed fails, so it gets removed.
   it("reports an ignoreDependencies entry for a dependency that is used", () => {
     edit("knip.jsonc", (text) =>
-      text.replace('"apps/api": {', '"apps/api": { "ignoreDependencies": ["hono"],'),
+      // apps/api already has an ignoreDependencies (the SDK clients of the fixture of the entry files); add to it.
+      text.replace(
+        '"ignoreDependencies": [\n        "@aws-sdk/client-eventbridge",',
+        '"ignoreDependencies": [\n        "hono",\n        "@aws-sdk/client-eventbridge",',
+      ),
     );
     const result = knip();
     expect(result.status).toBe(1);

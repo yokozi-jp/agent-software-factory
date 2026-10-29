@@ -30,6 +30,46 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
 };
 
+// Imports that bypass the Outbox and the transaction (docs/adr/0029). A request or a module that calls SQS, SES and the
+// like directly sends before the transaction commits, or twice on a retry; a module that opens a connection of its own
+// skips the tenant setting and the module role of inTenantTransaction. The names are in two arrays, and repo-policy
+// checks that every override that stops them has a fixture for each name (#43). Oxlint keeps only the last override
+// that sets a rule for a file, so each override below carries its own copy of the `paths`:
+//   - packages/*/src, each of its layers, and apps/api/src stop both lists;
+//   - the entry files and the tests of apps/api/src, and packages/db/src, may open a connection (they make the pool,
+//     docs/adr/0038) but not send, so they stop the SDK clients only. Add the entry file of the relay and of the
+//     consumers to the override of the entry files when they exist, and remove the SDK clients from it there.
+// A file that has to open a connection, such as a databases.ts that makes the pool (today it only imports the type
+// of Pool), is an entry file: add it to the override of the entry files below. This is a guardrail: a `fetch` to an AWS
+// endpoint and a dynamic import are not stopped.
+const outboxPackages = [
+  "@aws-sdk/client-sqs",
+  "@aws-sdk/client-ses",
+  "@aws-sdk/client-sesv2",
+  "@aws-sdk/client-sns",
+  "@aws-sdk/client-eventbridge",
+  "@aws-sdk/client-lambda",
+  "@aws-sdk/client-sfn",
+];
+const connectionPackages = ["pg"];
+const outboxBypassMessage =
+  "Do not send to SQS, SES, SNS, EventBridge, Lambda or Step Functions from a module or a request: put the event in " +
+  "the Outbox with enqueueOutbox, in the same transaction as the update, and let the relay or a consumer send it " +
+  "(docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.";
+const connectionMessage =
+  "Do not open a connection of your own: it skips the tenant setting and the module role. Open a transaction with " +
+  "inTenantTransaction (docs/adr/0011, docs/adr/0029 rule 2). A type import is fine; the pool is made in the entry file.";
+const outboxPaths: RestrictedPath[] = outboxPackages.map((name) => ({
+  name,
+  message: outboxBypassMessage,
+}));
+const connectionPaths: RestrictedPath[] = connectionPackages.map((name) => ({
+  name,
+  allowTypeImports: true,
+  message: connectionMessage,
+}));
+const bypassPaths = [...outboxPaths, ...connectionPaths];
+
 // Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
 // into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
 // from globalThis.
@@ -146,6 +186,7 @@ interface RestrictedPath {
   name: string;
   message: string;
   importNames?: string[];
+  allowTypeImports?: boolean;
 }
 // Added to every layer but domain, which may import no library at all (domainMessage above).
 const effectPaths: RestrictedPath[] = [
@@ -219,7 +260,7 @@ function moduleImports(layer?: string) {
       { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
-  const paths: RestrictedPath[] = [...runtimeImports.paths];
+  const paths: RestrictedPath[] = [...runtimeImports.paths, ...bypassPaths];
   if (layer !== "domain") paths.push(...effectPaths);
   // application takes `now` as an argument; an entry point reads the Clock (docs/adr/0043).
   if (layer === "application")
@@ -380,7 +421,7 @@ export default defineConfig({
           "no-restricted-imports": [
             "error",
             {
-              paths: runtimeImports.paths,
+              paths: [...runtimeImports.paths, ...bypassPaths],
               patterns: [...runtimeImports.patterns, ...deepImports],
             },
           ],
@@ -395,7 +436,9 @@ export default defineConfig({
         plugins: ["import"],
         rules: {
           ...runtimeRulesOff,
-          "no-restricted-imports": ["error", { patterns: testDeepImports }],
+          // They make the pool, so they may import pg; a send from here skips the Outbox as well, so the SDK clients
+          // stay stopped (outboxPackages above).
+          "no-restricted-imports": ["error", { paths: outboxPaths, patterns: testDeepImports }],
         },
       },
       // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
@@ -420,6 +463,8 @@ export default defineConfig({
           "no-restricted-imports": [
             "error",
             {
+              // db opens the connections, so it may import pg, but it does not send.
+              paths: outboxPaths,
               patterns: [
                 ...deepImports,
                 { regex: `^${scope}/[^/]+$`, allowTypeImports: true, message: dbMessage },

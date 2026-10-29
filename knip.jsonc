@@ -67,6 +67,19 @@
       ],
     },
     "apps/api": {
+      // The SDK clients that no-restricted-imports stops (docs/adr/0029, outboxPackages in vite.config.ts). The fixture
+      // src/__fixtures__/bypass.test.ts imports them to show the override of the entry files and the tests still stops
+      // them; Knip reads a *.test.ts fixture, and the app depends on none of them (and must not). Remove an entry
+      // when the list in vite.config.ts drops the package.
+      "ignoreDependencies": [
+        "@aws-sdk/client-eventbridge",
+        "@aws-sdk/client-lambda",
+        "@aws-sdk/client-ses",
+        "@aws-sdk/client-sesv2",
+        "@aws-sdk/client-sfn",
+        "@aws-sdk/client-sns",
+        "@aws-sdk/client-sqs",
+      ],
       "entry": [
         // The dev server entry (@hono/vite-dev-server in vite.config.ts), also Knip's default.
         "src/index.ts",
