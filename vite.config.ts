@@ -70,6 +70,27 @@ const connectionPaths: RestrictedPath[] = connectionPackages.map((name) => ({
 }));
 const bypassPaths = [...outboxPaths, ...connectionPaths];
 
+// Raw SQL and the way around the module's types (docs/adr/0029). A module reads and writes its own tables through the
+// typed Kysely builder. The `sql` tag and `CompiledQuery` take any text, so they could reach the table of another
+// module with a type that nobody checks; the module role of the database stops that at runtime, and this stops it
+// before. shared (the helper of the transaction) and apps/api are outside this list: shared owns the SQL that sets the
+// role and the tenant, and the rule of tools/lint-plugins/src/tenant-sql-plugin.ts reads what they write.
+const sqlImportNames = ["sql", "CompiledQuery"];
+const sqlMessage =
+  "Do not write raw SQL in a module: `sql` and `CompiledQuery` skip the types of the Kysely builder, so a query can " +
+  "reach a table of another module. Use the builder on your own tables, and read another module's data through its " +
+  "public API function (docs/adr/0029). If a query truly needs raw SQL, put the reason on the disable comment.";
+const sqlPaths: RestrictedPath[] = [
+  { name: "kysely", importNames: sqlImportNames, message: sqlMessage },
+];
+
+// `withTables` gives a transaction the types of another database. It is called in infrastructure/ only, inside a public
+// API function that takes the caller's transaction to read its own tables (docs/adr/0029).
+const withTablesMessage =
+  "Call withTables only in infrastructure/, in the public API function that reads your own tables with the " +
+  "transaction of the caller. Elsewhere, read another module's data through its public API function (docs/adr/0029).";
+const withTablesEntry = { property: "withTables", message: withTablesMessage };
+
 // Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
 // into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read
 // from globalThis.
@@ -124,7 +145,12 @@ const entryClockLint = clockEntries(entryClockMessage);
 // the last override that sets a rule, so it spreads the entries above into its lists.
 const runtimeGlobalLintRules = {
   "no-restricted-globals": ["error", ...runtimeGlobalEntries, ...entryClockLint.globals],
-  "no-restricted-properties": ["error", ...runtimePropertyEntries, ...entryClockLint.properties],
+  "no-restricted-properties": [
+    "error",
+    ...runtimePropertyEntries,
+    ...entryClockLint.properties,
+    withTablesEntry,
+  ],
 } satisfies Record<string, ["error", ...Record<string, string>[]]>;
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
@@ -241,7 +267,8 @@ const testDeepImports = [
 // The options of no-restricted-imports for a file of a package in `layer` (undefined: src/index.ts and other
 // files outside the layers, and shared). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
-function moduleImports(layer?: string) {
+// `shared` is not a module: it owns the SQL of the transaction helper, so it may import `sql` (sqlPaths).
+function moduleImports(layer?: string, allowSql = false) {
   const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
@@ -261,6 +288,7 @@ function moduleImports(layer?: string) {
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
   const paths: RestrictedPath[] = [...runtimeImports.paths, ...bypassPaths];
+  if (!allowSql) paths.push(...sqlPaths);
   if (layer !== "domain") paths.push(...effectPaths);
   // application takes `now` as an argument; an entry point reads the Clock (docs/adr/0043).
   if (layer === "application")
@@ -299,6 +327,7 @@ const domainPurityRules = {
       "error",
       ...runtimePropertyEntries,
       ...domainClockLint.properties,
+      withTablesEntry,
       {
         object: "Math",
         property: "random",
@@ -451,6 +480,12 @@ export default defineConfig({
       // Module boundaries (docs/adr/0026): imports by the package name only, and the direction between the layers
       // of a module. The direction between the modules is the dependencies of their package.json.
       ...moduleOverrides,
+      // shared is not a module (docs/adr/0026): it holds the helper of the transaction, which writes SQL with `sql`.
+      // It keeps every other restriction of the modules.
+      {
+        files: ["packages/shared/src/**"],
+        rules: { "no-restricted-imports": ["error", moduleImports(undefined, true)] },
+      },
       // packages/db is not a module (docs/adr/0038). It runs the migrations and starts containers, so it leaves the
       // runtime restrictions as an entry file does (docs/adr/0007), keeps the ban on deep imports, and imports the
       // packages of the workspace as types only. It has no layers, so the overrides above reach it only by
@@ -475,14 +510,27 @@ export default defineConfig({
       },
       // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
       // fixture in <layer>/__fixtures__/effect.ts that this rule must report (repo-policy checks it).
+      // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
+      // carries that override's runtime globals and clock too. application also stops withTables, which only
+      // infrastructure may call (withTablesEntry).
       {
-        files: ["packages/*/src/application/**", "packages/*/src/infrastructure/**"],
+        files: ["packages/*/src/application/**"],
         rules: {
           "no-restricted-properties": [
             "error",
             ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
-            // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
-            // carries that override's runtime globals and clock too.
+            ...runtimePropertyEntries,
+            ...entryClockLint.properties,
+            withTablesEntry,
+          ],
+        },
+      },
+      {
+        files: ["packages/*/src/infrastructure/**"],
+        rules: {
+          "no-restricted-properties": [
+            "error",
+            ...effectRunFunctions.map((property) => ({ property, message: effectRunMessage })),
             ...runtimePropertyEntries,
             ...entryClockLint.properties,
           ],
@@ -512,6 +560,25 @@ export default defineConfig({
             },
           ],
         },
+      },
+      // SQL that changes the role or the tenant of the connection is written in the helper of the transaction only
+      // (docs/adr/0029). shared and apps/api are the places that may use `sql`; the modules may not (sqlPaths). The
+      // rule is in tools/lint-plugins/src/tenant-sql-plugin.ts. The helper is the one file that sets them, and a
+      // test sets and reads them to check the helper, so both are outside the rule. Fixtures that this rule must
+      // report: apps/api/src/__fixtures__/session-setting.ts and packages/shared/src/__fixtures__/session-setting.ts.
+      {
+        files: ["packages/shared/src/**", "apps/api/src/**"],
+        jsPlugins: [
+          { name: "tenant-sql", specifier: "./tools/lint-plugins/src/tenant-sql-plugin.ts" },
+        ],
+        rules: { "tenant-sql/no-session-setting": "error" },
+      },
+      {
+        files: ["packages/shared/src/tenant-transaction.ts", "**/*.test.ts"],
+        jsPlugins: [
+          { name: "tenant-sql", specifier: "./tools/lint-plugins/src/tenant-sql-plugin.ts" },
+        ],
+        rules: { "tenant-sql/no-session-setting": "off" },
       },
       // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
       // list of what the code guarantees. The rule is in tools/lint-plugins/src/test-title-plugin.ts. Tests of the tools
