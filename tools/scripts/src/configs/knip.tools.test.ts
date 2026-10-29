@@ -169,6 +169,25 @@ apps["packages/db/package.json"] = JSON.stringify(
   2,
 );
 apps["packages/db/src/index.ts"] = "export {};\n";
+// packages/i18n and the config of i18next-cli that knip.jsonc names as its entry (docs/adr/0044). Nothing imports the
+// config; the i18n-keys script runs it with --config.
+apps["packages/i18n/package.json"] = JSON.stringify(
+  {
+    name: "@agent-software-factory/i18n",
+    private: true,
+    type: "module",
+    exports: { ".": "./src/index.ts" },
+    scripts: { check: "vp check" },
+    devDependencies: { "vite-plus": "catalog:" },
+    nx: { name: "i18n" },
+  },
+  undefined,
+  2,
+);
+apps["packages/i18n/src/index.ts"] = "export {};\n";
+apps["packages/i18n/i18next.config.ts"] = "export default {};\n";
+// A file of the trees that the detection-power test of the key check runs the CLI on (ignoreFiles in knip.jsonc).
+apps["packages/i18n/test/__fixtures__/keys/complete/apps/web/src/screen.tsx"] = "export {};\n";
 
 let box: Sandbox;
 let copy: string;
@@ -197,6 +216,7 @@ function populate(): void {
     "apps/web",
     "packages/ui",
     "packages/db",
+    "packages/i18n",
     "tools/scripts",
     ...modules.map((name) => `packages/${name}`),
   ])

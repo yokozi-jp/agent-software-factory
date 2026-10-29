@@ -182,6 +182,10 @@ pre-push:
     # (#178). Nx skips the projects whose cached result still holds. NX_BASE is what CI sets for the same command.
     nx-affected-test:
       run: pnpm exec nx affected -t test --base=origin/main --head=HEAD
+    # The keys of the texts match the code, as CI runs it (packages/i18n, docs/adr/0044). Nx skips the projects whose
+    # cached result still holds.
+    nx-affected-i18n-keys:
+      run: pnpm exec nx affected -t i18n-keys --base=origin/main --head=HEAD
     # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts), for the projects the branch
     # affects, as CI runs them. They take minutes, so they run here and not in pre-commit. Nx decides from the
     # inputs of the test-tools target (tools/scripts/package.json) and skips the projects whose cached result still

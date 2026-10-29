@@ -11,7 +11,8 @@
   // nothing imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not
   // checked. A *.test.ts fixture is still an entry for Knip's Vitest plugin, so it must not import a dependency that
   // only the fixtures use (packages/*/src/{application,infrastructure}/__fixtures__/effect.test.ts imports no effect).
-  "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**"],
+  // packages/i18n/test/__fixtures__ are the same for the key check (docs/adr/0044): a tree of screens and resources.
+  "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**", "packages/i18n/test/__fixtures__/**"],
   // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
   // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
   "ignoreIssues": { "packages/*/src/infrastructure/db.gen.ts": ["types"] },
@@ -55,6 +56,11 @@
       // lib/utils.ts, the file `aliases.utils` of components.json names, is an entry too: Knip reads it from the
       // `exports` of package.json (./lib/*), so it needs no pattern here.
       "entry": ["src/components/**/*.tsx"],
+    },
+    "packages/i18n": {
+      // The config of i18next-cli: the i18n-keys and i18n-lint scripts and the fixtures' test run it with --config, and
+      // nothing imports it (docs/adr/0044).
+      "entry": ["i18next.config.ts"],
     },
     // db depends on the modules by `import type` only (docs/adr/0038). Nothing of it imports them yet except its
     // fixtures, which Knip does not read; the seed (#332) and the types of the module schemas will. Remove an entry

@@ -8,14 +8,18 @@
     "build": "vp build",
     "preview": "vp preview",
     "test": "vp test run --passWithNoTests",
-    "check": "vp check"
+    "check": "vp check",
+    "i18n-keys": "cd ../../packages/i18n && i18next-cli status && i18next-cli status --unused"
   },
   "dependencies": {
+    "@agent-software-factory/i18n": "workspace:*",
     "@agent-software-factory/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "i18next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-i18next": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
@@ -24,6 +28,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
+    "i18next-cli": "catalog:",
     "playwright": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

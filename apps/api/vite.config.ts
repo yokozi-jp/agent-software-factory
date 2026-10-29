@@ -36,9 +36,9 @@ export default defineConfig({
           include: ["src/**/*.test.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
           exclude: ["**/node_modules/**", "**/__fixtures__/**", "src/**/*.unit.test.ts"],
-          // Keycloak の起動に時間がかかる。
+          // Keycloak の起動に時間がかかる。待ちの上限 (test/global-setup.ts の 300 秒) より長くする。
           globalSetup: ["./test/global-setup.ts"],
-          hookTimeout: 240_000,
+          hookTimeout: 360_000,
           testTimeout: 60_000,
         },
       },

@@ -65,6 +65,10 @@ catalog:
   lucide-react: ^1.62.0
   shadcn: ^4.22.1
   tw-animate-css: ^1.4.0
+  # apps/web and packages/i18n: the text of the screens (docs/adr/0044). i18next-cli is pinned, as it is the key check of the gate.
+  i18next: ^26.5.11
+  react-i18next: ^17.1.9
+  i18next-cli: 1.80.5
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:
@@ -81,6 +85,8 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  # i18next-cli の依存。postinstall は実行しない。ネイティブの binary は optionalDependencies の別 package で入る。
+  "@swc/core": false
 # nx 24.0.0 was younger than pnpm's minimumReleaseAge when added by `nx init`.
 # Remove these entries once the version is old enough.
 minimumReleaseAgeExclude:

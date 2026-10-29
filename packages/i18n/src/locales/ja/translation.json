@@ -1,0 +1,16 @@
+{
+  "app": {
+    "name": "agent-software-factory"
+  },
+  "home": {
+    "sampleButton": "ボタン"
+  },
+  "problem": {
+    "generic": "エラーが発生しました。時間をおいてもう一度お試しください。",
+    "validation": "入力内容に誤りがあります。内容を確認してください。",
+    "unauthenticated": "ログインしていません。ログインしてください。",
+    "sessionExpired": "ログインの有効期限が切れました。もう一度ログインしてください。",
+    "forbiddenOrigin": "この操作は許可されていません。",
+    "rateLimited": "操作が多すぎます。しばらくしてからもう一度お試しください。"
+  }
+}

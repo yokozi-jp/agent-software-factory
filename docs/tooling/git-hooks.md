@@ -10,6 +10,8 @@ tags: [tooling, reference, lefthook, git-hooks]
 hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定されます ([ADR 0001](../adr/0001-lefthook-for-git-hooks.md))。
 型チェックとテストは hook では実行せず、CI に任せます。例外は `tools/scripts` のテストで、`tools/scripts/**`、`.kiro/hooks/*.json`、Nx の `sharedGlobals` のどれかのファイルを変えた commit の pre-commit が `nx test scripts` を実行します (Nx の cache が効くので、変わっていなければすぐ終わります)。本物の道具を使うテスト (`*.tools.test.ts`) は数分かかるので、pre-commit ではなく pre-push の `nx-affected-test-tools` が、push するブランチが影響を与える project について `nx affected -t test-tools` として実行します。何が影響を受けるかは、`tools/scripts/package.json` の `test-tools` の `inputs` で決まり、結果が変わらなければ Nx の cache ですぐ終わります。mise の道具が要るので、`mise install --locked` を済ませておきます。CI はこの project を変えたすべての PR で実行します。
 
+文言のキーの検査 (`i18n-keys`、[ADR 0044](../adr/0044-i18next-for-texts.md)) も pre-push の `nx-affected-i18n-keys` が `nx affected -t i18n-keys` として実行します。数秒で終わり、結果が変わらなければ Nx の cache ですぐ終わります。
+
 ## 実行内容
 
 どの hook のどの job が何を確かめ、どの CI の検証の写しかは、[保証カタログ](assurance-catalog.md) の「ローカルの写し」の列と、`lefthook: …` の行にあります。hook は飛ばせるので、保証には数えません。

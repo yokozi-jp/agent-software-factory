@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: grilling の推奨の書き方
-description: grilling と wayfinder の判断のチケットで、質問ごとの推奨 (➡️) に、標準か、出典、避けるアンチパターン、規約と ADR との関係、判断を添える形と、時刻や乱数の注入の案をテストの境界ごとに比べる規則を定める。grilling のラウンドを書くとき、選択肢を比べて推奨を出すときに読む。
+description: grilling と wayfinder の判断のチケットで、質問ごとの推奨 (➡️) に、標準か、出典、避けるアンチパターン、規約と ADR との関係、判断を添える形と、時刻や乱数の注入の案をテストの境界ごとに比べる規則と、層や部品の置き場所の推奨の前に設計の流派の定番の答えを確かめる規則を定める。grilling のラウンドを書くとき、選択肢を比べて推奨を出すときに読む。
 tags: [agents, skills, grilling, wayfinder, convention]
 ---
 
@@ -23,5 +23,6 @@ tags: [agents, skills, grilling, wayfinder, convention]
 - 取り込んだ規約 (`about.md` がある領域) と ADR は、推奨を出す前に読み、外れるものを「規約と ADR」の行に挙げます。外れる推奨は、[docs の書き方](../knowledge/documentation-authoring.md) の「ADR を書くかどうか」で ADR が要るかも確かめます。
 - 出典は、そのラウンドの前に確かめたものだけを書きます。確かめていない記憶は「判断」の行に、確かめていないと書いて置きます。
 - 時刻、乱数、ID、外部の呼び出しの注入のように、テストで値を固定したい依存の渡し方を比べるときは、テストの境界ごと (関数の unit test、入口の route やワーカーのテスト、DB や外部を使う結合テスト) に固定できるかを確かめて、比べる表に入れます。application の関数だけで比べると、入口のテストで固定できない案を見落とします ([システム全体の日時とタイムゾーンの扱いを決める](https://github.com/yokozi-jp/agent-software-factory/issues/365) で、`Clock` の比較を application の層だけで行い、入口の欠点に気づくのが遅れた)。
+- 規則やチェックをどの層やどの部品に置くか (認可、検証、失敗の扱いなど) を推奨するときは、最初のラウンドの前に、このリポジトリが採る設計の流派での定番の答えを確かめて、比べる案に入れます。流派は、関数型ドメインモデリング ([ADR 0027](../adr/0027-domain-model-as-pure-functions-and-unions.md))、Effect ([ADR 0028](../adr/0028-effect-in-application-and-infrastructure.md))、DDD の集約とアプリケーションサービスです。一般論の比較だけで推奨すると、流派の定番の形 (関数型ドメインモデリングのアクセストークンの型など) を後から出すことになり、推奨が何度も入れ替わります ([役割と操作の認可の表と、そのテストの書き方を決める](https://github.com/yokozi-jp/agent-software-factory/issues/388) で、認可の置き場所の推奨が 3 回入れ替わった)。
 
 ラウンドを送る前に、すべての ➡️ に 4 つの行があることを確かめます。

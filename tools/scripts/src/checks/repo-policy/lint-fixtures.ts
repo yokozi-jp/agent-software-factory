@@ -147,11 +147,15 @@ const runtimeAnnotations = [
 // fixtures in `dir` of every package under packages/ (`dir` is src or src/<layer>), and whether there is a
 // package (or a module, for the layers) to ask them of.
 // db has fixtures of its own (dbBoundaries); its override is not one of packages/*/src/**, so they say nothing about these.
-// bypass.ts is the fixture of the paths that stop the imports bypassing the Outbox (bypassGuards), not of the import
-// boundaries or the other rules asked of a directory.
+// bypass.ts is the fixture of the paths that stop the imports bypassing the Outbox (bypassGuards), and with-tables.ts the
+// fixture of withTables (withTablesGuards); neither is a fixture of the import boundaries or the other rules asked of a
+// directory.
 function fixtures(tree: Tree, dir: string): string[] {
   const pattern = new RegExp(`^packages/(?!db/)[^/]+/${dir}/__fixtures__/`);
-  return tree.paths.filter((path) => pattern.test(path) && !path.endsWith("/bypass.ts"));
+  return tree.paths.filter(
+    (path) =>
+      pattern.test(path) && !path.endsWith("/bypass.ts") && !path.endsWith("/with-tables.ts"),
+  );
 }
 const hasPackage = (tree: Tree, modulePackagesOnly: boolean): boolean =>
   (modulePackagesOnly ? modulePackageNames(tree) : packageNames(tree)).length > 0;
@@ -317,6 +321,8 @@ interface BypassPlace {
   readonly stopsConnection: boolean;
   // Whether the fixture is a *.test.ts file, which the override of the entry files and the tests reaches.
   readonly testFile: boolean;
+  // Whether the override stops the raw SQL of Kysely (`sqlImportNames`): the modules do; shared and apps/api write SQL.
+  readonly stopsSql: boolean;
 }
 
 const apiFixtures = /^apps\/api\/src\/(?:.*\/)?__fixtures__\/[^/]+\.tsx?$/;
@@ -329,6 +335,7 @@ const packagePlace = (dir: string): BypassPlace => ({
   fixtureFile: new RegExp(`^packages/(?!db/)[^/]+/${dir}/__fixtures__/(?:.*/)?[^/]+\\.tsx?$`),
   stopsConnection: true,
   testFile: false,
+  stopsSql: true,
 });
 
 function bypassPlaces(tree: Tree): BypassPlace[] {
@@ -347,6 +354,7 @@ function bypassPlaces(tree: Tree): BypassPlace[] {
         fixtureFile: apiFixtures,
         stopsConnection: true,
         testFile: false,
+        stopsSql: false,
       },
       {
         name: "the entry files and the tests of apps/api/src",
@@ -354,6 +362,7 @@ function bypassPlaces(tree: Tree): BypassPlace[] {
         fixtureFile: apiFixtures,
         stopsConnection: false,
         testFile: true,
+        stopsSql: false,
       },
     );
   if (packageNames(tree).includes("db"))
@@ -363,6 +372,7 @@ function bypassPlaces(tree: Tree): BypassPlace[] {
       fixtureFile: /^packages\/db\/src\/__fixtures__\/[^/]+\.tsx?$/,
       stopsConnection: false,
       testFile: false,
+      stopsSql: false,
     });
   return places;
 }
@@ -378,24 +388,42 @@ function stringArray(text: string, name: string): string[] | undefined {
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
+// The raw SQL of Kysely that a module may not import: `import { sql } from "kysely"` or `export { sql } from "kysely"`,
+// on the line below the disable comment. The names are the ones of `sqlImportNames`.
+const sqlUnderDisableComment = (name: string): RegExp =>
+  new RegExp(
+    `^[ \\t]*//[ \\t]*oxlint-disable-next-line[ \\t]+no-restricted-imports\\b[^\\n]*\\n[ \\t]*(?:import|export)\\s(?!type\\b)[^\\n]*\\b${escapeRegExp(name)}\\b[^\\n]*"kysely"`,
+    "m",
+  );
+
 const importUnderDisableComment = (name: string): RegExp =>
   new RegExp(
     `^[ \\t]*//[ \\t]*oxlint-disable-next-line[ \\t]+no-restricted-imports\\b[^\\n]*\\n[ \\t]*import\\s(?!type\\b)[^\\n]*"${escapeRegExp(name)}"`,
     "m",
   );
 
-// The messages of the imports that bypass the Outbox and the transaction say what to write instead, and name the ADR,
-// so that an agent that is stopped knows the way out. Oxlint reports a message with the import it stops; whether the
-// text says the right thing is read here, from the constants of vite.config.ts.
-const bypassMessages: readonly (readonly [string, string])[] = [
-  ["outboxBypassMessage", "enqueueOutbox"],
-  ["connectionMessage", "inTenantTransaction"],
+// The messages of the imports that bypass the Outbox and the transaction, and of the raw SQL and withTables that reach
+// the tables of another module, say what to write instead and name the ADR, so that an agent that is stopped knows the
+// way out. Oxlint reports a message with the code it stops; whether the text says the right thing is read here, from the
+// constants of vite.config.ts. Each entry: the constant, what the message must mention, and what it is the message of.
+const bypassMessages: readonly (readonly [string, string, string])[] = [
+  [
+    "outboxBypassMessage",
+    "enqueueOutbox",
+    "an import that would bypass the Outbox and the transaction",
+  ],
+  [
+    "connectionMessage",
+    "inTenantTransaction",
+    "an import that would bypass the Outbox and the transaction",
+  ],
+  ["sqlMessage", "public API function", "an import of raw SQL in a module"],
+  ["withTablesMessage", "public API function", "a call of withTables outside infrastructure"],
 ];
 
 function bypassMessageFailures(config: string): string[] {
-  const rule =
-    "The message of an import that would bypass the Outbox and the transaction says what to write instead and names the ADR (docs/adr/0029).";
-  return bypassMessages.flatMap(([name, fix]) => {
+  return bypassMessages.flatMap(([name, fix, subject]) => {
+    const rule = `The message of ${subject} says what to write instead and names the ADR (docs/adr/0029).`;
     const message = new RegExp(`^const ${name} =((?:\\s*"[^"]*"\\s*\\+?)+);`, "m").exec(
       config,
     )?.[1];
@@ -416,28 +444,101 @@ export function bypassGuards(tree: Tree): string[] {
   if (config === "") return [];
   const outbox = stringArray(config, "outboxPackages");
   const connection = stringArray(config, "connectionPackages");
+  const sql = stringArray(config, "sqlImportNames");
   const absent = [
     ["outboxPackages", outbox],
     ["connectionPackages", connection],
+    ["sqlImportNames", sql],
   ]
     .filter(([, names]) => names === undefined)
     .map(
       ([list]) =>
-        `vite.config.ts has no ${String(list)} array. It lists the packages that bypass the Outbox and the transaction (the SDK clients of SQS and SES, and pg), which no-restricted-imports stops (docs/adr/0029).`,
+        `vite.config.ts has no ${String(list)} array. It lists the imports that bypass the Outbox, the transaction and the types of a module (the SDK clients of SQS and SES, pg, and the raw SQL of Kysely), which no-restricted-imports stops (docs/adr/0029).`,
     );
-  if (outbox === undefined || connection === undefined) return absent;
+  if (outbox === undefined || connection === undefined || sql === undefined) return absent;
   const missing = bypassPlaces(tree).flatMap(
-    ({ name: place, hint, fixtureFile, stopsConnection, testFile }) => {
+    ({ name: place, hint, fixtureFile, stopsConnection, testFile, stopsSql }) => {
       const texts = tree.paths
         .filter((path) => fixtureFile.test(path) && path.endsWith(".test.ts") === testFile)
         .map((path) => tree.read(path));
-      return [...outbox, ...(stopsConnection ? connection : [])]
-        .filter((name) => !texts.some((text) => importUnderDisableComment(name).test(text)))
+      const needs = [
+        ...[...outbox, ...(stopsConnection ? connection : [])].map(
+          (name) => [name, importUnderDisableComment(name)] as const,
+        ),
+        ...(stopsSql ? sql : []).map((name) => [name, sqlUnderDisableComment(name)] as const),
+      ];
+      return needs
+        .filter(([, fixture]) => !texts.some((text) => fixture.test(text)))
         .map(
-          (name) =>
+          ([name]) =>
             `vite.config.ts stops the import of ${name} in ${place}, but no fixture there has \`oxlint-disable-next-line no-restricted-imports\` on the line above an import of it. Add one to ${hint}, so that an override that stops reaching ${place}, or a rule that drops ${name}, fails \`vp check\` (docs/adr/0029).`,
         );
     },
   );
   return [...missing, ...bypassMessageFailures(config)];
+}
+
+// ADR 0029: `withTables` gives a transaction the types of another database, so it is called in infrastructure/ only.
+// vite.config.ts stops it with no-restricted-properties in the override for all of packages/*/src, and in the overrides
+// of domain and application, which each carry their own copy (Oxlint keeps only the last override that sets a rule).
+// Each such place has a fixture (#43) in some package, <dir>/__fixtures__/with-tables.ts: a call on the line below
+// `oxlint-disable-next-line no-restricted-properties`. infrastructure has one with no disable comment, so that an
+// override that reaches it too fails `vp check`.
+const withTablesUnderDisableComment =
+  /^[ \t]*\/\/[ \t]*oxlint-disable-next-line[ \t]+no-restricted-properties\b[^\n]*\n[^\n]*\.withTables\b/m;
+
+export function withTablesGuards(tree: Tree): string[] {
+  if (!hasPackage(tree, false) || !tree.read("vite.config.ts").includes("withTablesEntry"))
+    return [];
+  const layers = hasPackage(tree, true) ? objectKeys(tree.read("vite.config.ts"), "layers") : [];
+  const withTables = (dir: string) =>
+    tree.paths
+      .filter((path) =>
+        new RegExp(`^packages/(?!db/)[^/]+/${dir}/__fixtures__/with-tables\\.ts$`).test(path),
+      )
+      .map((path) => tree.read(path));
+  const failures = ["src", ...layers.filter((l) => l !== "infrastructure").map((l) => `src/${l}`)]
+    .filter((dir) => !withTables(dir).some((text) => withTablesUnderDisableComment.test(text)))
+    .map(
+      (dir) =>
+        `vite.config.ts stops withTables outside infrastructure/, but no packages/*/${dir}/__fixtures__/with-tables.ts has \`oxlint-disable-next-line no-restricted-properties\` on the line above a call of it. Add one, so that an override that stops reaching ${dir}/ fails \`vp check\` (docs/adr/0029).`,
+    );
+  if (
+    layers.includes("infrastructure") &&
+    !withTables("src/infrastructure").some(
+      (text) => text.includes(".withTables") && !text.includes("oxlint-disable"),
+    )
+  )
+    failures.push(
+      "No packages/*/src/infrastructure/__fixtures__/with-tables.ts has a call of withTables with no disable comment, so nothing shows that infrastructure/ may call it (docs/adr/0029).",
+    );
+  return failures;
+}
+
+// ADR 0029: SQL that changes the role or the tenant of the connection is written in the helper of the transaction only.
+// vite.config.ts turns tenant-sql/no-session-setting on for packages/shared/src and apps/api/src, each of which has a
+// fixture (#43) that the rule must report, so that an override that stops reaching one of them fails `vp check`.
+const sessionSettingAnnotation = "oxlint-disable-next-line tenant-sql/no-session-setting";
+const sessionSettingPlaces = [
+  { package: "packages/shared/src", exists: (tree: Tree) => packageNames(tree).includes("shared") },
+  {
+    package: "apps/api/src",
+    exists: (tree: Tree) => tree.paths.some((path) => path.startsWith("apps/api/src/")),
+  },
+];
+
+export function sessionSettingGuards(tree: Tree): string[] {
+  if (!tree.read("vite.config.ts").includes("tenant-sql/no-session-setting")) return [];
+  return sessionSettingPlaces
+    .filter(({ exists }) => exists(tree))
+    .filter(
+      ({ package: place }) =>
+        !tree.paths
+          .filter((path) => path.startsWith(`${place}/`) && fixtureFile.test(path))
+          .some((path) => tree.read(path).includes(sessionSettingAnnotation)),
+    )
+    .map(
+      ({ package: place }) =>
+        `vite.config.ts turns on tenant-sql/no-session-setting for ${place}, but no fixture there has \`${sessionSettingAnnotation}\`. Add a SET ROLE or set_config in a sql template to ${place}/__fixtures__/session-setting.ts, so that an override that stops reaching ${place} fails \`vp check\` (docs/adr/0029).`,
+    );
 }

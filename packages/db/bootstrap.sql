@@ -8,6 +8,9 @@
 -- - migrator: migration を流す。表とスキーマの所有者。
 -- - app_user: 業務の処理が使う。
 -- - auth_service: Better Auth だけが使う。
+-- - <モジュール>_module (claim_module、approval_module、closing_module): モジュールごとの NOLOGIN のロール。
+--   app_user が SET LOCAL ROLE で切り替えて使い、モジュールの表の所有を DB の権限で止める (Issue #268、
+--   docs/adr/0029)。権限は migration の GRANT で与える。
 
 DO $$
 DECLARE
@@ -18,6 +21,16 @@ BEGIN
       -- 権限の属性は明示する。RLS を迂回するロールは作らない (docs/adr/0011)。
       EXECUTE format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS', role_name);
     END IF;
+  END LOOP;
+
+  -- モジュールのロール。ログインできず、RLS も迂回しない。app_user には INHERIT FALSE で入れる: 権限を継承せず、
+  -- SET ROLE で切り替えたトランザクションの中でだけ、そのロールの権限で動く。INHERIT の指定は PostgreSQL 16 以降。
+  FOREACH role_name IN ARRAY ARRAY['claim_module', 'approval_module', 'closing_module'] LOOP
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
+      EXECUTE format('CREATE ROLE %I NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS', role_name);
+    END IF;
+    -- 何度流しても同じ状態にする。すでに入っていても、INHERIT と SET の指定を上書きする。
+    EXECUTE format('GRANT %I TO app_user WITH INHERIT FALSE, SET TRUE', role_name);
   END LOOP;
 
   -- PostgreSQL は PUBLIC に CONNECT を既定で与えるので、この GRANT だけでは接続を絞らない。

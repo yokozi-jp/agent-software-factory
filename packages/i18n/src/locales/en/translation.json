@@ -1,0 +1,16 @@
+{
+  "app": {
+    "name": "agent-software-factory"
+  },
+  "home": {
+    "sampleButton": "Button"
+  },
+  "problem": {
+    "generic": "Something went wrong. Please try again later.",
+    "validation": "Some of the input is invalid. Please check it.",
+    "unauthenticated": "You are not signed in. Please sign in.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "forbiddenOrigin": "This operation is not allowed.",
+    "rateLimited": "Too many requests. Please try again in a while."
+  }
+}

@@ -84,7 +84,7 @@ sources:
 
 - **置き場所**: `packages/db/migrations/<UTC の日時 14 桁>_<名前>.sql`。足すときは `dbmate new` ではなく、下のひな形を写します。`dbmate new` のひな形は down が空だからです。
 - **流し方**: `packages/db` の `pnpm db:migrate` (`pnpm exec nx db:migrate db`) (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `packages/db/src/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
-- **ロール**: `migrator`、`app_user`、`auth_service` は migration ではなく、`packages/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
+- **ロール**: `migrator`、`app_user`、`auth_service` と、モジュールごとの `NOLOGIN` のロール (`claim_module` など。[ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md)) は migration ではなく、`packages/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
 - **`lock_timeout`**: up の先頭に `SET LOCAL lock_timeout = '5s';` を書きます。ロックを待ち続けて、後ろの要求を詰まらせないためです。
 - **`transaction:false`**: `CREATE INDEX CONCURRENTLY` のように、トランザクションの中で実行できない文を含むファイルだけ、`-- migrate:up transaction:false` にします。トランザクションの外では `SET LOCAL` が効かないので、`lock_timeout` は要りません。
 - **down**: `DO $$ BEGIN RAISE EXCEPTION 'irreversible …'; END $$;` だけを書きます。dbmate は down が空だと `rollback` が成功して履歴だけを消すので、失敗させるためです。
