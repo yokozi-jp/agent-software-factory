@@ -28,7 +28,9 @@
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {
+    "@storybook/react-vite": "catalog:",
     "@types/react": "catalog:",
+    "storybook": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },
