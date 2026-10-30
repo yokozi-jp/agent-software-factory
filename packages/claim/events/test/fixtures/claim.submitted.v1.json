@@ -1,0 +1,19 @@
+{
+  "id": "0198f6e0-0000-7000-8000-000000000001",
+  "tenantId": "0198f6e0-0000-7000-8000-000000000090",
+  "kind": "claim.submitted",
+  "version": 1,
+  "occurredAt": "2026-10-30T01:02:03.000Z",
+  "claimId": "0198f6e0-0000-7000-8000-000000000010",
+  "round": 1,
+  "applicantId": "emp-001",
+  "managerId": "emp-100",
+  "lines": [
+    {
+      "category": "transport",
+      "usedOn": "2026-10-28",
+      "amount": 1200
+    }
+  ],
+  "total": 1200
+}

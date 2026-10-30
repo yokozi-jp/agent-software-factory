@@ -123,8 +123,8 @@ const apps: Record<string, string> = {
     .join(""),
 };
 
-// The packages in the shape of a module named in knip.jsonc, which depend on effect before their application/ and
-// infrastructure/ import it: the modules, and module-fixtures, whose fixtures alone import it.
+// The packages in the shape of a module, which depend on effect: the modules import it in infrastructure/transaction.ts
+// (the Tx tag), so knip.jsonc does not list them; module-fixtures, whose fixtures alone import it, is listed.
 const modules = ["claim", "approval", "closing", "module-fixtures"];
 for (const name of modules) {
   apps[`packages/${name}/package.json`] = JSON.stringify(
@@ -142,11 +142,11 @@ for (const name of modules) {
     undefined,
     2,
   );
-  apps[`packages/${name}/src/index.ts`] = "export {};\n";
+  apps[`packages/${name}/src/index.ts`] =
+    name === "module-fixtures" ? "export {};\n" : 'import type {} from "effect";\nexport {};\n';
 }
 
-// The events package of each module (docs/adr/0026): knip.jsonc lists zod and shared in its ignoreDependencies, since
-// its index.ts is empty until the sample feature writes the schemas.
+// The events package of each module (docs/adr/0026): a workspace of its own, which Knip reads like the modules.
 for (const name of modules.filter((module) => module !== "module-fixtures")) {
   apps[`packages/${name}/events/package.json`] = JSON.stringify(
     {
@@ -155,7 +155,6 @@ for (const name of modules.filter((module) => module !== "module-fixtures")) {
       type: "module",
       exports: { ".": "./src/index.ts" },
       scripts: { check: "vp check" },
-      dependencies: { "@agent-software-factory/shared": "workspace:*", zod: "catalog:" },
       devDependencies: { "vite-plus": "catalog:" },
       nx: { name: `${name}-events` },
     },
