@@ -171,6 +171,12 @@ pre-commit:
             run: pnpm exec nx run-many -t lint-effect
 
 pre-push:
+  # The jobs run in parallel: the slow ones (nx-affected-test, nx-affected-test-tools) are independent, and run in
+  # sequence they took the sum of their times (about 390 s). Measured 2026-10-30 with --skip-nx-cache under a load
+  # average of about 30: the four slow commands together took 294 s, and api:test did not fail. It had failed
+  # when the IdP was Keycloak, which waited 180 s to start (docs/tooling/worktrees.md); node-oidc-provider (#441)
+  # replaced it. Each job that reads the pushed refs has use_stdin: lefthook gives every job the whole of stdin.
+  parallel: true
   commands:
     guard-push:
       run: tools/scripts/sh/guard-push.sh
