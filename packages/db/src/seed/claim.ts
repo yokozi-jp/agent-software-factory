@@ -1,14 +1,24 @@
 import type { ClaimDatabase } from "@agent-software-factory/claim";
 import type { Kysely } from "kysely";
 
-import { seededAt, seededFaker, seedProgram, type SeedTenant, type TableSeeds } from "./context.ts";
+import {
+  createFaker,
+  seededAt,
+  seedProgram,
+  type SeedTenant,
+  type TableSeeds,
+  type TablesOf,
+} from "./context.ts";
 
-type ClaimTables = ClaimDatabase extends Kysely<infer Tables> ? Tables : never;
+type ClaimTables = TablesOf<ClaimDatabase>;
+
+// Any fixed number: the same seed gives the same rows on every run (docs/adr/0036).
+const fakerSeed = 1;
 
 /** The rows of each table of the claim schema, for one tenant. */
 const tables: TableSeeds<ClaimTables> = {
   "claim.t_claim": async (db, { tenantId, applicantId }) => {
-    const faker = seededFaker(332);
+    const faker = createFaker(fakerSeed);
     const common = {
       tenant_id: tenantId,
       created_at: seededAt,

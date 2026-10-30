@@ -7,9 +7,7 @@ import { Kysely, PostgresDialect, sql, type Transaction } from "kysely";
 import { Pool } from "pg";
 
 import { seedClaim } from "./claim.ts";
-import { tenants } from "./context.ts";
-
-type TablesOf<Database> = Database extends Kysely<infer Tables> ? Tables : never;
+import { tenants, type TablesOf } from "./context.ts";
 
 /** The tables of every module that the seed writes. When a module gets a seed, intersect its tables here (`&`). */
 export type SeedTables = TablesOf<ClaimDatabase>;

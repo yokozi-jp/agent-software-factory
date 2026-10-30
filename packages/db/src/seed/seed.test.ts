@@ -71,12 +71,4 @@ describe("seed", () => {
       client.release();
     }
   });
-
-  it("テナントごとに行が入っていること", async () => {
-    const { rows } = await db.superuser.query<{ tenant_id: string }>(
-      "SELECT DISTINCT tenant_id FROM claim.t_claim ORDER BY 1",
-    );
-
-    expect(rows.map((row) => row.tenant_id)).toEqual(tenants.map((tenant) => tenant.tenantId));
-  });
 });

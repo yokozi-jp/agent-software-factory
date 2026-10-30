@@ -1,4 +1,4 @@
-import { fakerJA } from "@faker-js/faker";
+import { base, en, Faker, ja } from "@faker-js/faker";
 import type { Kysely } from "kysely";
 
 /** The tenant that a module writes its rows for, and the user who applies in it. */
@@ -30,13 +30,16 @@ export const seededAt = "2026-01-05T09:00:00Z";
 export const seedProgram = "seed";
 
 /**
- * The faker for the rows that grow in number, with a fixed seed. A new version of faker may give other values, so no test
- * writes a value of the seed as an expectation (docs/adr/0036).
+ * A faker of its own, with a fixed seed and the same locales as `fakerJA`. Each caller makes one, so the values of one
+ * module do not depend on which module called before (a shared `fakerJA` would need a `seed()` call before each use).
+ * A new version of faker may give other values, so no test writes a value of the seed as an expectation (docs/adr/0036).
  */
-export function seededFaker(seed: number): typeof fakerJA {
-  fakerJA.seed(seed);
-  return fakerJA;
+export function createFaker(seed: number): Faker {
+  return new Faker({ locale: [ja, en, base], seed });
 }
+
+/** The tables of a Kysely type: `Kysely<Tables>` gives `Tables`. */
+export type TablesOf<Database> = Database extends Kysely<infer Tables> ? Tables : never;
 
 /**
  * The map of a module: one writer for each table of its schema, for one tenant. The mapped type has a key for every
