@@ -17,6 +17,12 @@ describe("checkConventions", () => {
   });
 
   afterEach(async () => {
+    // ロールの属性とメンバーシップはクラスタ全体のもので、複製した DB に閉じない。壊した検出力のテストの後に戻す。
+    await db.superuser.query(
+      `ALTER ROLE app_user NOSUPERUSER NOCREATEROLE NOCREATEDB;
+       ALTER ROLE auth_service NOSUPERUSER NOCREATEROLE NOCREATEDB;
+       REVOKE migrator FROM app_user`,
+    );
     await db.close();
   });
 
@@ -110,14 +116,21 @@ describe("checkConventions", () => {
       expected: ["[column-types] claim.t_x.amount: money 型は使わず numeric にする"],
     },
     {
-      name: "float 型",
-      sql: `ALTER TABLE claim.t_x ADD COLUMN rate double precision`,
-      expected: ["[column-types] claim.t_x.rate: float 型は使わず numeric にする"],
-    },
-    {
       name: "real 型",
       sql: `ALTER TABLE claim.t_x ADD COLUMN rate real`,
-      expected: ["[column-types] claim.t_x.rate: float 型は使わず numeric にする"],
+      expected: [
+        "[column-types] claim.t_x.rate: real 型は使わず、浮動小数点が必要なら double precision にする",
+      ],
+    },
+    {
+      name: "money 型の配列",
+      sql: `ALTER TABLE claim.t_x ADD COLUMN amounts money[]`,
+      expected: ["[column-types] claim.t_x.amounts: money 型は使わず numeric にする"],
+    },
+    {
+      name: "money 型のドメイン",
+      sql: `CREATE DOMAIN claim.d_money AS money; ALTER TABLE claim.t_x ADD COLUMN amount claim.d_money`,
+      expected: ["[column-types] claim.t_x.amount: money 型は使わず numeric にする"],
     },
     {
       name: "タイムゾーンなしの timestamp",
@@ -182,6 +195,45 @@ describe("checkConventions", () => {
       as: "superuser",
       table: "app_user",
       expected: ["[privileges] app_user が claim スキーマに CREATE できる"],
+    },
+    {
+      name: "auth_service の auth スキーマへの CREATE",
+      sql: `GRANT CREATE ON SCHEMA auth TO auth_service`,
+      as: "superuser",
+      table: "auth_service",
+      expected: ["[privileges] auth_service が auth スキーマに CREATE できる"],
+    },
+    {
+      name: "app_user の CREATEROLE",
+      sql: `ALTER ROLE app_user CREATEROLE`,
+      as: "superuser",
+      table: "CREATEROLE",
+      expected: ["[privileges] app_user が CREATEROLE を持つ"],
+    },
+    {
+      name: "auth_service の SUPERUSER",
+      sql: `ALTER ROLE auth_service SUPERUSER`,
+      as: "superuser",
+      table: "SUPERUSER",
+      expected: ["[privileges] auth_service が SUPERUSER を持つ"],
+    },
+    {
+      name: "app_user が migrator の権限を継承する",
+      sql: `GRANT migrator TO app_user`,
+      as: "superuser",
+      table: "継承",
+      expected: ["[privileges] app_user が migrator の権限を継承している"],
+    },
+    {
+      name: "app_user が関数を所有する",
+      sql: `CREATE FUNCTION claim.f_x() RETURNS int LANGUAGE sql AS 'SELECT 1';
+            ALTER FUNCTION claim.f_x() OWNER TO app_user`,
+      as: "superuser",
+      table: "f_x",
+      expected: [
+        "[privileges] app_user が claim.f_x を所有している (所有者は DDL を実行できる)",
+        "[privileges] PUBLIC が 関数 claim.f_x の EXECUTE を持つ",
+      ],
     },
     {
       name: "auth_service のデータベースへの CREATE",
@@ -250,6 +302,13 @@ describe("checkConventions", () => {
     expect(await checkConventions(db.superuser)).toEqual([]);
   });
 
+  it("double precision は許すこと (規約が、浮動小数点が必要なときに使う型として挙げている)", async () => {
+    await createCompliantTable(db);
+    await db.migrator.query(`ALTER TABLE claim.t_x ADD COLUMN rate double precision`);
+
+    expect(await checkConventions(db.superuser)).toEqual([]);
+  });
+
   it("スキーマの名前が snake_case でないことを見つけること", async () => {
     await db.superuser.query(`CREATE SCHEMA "BadSchema"`);
 
@@ -268,7 +327,9 @@ describe("checkConventions", () => {
     });
 
     it("auth スキーマの例外を外すと、auth の表が規約に反すると返すこと", async () => {
-      const withoutAuth = conventionExceptions.filter((exception) => exception.scope !== "auth");
+      const withoutAuth = conventionExceptions.filter(
+        (exception) => exception.scope !== "auth" && !exception.scope.startsWith("auth."),
+      );
 
       const failures = await checkConventions(db.superuser, withoutAuth);
 
@@ -286,6 +347,29 @@ describe("checkConventions", () => {
       expect(await checkConventions(db.superuser)).toContain(
         "[privileges] app_user が auth スキーマに CREATE できる",
       );
+    });
+
+    it("auth に表を足すと、外部キーと一意制約の例外は当たらないこと", async () => {
+      await db.migrator.query(
+        `CREATE TABLE auth.new_table (id uuid PRIMARY KEY, email text UNIQUE)`,
+      );
+
+      expect(await checkConventions(db.superuser)).toContain(
+        "[unique-constraint] auth.new_table に UNIQUE 制約 new_table_email_key がある。ユニークインデックスにする",
+      );
+    });
+
+    it("対象のスキーマか表がない例外は効かず、その例外を失敗として返すこと", async () => {
+      const exceptions: ConventionException[] = [
+        ...conventionExceptions,
+        { scope: "ghost", check: "all", reason: "消えたスキーマの例外" },
+        { scope: "claim.t_ghost", check: "naming", reason: "消えた表の例外" },
+      ];
+
+      const failures = await checkConventions(db.superuser, exceptions);
+
+      expect(failures).toContain("[exception] 例外 ghost の all の対象がない");
+      expect(failures).toContain("[exception] 例外 claim.t_ghost の naming の対象がない");
     });
 
     it("表を指す例外が、その表だけを外すこと", async () => {

@@ -19,7 +19,7 @@ export const conventionChecks = [
 ] as const;
 type ConventionCheck = (typeof conventionChecks)[number];
 
-/** 検査から外す対象。理由が空だと、その例外は効かず、検査が失敗を返す。 */
+/** 検査から外す対象。理由が空か、対象がないと、その例外は効かず、検査が失敗を返す。 */
 export interface ConventionException {
   /** スキーマ (`auth`) か、表 (`auth.rateLimit`)。 */
   readonly scope: string;
@@ -31,10 +31,15 @@ export interface ConventionException {
 const betterAuthReason =
   "Better Auth が生成する表の定義のままにする (docs/adr/0025 の「docs/db の規約の例外」)";
 
+/** 外部キーと UNIQUE 制約を持つ auth の表。Better Auth が生成する定義にある。表を足すときは、ここにも足すか決める。 */
+const authTablesWith = {
+  "foreign-key": ["session", "account", "member", "invitation"],
+  "unique-constraint": ["user", "session", "organization", "rateLimit"],
+} as const;
+
 /** 検査の設定。例外を足すときは、理由を書く。 */
 export const conventionExceptions: readonly ConventionException[] = [
   // auth: Better Auth の生成物。名前、共通カラム、型、RLS は規約に従えない (docs/adr/0025)。
-  // 外部キーと一意制約は、Better Auth が生成する表の定義にあり、規約と合わない。
   { scope: "auth", check: "naming", reason: betterAuthReason },
   { scope: "auth", check: "reserved-word", reason: betterAuthReason },
   { scope: "auth", check: "common-columns", reason: betterAuthReason },
@@ -44,8 +49,14 @@ export const conventionExceptions: readonly ConventionException[] = [
     check: "row-level-security",
     reason: "auth の表は RLS の対象にしない (docs/adr/0011)",
   },
-  { scope: "auth", check: "foreign-key", reason: betterAuthReason },
-  { scope: "auth", check: "unique-constraint", reason: betterAuthReason },
+  // 外部キーと UNIQUE 制約は、Better Auth が生成する表の定義にある。スキーマ全体ではなく、表ごとに外す。
+  ...(["foreign-key", "unique-constraint"] as const).flatMap((check) =>
+    authTablesWith[check].map((table) => ({
+      scope: `auth.${table}`,
+      check,
+      reason: betterAuthReason,
+    })),
+  ),
   // migrations: dbmate の履歴の表 (docs/adr/0025)。dbmate が作る定義のままにする。
   { scope: "migrations", check: "all", reason: "dbmate の履歴の表。dbmate が作る定義のままにする" },
 ];
@@ -60,6 +71,12 @@ interface Violation {
   readonly message: string;
 }
 
+const violation = (
+  check: ConventionCheck,
+  where: { schema: string; table?: string },
+  message: string,
+): Violation => ({ check, ...where, message });
+
 interface TableRow {
   readonly schema: string;
   readonly table: string;
@@ -72,6 +89,8 @@ interface ColumnRow {
   readonly table: string;
   readonly column: string;
   readonly typname: string;
+  /** 配列の要素の型か、ドメインの元の型 (1 段)。どちらでもなければ typname と同じ。 */
+  readonly baseTypname: string;
   readonly notNull: boolean;
   /** IDENTITY 列なら `a` (ALWAYS) か `d` (BY DEFAULT)。そうでなければ空。 */
   readonly identity: string;
@@ -92,11 +111,22 @@ interface Snapshot {
   readonly columns: ColumnRow[];
   readonly constraints: ConstraintRow[];
   readonly reserved: Set<string>;
+  /** 表 (`schema.table`) ごとの列と制約。 */
+  columnsOf(table: TableRow): ColumnRow[];
+  constraintsOf(table: TableRow, type: ConstraintRow["type"]): ConstraintRow[];
 }
 
 // システムのスキーマ (pg_catalog、pg_toast、information_schema) は見ない。
 const userSchema = (column: string) => `${column} !~ '^pg_' AND ${column} <> 'information_schema'`;
 const userTable = `c.relkind IN ('r', 'p') AND ${userSchema("n.nspname")}`;
+
+const keyOf = ({ schema, table }: { schema: string; table: string }) => `${schema}.${table}`;
+
+function groupByTable<Row extends { schema: string; table: string }>(rows: Row[]) {
+  const groups = new Map<string, Row[]>();
+  for (const row of rows) groups.set(keyOf(row), [...(groups.get(keyOf(row)) ?? []), row]);
+  return groups;
+}
 
 async function snapshot(pool: Pool): Promise<Snapshot> {
   const [schemas, tables, columns, constraints, keywords] = await Promise.all([
@@ -111,11 +141,15 @@ async function snapshot(pool: Pool): Promise<Snapshot> {
     ),
     pool.query<ColumnRow>(
       `SELECT n.nspname AS schema, c.relname AS "table", a.attname AS "column", t.typname,
+              coalesce(CASE WHEN t.typcategory = 'A' THEN et.typname END,
+                       CASE WHEN t.typtype = 'd' THEN bt.typname END, t.typname) AS "baseTypname",
               a.attnotnull AS "notNull", a.attidentity AS identity,
               pg_get_expr(d.adbin, d.adrelid) AS "defaultExpr"
          FROM pg_attribute a
          JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
          JOIN pg_type t ON t.oid = a.atttypid
+         LEFT JOIN pg_type et ON et.oid = t.typelem
+         LEFT JOIN pg_type bt ON bt.oid = t.typbasetype
          LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
         WHERE a.attnum > 0 AND NOT a.attisdropped AND ${userTable}
         ORDER BY n.nspname, c.relname, a.attnum`,
@@ -130,15 +164,22 @@ async function snapshot(pool: Pool): Promise<Snapshot> {
          JOIN pg_class c ON c.oid = k.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE k.contype IN ('p', 'f', 'c', 'u') AND ${userTable}`,
     ),
-    // R: 予約語。T: 予約語だが関数名と型名には使える。PostgreSQL の SQL Key Words の表の reserved にあたる。
+    // pg_get_keywords の catcode: R は予約語、T は型名と関数名には使えるが、カラム名には使えない予約語、
+    // C はカラム名に使える、U は予約語でない (https://www.postgresql.org/docs/17/functions-info.html)。
+    // カラム名に使えない R と T を、予約語とする。
     pool.query<{ word: string }>(`SELECT word FROM pg_get_keywords() WHERE catcode IN ('R', 'T')`),
   ]);
+  const columnGroups = groupByTable(columns.rows);
+  const constraintGroups = groupByTable(constraints.rows);
   return {
     schemas: schemas.rows.map((row) => row.nspname),
     tables: tables.rows,
     columns: columns.rows,
     constraints: constraints.rows,
     reserved: new Set(keywords.rows.map((row) => row.word)),
+    columnsOf: (table) => columnGroups.get(keyOf(table)) ?? [],
+    constraintsOf: (table, type) =>
+      (constraintGroups.get(keyOf(table)) ?? []).filter((constraint) => constraint.type === type),
   };
 }
 
@@ -147,26 +188,26 @@ const snakeCase = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 /** スキーマ、表、カラムの名前が snake_case で、予約語でない (docs/db/postgresql-naming-physical.md)。 */
 function names(snap: Snapshot): Violation[] {
   const identifiers = [
-    ...snap.schemas.map((schema) => ({ schema, label: `スキーマ ${schema}`, name: schema })),
+    ...snap.schemas.map((schema) => ({
+      where: { schema },
+      label: `スキーマ ${schema}`,
+      name: schema,
+    })),
     ...snap.tables.map(({ schema, table }) => ({
-      schema,
-      table,
+      where: { schema, table },
       label: `表 ${schema}.${table}`,
       name: table,
     })),
     ...snap.columns.map(({ schema, table, column }) => ({
-      schema,
-      table,
+      where: { schema, table },
       label: `カラム ${schema}.${table}.${column}`,
       name: column,
     })),
   ];
-  return identifiers.flatMap(({ name, label, ...where }) => [
-    ...(snakeCase.test(name)
-      ? []
-      : [{ check: "naming" as const, ...where, message: `${label} が snake_case でない` }]),
+  return identifiers.flatMap(({ name, label, where }) => [
+    ...(snakeCase.test(name) ? [] : [violation("naming", where, `${label} が snake_case でない`)]),
     ...(snap.reserved.has(name.toLowerCase())
-      ? [{ check: "reserved-word" as const, ...where, message: `${label} が予約語` }]
+      ? [violation("reserved-word", where, `${label} が予約語`)]
       : []),
   ]);
 }
@@ -195,94 +236,70 @@ const commonColumns: readonly {
 ];
 
 function commonColumnChecks(snap: Snapshot): Violation[] {
-  return snap.tables.flatMap(({ schema, table }) =>
+  return snap.tables.flatMap((table) =>
     commonColumns.flatMap((spec) => {
-      const where = { check: "common-columns" as const, schema, table };
-      const label = `${schema}.${table} の ${spec.name}`;
-      const column = snap.columns.find(
-        (candidate) =>
-          candidate.schema === schema &&
-          candidate.table === table &&
-          candidate.column === spec.name,
-      );
-      if (column === undefined) return [{ ...where, message: `${label} がない` }];
+      const report = (message: string) => violation("common-columns", table, message);
+      const label = `${keyOf(table)} の ${spec.name}`;
+      const column = snap.columnsOf(table).find((candidate) => candidate.column === spec.name);
+      if (column === undefined) return [report(`${label} がない`)];
       return [
         ...(column.typname === spec.type
           ? []
-          : [{ ...where, message: `${label} の型が ${column.typname}。${spec.type} にする` }]),
+          : [report(`${label} の型が ${column.typname}。${spec.type} にする`)]),
         ...(column.notNull === spec.notNull
           ? []
-          : [
-              {
-                ...where,
-                message: `${label} が ${spec.notNull ? "NOT NULL でない" : "NULL を許さない"}`,
-              },
-            ]),
+          : [report(`${label} が ${spec.notNull ? "NOT NULL でない" : "NULL を許さない"}`)]),
         ...(spec.defaultExpr === undefined || column.defaultExpr === spec.defaultExpr
           ? []
           : [
-              {
-                ...where,
-                message:
-                  column.defaultExpr === null
-                    ? `${label} に既定値がない。${spec.defaultExpr} にする`
-                    : `${label} の既定値が ${column.defaultExpr}。${spec.defaultExpr} にする`,
-              },
+              report(
+                column.defaultExpr === null
+                  ? `${label} に既定値がない。${spec.defaultExpr} にする`
+                  : `${label} の既定値が ${column.defaultExpr}。${spec.defaultExpr} にする`,
+              ),
             ]),
       ];
     }),
   );
 }
 
-// 使わない型 (docs/db/postgresql-column.md の「使わない型」)。
+// 使わない型 (docs/db/postgresql-column.md の「使わない型」)。float8 (double precision) は、浮動小数点が
+// 必要なときに使う型として規約が挙げているので、止めない。配列とドメインは、元の型で見る。
 const bannedTypes: Readonly<Record<string, string>> = {
   money: "money 型は使わず numeric にする",
-  float4: "float 型は使わず numeric にする",
-  float8: "float 型は使わず numeric にする",
+  float4: "real 型は使わず、浮動小数点が必要なら double precision にする",
   timestamp: "タイムゾーンなしの timestamp は使わず timestamptz にする",
 };
 
-/** serial、money、float、タイムゾーンなしの timestamp を使わない。連番は bigint の IDENTITY。 */
+/** serial、money、real、タイムゾーンなしの timestamp を使わない。連番は bigint の IDENTITY。 */
 function columnTypes(snap: Snapshot): Violation[] {
-  return snap.columns.flatMap(({ schema, table, column, typname, identity, defaultExpr }) => {
-    const where = { check: "column-types" as const, schema, table };
-    const label = `${schema}.${table}.${column}`;
-    const banned = bannedTypes[typname];
+  return snap.columns.flatMap((col) => {
+    const report = (message: string) =>
+      violation("column-types", col, `${keyOf(col)}.${col.column}: ${message}`);
+    const banned = bannedTypes[col.baseTypname];
     return [
-      ...(banned === undefined ? [] : [{ ...where, message: `${label}: ${banned}` }]),
-      ...(identity === "" && defaultExpr?.startsWith("nextval(") === true
-        ? [{ ...where, message: `${label}: serial は使わず bigint の IDENTITY にする` }]
+      ...(banned === undefined ? [] : [report(banned)]),
+      ...(col.identity === "" && col.defaultExpr?.startsWith("nextval(") === true
+        ? [report("serial は使わず bigint の IDENTITY にする")]
         : []),
-      ...(identity !== "" && typname !== "int8"
-        ? [{ ...where, message: `${label}: IDENTITY 列は bigint にする (${typname})` }]
+      ...(col.identity !== "" && col.typname !== "int8"
+        ? [report(`IDENTITY 列は bigint にする (${col.typname})`)]
         : []),
     ];
   });
 }
 
-const constraintsOf = (
-  snap: Snapshot,
-  schema: string,
-  table: string,
-  type: ConstraintRow["type"],
-) =>
-  snap.constraints.filter(
-    (constraint) =>
-      constraint.schema === schema && constraint.table === table && constraint.type === type,
-  );
-
-/** 主キーがあり、複合の主キーが tenant_id で始まる (docs/adr/0011)。 */
+/** 主キーがあり、複合の主キーが tenant_id で始まる (複合の主キーは docs/adr/0011。主キーがあることは Issue #361 の判断)。 */
 function primaryKeys(snap: Snapshot): Violation[] {
-  return snap.tables.flatMap(({ schema, table }) => {
-    const where = { check: "primary-key" as const, schema, table };
-    const [key] = constraintsOf(snap, schema, table, "p");
-    if (key === undefined) return [{ ...where, message: `${schema}.${table} に主キーがない` }];
+  return snap.tables.flatMap((table) => {
+    const report = (message: string) => violation("primary-key", table, message);
+    const [key] = snap.constraintsOf(table, "p");
+    if (key === undefined) return [report(`${keyOf(table)} に主キーがない`)];
     return key.columns.length > 1 && key.columns[0] !== "tenant_id"
       ? [
-          {
-            ...where,
-            message: `${schema}.${table} の複合の主キー (${key.columns.join(", ")}) が tenant_id で始まらない`,
-          },
+          report(
+            `${keyOf(table)} の複合の主キー (${key.columns.join(", ")}) が tenant_id で始まらない`,
+          ),
         ]
       : [];
   });
@@ -290,6 +307,7 @@ function primaryKeys(snap: Snapshot): Violation[] {
 
 // 外部キー、CHECK 制約、UNIQUE 制約を使わない (docs/db/postgresql-constraints.md)。
 // スキーマをまたぐ外部キーは、モジュールの検査 (module-roles-catalog.ts、docs/adr/0029) も止める。
+// あちらは例外で外せないので、この検査の例外でスキーマ内の外部キーを許しても、またぐものは止まる。
 const forbiddenConstraints = [
   { type: "f", check: "foreign-key", what: "外部キー制約", instead: "" },
   { type: "c", check: "check-constraint", what: "CHECK 制約", instead: "" },
@@ -303,39 +321,34 @@ const forbiddenConstraints = [
 
 function forbidden(snap: Snapshot): Violation[] {
   return forbiddenConstraints.flatMap(({ type, check, what, instead }) =>
-    snap.constraints
-      .filter((constraint) => constraint.type === type)
-      .map(({ schema, table, name }) => ({
-        check,
-        schema,
-        table,
-        message: `${schema}.${table} に ${what} ${name} がある${instead}`,
-      })),
+    snap.tables.flatMap((table) =>
+      snap
+        .constraintsOf(table, type)
+        .map(({ name }) =>
+          violation(check, table, `${keyOf(table)} に ${what} ${name} がある${instead}`),
+        ),
+    ),
   );
 }
 
 /** tenant_id を持つ表が、RLS を ENABLE と FORCE にしている (docs/adr/0011)。 */
 function rowLevelSecurity(snap: Snapshot): Violation[] {
   return snap.tables
-    .filter(({ schema, table }) =>
-      snap.columns.some(
-        (column) =>
-          column.schema === schema && column.table === table && column.column === "tenant_id",
-      ),
-    )
-    .flatMap(({ schema, table, rls, forceRls }) => {
-      const where = { check: "row-level-security" as const, schema, table };
+    .filter((table) => snap.columnsOf(table).some((column) => column.column === "tenant_id"))
+    .flatMap((table) => {
+      const report = (message: string) => violation("row-level-security", table, message);
       return [
-        ...(rls ? [] : [{ ...where, message: `${schema}.${table} が RLS を ENABLE にしていない` }]),
-        ...(forceRls
-          ? []
-          : [{ ...where, message: `${schema}.${table} が RLS を FORCE にしていない` }]),
+        ...(table.rls ? [] : [report(`${keyOf(table)} が RLS を ENABLE にしていない`)]),
+        ...(table.forceRls ? [] : [report(`${keyOf(table)} が RLS を FORCE にしていない`)]),
       ];
     });
 }
 
-// PUBLIC の権限は、PostgreSQL の既定を引いて数える (ACL が NULL のときは、所有者だけの既定の権限)。
-// public スキーマの USAGE と、データベースの CONNECT、TEMPORARY は PostgreSQL の既定で PUBLIC にある。
+// PUBLIC の権限は、PostgreSQL の既定を引いて数える。ACL が NULL のときは既定の権限で、所有者の全権限と、
+// 型によっては PUBLIC の権限がある (https://www.postgresql.org/docs/17/ddl-priv.html)。
+// 次は既定で PUBLIC にあるので許す。データベースの CONNECT と TEMPORARY。public スキーマの USAGE
+// (https://www.postgresql.org/docs/17/ddl-schemas.html の「Schemas and Privileges」)。
+// 関数の EXECUTE も既定で PUBLIC にあるが、許さない。モジュールのスキーマの関数は REVOKE する。
 const publicGrants = `
   SELECT n.nspname AS schema, NULL AS name, 'スキーマ ' || n.nspname AS label, a.privilege_type AS privilege
     FROM pg_namespace n
@@ -360,10 +373,34 @@ const publicGrants = `
    WHERE d.datname = current_database() AND a.grantee = 0
      AND a.privilege_type NOT IN ('CONNECT', 'TEMPORARY')`;
 
-/** app_user と auth_service が DDL を実行できず、PUBLIC に余計な権限がない (docs/adr/0025)。 */
+/**
+ * app_user と auth_service が DDL を実行できず、PUBLIC に余計な権限がない (docs/adr/0025)。
+ * DDL を実行できるのは、スキーマかデータベースに CREATE できるロール、オブジェクトの所有者 (所有者のメンバーで
+ * 権限を継承するロールを含む)、superuser、CREATEROLE、CREATEDB を持つロール。
+ */
 async function privileges(pool: Pool): Promise<Violation[]> {
-  const where = { check: "privileges" as const };
-  const [creates, databaseCreates, owned, publics] = await Promise.all([
+  const report = (where: { schema: string; table?: string }, message: string) =>
+    violation("privileges", where, message);
+  const [attributes, inherited, creates, databaseCreates, owned, publics] = await Promise.all([
+    pool.query<{ rolname: string; attribute: string }>(
+      `SELECT r.rolname, a.attribute
+         FROM pg_roles r
+        CROSS JOIN LATERAL (VALUES ('SUPERUSER', r.rolsuper), ('CREATEROLE', r.rolcreaterole),
+                                   ('CREATEDB', r.rolcreatedb)) AS a(attribute, has)
+        WHERE r.rolname = ANY($1) AND a.has`,
+      [restrictedRoles],
+    ),
+    // モジュールのロールへの INHERIT は、ここでは見ない。app_user が INHERIT FALSE、SET TRUE で入っていることは、
+    // モジュールの検査 (module-roles-catalog.ts) が確かめる。ロールのメンバーシップはクラスタ全体のもので、
+    // そのテストが INHERIT TRUE にした間、この検査が並行して失敗するのを避ける。
+    pool.query<{ rolname: string; roleName: string }>(
+      `SELECT mr.rolname, gr.rolname AS "roleName"
+         FROM pg_auth_members m
+         JOIN pg_roles mr ON mr.oid = m.member JOIN pg_roles gr ON gr.oid = m.roleid
+        WHERE mr.rolname = ANY($1) AND m.inherit_option
+          AND gr.rolname !~ '_module$'`,
+      [restrictedRoles],
+    ),
     pool.query<{ rolname: string; nspname: string }>(
       `SELECT r.rolname, n.nspname
          FROM pg_roles r CROSS JOIN pg_namespace n
@@ -381,7 +418,12 @@ async function privileges(pool: Pool): Promise<Violation[]> {
          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
          JOIN pg_roles r ON r.oid = c.relowner
         WHERE r.rolname = ANY($1) AND c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
-          AND ${userSchema("n.nspname")}`,
+          AND ${userSchema("n.nspname")}
+       UNION ALL
+       SELECT r.rolname, n.nspname, p.proname
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+         JOIN pg_roles r ON r.oid = p.proowner
+        WHERE r.rolname = ANY($1) AND ${userSchema("n.nspname")}`,
       [restrictedRoles],
     ),
     pool.query<{ schema: string; name: string | null; label: string; privilege: string }>(
@@ -389,42 +431,45 @@ async function privileges(pool: Pool): Promise<Violation[]> {
     ),
   ]);
   return [
-    ...creates.rows.map(({ rolname, nspname }) => ({
-      ...where,
-      schema: nspname,
-      message: `${rolname} が ${nspname} スキーマに CREATE できる`,
-    })),
-    ...databaseCreates.rows.map(({ rolname }) => ({
-      ...where,
-      schema: "",
-      message: `${rolname} がデータベースに CREATE できる`,
-    })),
-    ...owned.rows.map(({ rolname, nspname, relname }) => ({
-      ...where,
-      schema: nspname,
-      table: relname,
-      message: `${rolname} が ${nspname}.${relname} を所有している (所有者は DDL を実行できる)`,
-    })),
-    ...publics.rows.map(({ schema, name, label, privilege }) => ({
-      ...where,
-      schema,
-      ...(name === null ? {} : { table: name }),
-      message: `PUBLIC が ${label} の ${privilege} を持つ`,
-    })),
+    ...attributes.rows.map(({ rolname, attribute }) =>
+      report({ schema: "" }, `${rolname} が ${attribute} を持つ`),
+    ),
+    ...inherited.rows.map(({ rolname, roleName }) =>
+      report({ schema: "" }, `${rolname} が ${roleName} の権限を継承している`),
+    ),
+    ...creates.rows.map(({ rolname, nspname }) =>
+      report({ schema: nspname }, `${rolname} が ${nspname} スキーマに CREATE できる`),
+    ),
+    ...databaseCreates.rows.map(({ rolname }) =>
+      report({ schema: "" }, `${rolname} がデータベースに CREATE できる`),
+    ),
+    ...owned.rows.map(({ rolname, nspname, relname }) =>
+      report(
+        { schema: nspname, table: relname },
+        `${rolname} が ${nspname}.${relname} を所有している (所有者は DDL を実行できる)`,
+      ),
+    ),
+    ...publics.rows.map(({ schema, name, label, privilege }) =>
+      report(
+        name === null ? { schema } : { schema, table: name },
+        `PUBLIC が ${label} の ${privilege} を持つ`,
+      ),
+    ),
   ];
 }
 
-const covers = (exception: ConventionException, violation: Violation) =>
-  (exception.scope === violation.schema ||
-    exception.scope === `${violation.schema}.${violation.table}`) &&
-  (exception.check === "all" || exception.check === violation.check);
+const covers = (exception: ConventionException, found: Violation) =>
+  (exception.scope === found.schema ||
+    (found.table !== undefined && exception.scope === `${found.schema}.${found.table}`)) &&
+  (exception.check === "all" || exception.check === found.check);
 
 /**
  * 規約に反する点を、決めたとおりでない文の一覧で返す。空なら問題がない。
  *
  * 確かめること (出典は docs/db/convention-check.md):
  * 命名 (snake_case、予約語)、共通カラム、型、主キー、外部キー、CHECK 制約、一意制約、RLS、権限。
- * `exceptions` に当たる対象は検査から外す。理由が空の例外は効かず、その例外を失敗として返す。
+ * `exceptions` に当たる対象は検査から外す。理由が空の例外と、対象のスキーマか表がない例外は効かず、
+ * その例外を失敗として返す (消えた表の例外が残り続けないようにする)。
  * 失敗があるときは、外している検査と理由も、失敗の後ろに付ける。
  *
  * この検査はテスト専用で、migrate や CI の別の段からは呼ばない。migration を流した DB に対する結合テスト
@@ -435,10 +480,14 @@ export async function checkConventions(
   exceptions: readonly ConventionException[] = conventionExceptions,
 ): Promise<string[]> {
   const snap = await snapshot(pool);
-  const valid = exceptions.filter((exception) => exception.reason.trim() !== "");
-  const unexplained = exceptions
-    .filter((exception) => exception.reason.trim() === "")
-    .map((exception) => `[exception] 例外 ${exception.scope} の ${exception.check} に理由がない`);
+  const targets = new Set([...snap.schemas, ...snap.tables.map(keyOf)]);
+  const invalid = exceptions.flatMap(({ scope, check, reason }) => [
+    ...(reason.trim() === "" ? [`[exception] 例外 ${scope} の ${check} に理由がない`] : []),
+    ...(targets.has(scope) ? [] : [`[exception] 例外 ${scope} の ${check} の対象がない`]),
+  ]);
+  const effective = exceptions.filter(
+    ({ scope, reason }) => reason.trim() !== "" && targets.has(scope),
+  );
 
   const violations = [
     ...names(snap),
@@ -448,16 +497,13 @@ export async function checkConventions(
     ...forbidden(snap),
     ...rowLevelSecurity(snap),
     ...(await privileges(pool)),
-  ].filter((violation) => !valid.some((exception) => covers(exception, violation)));
+  ].filter((found) => !effective.some((exception) => covers(exception, found)));
 
-  const failures = [
-    ...unexplained,
-    ...violations.map(({ check, message }) => `[${check}] ${message}`),
-  ];
+  const failures = [...invalid, ...violations.map(({ check, message }) => `[${check}] ${message}`)];
   if (failures.length === 0) return [];
   return [
     ...failures,
-    ...valid.map(
+    ...effective.map(
       ({ scope, check, reason }) => `外している検査: ${scope} の ${check} (理由: ${reason})`,
     ),
   ];
