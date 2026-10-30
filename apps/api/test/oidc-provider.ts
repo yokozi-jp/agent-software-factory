@@ -88,8 +88,11 @@ export async function startTestIdp(): Promise<TestIdp> {
     const url = new URL(req.url ?? "/", issuer);
     const respond = (work: Promise<void> | undefined) => {
       work?.catch((error: unknown) => {
+        // 例外の文字を応答に載せない (HTML として解釈されうる)。理由は、テストの出力に出す。
+        console.error("テスト用 IdP の処理が失敗した", error);
         res.statusCode = 500;
-        res.end(String(error));
+        res.setHeader("content-type", "text/plain");
+        res.end("internal error");
       });
     };
     if (
@@ -179,7 +182,10 @@ async function endSession(
   };
   remember(req.headers.cookie);
 
-  const page = await fetch(`${issuer}${url.pathname}${url.search}`, {
+  // 宛先は issuer と固定の path にする。要求から取るのは query だけ。
+  const target = new URL("/session/end", issuer);
+  target.search = url.search;
+  const page = await fetch(target, {
     headers: { cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "), "x-internal": "1" },
     redirect: "manual",
   });
