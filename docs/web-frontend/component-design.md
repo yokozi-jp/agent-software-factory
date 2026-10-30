@@ -91,7 +91,7 @@ sources:
 - **初期化**: 初期化 (`shadcn init`) は済んでいて、`apps/web/components.json` と `packages/ui/components.json` に設定があります (両方で `style`、`iconLibrary`、`baseColor` を同じにします)。やり直すときは、`shadcn init` ではなく両方の `components.json` を [ADR 0034](../adr/0034-shared-ui-package.md) の alias に合わせて書きます。`init` は 1 つのアプリの構成を作るので、`packages/ui` への振り分けを壊します。
 - **更新**: 取り込んだコードは依存ではないので、Renovate は更新を知らせません。`pnpm dlx shadcn@latest add <部品> --diff` で上流との差を見て、必要な変更を手で取り込みます。
 - **CSP**: Base UI の `ScrollArea` と `Select` は `<style>` 要素を出します。使うときは、上位に Base UI の `CSPProvider` を置き、`disableStyleElements` を付けるか `nonce` を渡します。
-- **story**: `packages/ui/src/components/` の部品には隣に `*.stories.tsx` を置く方針です。Storybook と検査は別の Issue で入れます ([ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。
+- **story**: `packages/ui/src/components/` の部品には隣に `*.stories.tsx` を置く方針です。Storybook と検査は別の Issue で入れます ([ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。 `apps/web` の画面は、`*.test.tsx` ではなく story の `play` で component test を書きます。story の必須検査の対象には含めません。
 
 ## コンポーネント実装方針
 
