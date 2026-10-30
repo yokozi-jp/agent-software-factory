@@ -11,19 +11,58 @@ commit-msg:
       run: pnpm exec commitlint --edit {1}
 
 pre-commit:
-  # Two stages, run in order: the checks first (in parallel), then the Nx tasks (in parallel). If a check fails, the
-  # commit stops before the Nx tasks start. With every job in one parallel stage, lefthook waits for the slowest job
-  # (scripts-test, over 2 minutes) before it reports a failure that came in seconds (e.g. repo-policy).
+  # Three stages, run in order, each in parallel: quick-checks, checks, then the Nx tasks. If a stage fails, the
+  # commit stops before the next stage starts. With every job in one parallel stage, lefthook waits for the slowest job
+  # (scripts-test, over 2 minutes) before it reports a failure that came in seconds (e.g. jscpd).
   # The Nx tasks (scripts-test, db-types, lint-effect) are the jobs that can take minutes; Nx skips them when its
   # cached result still holds, and their globs skip them when nothing they read changed.
   piped: true
   jobs:
-    - name: checks
+    # The checks that finish in seconds (secret-scan 7 s, jscpd 7 s, repo-policy 22 s; docs-check, vp check and Knip
+    # take 2 to 2.5 minutes). A parallel group reports a failure only after its slowest job, so a clone that jscpd finds in seconds
+    # waited for Knip. These run first; if one fails, the commit stops before the slow checks start.
+    - name: quick-checks
       group:
         parallel: true
         jobs:
           - name: secret-scan
             run: node tools/scripts/src/checks/secret-scan/cli.ts staged
+          # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
+          # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
+          - name: duplicate-code
+            glob:
+              - "apps/**"
+              - "packages/**"
+              - ".jscpd.json"
+              - "pnpm-workspace.yaml"
+            run: pnpm lint:dup
+          - name: repo-policy
+            glob:
+              - "**/package.json"
+              - "**/vite.config.ts"
+              - ".vite-hooks/**"
+              - ".betterleaks.toml"
+              - "mise.toml"
+              - ".kiro/steering/**"
+              - "tools/scripts/src/checks/repo-policy/**"
+              # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
+              - ".node-version"
+              - "pnpm-workspace.yaml"
+              # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
+              - "*.md"
+              - "lefthook.yml"
+              - ".github/**"
+              - ".kiro/hooks/**"
+              - "tools/scripts/sh/**"
+              - "docs/**"
+              - "**/*.ts"
+            # Check what is staged, so unstaged edits to other files cannot fail the commit.
+            run: node tools/scripts/src/checks/repo-policy/cli.ts staged
+
+    - name: checks
+      group:
+        parallel: true
+        jobs:
           # Lint Markdown only after the formatter has rewritten the staged files.
           - name: format-and-lint
             group:
@@ -63,15 +102,6 @@ pre-commit:
               - "mise.toml"
               - "mise.lock"
             run: tools/scripts/sh/lint-workflows.sh
-          # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
-          # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
-          - name: duplicate-code
-            glob:
-              - "apps/**"
-              - "packages/**"
-              - ".jscpd.json"
-              - "pnpm-workspace.yaml"
-            run: pnpm lint:dup
           # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
           # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
           # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.
@@ -103,28 +133,6 @@ pre-commit:
               - "renovate.jsonc"
               - "tools/scripts/sh/renovate.sh"
             run: tools/scripts/sh/renovate.sh validate
-          - name: repo-policy
-            glob:
-              - "**/package.json"
-              - "**/vite.config.ts"
-              - ".vite-hooks/**"
-              - ".betterleaks.toml"
-              - "mise.toml"
-              - ".kiro/steering/**"
-              - "tools/scripts/src/checks/repo-policy/**"
-              # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
-              - ".node-version"
-              - "pnpm-workspace.yaml"
-              # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
-              - "*.md"
-              - "lefthook.yml"
-              - ".github/**"
-              - ".kiro/hooks/**"
-              - "tools/scripts/sh/**"
-              - "docs/**"
-              - "**/*.ts"
-            # Check what is staged, so unstaged edits to other files cannot fail the commit.
-            run: node tools/scripts/src/checks/repo-policy/cli.ts staged
 
     - name: nx-tasks
       group:
