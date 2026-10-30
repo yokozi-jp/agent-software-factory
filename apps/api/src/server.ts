@@ -32,7 +32,7 @@ const auth = createAuth({
 const app = createApp({
   auth,
   // 業務の処理は app_user で接続する。auth スキーマの権限を持たず、RLS を迂回しない (docs/adr/0011)。
-  // 日時は Temporal で読む (docs/adr/0043)。Better Auth の接続 (上) は Date を前提にするので、既定のまま。
+  // 日時は Temporal で読む (docs/adr/0043)。Better Auth の接続 (上) は Date のまま、既定にする (判断。docs/adr/0043 の Better Auth が Date を返す件)。
   databases: createModuleDatabases(createPool({ connectionString: env.APP_DATABASE_URL })),
 });
 
