@@ -7,7 +7,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   test: {
     // コードがプロセスの TZ に頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
-    // 効いていることは packages/shared の src/time.test.ts と apps/api の src/timezone.unit.test.ts が確かめる。
+    // 効いていることは packages/shared-kernel の src/time.test.ts と apps/api の src/timezone.unit.test.ts が確かめる。
     env: { TZ: "America/New_York" },
     setupFiles: ["./test/temporal.ts"],
     include: ["src/**/*.test.ts"],

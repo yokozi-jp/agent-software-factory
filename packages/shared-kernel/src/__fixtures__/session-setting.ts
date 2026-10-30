@@ -1,6 +1,6 @@
 // Detection-power fixture (#43) for SQL that changes the role or the tenant of the connection outside the helper of the
-// transaction in packages/shared/src (root vite.config.ts, tenant-sql/no-session-setting, docs/adr/0029). Each line below is one that
-// the rule must report. If the rule is turned off, or its `files` stop reaching packages/shared/src, the disable comment is
+// transaction in packages/shared-kernel/src (root vite.config.ts, tenant-sql/no-session-setting, docs/adr/0029). Each line below is one that
+// the rule must report. If the rule is turned off, or its `files` stop reaching packages/shared-kernel/src, the disable comment is
 // unused and `vp check` fails (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/, and nothing
 // imports this file.
 import { sql } from "kysely";

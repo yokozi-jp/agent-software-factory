@@ -1,6 +1,6 @@
 /**
  * The time zone of the business, the one every screen shows a moment in (docs/adr/0043). The same name as
- * `BUSINESS_TIME_ZONE` in packages/shared/src/time.ts. It is written again here because that file imports Effect,
+ * `BUSINESS_TIME_ZONE` in packages/shared-kernel/src/time.ts. It is written again here because that file imports Effect,
  * which does not go into the web bundle.
  */
 const BUSINESS_TIME_ZONE = "Asia/Tokyo";

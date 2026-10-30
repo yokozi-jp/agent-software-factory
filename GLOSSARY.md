@@ -15,8 +15,12 @@ _Avoid_: AI harness、開発基盤
 _Avoid_: 参照業務機能、デモ
 
 **モジュール**:
-サンプル機能の、業務の機能ごとのまとまり。`packages/` の1つの package で、公開 API の入口（`index.ts`）だけを他から見せる。申請（`claim`）、承認（`approval`、審査を持つ）、締め（`closing`）があり、依存は「締め → 承認 → 申請」の一方向。`packages/shared`（モジュールが共有するコード）と `packages/module-fixtures`（モジュールの境界の検出力の fixture だけを持つ、モジュールの形をした package）はモジュールではなく、サンプル機能を消しても残る。
+サンプル機能の、業務の機能ごとのまとまり。`packages/` の1つの package で、公開 API の入口（`index.ts`）だけを他から見せる。申請（`claim`）、承認（`approval`、審査を持つ）、締め（`closing`）があり、依存は「締め → 承認 → 申請」の一方向。`packages/shared-kernel`（モジュールが共有するコード）と `packages/module-fixtures`（モジュールの境界の検出力の fixture だけを持つ、モジュールの形をした package）はモジュールではなく、サンプル機能を消しても残る。
 _Avoid_: 機能、ドメイン、コンポーネント
+
+**Shared Kernel**:
+複数のモジュールが合意して共有する、小さなモデルとコード（`Result`、イベントの定義、時刻、共通の列、楽観ロック、テナントのトランザクションなど）。`packages/shared-kernel` に置く。DDD の Shared Kernel にあたり、どのモジュールにも依存しない。業務の道具として複数の利用側が使う `ui`、`db`、`i18n` とは区別する。
+_Avoid_: shared、common、共通部品
 
 **サービスの型**:
 テンプレートから作るシステムの実行の形（画面と API と DB を持つ Web アプリ、非同期処理、バッチなど）。型ごとに要るガイドとセンサーが変わる。

@@ -23,7 +23,7 @@ pnpm exec nx run-many -t lint-effect        # すべての package
 pnpm exec nx run claim:lint-effect          # 1 つの package
 ```
 
-`lint-effect` は各 package の `package.json` の script で、`effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure` を実行します (`shared` は `src` 全体)。CI の `nx` の job (`nx affected -t lint-effect`) と、pre-commit の `lint-effect` が実行します。
+`lint-effect` は各 package の `package.json` の script で、`effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure` を実行します (`shared-kernel` は `src` 全体)。CI の `nx` の job (`nx affected -t lint-effect`) と、pre-commit の `lint-effect` が実行します。
 
 - `effect-tsgo oxlint` は、入れた Oxlint (Vite+ が持つもの) と oxlint-tsgolint に、`effecttsgo` の plugin を足して実行します。`effect-tsgo patch` は `node_modules` を書き換えるので使いません。
 - `oxlint.effect.json` は、`effecttsgo` の 4 つの規則だけを error にします。`categories.correctness` を `off` にするのは、plugin の他の correctness の規則が warning で入るためです。規則を足すときは、`rules` に 1 行足します。

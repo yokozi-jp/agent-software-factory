@@ -49,7 +49,7 @@
         "default",
         "{workspaceRoot}/oxlint.effect.json",
         "{workspaceRoot}/pnpm-lock.yaml",
-        "{workspaceRoot}/packages/shared/src/**/*"
+        "{workspaceRoot}/packages/shared-kernel/src/**/*"
       ]
     }
   },

@@ -14,7 +14,7 @@ import {
   registeredConsumers,
   createdColumns,
   CurrentWrite,
-} from "@agent-software-factory/shared";
+} from "@agent-software-factory/shared-kernel";
 import { Data, Effect, Exit, Fiber } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
