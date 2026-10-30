@@ -58,6 +58,11 @@ describe("calls", () => {
     expect(first?.target.startsWith("a b")).toBe(true);
   });
 
+  it("trims the spaces around the target", () => {
+    const [first] = calls(call("a", "completed", { args: { command: "  \t ls -la \n" } }));
+    expect(first?.target).toBe("ls -la");
+  });
+
   it("reads a call that failed after it was allowed", () => {
     expect(calls(call("a", "failed")).map((c) => c.verdict)).toEqual(["failed"]);
   });
