@@ -11,20 +11,18 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-
 export interface ClaimTClaim {
   claim_id: Generated<Int8>;
-  created_at: Timestamp;
+  created_at: ColumnType<Temporal.Instant, string, string>;
   created_by: string;
   created_pgm_cd: string;
   created_tx_id: string;
   lock_no: Generated<number>;
-  patched_at: Timestamp | null;
+  patched_at: ColumnType<Temporal.Instant, string, string> | null;
   patched_by: string | null;
   patched_id: string | null;
   tenant_id: string;
-  updated_at: Timestamp;
+  updated_at: ColumnType<Temporal.Instant, string, string>;
   updated_by: string;
   updated_pgm_cd: string;
   updated_tx_id: string;

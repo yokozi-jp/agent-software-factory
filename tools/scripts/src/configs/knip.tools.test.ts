@@ -146,7 +146,8 @@ for (const name of modules) {
 }
 
 // packages/db and the modules knip.jsonc lists in its ignoreDependencies (docs/adr/0038): db depends on them for types, and
-// only its fixtures import them, which Knip does not read.
+// only its fixtures import them, which Knip does not read. claim is the exception: a test of db imports it (the type
+// test of the generated types), so knip.jsonc does not list it, and the fixture imports it from a file that Knip reads.
 apps["packages/db/package.json"] = JSON.stringify(
   {
     name: "@agent-software-factory/db",
@@ -168,7 +169,8 @@ apps["packages/db/package.json"] = JSON.stringify(
   undefined,
   2,
 );
-apps["packages/db/src/index.ts"] = "export {};\n";
+apps["packages/db/src/index.ts"] =
+  'import type {} from "@agent-software-factory/claim";\nexport {};\n';
 // packages/i18n and the config of i18next-cli that knip.jsonc names as its entry (docs/adr/0044). Nothing imports the
 // config; the i18n-keys script runs it with --config.
 apps["packages/i18n/package.json"] = JSON.stringify(

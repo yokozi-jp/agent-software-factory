@@ -1,6 +1,7 @@
 // Node.js 24 には Temporal がないので、polyfill の global を入れる。Node.js 26 以降は何もしない。
 import "temporal-polyfill/global";
 import { serve } from "@hono/node-server";
+import { createPool } from "@agent-software-factory/db";
 import { Pool } from "pg";
 
 import { createApp } from "./app.ts";
@@ -31,7 +32,8 @@ const auth = createAuth({
 const app = createApp({
   auth,
   // 業務の処理は app_user で接続する。auth スキーマの権限を持たず、RLS を迂回しない (docs/adr/0011)。
-  databases: createModuleDatabases(new Pool({ connectionString: env.APP_DATABASE_URL })),
+  // 日時は Temporal で読む (docs/adr/0043)。Better Auth の接続 (上) は Date のまま、既定にする (判断。docs/adr/0043 の Better Auth が Date を返す件)。
+  databases: createModuleDatabases(createPool({ connectionString: env.APP_DATABASE_URL })),
 });
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
