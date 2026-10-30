@@ -11,6 +11,15 @@ export {
   type TenantScope,
 } from "./tenant-transaction.ts";
 export { dbCall, dbCallUnique, UniqueViolation } from "./db-call.ts";
+export {
+  createdColumns,
+  CurrentWrite,
+  patchedColumns,
+  updatedColumns,
+  type WriteActor,
+  type WriteContext,
+} from "./common-columns.ts";
+export { OptimisticLockConflict, RowNotFound, updateWithLock } from "./optimistic-lock.ts";
 export { apiDate, apiInstant } from "./api-time.ts";
 export { BUSINESS_TIME_ZONE, currentInstant, toApiDate, toApiInstant } from "./time.ts";
 export { defineEvent, eventFixtureProblems, type EventDefinition } from "./event.ts";

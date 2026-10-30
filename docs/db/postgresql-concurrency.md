@@ -150,6 +150,22 @@ sequenceDiagram
 > ロック番号はバージョン番号と呼ぶこともある。
 > ロック番号の代わりに、最終更新日時で比較することもあるが、より厳密に制御できるロック番号の利用を推奨する。
 
+#### このリポジトリでは
+
+楽観的ロックは案 1（`UPDATE … WHERE lock_no = $n` の更新件数で比べる）を採る。原文の推奨は案 2 だが、次の理由で外れる。決定は [Issue #345](https://github.com/yokozi-jp/agent-software-factory/issues/345)、実装は [Issue #362](https://github.com/yokozi-jp/agent-software-factory/issues/362) で、共通カラムの値と合わせた書き方は [このリポジトリでは](postgresql-keys.md#このリポジトリでは) にある。
+
+- **案 1 を採る理由**:
+  - 比較と更新が 1 文なので、書き忘れても競合の穴が開かない。
+  - EF Core の既定の楽観排他と同じ方式である ([Optimistic concurrency](https://learn.microsoft.com/en-us/ef/core/saving/concurrency))。
+  - ロックを持つ時間が短い。
+  - READ COMMITTED では、競合した UPDATE が相手の commit を待ち、更新後の行で WHERE を再評価する ([PostgreSQL 13.2.1](https://www.postgresql.org/docs/current/transaction-iso.html))。そのため、`lock_no` を条件にした UPDATE は、先に commit された更新を取りこぼさない。
+- **案 1 の弱点の扱い**:
+  - 更新件数が 0 のときは、同じトランザクションで SELECT し直し、行がない (404) と `lock_no` の違い (409) を分ける。この分け方は設計の判断で、出典はない。
+  - 複数の表を更新するときは、親の `lock_no` だけを比べ、親への UPDATE を最初に実行する。子だけを更新するときも、親の `lock_no` を上げる。
+- **案 2 (`FOR UPDATE`) を使う場面**:
+  - 複数の行にまたがる不変条件 (在庫の合計など) は、楽観排他では守れない。親の行を先に `FOR UPDATE` でロックする。
+  - UPDATE の前に長い処理を挟むときは、先にロックを取る。ただし、外への呼び出しは Outbox に分けて、トランザクションを短くする ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md)、[ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md))。
+
 #### 悲観的ロック
 
 3層型C/Sアプリケーションにおいて、最初の一覧表示時点でSELECT FOR UPDATEにより行ロックを取得して悲観的ロックを実現できない。HTTPリクエスト / レスポンスでDBトランザクション境界を超えるためである。そのため、SELECT FOR UPDATEは「楽観的ロック」節の方式2にあるような使用方法となる。

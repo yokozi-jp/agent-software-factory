@@ -16,6 +16,7 @@ import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { createModuleDatabases, type ModuleDatabases } from "./databases.ts";
+import { useDatabase, writer } from "../../test/use-database.ts";
 
 // shared のトランザクションの関数 (inTenantTransaction、dbCall、dbCallUnique) と、モジュールの最初の表 claim.t_claim の RLS
 // (docs/adr/0011、docs/adr/0028、docs/adr/0029)。app_user の接続で、モジュールのロールに切り替えて確かめる。
@@ -55,46 +56,12 @@ const currentRole = dbCall(ClaimTx, (trx) =>
   sql<{ role: string }>`SELECT current_user AS role`.execute(trx),
 );
 
-/** テストごとに DB を作り、接続を 1 本の pool にして、前のトランザクションの設定が同じ接続に残るかを確かめられるようにする。 */
-function useDatabase() {
-  let current: { db: TestDatabase; kysely: Kysely<never> } | undefined;
-  const opened = () => {
-    if (current === undefined) throw new Error("The database is not open: use it inside a test.");
-    return current;
-  };
-
-  beforeEach(async () => {
-    const db = await createTestDatabase();
-    const pool = createPool({ connectionString: db.url("app_user"), max: 1 });
-    current = { db, kysely: new Kysely({ dialect: new PostgresDialect({ pool }) }) };
-  });
-
-  afterEach(async () => {
-    await current?.kysely.destroy();
-    await current?.db.close();
-    current = undefined;
-  });
-
-  return {
-    get db() {
-      return opened().db;
-    },
-    get kysely() {
-      return opened().kysely;
-    },
-    run: <A, E>(effect: Effect.Effect<A, E, Database>) =>
-      Effect.runPromise(effect.pipe(Effect.provide(Database.layer(opened().kysely)))),
-    runExit: <A, E>(effect: Effect.Effect<A, E, Database>) =>
-      Effect.runPromiseExit(effect.pipe(Effect.provide(Database.layer(opened().kysely)))),
-  };
-}
-
 describe("inTenantTransaction と claim.t_claim の RLS", () => {
   const ctx = useDatabase();
 
   const { run, runExit } = ctx;
   const inClaim = <A, E>(tenantId: string, work: Effect.Effect<A, E, ClaimTx>) =>
-    inTenantTransaction(ClaimTx, { tenantId }, work);
+    inTenantTransaction(ClaimTx, { tenantId, ...writer }, work);
 
   /** `idle in transaction` のまま残っている接続の数。 */
   const idleInTransaction = async (): Promise<number> => {
@@ -263,7 +230,11 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       );
 
       const exit = await runExit(
-        inTenantTransaction(ApprovalTx, { tenantId: tenantA }, Effect.andThen(insert, insert)),
+        inTenantTransaction(
+          ApprovalTx,
+          { tenantId: tenantA, ...writer },
+          Effect.andThen(insert, insert),
+        ),
       );
 
       expect(Exit.hasDies(exit)).toBe(true);
@@ -302,7 +273,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
         ),
       );
     const inApproval = <A, E>(tenantId: string, work: Effect.Effect<A, E, ApprovalTx>) =>
-      inTenantTransaction(ApprovalTx, { tenantId }, work);
+      inTenantTransaction(ApprovalTx, { tenantId, ...writer }, work);
 
     it("一意制約の違反を、制約の名前つきの UniqueViolation にして、catchTag で処理できること", async () => {
       await run(inApproval(tenantA, insertCode(tenantA, "a")));
@@ -367,7 +338,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       // 実行しない。型の検査 (vp check) だけが確かめる。
       const never = () =>
         // @ts-expect-error -- 申請のトランザクションは ClaimTx だけを提供する。ApprovalTx が足りない。
-        run(inTenantTransaction(ClaimTx, { tenantId: tenantA }, readApproval));
+        run(inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writer }, readApproval));
 
       expect(typeof never).toBe("function");
     });
@@ -406,9 +377,11 @@ describe("pool が空のとき", () => {
     const layer = Database.layer(kysely);
     try {
       const holder = Effect.runPromise(
-        inTenantTransaction(ClaimTx, { tenantId: tenantA }, Effect.sleep("1500 millis")).pipe(
-          Effect.provide(layer),
-        ),
+        inTenantTransaction(
+          ClaimTx,
+          { tenantId: tenantA, ...writer },
+          Effect.sleep("1500 millis"),
+        ).pipe(Effect.provide(layer)),
       );
       await new Promise((resolve) => setTimeout(resolve, 200));
       await during(layer);
@@ -420,7 +393,7 @@ describe("pool が空のとき", () => {
 
   /** 空のトランザクションを 1 つ始める。`timeout` があれば、Effect.timeout を掛ける。 */
   const attempt = (layer: ReturnType<typeof Database.layer>, timeout?: Duration.Input) => {
-    const empty = inTenantTransaction(ClaimTx, { tenantId: tenantA }, Effect.void);
+    const empty = inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writer }, Effect.void);
     return Effect.runPromiseExit(
       (timeout === undefined ? empty : empty.pipe(Effect.timeout(timeout))).pipe(
         Effect.provide(layer),
@@ -501,19 +474,19 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
       case "claim":
         return inTenantTransaction(
           ClaimTx,
-          { tenantId: tenantA },
+          { tenantId: tenantA, ...writer },
           dbCall(ClaimTx, (trx) => text.execute(trx)),
         );
       case "approval":
         return inTenantTransaction(
           ApprovalTx,
-          { tenantId: tenantA },
+          { tenantId: tenantA, ...writer },
           dbCall(ApprovalTx, (trx) => text.execute(trx)),
         );
       case "closing":
         return inTenantTransaction(
           ClosingTx,
-          { tenantId: tenantA },
+          { tenantId: tenantA, ...writer },
           dbCall(ClosingTx, (trx) => text.execute(trx)),
         );
     }
@@ -532,7 +505,7 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
       await run(
         inTenantTransaction(
           ClaimTx,
-          { tenantId },
+          { tenantId, ...writer },
           dbCall(ClaimTx, (trx) =>
             trx.insertInto("claim.t_claim").values(claimRow(tenantId)).execute(),
           ),
