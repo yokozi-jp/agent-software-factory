@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0022: 認証は Better Auth の Cookie の BFF にし、役割とテナントはアプリの DB が持ち、IdP は OIDC で差し替える"
-description: サンプル機能（経費精算）の認証を、Hono を BFF にした Cookie のセッションと Better Auth で実装し、役割とテナントはアプリの DB に持ち、ログインは OIDC の1経路（ローカルと CI は Keycloak、本番は Cognito か Entra ID）にした決定。認証やセッションの方式を変えるとき、Cookie や CSRF の設定を変えるとき、Better Auth の表や DB のロールを触るとき、IdP を足す、替えるとき、トークンを SPA に持たせたくなったとき、Authorization ヘッダーで認証したくなったときに読む。
+description: サンプル機能（経費精算）の認証を、Hono を BFF にした Cookie のセッションと Better Auth で実装し、役割とテナントはアプリの DB に持ち、ログインは OIDC の1経路（ローカルと CI はテストのプロセスの中の node-oidc-provider、本番は Cognito か Entra ID）にした決定。認証やセッションの方式を変えるとき、Cookie や CSRF の設定を変えるとき、Better Auth の表や DB のロールを触るとき、IdP を足す、替えるとき、トークンを SPA に持たせたくなったとき、Authorization ヘッダーで認証したくなったときに読む。
 tags: [adr, auth, session, bff, security, multitenancy]
 ---
 
@@ -13,7 +13,7 @@ tags: [adr, auth, session, bff, security, multitenancy]
 
 - 認証は Hono を BFF にします。BFF は confidential client として OIDC の認可コードフローを行い、ブラウザには同じオリジンの `/api/*` で Cookie のセッションだけを渡します。SPA はトークンを持ちません（[RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html) 6.1。業務アプリに BFF を strongly recommended とし、ブラウザがトークンを持つ形を 6.3.4.3 で not recommended とする）。
 - `Authorization` ヘッダーでは認証しません。CloudFront の OAC は origin への要求を SigV4 で署名し、その署名に `Authorization` ヘッダーを使います（[OriginAccessControlConfig](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_OriginAccessControlConfig.html)）。ADR 0013 の Web Functions（OAC、`IamAuth`）と両立しません。`/api/*` の cache policy は `CachingDisabled` にし、Cookie を origin に転送します。
-- 認証は Better Auth（`better-auth`）にします。ログインは OIDC の1経路だけにし、本番の IdP は Cognito か Entra ID（Better Auth の provider か SSO プラグイン）、ローカルと CI は Keycloak にします。IdP の違いは issuer、client ID、secret の設定だけにして、コードの経路を変えません。Better Auth 自身のメールとパスワードのログインは、既定では使いません。
+- 認証は Better Auth（`better-auth`）にします。ログインは OIDC の1経路だけにし、本番の IdP は Cognito か Entra ID（Better Auth の provider か SSO プラグイン）、ローカルと CI はテストのプロセスの中で動かす node-oidc-provider にします。IdP の違いは issuer、client ID、secret の設定だけにして、コードの経路を変えません。Better Auth 自身のメールとパスワードのログインは、既定では使いません。
 - Cookie は `Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なしにし、名前に `__Host-` を付けます。RFC 10017 6.1.3.2 は `SameSite=Strict` と `__Host-Http-` を SHOULD とし、[NIST SP 800-63B-4 の Session Management](https://pages.nist.gov/800-63-4/sp800-63b/session/) は `__Host-` と `SameSite` の `Lax` か `Strict` を SHOULD とします。このリポジトリは両方に当たる `__Host-` を使い、`__Host-Http-` は使いません。例外は IdP から戻る callback で送られる `state` の Cookie で、`SameSite=Lax` にします。IdP から戻る遷移は別のサイトから始まるので、`Strict` だと送られず、ログインが `State mismatch` で失敗します（テストの browser が cross-site の遷移で `Strict` の Cookie を送らないようにして、この失敗を再現した）。Better Auth は `useSecureCookies` のとき名前に `__Secure-` を付けるので、`useSecureCookies: false` にして、Cookie の名前と `secure` を自分で指定します（`apps/api/src/auth/auth.ts`。Better Auth 1.7.12 で、ログインの Set-Cookie がすべて `__Host-` になることをテストで確かめた）。
 - CSRF は、GET、HEAD、OPTIONS 以外の要求に自前の middleware（`apps/api/src/security/csrf.ts`）で次を求めます。`Origin` ヘッダーがあれば公開のオリジンと同じ（403）。`Sec-Fetch-Site` があれば `same-origin`（403）。`Content-Type` は `application/json`（415）。`hono/csrf` は使いません。`hono/csrf` は `application/json` を検査しないので（[Hono CSRF Protection](https://hono.dev/docs/middleware/builtin/csrf)）、別のオリジンからの JSON の要求を止められません。`SameSite` だけに頼りません（RFC 10017 6.1.3.3、[OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)）。GET で状態を変えません。
 - テナントと役割は、IdP のクレームではなくアプリの DB（Better Auth の organization プラグイン）に持ちます。`organization.id` を `tenant_id` に使い、ID は UUID にします（`advanced.database.generateId`）。利用者が自分で組織（テナント）を作れてはいけないので、`allowUserToCreateOrganization: false` にします。API は、テナントをサーバー側のセッションからだけ取ります。クライアントが送る値は使いません（ADR 0011）。
@@ -28,7 +28,10 @@ tags: [adr, auth, session, bff, security, multitenancy]
 - **Cognito のクレーム（`custom:tenant_id`、グループ）にテナントと役割を載せ、API がトークンを検証する**: マネージドで AWS に合い、ADR 0011 の「署名したトークンのクレームから取る」に沿います。ただし、アクセストークンにテナントを載せる pre token generation V2 は Essentials 以上の機能で、無料のエミュレーターがなく、ローカルと CI では試せません。IdP を Entra ID に替えると、クレームの形も作り直しになります。
 - **軽い OIDC クライアント（`@hono/oidc-auth` など）と自前のセッション**: 部品は少なくなりますが、セッションと組織の表、Cookie の属性、CSRF を自分で書きます。
 - **Keycloak を本番の IdP にする**: Java のサーバーとその DB の運用が要ります。
-- **ローカルの IdP を mock-oauth2-server にする**: 軽く、クレームを自由に作れますが、ログアウトやセッションの失効が本物と違います。慣れていて本番に近い Keycloak を選びました。
+- **ローカルの IdP を mock-oauth2-server にする**: 軽く、クレームを自由に作れますが、ログアウトやセッションの失効が本物と違います。
+- **ローカルと CI の IdP を Keycloak のコンテナにする**: 最初はこれを選びました。ただし、複数の Kiro セッションが同じマシンで並行すると JVM がセッションの数だけ起動し、負荷で起動が待ちの上限（180 秒）に間に合わず、`pre-push` が止まりました（負荷が低いと 46 秒、3 セッション並行で 180 秒超）。[Issue #427](https://github.com/yokozi-jp/agent-software-factory/issues/427) で、node-oidc-provider に替えました。
+- **Keycloak を 1 つだけ立てて全セッションで共有する（compose）**: JVM は 1 つになりますが、立て忘れると動かず、起動の手順が増えます。node-oidc-provider は Docker が要りません。
+- **ローカルと CI の IdP を node-oidc-provider にする**: 選びました。テストのプロセスの中で動かし、起動は 1 秒未満です。OpenID Connect の認証を取った実装で、認可コード、PKCE、RP-Initiated Logout に対応します。ログイン画面と、ログアウトの確認の省略は自作です。Keycloak 固有の挙動（クレームの形、セッション設定）は確かめられなくなりますが、本番は Cognito か Entra ID なので、Keycloak で通ることは本番で通る証拠になりません（判断）。
 - **ローカルは Better Auth 自身のメールとパスワード、本番は外部の IdP**: ログインの経路が2つになり、本番の経路がローカルと CI で一度も動きません。
 - **毎回のリクエストで人事システムを引き直す、または承認の直前に引き直す**: 役割の遅れは小さくなりますが、人事システムの障害が承認を止めます。
 
@@ -37,9 +40,9 @@ tags: [adr, auth, session, bff, security, multitenancy]
 - Cognito 固有の癖（hosted UI、ホスト名、スコープ）は、検証環境の本物の Cognito でしか試せません。検証環境では Cognito を CDK で作って E2E を流して消します（[使い捨ての検証環境を作り、E2E を流して消す流れ（CD）を決める](https://github.com/yokozi-jp/agent-software-factory/issues/88)）。
 - `auth` の表の隔離は、DB の RLS ではなく、Better Auth のコードと、アプリ用ロールに権限がないことに依存します。
 - 経理の権限を外しても、最長 8 時間は古い役割が残ります。
-- Better Auth は新しいライブラリです（[npm registry](https://www.npmjs.com/package/better-auth) の 1.7.12、2026-10-20）。実装で確かめたこと: Keycloak の OIDC（認可コードと PKCE）でログインできる。organization プラグインを含む表が `auth` スキーマに作られ、アプリ用ロールからは読めない。無操作の期限（Better Auth の `expiresIn`）は Better Auth が見るが、最長の期限は持たないので、`sessionGuard` が見る。IdP のログアウトは、Better Auth が `end_session_endpoint` の URL を `sign-out` の応答で返す。
-- テストの認証は 2 通りに分ける。ログイン、Cookie、ログアウトを確かめるテストだけが、Keycloak のログインの画面を HTTP で通す（`TestBrowser.login()`。2026-10-26 のローカルで 1 回 1〜3 秒）。Cookie の `SameSite` と期限の失敗は、この方法で見つかった。業務のテストなど、認証が目的でないテストは、Better Auth の `testUtils` プラグインで作ったセッションを使う（`fixture.signedIn()`。1 回 0.4 秒ほど）。`testUtils` は、アプリと同じ設定、同じ DB、同じ secret の別の認証に足すので、セッションの行と Cookie の署名はアプリがそのまま受け取る（`apps/api/test/auth-fixtures.ts`）。本物のログインを毎回通すと、認証が要るテストが増えるたびに遅くなる。少数のテストに絞るのは、テストピラミッドの考え方に沿った判断である。
-- api のテストは Docker が要り、PostgreSQL と Keycloak のコンテナを起動する。2026-10-26 のローカル（イメージ取得済み）で `vp test run` が 73〜123 秒（3 回の計測）かかり、CI の feedback loop に効く（[工場の成果の測り方を決める](https://github.com/yokozi-jp/agent-software-factory/issues/39)）。
+- Better Auth は新しいライブラリです（[npm registry](https://www.npmjs.com/package/better-auth) の 1.7.12、2026-10-20）。実装で確かめたこと: OIDC（認可コードと PKCE）でログインできる。organization プラグインを含む表が `auth` スキーマに作られ、アプリ用ロールからは読めない。無操作の期限（Better Auth の `expiresIn`）は Better Auth が見るが、最長の期限は持たないので、`sessionGuard` が見る。IdP のログアウトは、Better Auth が `end_session_endpoint` の URL を `sign-out` の応答で返す。Cognito は discovery に `end_session_endpoint` を持たず、`/logout` に `client_id` と `logout_uri` を渡す形のため、本番の Cognito で IdP のセッションが終わるかは別に確かめる（[Issue #437](https://github.com/yokozi-jp/agent-software-factory/issues/437)）。
+- テストの認証は 2 通りに分ける。ログイン、Cookie、ログアウトを確かめるテストだけが、テスト用 IdP のログインの画面を HTTP で通す（`TestBrowser.login()`。2026-10-26 のローカルで 1 回 1〜3 秒）。Cookie の `SameSite` と期限の失敗は、この方法で見つかった。業務のテストなど、認証が目的でないテストは、Better Auth の `testUtils` プラグインで作ったセッションを使う（`fixture.signedIn()`。1 回 0.4 秒ほど）。`testUtils` は、アプリと同じ設定、同じ DB、同じ secret の別の認証に足すので、セッションの行と Cookie の署名はアプリがそのまま受け取る（`apps/api/test/auth-fixtures.ts`）。本物のログインを毎回通すと、認証が要るテストが増えるたびに遅くなる。少数のテストに絞るのは、テストピラミッドの考え方に沿った判断である。
+- api のテストは Docker が要り、PostgreSQL のコンテナを起動する。IdP はテストのプロセスの中で動き、コンテナを起動しない。2026-10-26 の Keycloak のコンテナを使っていたローカル（イメージ取得済み）で `vp test run` が 73〜123 秒（3 回の計測）、node-oidc-provider に替えた後の 2026-10-30 に 52 秒（1 回の計測）。CI の feedback loop に効く（[工場の成果の測り方を決める](https://github.com/yokozi-jp/agent-software-factory/issues/39)）。
 - 自己登録は、まだ止めていない。IdP でログインできた人は、`user` が自動で作られる。人事システムの確認で止める（[ログインのたびに人事システムで社員を確認し、メンバーシップと役割を同期する](https://github.com/yokozi-jp/agent-software-factory/issues/156)）。
 - `server.ts` は、認証の環境変数が足りないと起動に失敗する（fail closed）。認証なしの開発は `vp dev` を使う。
 - まだ確かめていない: `__Host-Http-` の接頭辞（使わないことにした）、ブラウザ（Playwright）を通した E2E（web にログインの画面がない）、Cognito と Entra ID の provider。

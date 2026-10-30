@@ -26,7 +26,7 @@ tags: [adr, db, postgresql, seed, rls, testing, migration]
   - **ローカル**: `pnpm db:seed` で流します。パターンごとのデータを手で操作するのはここです。
   - **検証環境と本番**: 流しません。検証環境は同じ run で消すので人が触れず、毎回作る Cognito の利用者と seed の行を結び付けられません。
 - **本番に流さない守り**: seed と faker を本番のイメージに入れないことだけにします。本番の境界は、ネットワーク (private subnet) と IAM DB authentication が持ちます。エージェントには `aws` を禁止しています。人が誤って流すことが心配になったら、許可を明示した DB (`ALTER DATABASE … SET app.seed_allowed`) にだけ流す守りを足します (判断)。
-- **範囲の外**: `db:reset` (ローカルの DB の立て方と一緒に決めます。冪等が要るかもそのとき考え直します)。seed の利用者と Keycloak の realm の利用者の結び付け方 (同じ人にする約束だけを決め、メールアドレスで結ぶか固定の `id` で結ぶかはサンプル機能の仕様で決めます)。
+- **範囲の外**: `db:reset` (ローカルの DB の立て方と一緒に決めます。冪等が要るかもそのとき考え直します)。seed の利用者とテスト用 IdP（`apps/api/test/oidc-provider.ts`）の利用者の結び付け方 (同じ人にする約束だけを決め、メールアドレスで結ぶか固定の `id` で結ぶかはサンプル機能の仕様で決めます)。
 
 ## Considered Options
 

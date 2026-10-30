@@ -123,8 +123,8 @@ flowchart TB
 
 ### 起動とログイン
 
-- 結合テストと同じ testcontainers (`postgres:17`、Keycloak、同じ realm、同じ migrate と bootstrap) を、Playwright の `globalSetup` から使う。build 済みの API と web は `webServer` で起動する。compose は足さない。
-- ログインのテストだけが Keycloak の画面を通す。業務の導線は、Better Auth の `testUtils` で作ったセッションの Cookie から始める ([ADR 0022](../adr/0022-better-auth-cookie-bff.md))。
+- 結合テストと同じ起動 (testcontainers の `postgres:17`、プロセスの中のテスト用 IdP の `oidc-provider.ts`、同じ migrate と bootstrap) を、Playwright の `globalSetup` から使う。build 済みの API と web は `webServer` で起動する。compose は足さない。
+- ログインのテストだけがテスト用 IdP の画面を通す。業務の導線は、Better Auth の `testUtils` で作ったセッションの Cookie から始める ([ADR 0022](../adr/0022-better-auth-cookie-bff.md))。
 
 ### 検証環境との分担
 

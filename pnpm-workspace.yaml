@@ -35,6 +35,8 @@ catalog:
   knip: 6.43.0
   eslint-plugin-react-you-might-not-need-an-effect: 1.0.2
   better-auth: ^1.7.12
+  oidc-provider: ^9.13.3
+  "@types/oidc-provider": ^9.13.1
   pg: ^8.23.1
   dbmate: 2.37.0
   # Inside the peer range of Better Auth (^0.28.17 || ^0.29.0), so it and the code share one copy of kysely.
@@ -43,7 +45,6 @@ catalog:
   kysely-codegen: 0.20.0
   "@testcontainers/postgresql": ^12.2.1
   "@types/pg": ^8.23.1
-  testcontainers: ^12.2.1
   "@stryker-mutator/core": 10.1.1
   "@stryker-mutator/vitest-runner": 10.1.1
   "@vitest/coverage-v8": 5.0.5
@@ -114,3 +115,5 @@ minimumReleaseAgeExclude:
   - "@effect/tsgo-win32-arm64@0.61.0"
   - "@effect/tsgo-win32-x64@0.61.0"
   - "@effect/tsgo@0.61.0"
+  - oidc-provider@9.13.3
+  - "@types/oidc-provider@9.13.1"

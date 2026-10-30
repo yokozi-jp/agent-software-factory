@@ -6,6 +6,7 @@ import { authOptions, authPlugins, createAuth, type AuthConfig } from "../src/au
 import { createApp } from "../src/app.ts";
 import { TestBrowser } from "./browser.ts";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
+import { clientId, clientSecret } from "./oidc-provider.ts";
 import { startServerProcess, type ServerProcess } from "./server-process.ts";
 
 export const appOrigin = "https://app.example.test";
@@ -20,7 +21,7 @@ export interface AuthFixture {
   startInstance(): Promise<ServerProcess>;
   newBrowser(): TestBrowser;
   /**
-   * 本物のログイン (Keycloak) を通さずに、認証済みの browser を作る。
+   * 本物のログイン (テスト用 IdP) を通さずに、認証済みの browser を作る。
    * 業務のテストは、認証が目的ではないので、これを使う (docs/adr/0022)。
    * ログイン、Cookie、ログアウトを確かめるテストだけが `newBrowser().login()` を使う。
    */
@@ -37,7 +38,7 @@ export interface AuthFixtureOptions {
   readonly rateLimit?: boolean;
 }
 
-/** 本物の PostgreSQL と Keycloak につないだ、認証つきのアプリを作る。 */
+/** 本物の PostgreSQL とテスト用 IdP につないだ、認証つきのアプリを作る。 */
 export async function createAuthFixture({
   session = {},
   rateLimit = false,
@@ -48,9 +49,9 @@ export async function createAuthFixture({
     baseURL: appOrigin,
     secret: "test-secret-test-secret-test-secret-0123",
     oidc: {
-      discoveryUrl: `${inject("keycloakBaseUrl")}/realms/factory/.well-known/openid-configuration`,
-      clientId: "api",
-      clientSecret: "test-client-secret",
+      discoveryUrl: `${inject("oidcIssuer")}/.well-known/openid-configuration`,
+      clientId,
+      clientSecret,
     },
     session,
     rateLimit: { enabled: rateLimit },

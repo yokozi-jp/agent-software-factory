@@ -1,8 +1,8 @@
 import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite-plus";
 
-// テストの project は 2 つ。integration は src/ のテストで、PostgreSQL と Keycloak のコンテナを、全テストで共有して
-// 一度だけ起動する。unit (`*.unit.test.ts`) はコンテナを起動しない。入力を渡して結果を見るだけのテストは unit にする。
+// テストの project は 2 つ。integration は src/ のテストで、PostgreSQL のコンテナとテスト用 IdP (test/oidc-provider.ts) を、全テストで共有して
+// 一度だけ起動する。unit (`*.unit.test.ts`) はどちらも起動しない。入力を渡して結果を見るだけのテストは unit にする。
 // コンテナが起動しない環境でも、`vp test run --project unit` で動く (vitest は global setup の失敗を
 // `code.charCodeAt is not a function` で隠すので、integration が起動で落ちた原因はコンテナを疑う)。
 // Oxlint の自作 plugin の規則のテストは tools/lint-plugins にある (docs/adr/0030)。
@@ -36,9 +36,9 @@ export default defineConfig({
           include: ["src/**/*.test.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
           exclude: ["**/node_modules/**", "**/__fixtures__/**", "src/**/*.unit.test.ts"],
-          // Keycloak の起動に時間がかかる。待ちの上限 (test/global-setup.ts の 300 秒) より長くする。
+          // PostgreSQL のコンテナの起動 (イメージの取得を含む) を待つ。testcontainers の待ちの上限 (既定 60 秒) より長くする。
           globalSetup: ["./test/global-setup.ts"],
-          hookTimeout: 360_000,
+          hookTimeout: 120_000,
           testTimeout: 60_000,
         },
       },

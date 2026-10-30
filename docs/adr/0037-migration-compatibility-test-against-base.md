@@ -39,5 +39,5 @@ DB のロールバックはなく、障害はアプリを前の版に戻して�
 - migration を足す PR は、merge の前に前の版の結合テストが通る必要があります。expand と contract を 1 つの PR にまとめると、この job が止めます。
 - 例外は ruleset の bypass だけです。contract の段の migration のように止まるはずの PR は、base のアプリが contract の対象を使わなくなってから出します。
 - migration の置き場所は、[migration と DB の道具を packages/db に移し、依存の向きを検査する](https://github.com/yokozi-jp/agent-software-factory/issues/337) で移るかもしれません。移ったら、対象のパスをその場所に読み替え、この ADR も直します。
-- 結合テストを 2 つの版で流すので、migration を含む PR の CI は長くなります。job の実行時間 (`pnpm install` と Keycloak の起動を含む) は確かめていません。実施の Issue で測り、長ければ絞ります。
+- 結合テストを 2 つの版で流すので、migration を含む PR の CI は長くなります。job の実行時間 (`pnpm install` と PostgreSQL の起動を含む) は確かめていません。実施の Issue で測り、長ければ絞ります。
 - seed は、表や列を変える migration と同じ PR で書き換える決まりです ([seed の方式を決める](https://github.com/yokozi-jp/agent-software-factory/issues/300))。base の worktree には base の seed があるので、PR が seed を書き換えても、base のスキーマに流す seed は base のものです。
