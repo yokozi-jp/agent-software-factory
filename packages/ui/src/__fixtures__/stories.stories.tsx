@@ -7,7 +7,7 @@
 // oxlint-disable-next-line storybook/no-renderer-packages -- fixture: a renderer package imported directly
 import type { ReactRenderer } from "@storybook/react";
 import type { Meta } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, userEvent } from "storybook/test";
 
 export type Renderer = ReactRenderer;
 
@@ -43,6 +43,8 @@ export const Floating = {
   play: async () => {
     // oxlint-disable-next-line typescript/no-floating-promises -- fixture: an expect that is not awaited
     expect(1).toBe(1);
+    // oxlint-disable-next-line typescript/no-floating-promises -- fixture: a userEvent that is not awaited
+    userEvent.click(document.body);
     await Promise.resolve();
   },
 };

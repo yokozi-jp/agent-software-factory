@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import A11yWarningsReporter, { a11yWarning } from "./a11y-warnings-reporter.ts";
+import A11yWarningsReporter, {
+  a11yWarning,
+  hasA11yReport,
+  silentA11y,
+} from "./a11y-warnings-reporter.ts";
 
 const report = (status: string, ...rules: string[]) => ({
   type: "a11y",
@@ -55,6 +59,50 @@ describe("a11y の警告の reporter", () => {
   it("警告のない story は何も出さない", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     new A11yWarningsReporter().onTestCaseResult(caseOf([]));
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe("a11y の報告がない実行", () => {
+  it("story を実行したのに a11y の報告が 1 件もなければ、行を作る", () => {
+    expect(silentA11y(3, 0)).toContain("3 件の story");
+  });
+
+  it("報告が 1 件でもあるか、story を実行していなければ、行を作らない", () => {
+    expect(silentA11y(3, 1)).toBeUndefined();
+    expect(silentA11y(0, 0)).toBeUndefined();
+  });
+
+  it("違反のない a11y の報告も、報告として数える", () => {
+    expect(hasA11yReport([report("passed")])).toBe(true);
+    expect(hasA11yReport([{ type: "other" }, null])).toBe(false);
+    expect(hasA11yReport(undefined)).toBe(false);
+  });
+
+  it("story のテストを数えて、報告が 1 件もない実行の終わりに警告する", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const reporter = new A11yWarningsReporter();
+    reporter.onTestCaseResult({ fullName: "unit", meta: () => ({}) });
+    reporter.onTestRunEnd();
+    expect(warn).not.toHaveBeenCalled();
+    reporter.onTestCaseResult({
+      fullName: "ui/Button > Default",
+      meta: () => ({ storyId: "ui-button--default", reports: [] }),
+    });
+    reporter.onTestRunEnd();
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("報告のある story があれば、終わりに警告しない", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const reporter = new A11yWarningsReporter();
+    reporter.onTestCaseResult({
+      fullName: "s",
+      meta: () => ({ storyId: "s", reports: [report("passed")] }),
+    });
+    reporter.onTestRunEnd();
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });

@@ -4051,6 +4051,7 @@ describe("ADR 0033: each part of packages/ui has a story next to it", () => {
       violations(
         repo({
           [`${components}/helper.ts`]: "export {};",
+          [`${components}/button.test.tsx`]: "export {};",
           "packages/ui/src/lib/format.tsx": "export {};",
           "packages/ui/src/componentsx/part.tsx": "export {};",
           "apps/web/src/components/menu.tsx": "export {};",

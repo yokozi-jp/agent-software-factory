@@ -29,7 +29,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 - **Base UI の `ScrollArea` と `Select` (`alignItemWithTrigger`) は `<style>` 要素を出します。** CSP が `style-src` を制限すると、この `<style>` が止まります。使うときは、アプリの上位に Base UI の `CSPProvider` を置き、`disableStyleElements` を付けるか `nonce` を渡します (`@base-ui/react/csp-provider` の型定義で確認)。web の CSP はまだ決まっていないので、検査は作りません。この制約を、CSP を決める Issue に引き継ぎます。
 - **Storybook に Vite+ の公式の保証はありません。** Storybook は Vite を使いますが、このリポジトリの `vite` は `@voidzero-dev/vite-plus-core` に差し替えています。Vite+ が Storybook の動作を保証する文書はなく、動かなくなっても Vite+ 側の修正は約束されません。
 - **Storybook を外す条件**: Vite+ の更新で Storybook が起動しないか story の test が動かず、直す手間が story を持つ利点を上回るときです。外すときは、ここに書いた story 必須の検査も外し、component test を Vitest の browser mode の `*.test.tsx` に戻すかを決め直し、この ADR を置き換える ADR を書きます。
-- **a11y の警告の reporter は、addon が書く非公開の構造を読みます。** `testCase.meta().reports` は Vitest にも Storybook にも文書がなく、`@storybook/addon-a11y` と `@storybook/addon-vitest` の版 (10.6.5) の実装を読んで決めました。構造が変わると reporter は何も出さず、テストも落ちません。Storybook を上げる PR で、axe に違反する story (画像に `alt` がない `<img>` など) を一時的に足して `vp test run --project storybook` を流し、`a11y warning:` が出ることを確かめます。
+- **a11y の警告の reporter は、addon が書く非公開の構造を読みます。** `testCase.meta().reports` は Vitest にも Storybook にも文書がなく、`@storybook/addon-a11y` と `@storybook/addon-vitest` の版 (10.6.5) の実装を読んで決めました。構造が変わると reporter は違反を出せませんが、story を実行したのに a11y の報告が 1 件もない実行には、実行の終わりに `a11y warning: …件の story を実行したが、a11y の報告が 1 件もない` と出します (違反の沈黙を見つける)。Storybook を上げる PR で、axe に違反する story (画像に `alt` がない `<img>` など) を一時的に足して `vp test run --project storybook` を流し、`a11y warning:` が出ることを確かめます。
 
 ## Knip と jscpd の扱い
 
@@ -37,6 +37,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 - **Knip** ([ADR 0017](0017-knip-unused-code.md)): `packages/ui/src/components/` の部品は、画面が使うまで import されず、部品の中に使わない export (variant、小さな部品) があります。`knip.jsonc` の `packages/ui` に、`src/components/**/*.tsx` を `entry` として書きました (`src/lib/utils.ts` は `exports` から entry になります)。生成された部品は `cn` を npm の `cn` (shadcn-ui の公式の package) から直接 import するので、`utils.ts` は今は import されません。`components.json` の `aliases.utils` が指すファイルで、自分で書くコードが `@agent-software-factory/ui/lib/utils` から `cn` を import するときに使います。entry の export は報告されず、部品が import する `@base-ui/react` や `cn` も使用中と数えられます。上流が出す export を、使うたびに `@public` で許可する運用は避けました。
 - **jscpd** ([ADR 0014](0014-jscpd-duplication-threshold.md)): `shadcn init` が書く `index.css` は、`:root` と `.dark` のテーマ変数が似た 7 行の並びになり、閾値 0 の重複として止まります。生成されたファイルなので、`.jscpd.json` の `ignore` に `packages/ui/src/styles/globals.css` だけを足しました (移す前は `apps/web/src/index.css`)。部品の `.tsx` は重複が出ていないので、除外しません。重複が出たら、その部品に限って足します。
+- **story への効き方** (#315 で確かめた): jscpd は `.jscpd.json` で `*.stories.tsx` を除外していないので、状態違いの story の重複は閾値 0 で止まります。XSS の plugin (`web-xss`) は `webFiles` の `packages/ui/src/**` に届き、story の `dangerouslySetInnerHTML` を止めます。tsconfig の厳しさは、story の program (`src/components/tsconfig.json`、`src/__fixtures__/tsconfig.json`) が root の tsconfig を extends するので効きます。fixture の `@ts-expect-error` を外すと `vp check` が失敗します。
 
 ## Considered Options
 
