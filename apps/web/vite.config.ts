@@ -68,7 +68,7 @@ export default defineConfig({
         },
       },
     ],
-    // a11y の違反を警告にとどめた story (preview.ts の `a11y.test: "todo"`) の違反は、Storybook の画面にだけ出て CI のログに出ない。
+    // a11y の違反を警告にとどめた story (story の parameters の `a11y.test: "todo"`) の違反は、Storybook の画面にだけ出て CI のログに出ない。
     // この reporter が実行ログに出す (test/a11y-warnings-reporter.ts)。
     reporters: ["default", "./test/a11y-warnings-reporter.ts"],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。unit と storybook の両方が通した行を数える。
