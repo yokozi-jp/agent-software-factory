@@ -1,7 +1,7 @@
 // Node.js 24 には Temporal がないので、polyfill の global を入れる。Node.js 26 以降は何もしない。
 import "temporal-polyfill/global";
 import { serve } from "@hono/node-server";
-import { createPool } from "@agent-software-factory/db";
+import { createPool, poolTimeouts } from "@agent-software-factory/db";
 import { Pool } from "pg";
 
 import { createApp } from "./app.ts";
@@ -17,6 +17,7 @@ const env = loadEnv(process.env);
 // 認証なしでの開発は、vp dev (src/index.ts) を使う。
 const auth = createAuth({
   database: new Pool({
+    ...poolTimeouts,
     connectionString: env.AUTH_DATABASE_URL,
     options: "-c search_path=auth",
   }),

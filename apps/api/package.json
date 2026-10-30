@@ -18,6 +18,7 @@
     "@agent-software-factory/shared": "workspace:*",
     "@hono/node-server": "catalog:",
     "better-auth": "catalog:",
+    "effect": "catalog:",
     "hono": "catalog:",
     "kysely": "catalog:",
     "pg": "catalog:",
