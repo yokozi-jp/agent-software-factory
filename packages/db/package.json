@@ -12,17 +12,20 @@
     "check": "vp check",
     "test": "vp test run --coverage",
     "db:migrate": "node src/migrate.ts",
+    "db:seed": "node src/seed/index.ts",
     "db-types": "node src/types.ts",
     "db-types-check": "node src/types.ts --check"
   },
   "dependencies": {
     "dbmate": "catalog:",
+    "kysely": "catalog:",
     "pg": "catalog:"
   },
   "devDependencies": {
     "@agent-software-factory/approval": "workspace:*",
     "@agent-software-factory/claim": "workspace:*",
     "@agent-software-factory/closing": "workspace:*",
+    "@faker-js/faker": "catalog:",
     "@testcontainers/postgresql": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

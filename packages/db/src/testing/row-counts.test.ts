@@ -47,7 +47,8 @@ describe("snapshotRowCounts と diffRowCounts", () => {
     const schemas = new Set(Object.keys(counts).map((name) => name.split(".")[0]));
     expect(schemas.has("auth")).toBe(false);
     expect(schemas.has("migrations")).toBe(false);
-    expect(counts["claim.t_claim"]).toBe(0);
+    // テンプレートの DB には seed の行がある (docs/adr/0036)。数えていることは、キーがあることで確かめる。
+    expect(Object.keys(counts)).toContain("claim.t_claim");
   });
 
   it("superuser でない接続は、RLS で行が見えなくなり少なく数えるので、数える前に失敗すること", async () => {

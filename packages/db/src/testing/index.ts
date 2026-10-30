@@ -11,7 +11,7 @@ export { awaitBlocked, type AwaitBlockedOptions, type BlockedSessions } from "./
 export { rolePassword } from "./credentials.ts";
 export { createTestDatabase, type TestDatabase } from "./database.ts";
 export { reportSetupFailure } from "./global-setup.ts";
-export { prepareDatabase } from "./prepare-database.ts";
+export { prepareDatabase, prepareSeededDatabase } from "./prepare-database.ts";
 export {
   diffRowCounts,
   snapshotRowCounts,
