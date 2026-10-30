@@ -119,12 +119,11 @@ describe("createPool: 接続の待ちを有限にする", () => {
   });
 
   it("pool が空のとき、connectionTimeoutMillis で待ちが終わって失敗すること", async () => {
-    const pool = createPool({
-      connectionString: db.url("app_user"),
-      max: 1,
-      connectionTimeoutMillis: 200,
-    });
+    // 最初の接続は、負荷が高いと 200 ms で張れず、待ちの失敗とは別のエラーになる。既定の待ちで取り、
+    // 短い待ちは、pool が空になった後の 2 つ目の接続にだけ掛ける (pg-pool は接続のたびに options を読む)。
+    const pool = createPool({ connectionString: db.url("app_user"), max: 1 });
     const holder = await pool.connect();
+    pool.options.connectionTimeoutMillis = 200;
     try {
       await expect(pool.connect()).rejects.toThrow(/timeout exceeded when trying to connect/);
     } finally {
