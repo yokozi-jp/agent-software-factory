@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { LoginScreen } from "@/components/login-screen.tsx";
 import { parseLoginReason, safeRedirect, type LoginSearch } from "@/lib/login-redirect.ts";
+import type { SessionState } from "@/lib/session.ts";
 
 // URL の search は利用者が書き換えられるので、読むときに検査する。redirect は相対パスだけ、reason は知っている識別子だけ。
 export const Route = createFileRoute("/login")({
@@ -10,24 +11,19 @@ export const Route = createFileRoute("/login")({
     reason: parseLoginReason(search["reason"]),
   }),
   // ログイン済みで来たら、戻り先 (なければ /) に移す。
+  // /api/me が答えないとき (障害) も、ログイン画面は開く。画面まで失敗にすると、復旧した後に入る道もなくなる。
   beforeLoad: async ({ context, search }) => {
-    if ((await context.getSession()) === "authenticated") {
+    const session = await context.getSession().catch((): SessionState => "unauthenticated");
+    if (session === "authenticated") {
       // oxlint-disable-next-line typescript/only-throw-error -- TanStack Router の redirect は throw する値で、Error ではない
-      throw redirect({ href: safeRedirect(search.redirect) });
+      throw redirect({ href: search.redirect ?? "/" });
     }
   },
-  component: LoginRoute,
+  component: LoginPage,
 });
 
-function LoginRoute() {
+function LoginPage() {
   const { signIn } = Route.useRouteContext();
   const { redirect: returnTo, reason } = Route.useSearch();
-  return (
-    <LoginScreen
-      reason={reason}
-      onSignIn={() => {
-        void signIn(safeRedirect(returnTo));
-      }}
-    />
-  );
+  return <LoginScreen reason={reason} onSignIn={() => signIn(returnTo ?? "/")} />;
 }

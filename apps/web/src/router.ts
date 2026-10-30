@@ -13,6 +13,8 @@ export type AppRouter = ReturnType<typeof createAppRouter>;
 
 /** 操作の途中でセッションが切れたとき、今の画面を戻り先にして、理由つきで /login に移す (Issue #397)。 */
 export function goToSessionExpired(router: AppRouter): void {
+  // /login にいるなら、もう移した後 (同時の複数の 401 や、ログイン画面の API の 401)。/login を戻り先にしない。
+  if (router.state.location.pathname === "/login") return;
   void router.navigate({
     to: "/login",
     search: loginSearchFor(router.state.location.href, "session-expired"),

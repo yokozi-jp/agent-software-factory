@@ -24,8 +24,8 @@ interface ReadyApp {
 interface AppProps {
   /** 最初に開く URL。 */
   path: string;
-  /** `GET /api/me` の結果。 */
-  session: SessionState;
+  /** `GET /api/me` の結果。"unavailable" は答えない (障害)。 */
+  session: SessionState | "unavailable";
   signIn: AppContext["signIn"];
   /** 業務の API が返す status。 */
   apiStatus?: number;
@@ -47,7 +47,10 @@ function App({ path, session, signIn, apiStatus = 200 }: AppProps) {
           goToSessionExpired(router);
         },
       ),
-      getSession: () => Promise.resolve(current),
+      getSession: () =>
+        current === "unavailable"
+          ? Promise.reject(new Error("unavailable"))
+          : Promise.resolve(current),
       signIn,
     };
     const router = createAppRouter(context, createMemoryHistory({ initialEntries: [path] }));
@@ -62,12 +65,20 @@ function App({ path, session, signIn, apiStatus = 200 }: AppProps) {
 const meta = {
   title: "web/App",
   component: App,
-  args: { path: "/", session: "unauthenticated", signIn: fn() },
+  args: {
+    path: "/",
+    session: "unauthenticated",
+    signIn: fn<AppContext["signIn"]>(() => Promise.resolve()),
+  },
 } satisfies Meta<typeof App>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+function locationOf() {
+  return currentApp().router.state.location;
+}
 
 function currentApp(): ReadyApp {
   if (latest === undefined) throw new Error("the app has not been rendered");
@@ -78,8 +89,8 @@ async function expectHomeAt(
   canvas: { findByRole: (role: string, options: object) => Promise<HTMLElement> },
   href: string,
 ) {
-  await canvas.findByRole("heading", { name: "agent-software-factory" });
-  await expect(currentApp().router.state.location.href).toBe(href);
+  await canvas.findByRole("heading", { name: "ホーム" });
+  await expect(locationOf().href).toBe(href);
 }
 
 export const LoginScreen: Story = {
@@ -105,6 +116,30 @@ export const LoginIgnoresAnExternalReturnPath: Story = {
   play: async ({ args, canvas }) => {
     await userEvent.click(await canvas.findByRole("button", { name: "IdP でログイン" }));
     await expect(args.signIn).toHaveBeenCalledWith("/");
+  },
+};
+
+export const LoginShowsAnAlertWhenSignInFails: Story = {
+  args: {
+    path: "/login",
+    signIn: fn<AppContext["signIn"]>(() => Promise.reject(new Error("idp down"))),
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(await canvas.findByRole("button", { name: "IdP でログイン" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent("ログインできませんでした");
+    await expect(args.signIn).toHaveBeenCalledOnce();
+    await expect(canvas.getByRole("button", { name: "IdP でログイン" })).toBeVisible();
+    // もう一度押すと、前の失敗の表示は消えてから、やり直す。
+    await userEvent.click(canvas.getByRole("button", { name: "IdP でログイン" }));
+    await expect(args.signIn).toHaveBeenCalledTimes(2);
+  },
+};
+
+export const LoginOpensWhenTheSessionCheckIsUnavailable: Story = {
+  args: { path: "/login", session: "unavailable" },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("button", { name: "IdP でログイン" })).toBeVisible();
+    await expect(locationOf().pathname).toBe("/login");
   },
 };
 
@@ -136,9 +171,8 @@ export const SignedOutVisitMovesToLoginWithTheOriginalPath: Story = {
   args: { path: "/?from=mail", session: "unauthenticated" },
   play: async ({ canvas }) => {
     await canvas.findByRole("button", { name: "IdP でログイン" });
-    const { router } = currentApp();
-    await expect(router.state.location.pathname).toBe("/login");
-    await expect(router.state.location.search).toEqual({ redirect: "/?from=mail" });
+    await expect(locationOf().pathname).toBe("/login");
+    await expect(locationOf().search).toEqual({ redirect: "/?from=mail" });
   },
 };
 
@@ -146,17 +180,14 @@ export const SignedOutVisitToHomeMovesToLogin: Story = {
   args: { path: "/", session: "unauthenticated" },
   play: async ({ canvas }) => {
     await canvas.findByRole("button", { name: "IdP でログイン" });
-    const { router } = currentApp();
-    await expect(router.state.location.href).toBe("/login");
+    await expect(locationOf().href).toBe("/login");
   },
 };
 
 export const SignedInOpensHome: Story = {
   args: { path: "/", session: "authenticated" },
   play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "agent-software-factory" }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole("heading", { name: "ホーム" })).toBeVisible();
   },
 };
 
@@ -188,8 +219,7 @@ export const NotFoundWhenSignedIn: Story = {
       await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
     ).toBeVisible();
     await expect(canvas.getByRole("link", { name: "トップへ戻る" })).toHaveAttribute("href", "/");
-    const { router } = currentApp();
-    await expect(router.state.location.pathname).toBe("/no-such-page");
+    await expect(locationOf().pathname).toBe("/no-such-page");
   },
 };
 
@@ -199,33 +229,41 @@ export const NotFoundWhenSignedOut: Story = {
     await expect(
       await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
     ).toBeVisible();
-    const { router } = currentApp();
-    await expect(router.state.location.pathname).toBe("/no-such-page");
+    await expect(locationOf().pathname).toBe("/no-such-page");
   },
 };
 
 export const SessionExpiresDuringAnOperation: Story = {
   args: { path: "/?from=mail", session: "authenticated", apiStatus: 401 },
   play: async ({ canvas }) => {
-    await canvas.findByRole("heading", { name: "agent-software-factory" });
-    const { router, context } = currentApp();
+    await canvas.findByRole("heading", { name: "ホーム" });
+    const { context } = currentApp();
     await context.apiFetch("/api/claims");
     await expect(await canvas.findByRole("alert")).toHaveTextContent("有効期限が切れました");
-    await expect(router.state.location.pathname).toBe("/login");
-    await expect(router.state.location.search).toEqual({
+    await expect(locationOf().pathname).toBe("/login");
+    await expect(locationOf().search).toEqual({
       redirect: "/?from=mail",
       reason: "session-expired",
     });
   },
 };
 
+export const SessionExpiryOnTheLoginScreenStaysThere: Story = {
+  args: { path: "/login", session: "unauthenticated", apiStatus: 401 },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("button", { name: "IdP でログイン" });
+    await currentApp().context.apiFetch("/api/claims");
+    await expect(locationOf().href).toBe("/login");
+  },
+};
+
 export const OtherApiErrorsStayOnTheScreen: Story = {
   args: { path: "/", session: "authenticated", apiStatus: 403 },
   play: async ({ canvas }) => {
-    await canvas.findByRole("heading", { name: "agent-software-factory" });
-    const { router, context } = currentApp();
+    await canvas.findByRole("heading", { name: "ホーム" });
+    const { context } = currentApp();
     await expect((await context.apiFetch("/api/claims")).status).toBe(403);
-    await expect(router.state.location.pathname).toBe("/");
+    await expect(locationOf().pathname).toBe("/");
   },
 };
 

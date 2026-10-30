@@ -1,9 +1,7 @@
 {
-  "app": {
-    "name": "agent-software-factory"
-  },
   "home": {
-    "sampleButton": "Button"
+    "sampleButton": "Button",
+    "title": "Home"
   },
   "problem": {
     "generic": "Something went wrong. Please try again later.",
@@ -19,7 +17,8 @@
     "reason": {
       "sessionExpired": "Your session has expired. Please sign in again.",
       "loggedOut": "You have signed out."
-    }
+    },
+    "failed": "Sign-in failed. Please try again."
   },
   "notFound": {
     "title": "Page not found."
