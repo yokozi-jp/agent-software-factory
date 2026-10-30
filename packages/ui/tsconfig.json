@@ -8,5 +8,8 @@
     "jsx": "react-jsx",
     "types": []
   },
-  "include": ["src"]
+  // story は src/components/tsconfig.json の program で型を見る。Storybook の型が Node.js の型を連れてくるので、
+  // この program に入れると、src/__fixtures__/node-modules.ts が確かめる「Node.js の型がない」が崩れる。
+  "include": ["src"],
+  "exclude": ["src/components/*.stories.tsx"]
 }

@@ -71,6 +71,9 @@ catalog:
   i18next: ^26.5.11
   react-i18next: ^17.1.9
   i18next-cli: 1.80.5
+  "@storybook/addon-vitest": ^10.6.5
+  "@storybook/react-vite": ^10.6.5
+  storybook: ^10.6.5
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:
@@ -80,6 +83,8 @@ peerDependencyRules:
     vite: "*"
 allowBuilds:
   nx: true
+  # Storybook (apps/web) の依存。esbuild の build script を実行する。実行しないと、CI の pnpm が判断のない build script として失敗にする。
+  esbuild: true
   # Git hooks are installed by the root `prepare` script, not by lefthook's postinstall.
   lefthook: false
   # testcontainers の依存。build script を実行しない。実行しなくても api のテストは通る
