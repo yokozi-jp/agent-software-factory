@@ -4,3 +4,4 @@
 // what apps/api assembles. The module has no code yet, only the
 // type of its database.
 export type { ClaimDatabase } from "./infrastructure/database.ts";
+export { ClaimTx } from "./infrastructure/transaction.ts";

@@ -35,9 +35,20 @@ function temporalTypes(): TypeOverrides {
 }
 
 /**
- * アプリの接続 (`Pool`)。`timestamptz` を `Temporal.Instant`、`date` を `Temporal.PlainDate` で読み、`timestamp` は例外にする。
+ * 接続の待ちを有限にする設定 (docs/db/postgresql-client.md)。pool を作る入口は、必ずこれを入れる。
+ * - `connectionTimeoutMillis`: pool が空のとき、接続を待つ長さ。トランザクションを始める処理は中断できず、
+ *   `Effect.timeout` では待ちを切れないので、ここで切る。
+ * - `idle_in_transaction_session_timeout`: `BEGIN` の後に何も送らない接続を、PostgreSQL が切るまでの長さ。
+ */
+export const poolTimeouts = {
+  connectionTimeoutMillis: 5_000,
+  idle_in_transaction_session_timeout: 30_000,
+} as const;
+
+/**
+ * アプリの接続 (`Pool`)。`poolTimeouts` を既定で入れる。`timestamptz` を `Temporal.Instant`、`date` を `Temporal.PlainDate` で読み、`timestamp` は例外にする。
  * 書きは `Temporal` の値をパラメータに渡さず、`toString()` の文字列で渡す (pg は値を JSON の文字列で送る)。
  */
 export function createPool(config: PoolConfig): Pool {
-  return new Pool({ ...config, types: temporalTypes() });
+  return new Pool({ ...poolTimeouts, ...config, types: temporalTypes() });
 }
