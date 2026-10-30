@@ -33,7 +33,7 @@ web の画面の文言は、コードに直書きせず、言語ごとのリソ�
 
 - Nx の target `i18n-keys` は `web` に置きます。`packages/i18n` に置き、`web` への `implicitDependencies` で画面の変更を affected にする案は、`web` ⇄ `i18n` の循環ができるので採りませんでした。循環があると、`i18n` に `dependsOn: ["^…"]` の target を足したとき task graph が循環で失敗し、`web` だけの変更でも `i18n` のテスト (CLI を起動するので 10 秒以上) が走ります。`web` に置けば、`web` は `packages/i18n` に依存しているので、どちらを変えても affected になります。
 
-- キーは `t("…")` に文字列で書きます。テンプレートリテラルでキーを組み立てる書き方は `i18next-cli` が検出できず、そのキーは未使用として報告されます。`problemMessage` が `switch` で書き下すのは、この理由です。
+- キーは `t("…")` に文字列で書きます。テンプレートリテラルでキーを組み立てる書き方は `i18next-cli` が検出できず、そのキーは未使用として報告されます。`problemMessage` が `switch` で書き下すのは、この理由です。`t` の第 1 引数が文字列リテラルであることは、自作の Oxlint の規則 `i18n/literal-key` (`tools/lint-plugins/src/i18n-plugin.ts`、[Issue #417](https://github.com/yokozi-jp/agent-software-factory/issues/417)) が `apps/web/src` と `packages/i18n/src` で止めます (テストは対象外)。Oxlint の組み込みの規則 (`vp lint --rules` で `restricted-syntax`、`literal`、`i18n` を含む名前を探した) に、呼び出し先の名前で第 1 引数を調べるものはなく、plugin にしました。検出できる `t` は、`t`、`i18n.t`、`i18next.t`、`useTranslation()` の分割代入で別名にした名前です。名前はファイル全体で集め、スコープは見ません。
 - `/problems/…` の新しい `type` を API が足すとき、`problemMessage` にも文面を足します。足し忘れても、web は汎用の文面を出して壊れません。足し忘れを型で止める `Record<ProblemType, キー>` と、web の呼び出しは [Issue #308](https://github.com/yokozi-jp/agent-software-factory/issues/308) で足します ([ADR 0035](0035-problem-details-for-api-errors.md) の「型の連鎖」)。
 - `t` のキーが文字列リテラルであることを止める lint は、[Issue #417](https://github.com/yokozi-jp/agent-software-factory/issues/417) で足します。それまでは、このルールを文書で守ります。
 - 画面で文言が出ることは、`vp build` と `vp check` の型の検査までしか確かめていません。React の描画の component test は、Storybook の土台 ([Issue #141](https://github.com/yokozi-jp/agent-software-factory/issues/141)) が入ったので、story の `play` で足せます。
