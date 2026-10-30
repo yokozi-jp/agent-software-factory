@@ -52,6 +52,7 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - postgresql-column.md のデータ型で、存在しない型名 `double` を `double precision` に直し、`real` は約6桁・`double precision` は約15桁・精度指定のない `float` は `double precision` を意味する、と精度の記述を正した。PostgreSQL: Documentation 8.1 Numeric Types。
 - モジュールごとの `NOLOGIN` のロール (`claim_module` など) を使い、自分のスキーマの読み書きと依存の方向のスキーマの `SELECT` だけを与えることは、postgresql-roles.md の「テーブル単位で細かく権限制御しすぎないようにする」からはみ出す。原文はこの推奨の理由を書いていないので、権限が細かいと管理が難しくなることを避ける趣旨と読む (判断)。このリポジトリでは、モジュールの表の所有を型だけでなく DB で止める必要があり、権限はスキーマ単位で `GRANT` と `ALTER DEFAULT PRIVILEGES` にまとめ、表ごとには書かない。権限の形は、カタログのテストが毎回確かめる。ADR 0029、Issue #268。
 - concurrency-testing.md を足した。競合と原子性を確かめる結合テストの書き方 (`pg_blocking_pids` で待ちを確かめる手順、対照、行数の前後比較) で、原文にない。Issue #352 の決定。
+- convention-check.md を足した。docs/db の規約のうち、migration を流した DB のカタログで機械的に確かめる項目と、確かめない項目、例外の書き方 (`packages/db/src/convention-catalog.ts`) で、原文にない。Issue #361 の決定。
 
 ## 位置づけ
 
