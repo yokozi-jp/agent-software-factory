@@ -11,7 +11,7 @@ const moduleOrder: readonly string[] = ["closing", "approval", "claim"];
 const moduleOrderFile = "tools/scripts/src/checks/repo-policy/modules.ts";
 
 // The scope of the packages of the workspace (their package.json names). vite.config.ts writes it too; it is read
-// as text, so the two are not shared.
+// as text, so the two are not shared-kernel.
 const scope = "@agent-software-factory";
 const dependencyFields = [
   "dependencies",
@@ -27,7 +27,7 @@ export const packageNames = (tree: Tree): string[] =>
   tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
 
 // The packages under packages/ that are not modules of the sample feature (GLOSSARY.md, docs/adr/0026, 0034).
-// shared is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
+// shared-kernel is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
 // fixtures of the overrides that reach every module; it stays when the sample feature is removed. ui holds the
 // shadcn/ui parts that the apps share; it has no layers, and no module depends on it. None depends on a package
 // of the workspace.
@@ -146,7 +146,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
         );
       }
   }

@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0034: UI の部品は module ではない共有 package の packages/ui に置き、exports は部品の入口にする"
-description: shadcn/ui の部品と Tailwind v4 のテーマの CSS を packages/ui (@agent-software-factory/ui) に置き、複数のアプリで共有する決定。ADR 0026 の packages/ の直下に、module でも shared でもない ui を足す例外を決める。ui は moduleOrder に入れず、どの package にも依存せず、module も依存しない。exports は "." ではなく ./components/* などの部品の入口にし、層の規則と lint-effect は掛けず、React と XSS の規則は apps/web と同じに掛ける。components.json の alias は package 内を package.json の imports (#components/*) に、アプリからを package 名にする。CSS は ui に置き、アプリが @import と @source で読む。packages/ui に部品を足すとき、2つ目のアプリを作るとき、packages/ の直下に module ではない package を足すとき、shadcn add の置き場所が変わったときに読む。
+description: shadcn/ui の部品と Tailwind v4 のテーマの CSS を packages/ui (@agent-software-factory/ui) に置き、複数のアプリで共有する決定。ADR 0026 の packages/ の直下に、module でも shared-kernel でもない ui を足す例外を決める。ui は moduleOrder に入れず、どの package にも依存せず、module も依存しない。exports は "." ではなく ./components/* などの部品の入口にし、層の規則と lint-effect は掛けず、React と XSS の規則は apps/web と同じに掛ける。components.json の alias は package 内を package.json の imports (#components/*) に、アプリからを package 名にする。CSS は ui に置き、アプリが @import と @source で読む。packages/ui に部品を足すとき、2つ目のアプリを作るとき、packages/ の直下に module ではない package を足すとき、shadcn add の置き場所が変わったときに読む。
 tags: [adr, web, ui, shadcn, tailwind, monorepo, repo-policy]
 ---
 

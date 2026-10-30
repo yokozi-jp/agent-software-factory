@@ -34,7 +34,13 @@ tags: [adr, architecture, modules, nx, oxlint, lint]
 - **書き忘れ**: repo-policy が、`packages/` の `shared-kernel` と `module-fixtures` 以外の package が `moduleOrder` にあること (`modules.ts`)、`src/` と各層について、いずれかの package の `__fixtures__/` に `oxlint-disable-next-line no-restricted-imports` のある fixture があることを確かめます (`lint-fixtures.ts`)。`domain` には、足した 3 つの規則 (`domain/no-throw`、`no-restricted-globals`、`no-restricted-properties`) の disable のコメントがある fixture も、いずれかの package (`packages/module-fixtures`) の `src/domain/__fixtures__/` に求めます ([ADR 0027](0027-domain-model-as-pure-functions-and-unions.md))。 同じ検査が、ADR 0007 のランタイムの制限の fixture (`runtime-apis.ts`) とテストの fixture (`boundaries.test.ts`) も要求します。
 - **Nx の graph は package.json から作る**: `nx.json` の `pluginsConfig["@nx/js"].analyzeSourceFiles` を `false` にします。fixture は依存にない package を意図して import します。Nx 24.0.0 は、package.json から解決できない import を TypeScript の JS API (`readConfigFile` など) で解決しようとします。TypeScript 7.0.2 の `typescript` package はその API を持たない (export は `version` と `versionMajorMinor` だけ) ので、graph の作成が `tsModule.readConfigFile is not a function` で失敗しました。モジュールが import できるのは `package.json` に書いた package だけなので、graph の辺も `package.json` の依存と一致します。pnpm の workspace で `workspace:*` を書くリポジトリでは、ソースの解析を切るのは Nx が案内している設定です ([Disable Graph Links Created from Analyzing Source Files](https://nx.dev/docs/guides/tips-n-tricks/analyze-source-files))。
 
-- **`shared` を `shared-kernel` に改名する**: `shared` という名前だけでは、複数の利用側が共有する `ui`、`db`、`i18n` との違いが読み取れません。モジュールの間で合意して共有する小さなモデルとコードは、DDD の Shared Kernel (用語は [GLOSSARY](../../GLOSSARY.md)) にあたるので、`packages/shared-kernel` (`@agent-software-factory/shared-kernel`、Nx project 名は `shared-kernel`) にしました。`ui`、`db`、`i18n`、`module-fixtures` は今のまま `packages/` の直下にフラットに置きます。`packages/shared/ui` のような 2 階層にはしません。`vite.config.ts` の `packages/*/src/**`、`pnpm-workspace.yaml`、repo-policy の `packages/([^/]+)/package.json`、knip、Nx、lefthook、CSS の `@source` の相対 path が 1 階層を前提にしていて、直し忘れると規則が静かに外れるためです (ADR 0034 が `ui` にかける深い import の禁止など)。`kernel` だけの名前は OS のカーネルと読めるので取りません ([Issue #458](https://github.com/yokozi-jp/agent-software-factory/issues/458))。
+## 名前の経緯
+
+`packages/shared` は、`packages/shared-kernel` (`@agent-software-factory/shared-kernel`、Nx project 名は `shared-kernel`) に改名しました ([Issue #458](https://github.com/yokozi-jp/agent-software-factory/issues/458))。
+
+- **改名の理由**: `shared` だけでは、複数の利用側が使う `ui`、`db`、`i18n` との違いが読み取れません。モジュールの間で合意して共有する小さなモデルとコードは DDD の Shared Kernel にあたるので、名前をそれに合わせました (用語は [GLOSSARY](../../GLOSSARY.md))。
+- **フラットのまま**: `ui`、`db`、`i18n`、`module-fixtures` は `packages/` の直下に置きます。`packages/shared/ui` のような 2 階層にはしません。`vite.config.ts` の `packages/*/src/**`、`pnpm-workspace.yaml`、repo-policy の `packages/([^/]+)/package.json`、knip、Nx、lefthook、CSS の `@source` の相対 path が 1 階層を前提にしていて、直し忘れると規則が静かに外れるためです (ADR 0034 が `ui` にかける深い import の禁止など)。
+- **`kernel` だけにしない**: OS のカーネルと読めるためです。
 
 ## Nx の標準との違い
 

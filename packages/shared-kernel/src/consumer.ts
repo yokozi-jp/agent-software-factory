@@ -31,7 +31,7 @@ type Instant = ColumnType<Temporal.Instant, string, string>;
 /**
  * `processed_message` of a module's schema, with the columns that `defineConsumer` writes (the template is
  * packages/db/templates/processed_message.sql). It is written here by hand: the generated types of a module are
- * not visible to shared (docs/adr/0026), and the table is the same in every module.
+ * not visible to shared-kernel (docs/adr/0026), and the table is the same in every module.
  */
 interface ProcessedMessageTable {
   tenant_id: string;

@@ -1,4 +1,4 @@
-// Oxlint plugin: stops the SQL that changes the role or the tenant of the connection, outside the helper of shared
+// Oxlint plugin: stops the SQL that changes the role or the tenant of the connection, outside the helper of shared-kernel
 // (docs/adr/0029, docs/adr/0011). inTenantTransaction (packages/shared-kernel/src/tenant-transaction.ts) runs `SET LOCAL ROLE`
 // and `set_config('app.current_tenant', …, true)` right after the start of every transaction. SQL that does the same
 // elsewhere can leave a role or a tenant on a pooled connection, or switch to another module's role. A type cannot stop

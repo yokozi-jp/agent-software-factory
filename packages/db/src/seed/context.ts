@@ -32,7 +32,7 @@ export const seedProgram = "seed";
 
 /**
  * A faker of its own, with a fixed seed and the same locales as `fakerJA`. Each caller makes one, so the values of one
- * module do not depend on which module called before (a shared `fakerJA` would need a `seed()` call before each use).
+ * module do not depend on which module called before (a shared-kernel `fakerJA` would need a `seed()` call before each use).
  * A new version of faker may give other values, so no test writes a value of the seed as an expectation (docs/adr/0036).
  */
 export function createFaker(seed: number): Faker {
@@ -53,7 +53,7 @@ type Instant = ColumnType<Temporal.Instant, string, string>;
 
 /**
  * The columns of `messaging.outbox` that the seed writes. packages/db imports no package but the modules (docs/adr/0038),
- * and the generated type of the Outbox is in shared, so this is a short copy of it. A column that a migration adds with
+ * and the generated type of the Outbox is in shared-kernel, so this is a short copy of it. A column that a migration adds with
  * no default fails the seed, which every test of the database runs (the test "全部の表に 1 行以上" and the seed's own).
  */
 export interface MessagingTables {

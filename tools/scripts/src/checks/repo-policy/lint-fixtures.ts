@@ -321,7 +321,7 @@ interface BypassPlace {
   readonly stopsConnection: boolean;
   // Whether the fixture is a *.test.ts file, which the override of the entry files and the tests reaches.
   readonly testFile: boolean;
-  // Whether the override stops the raw SQL of Kysely (`sqlImportNames`): the modules do; shared and apps/api write SQL.
+  // Whether the override stops the raw SQL of Kysely (`sqlImportNames`): the modules do; shared-kernel and apps/api write SQL.
   readonly stopsSql: boolean;
 }
 

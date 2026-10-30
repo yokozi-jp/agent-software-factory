@@ -144,7 +144,7 @@ export const packageFiles = (
 });
 
 // The events package of a module, packages/<module>/events, that passes every check (docs/adr/0026): it depends on
-// zod and shared, and has no lint-effect script or tag.
+// zod and shared-kernel, and has no lint-effect script or tag.
 export const eventsFiles = (
   module: string,
   fields: Record<string, unknown> = {},

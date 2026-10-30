@@ -9,8 +9,8 @@
 // It shows the lint rule only. That the exports of a package name its src/index.ts alone is checked by repo-policy
 // (packageManifests), not here: module-fixtures depends on no package, so no subpath of one could resolve.
 // Knip and jscpd skip __fixtures__/, and nothing imports this file.
-// @ts-expect-error -- fixture: module-fixtures does not depend on shared, so the import does not resolve
+// @ts-expect-error -- fixture: module-fixtures does not depend on shared-kernel, so the import does not resolve
 import "@agent-software-factory/shared-kernel";
-// @ts-expect-error -- fixture: module-fixtures does not depend on shared; the line is for the lint rule below
+// @ts-expect-error -- fixture: module-fixtures does not depend on shared-kernel; the line is for the lint rule below
 // oxlint-disable-next-line no-restricted-imports -- fixture: a deep import
 import "@agent-software-factory/shared-kernel/src/index.ts";

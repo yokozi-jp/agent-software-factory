@@ -75,7 +75,7 @@ const bypassPaths = [...outboxPaths, ...connectionPaths];
 // Raw SQL and the way around the module's types (docs/adr/0029). A module reads and writes its own tables through the
 // typed Kysely builder. The `sql` tag and `CompiledQuery` take any text, so they could reach the table of another
 // module with a type that nobody checks; the module role of the database stops that at runtime (docs/adr/0029), and
-// this stops it before. shared (the helper of the transaction) and apps/api are outside this list: shared owns the SQL that sets the
+// this stops it before. shared-kernel (the helper of the transaction) and apps/api are outside this list: shared-kernel owns the SQL that sets the
 // role and the tenant, and the rule of tools/lint-plugins/src/tenant-sql-plugin.ts reads what they write.
 const sqlImportNames = ["sql", "CompiledQuery"];
 const sqlMessage =
@@ -157,7 +157,7 @@ const runtimeGlobalLintRules = {
 
 // Module boundaries (docs/adr/0026). The sample feature is a modular monolith: each module is a package under
 // packages/, and apps/api only assembles them. Which module may import which (closing (締め) → approval (承認)
-// → claim (申請), shared imports none) is not a lint rule: a module can resolve only the packages its
+// → claim (申請), shared-kernel imports none) is not a lint rule: a module can resolve only the packages its
 // package.json declares (pnpm, TypeScript), and repo-policy checks the declarations. The rules here are the same
 // for every module, so one override per layer reaches them all, and packages/module-fixtures holds the fixtures.
 const scope = "@agent-software-factory";
@@ -167,7 +167,7 @@ const scope = "@agent-software-factory";
 const i18nPlugins = [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }];
 const webFiles = ["apps/web/src/**", "packages/ui/src/**"];
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
-// shared (below).
+// shared-kernel (below).
 const layers: Record<string, readonly string[]> = {
   domain: [],
   application: ["domain"],
@@ -269,7 +269,7 @@ const testDeepImports = [
 ];
 
 // The options of no-restricted-imports for a file of a package in `layer` (undefined: src/index.ts and other
-// files outside the layers, and shared). Oxlint keeps only the last override that sets a rule for a file, so each
+// files outside the layers, and shared-kernel). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 // `shared` is not a module: it owns the SQL of the transaction helper, so it may import `sql` (sqlPaths).
 function moduleImports(layer?: string, allowSql = false) {
@@ -284,7 +284,7 @@ function moduleImports(layer?: string, allowSql = false) {
   }
   if (layer === "domain")
     // Oxlint 1.89 checks the patterns in order, and a negated group that matches ends the check of that import.
-    // So the value imports of shared are stopped first, then every package but shared.
+    // So the value imports of shared-kernel are stopped first, then every package but shared-kernel.
     patterns.push(
       { regex: `^${scope}/shared-kernel$`, allowTypeImports: true, message: domainMessage },
       { regex: "^[^.@]", message: domainMessage },
@@ -499,7 +499,7 @@ export default defineConfig({
       // Module boundaries (docs/adr/0026): imports by the package name only, and the direction between the layers
       // of a module. The direction between the modules is the dependencies of their package.json.
       ...moduleOverrides,
-      // shared is not a module (docs/adr/0026): it holds the helper of the transaction, which writes SQL with `sql`.
+      // shared-kernel is not a module (docs/adr/0026): it holds the helper of the transaction, which writes SQL with `sql`.
       // It keeps every other restriction of the modules.
       {
         files: ["packages/shared-kernel/src/**"],
@@ -581,7 +581,7 @@ export default defineConfig({
         },
       },
       // SQL that changes the role or the tenant of the connection is written in the helper of the transaction only
-      // (docs/adr/0029). shared and apps/api are the places that may use `sql`; the modules may not (sqlPaths). The
+      // (docs/adr/0029). shared-kernel and apps/api are the places that may use `sql`; the modules may not (sqlPaths). The
       // rule is in tools/lint-plugins/src/tenant-sql-plugin.ts. The helper is the one file that sets them, and its
       // test sets and reads them to check the helper, so both are outside the rule; every other test is under it.
       // Fixtures that this rule must report: apps/api/src/__fixtures__/session-setting.ts and packages/shared-kernel/src/__fixtures__/session-setting.ts.

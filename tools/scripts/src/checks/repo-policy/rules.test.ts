@@ -2231,7 +2231,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2264,7 +2264,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     },
   );
 
-  it("refuses shared that depends on a module or on itself, and a module on another package of the workspace", () => {
+  it("refuses shared-kernel that depends on a module or on itself, and a module on another package of the workspace", () => {
     expect(
       violations(
         repo({
@@ -2575,7 +2575,7 @@ describe("ADR 0026: the events package of each module", () => {
     ).toEqual([]);
   });
 
-  it("refuses a module that depends on the events package of a module that does not exist, and shared on any", () => {
+  it("refuses a module that depends on the events package of a module that does not exist, and shared-kernel on any", () => {
     expect(
       violations(
         repo({
@@ -2588,8 +2588,8 @@ describe("ADR 0026: the events package of each module", () => {
         }),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared (docs/adr/0026).`,
-      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 
@@ -2603,7 +2603,7 @@ describe("ADR 0026: the events package of each module", () => {
         ),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 });
@@ -4103,7 +4103,7 @@ describe("ADR 0029: withTables is called in infrastructure/ only, and has a fixt
   });
 });
 
-describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared and apps/api", () => {
+describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared-kernel and apps/api", () => {
   const viteConfig = String(base["vite.config.ts"]);
   const shared = "packages/shared-kernel/src/__fixtures__/session-setting.ts";
   const api = "apps/api/src/__fixtures__/session-setting.ts";

@@ -3,5 +3,5 @@
 // docs/adr/0026. The file is named *.test.ts so that the override reaches it; Knip skips __fixtures__/. If the
 // override turns off no-restricted-imports, the disable comment is unused and `vp check` fails
 // (reportUnusedDisableDirectives).
-// oxlint-disable-next-line no-restricted-imports -- fixture: a relative path into a package (shared stays in the template)
+// oxlint-disable-next-line no-restricted-imports -- fixture: a relative path into a package (shared-kernel stays in the template)
 import "../../../shared-kernel/src/index.ts";
