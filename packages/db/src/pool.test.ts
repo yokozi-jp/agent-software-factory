@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { createPool } from "./pool.ts";
+import { createPool, poolTimeouts } from "./pool.ts";
 import { createTestDatabase, type TestDatabase } from "./testing/database.ts";
 
 // アプリの接続が日時を Temporal で読むこと (src/pool.ts、docs/adr/0043)。Vitest の TZ は America/New_York。
@@ -85,5 +85,51 @@ describe("createPool: 日時を Temporal で読む", () => {
 
   it("バイナリ形式の要求は、pg の既定の parser に任せること", () => {
     expect(typeof pool.options.types?.getTypeParser(1184, "binary")).toBe("function");
+  });
+});
+
+describe("createPool: 接続の待ちを有限にする", () => {
+  let db: TestDatabase;
+
+  beforeEach(async () => {
+    db = await createTestDatabase();
+  });
+
+  afterEach(async () => {
+    await db.close();
+  });
+
+  it("poolTimeouts を既定で入れ、渡した値で上書きできること", async () => {
+    const byDefault = createPool({ connectionString: db.url("app_user") });
+    const overridden = createPool({
+      connectionString: db.url("app_user"),
+      connectionTimeoutMillis: 100,
+    });
+    try {
+      expect(byDefault.options.connectionTimeoutMillis).toBe(poolTimeouts.connectionTimeoutMillis);
+      expect(overridden.options.connectionTimeoutMillis).toBe(100);
+      const { rows } = await byDefault.query<{ idle_in_transaction_session_timeout: string }>(
+        "SHOW idle_in_transaction_session_timeout",
+      );
+      expect(rows).toEqual([{ idle_in_transaction_session_timeout: "30s" }]);
+    } finally {
+      await byDefault.end();
+      await overridden.end();
+    }
+  });
+
+  it("pool が空のとき、connectionTimeoutMillis で待ちが終わって失敗すること", async () => {
+    const pool = createPool({
+      connectionString: db.url("app_user"),
+      max: 1,
+      connectionTimeoutMillis: 200,
+    });
+    const holder = await pool.connect();
+    try {
+      await expect(pool.connect()).rejects.toThrow(/timeout exceeded when trying to connect/);
+    } finally {
+      holder.release();
+      await pool.end();
+    }
   });
 });

@@ -14,11 +14,11 @@ tags: [domain-model, runbook, modules, nx]
 
 `<name>` はモジュールの英語名で、`GLOSSARY.md` のモジュールの名前と同じです。迷ったら、最後のモジュール (`packages/claim` など、依存の向きで一番後ろのもの) を写します。
 
-1. **package を写す**: `packages/<name>/` を、`package.json`、`tsconfig.json`、`src/index.ts`、`src/infrastructure/database.ts`、`src/infrastructure/__fixtures__/database.ts` ごと写し、名前を直します。
+1. **package を写す**: `packages/<name>/` を、`package.json`、`tsconfig.json`、`src/index.ts`、`src/infrastructure/database.ts`、`src/infrastructure/transaction.ts`、`src/infrastructure/__fixtures__/database.ts` ごと写し、名前を直します。
    - `package.json` の `name` は `@agent-software-factory/<name>`、`nx.name` は `<name>` にします。`exports` と、`check` と `lint-effect` の script は写したままにします。
    - `nx` に `"tags": ["type:module"]` を付けます。この印が、モジュールの見分け方です。`packages/shared` と `packages/module-fixtures` には付けません。
    - 依存してよいモジュールを `workspace:*` で書きます。向きは「締め → 承認 → 申請」です。
-   - `index.ts` は、データベースの型 (`<Name>Database`) を export します。`infrastructure/database.ts` は `Kysely<DB>` の型です。`db.gen.ts` は手順 6 で生成します。
+   - `index.ts` は、データベースの型 (`<Name>Database`) を export します。`infrastructure/database.ts` は `Kysely<DB>` の型です。`infrastructure/transaction.ts` は、トランザクションの tag (`<Name>Tx`、`static readonly module`) で、`index.ts` が export します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。`db.gen.ts` は手順 6 で生成します。
    - `__fixtures__/database.ts` は、ほかのモジュールの表へのクエリが型エラーになる `@ts-expect-error` です。
 2. **events の package を足す**: 既存のモジュールの `packages/<name>/events/` (`package.json`、`tsconfig.json`、`src/index.ts`) を写します。モジュールが外へ送るイベントのスキーマを置く、モジュールの中の入れ子の package です ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
    - `package.json` の `name` は `@agent-software-factory/<name>-events`、`nx.name` は `<name>-events` にします。`exports` は `"."` だけ、`check` の script は写したままにします。`nx.tags` と `lint-effect` の script は付けません。events の package はモジュールではありません。
