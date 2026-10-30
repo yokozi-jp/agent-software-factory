@@ -29,6 +29,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 - **Base UI の `ScrollArea` と `Select` (`alignItemWithTrigger`) は `<style>` 要素を出します。** CSP が `style-src` を制限すると、この `<style>` が止まります。使うときは、アプリの上位に Base UI の `CSPProvider` を置き、`disableStyleElements` を付けるか `nonce` を渡します (`@base-ui/react/csp-provider` の型定義で確認)。web の CSP はまだ決まっていないので、検査は作りません。この制約を、CSP を決める Issue に引き継ぎます。
 - **Storybook に Vite+ の公式の保証はありません。** Storybook は Vite を使いますが、このリポジトリの `vite` は `@voidzero-dev/vite-plus-core` に差し替えています。Vite+ が Storybook の動作を保証する文書はなく、動かなくなっても Vite+ 側の修正は約束されません。
 - **Storybook を外す条件**: Vite+ の更新で Storybook が起動しないか story の test が動かず、直す手間が story を持つ利点を上回るときです。外すときは、ここに書いた story 必須の検査も外し、component test を Vitest の browser mode の `*.test.tsx` に戻すかを決め直し、この ADR を置き換える ADR を書きます。
+- **a11y の警告の reporter は、addon が書く非公開の構造を読みます。** `testCase.meta().reports` は Vitest にも Storybook にも文書がなく、`@storybook/addon-a11y` と `@storybook/addon-vitest` の版 (10.6.5) の実装を読んで決めました。構造が変わると reporter は何も出さず、テストも落ちません。Storybook を上げる PR で、axe に違反する story (画像に `alt` がない `<img>` など) を一時的に足して `vp test run --project storybook` を流し、`a11y warning:` が出ることを確かめます。
 
 ## Knip と jscpd の扱い
 
