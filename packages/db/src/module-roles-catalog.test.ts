@@ -23,7 +23,10 @@ describe("checkModuleRoles", () => {
     await db.superuser.query(
       `ALTER ROLE claim_module NOLOGIN NOSUPERUSER NOBYPASSRLS;
        GRANT claim_module TO app_user WITH INHERIT FALSE, SET TRUE;
-       REVOKE migrator FROM claim_module`,
+       REVOKE migrator FROM claim_module;
+       ALTER ROLE outbox_relay LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
+       REVOKE outbox_relay FROM app_user;
+       REVOKE migrator FROM outbox_relay`,
     );
     await db.close();
   });
@@ -141,6 +144,153 @@ describe("checkModuleRoles", () => {
       expected: "claim_module の auth スキーマの USAGE がある",
     },
     {
+      name: "app_user を outbox_relay に入れる GRANT",
+      run: (d) => d.superuser.query(`GRANT outbox_relay TO app_user`),
+      expected: "app_user が outbox_relay のメンバー",
+    },
+    {
+      name: "2 つ目の USING (true) のポリシー",
+      run: (d) =>
+        d.migrator.query(
+          `CREATE POLICY see_all ON messaging.outbox FOR SELECT TO claim_module USING (true)`,
+        ),
+      expected: "messaging.outbox のポリシー see_all が app.current_tenant で比べていない",
+    },
+    {
+      name: "テナントの比較に OR true を足したポリシー",
+      run: (d) =>
+        d.migrator.query(
+          `DROP POLICY tenant_insert ON messaging.outbox;
+           CREATE POLICY tenant_insert ON messaging.outbox FOR INSERT TO claim_module
+             WITH CHECK (tenant_id = current_setting('app.current_tenant')::uuid OR true)`,
+        ),
+      expected: "messaging.outbox のポリシー tenant_insert が app.current_tenant で比べていない",
+    },
+    {
+      name: "別の表の USING (true) のポリシー",
+      run: (d) =>
+        d.migrator.query(
+          `CREATE POLICY see_all ON claim.t_claim FOR SELECT TO claim_module USING (true)`,
+        ),
+      expected: "claim.t_claim のポリシー see_all が app.current_tenant で比べていない",
+    },
+    {
+      name: "outbox_relay 向けのポリシーの欠け",
+      run: (d) => d.migrator.query(`DROP POLICY relay_all_tenants ON messaging.outbox`),
+      expected: "messaging.outbox に outbox_relay 向けの USING (true) のポリシーが 1 つない",
+    },
+    {
+      name: "Outbox の RLS の FORCE の欠け",
+      run: (d) => d.migrator.query(`ALTER TABLE messaging.outbox NO FORCE ROW LEVEL SECURITY`),
+      expected: "messaging.outbox が RLS を FORCE にしていない",
+    },
+    {
+      name: "モジュールのロールの Outbox の SELECT",
+      run: (d) => d.superuser.query(`GRANT SELECT ON messaging.outbox TO claim_module`),
+      expected: "claim_module の messaging.outbox の SELECT がある",
+    },
+    {
+      name: "モジュールのロールの Outbox の列だけの SELECT",
+      run: (d) => d.superuser.query(`GRANT SELECT ("id") ON messaging.outbox TO claim_module`),
+      expected: "claim_module の messaging.outbox の SELECT がある",
+    },
+    {
+      name: "モジュールのロールの Outbox の INSERT の欠け",
+      run: (d) => d.superuser.query(`REVOKE INSERT ON messaging.outbox FROM closing_module`),
+      expected: "closing_module の messaging.outbox の INSERT がない",
+    },
+    {
+      name: "app_user の Outbox への INSERT",
+      run: (d) => d.superuser.query(`GRANT INSERT ON messaging.outbox TO app_user`),
+      expected: "app_user の messaging.outbox の INSERT がある",
+    },
+    {
+      name: "outbox_relay の Outbox の DELETE の欠け",
+      run: (d) => d.superuser.query(`REVOKE DELETE ON messaging.outbox FROM outbox_relay`),
+      expected: "outbox_relay の messaging.outbox の DELETE がない",
+    },
+    {
+      name: "outbox_relay の Outbox への INSERT",
+      run: (d) => d.superuser.query(`GRANT INSERT ON messaging.outbox TO outbox_relay`),
+      expected: "outbox_relay の messaging.outbox の INSERT がある",
+    },
+    {
+      name: "outbox_relay のモジュールの表の SELECT",
+      run: (d) =>
+        d.superuser.query(
+          `GRANT USAGE ON SCHEMA claim TO outbox_relay; GRANT SELECT ON claim.t_claim TO outbox_relay`,
+        ),
+      expected: "outbox_relay の claim.t_claim の SELECT がある",
+    },
+    {
+      name: "outbox_relay の BYPASSRLS",
+      run: (d) => d.superuser.query(`ALTER ROLE outbox_relay BYPASSRLS`),
+      expected: "ロール outbox_relay が BYPASSRLS",
+    },
+    {
+      name: "outbox_relay の LOGIN の欠け",
+      run: (d) => d.superuser.query(`ALTER ROLE outbox_relay NOLOGIN`),
+      expected: "ロール outbox_relay が LOGIN できない",
+    },
+    {
+      name: "outbox_relay の superuser",
+      run: (d) => d.superuser.query(`ALTER ROLE outbox_relay SUPERUSER`),
+      expected: "ロール outbox_relay が superuser",
+    },
+    {
+      name: "outbox_relay の CREATEROLE",
+      run: (d) => d.superuser.query(`ALTER ROLE outbox_relay CREATEROLE`),
+      expected: "ロール outbox_relay が CREATEROLE",
+    },
+    {
+      name: "outbox_relay の CREATEDB",
+      run: (d) => d.superuser.query(`ALTER ROLE outbox_relay CREATEDB`),
+      expected: "ロール outbox_relay が CREATEDB",
+    },
+    {
+      name: "Outbox の RLS の ENABLE の欠け",
+      run: (d) => d.migrator.query(`ALTER TABLE messaging.outbox DISABLE ROW LEVEL SECURITY`),
+      expected: "messaging.outbox が RLS を ENABLE にしていない",
+    },
+    {
+      name: "outbox_relay の messaging スキーマの USAGE の欠け",
+      run: (d) => d.superuser.query(`REVOKE USAGE ON SCHEMA messaging FROM outbox_relay`),
+      expected: "outbox_relay の messaging スキーマの USAGE がない",
+    },
+    {
+      name: "app_user の messaging スキーマの USAGE",
+      run: (d) => d.superuser.query(`GRANT USAGE ON SCHEMA messaging TO app_user`),
+      expected: "app_user の messaging スキーマの USAGE がある",
+    },
+    {
+      name: "messaging スキーマへの CREATE の GRANT",
+      run: (d) => d.superuser.query(`GRANT CREATE ON SCHEMA messaging TO claim_module`),
+      expected: "claim_module が messaging スキーマに CREATE できる",
+    },
+    {
+      name: "outbox_relay の public の表の SELECT",
+      run: (d) =>
+        d.superuser.query(
+          `CREATE TABLE public.t_leak (id int); GRANT SELECT ON public.t_leak TO outbox_relay`,
+        ),
+      expected: "outbox_relay の public.t_leak の SELECT がある",
+    },
+    {
+      name: "outbox_relay のポリシーの式が true でない",
+      run: (d) =>
+        d.migrator.query(
+          `DROP POLICY relay_all_tenants ON messaging.outbox;
+           CREATE POLICY relay_all_tenants ON messaging.outbox FOR ALL TO outbox_relay USING (id IS NOT NULL)`,
+        ),
+      expected:
+        "messaging.outbox のポリシー relay_all_tenants が app.current_tenant で比べていない",
+    },
+    {
+      name: "outbox_relay をほかのロールに入れる",
+      run: (d) => d.superuser.query(`GRANT migrator TO outbox_relay`),
+      expected: "outbox_relay が migrator のメンバー",
+    },
+    {
       name: "SECURITY DEFINER の関数",
       run: (d) =>
         d.migrator.query(
@@ -180,6 +330,20 @@ describe("checkModuleRoles", () => {
     );
 
     expect(await checkModuleRoles(db.superuser, reads)).toEqual([]);
+  });
+
+  it("outbox_relay のロールか Outbox の表がなければ、その失敗だけを返すこと", async () => {
+    await db.superuser.query(`ALTER ROLE outbox_relay RENAME TO outbox_relay_moved`);
+    try {
+      const withoutRole = await checkModuleRoles(db.superuser, reads);
+      expect(withoutRole).toContain("ロール outbox_relay がない");
+    } finally {
+      await db.superuser.query(`ALTER ROLE outbox_relay_moved RENAME TO outbox_relay`);
+    }
+
+    await db.migrator.query(`DROP TABLE messaging.outbox`);
+
+    expect(await checkModuleRoles(db.superuser, reads)).toEqual(["表 messaging.outbox がない"]);
   });
 
   it("ロールかスキーマがなければ、その失敗を返すこと", async () => {

@@ -39,14 +39,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 /**
- * 型を生成するスキーマ。tag `type:module` を持つ package の名前から求める。
+ * モジュールのスキーマ。tag `type:module` を持つ package の名前から求める。
  * `auth` (Better Auth が自分の Kysely で使う) と `migrations` (dbmate の履歴) は対象にしない。
  */
 export const moduleSchemas: readonly string[] = moduleSchemasOf(repositoryRoot);
 
+/**
+ * モジュールのスキーマのほかに、型を生成する共有のスキーマと、型を書くファイル。
+ * `messaging` は Outbox の表で、型は `packages/shared` に置く (docs/adr/0029)。
+ */
+export const sharedSchemaFiles: Readonly<Record<string, string>> = {
+  messaging: "packages/shared/src/messaging.gen.ts",
+};
+
+/** 型を生成するスキーマ: モジュールのスキーマと共有のスキーマ。 */
+export const typedSchemas: readonly string[] = [
+  ...moduleSchemas,
+  ...Object.keys(sharedSchemaFiles),
+];
+
 /** スキーマの型を書くファイル。リポジトリのルートからの相対の path。 */
 export const typesFile = (schema: string): string =>
-  `packages/${schema}/src/infrastructure/db.gen.ts`;
+  sharedSchemaFiles[schema] ?? `packages/${schema}/src/infrastructure/db.gen.ts`;
 
 /**
  * 日時の列の型 (docs/adr/0043)。読みは `Temporal` で、書きは `toString()` の文字列に限る。
@@ -75,14 +89,14 @@ export interface GeneratedTypes {
 }
 
 /**
- * `databaseUrl` の DB を読み、`moduleSchemas` のそれぞれについて、そのスキーマの表だけの型を返す。
+ * `databaseUrl` の DB を読み、`typedSchemas` のそれぞれについて、そのスキーマの表だけの型を返す。
  * 表の名前はスキーマ付き (`claim.t_claim`) にする。接続の search_path に頼らず、SQL にもスキーマが出る。
  * information_schema は権限のある列しか見せないので、表の所有者か superuser で接続する。
  */
 export async function generateTypes(databaseUrl: string): Promise<GeneratedTypes[]> {
   const cli = new Cli();
   const generated: GeneratedTypes[] = [];
-  for (const schema of moduleSchemas) {
+  for (const schema of typedSchemas) {
     const generatedContent = await cli.generate({
       url: databaseUrl,
       dialect: "postgres",

@@ -62,6 +62,9 @@ export const conventionExceptions: readonly ConventionException[] = [
 ];
 
 /** DDL を実行できてはいけないロール (docs/adr/0025)。 */
+// outbox_relay はここに入れない。その属性 (SUPERUSER、CREATEROLE、CREATEDB) と権限は、モジュールの検査
+// (module-roles-catalog.ts) が確かめる。ロールの属性はクラスタ全体のもので、そのテストが壊した間、この検査が
+// 並行して失敗するのを避ける。
 const restrictedRoles = ["app_user", "auth_service"];
 
 interface Violation {

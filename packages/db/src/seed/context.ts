@@ -1,5 +1,6 @@
+import type { ClaimDatabase } from "@agent-software-factory/claim";
 import { base, en, Faker, ja } from "@faker-js/faker";
-import type { Kysely } from "kysely";
+import type { ColumnType, Kysely } from "kysely";
 
 /** The tenant that a module writes its rows for, and the user who applies in it. */
 export interface SeedTenant {
@@ -42,9 +43,44 @@ export function createFaker(seed: number): Faker {
 export type TablesOf<Database> = Database extends Kysely<infer Tables> ? Tables : never;
 
 /**
- * The map of a module: one writer for each table of its schema, for one tenant. The mapped type has a key for every
- * table, so a table that a migration adds without a seed fails `vp check` (docs/adr/0036).
+ * The tables of every schema that the seed writes. When a module gets a seed, intersect its tables here (`&`). The seed
+ * runs in one transaction on this type, and a `Transaction<A & B>` is not a `Kysely<A>`, so every writer takes a
+ * `Kysely<SeedTables>` (the `Db` of `TableSeeds`).
  */
-export type TableSeeds<Tables> = {
-  [T in keyof Tables]: (db: Kysely<Tables>, tenant: SeedTenant) => Promise<void>;
+export type SeedTables = TablesOf<ClaimDatabase> & MessagingTables;
+
+type Instant = ColumnType<Temporal.Instant, string, string>;
+
+/**
+ * The columns of `messaging.outbox` that the seed writes. packages/db imports no package but the modules (docs/adr/0038),
+ * and the generated type of the Outbox is in shared, so this is a short copy of it. A column that a migration adds with
+ * no default fails the seed, which every test of the database runs (the test "全部の表に 1 行以上" and the seed's own).
+ */
+export interface MessagingTables {
+  "messaging.outbox": {
+    tenant_id: string;
+    id: string;
+    event_type: string;
+    event_version: number;
+    serialized_event: string;
+    occurred_at: Instant;
+    publication_date: Instant;
+    created_at: Instant;
+    created_by: string;
+    created_pgm_cd: string;
+    created_tx_id: string;
+    updated_at: Instant;
+    updated_by: string;
+    updated_pgm_cd: string;
+    updated_tx_id: string;
+  };
+}
+
+/**
+ * The map of a module: one writer for each table of its schema, for one tenant. The mapped type has a key for every
+ * table, so a table that a migration adds without a seed fails `vp check` (docs/adr/0036). `Db` is the database that
+ * the writers get; the seed passes `SeedTables`.
+ */
+export type TableSeeds<Tables, Db = Tables> = {
+  [T in keyof Tables]: (db: Kysely<Db>, tenant: SeedTenant) => Promise<void>;
 };

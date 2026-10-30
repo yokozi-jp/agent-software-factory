@@ -5,6 +5,7 @@ import {
   createFaker,
   seededAt,
   seedProgram,
+  type SeedTables,
   type SeedTenant,
   type TableSeeds,
   type TablesOf,
@@ -16,7 +17,7 @@ type ClaimTables = TablesOf<ClaimDatabase>;
 const fakerSeed = 1;
 
 /** The rows of each table of the claim schema, for one tenant. */
-const tables: TableSeeds<ClaimTables> = {
+const tables: TableSeeds<ClaimTables, SeedTables> = {
   "claim.t_claim": async (db, { tenantId, applicantId }) => {
     const faker = createFaker(fakerSeed);
     const common = {
@@ -48,6 +49,6 @@ const tables: TableSeeds<ClaimTables> = {
 };
 
 /** Writes the rows of the 申請 (claim) module for `tenant`; the transaction has set the tenant already. */
-export async function seedClaim(db: Kysely<ClaimTables>, tenant: SeedTenant): Promise<void> {
+export async function seedClaim(db: Kysely<SeedTables>, tenant: SeedTenant): Promise<void> {
   for (const write of Object.values(tables)) await write(db, tenant);
 }

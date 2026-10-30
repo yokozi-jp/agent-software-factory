@@ -2,18 +2,15 @@
 //   DATABASE_URL=postgres://migrator@host/db node src/seed/index.ts
 // It runs as `migrator` in one transaction and switches the tenant with `set_config`, so the policies of RLS check
 // every row (docs/adr/0011). It is not idempotent: to run it again, create the database again.
-import type { ClaimDatabase } from "@agent-software-factory/claim";
 import { Kysely, PostgresDialect, sql, type Transaction } from "kysely";
 import { Pool } from "pg";
 
 import { seedClaim } from "./claim.ts";
-import { tenants, type TablesOf } from "./context.ts";
-
-/** The tables of every module that the seed writes. When a module gets a seed, intersect its tables here (`&`). */
-export type SeedTables = TablesOf<ClaimDatabase>;
+import { tenants, type SeedTables } from "./context.ts";
+import { seedMessaging } from "./messaging.ts";
 
 /**
- * Writes the rows of every module for both tenants, in the direction of the dependencies (申請 → 承認 → 締め), in one
+ * Writes the rows of every module for both tenants, in the direction of the dependencies (申請 → 承認 → 締め) and then the Outbox, in one
  * transaction. Fails, and writes nothing, when tenant A already has a claim.
  */
 export async function seed(databaseUrl: string): Promise<void> {
@@ -35,6 +32,7 @@ export async function seed(databaseUrl: string): Promise<void> {
       for (const tenant of tenants) {
         await selectTenant(trx, tenant.tenantId);
         await seedClaim(trx, tenant);
+        await seedMessaging(trx, tenant);
       }
     });
   } finally {

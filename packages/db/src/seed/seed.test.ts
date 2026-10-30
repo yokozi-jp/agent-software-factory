@@ -39,7 +39,7 @@ describe("seed", () => {
   });
 
   it("行を消した DB には流せて、テナントごとに申請と、データパッチで直した申請が入ること", async () => {
-    await db.superuser.query("TRUNCATE claim.t_claim");
+    await db.superuser.query("TRUNCATE claim.t_claim, messaging.outbox");
 
     await seed(db.url("migrator"));
 
@@ -51,6 +51,16 @@ describe("seed", () => {
         { tenant_id: tenantId, patched: false },
         { tenant_id: tenantId, patched: true },
       ]),
+    );
+  });
+
+  it("Outbox に、テナントごとに未送信のイベントが 1 行入り、outbox_relay が両方を読めること", async () => {
+    const { rows } = await db.outboxRelay.query<{ tenant_id: string; status: string }>(
+      "SELECT tenant_id, status FROM messaging.outbox ORDER BY tenant_id",
+    );
+
+    expect(rows).toEqual(
+      tenants.map(({ tenantId }) => ({ tenant_id: tenantId, status: "PUBLISHED" })),
     );
   });
 

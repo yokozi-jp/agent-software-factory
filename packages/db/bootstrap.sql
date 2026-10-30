@@ -8,6 +8,10 @@
 -- - migrator: migration を流す。表とスキーマの所有者。
 -- - app_user: 業務の処理が使う。
 -- - auth_service: Better Auth だけが使う。
+-- - outbox_relay: Outbox を読んで SQS へ送る処理だけが使う (Issue #269、docs/adr/0029)。messaging.outbox の
+--   SELECT、UPDATE、DELETE だけを持ち、全テナントの行を読む。ほかのロールとちがい、Secrets Manager の別の秘密で
+--   パスワード認証する。そのため rds_iam を付けない (rds_iam を持つロールは IAM 認証しか使えない)。
+--   app_user はメンバーにならない。
 -- - <モジュール>_module (claim_module、approval_module、closing_module): モジュールごとの NOLOGIN のロール。
 --   app_user が SET LOCAL ROLE で切り替えて使い、モジュールの表の所有を DB の権限で止める (Issue #268、
 --   docs/adr/0029)。権限は migration の GRANT で与える。
@@ -16,7 +20,7 @@ DO $$
 DECLARE
   role_name text;
 BEGIN
-  FOREACH role_name IN ARRAY ARRAY['migrator', 'app_user', 'auth_service'] LOOP
+  FOREACH role_name IN ARRAY ARRAY['migrator', 'app_user', 'auth_service', 'outbox_relay'] LOOP
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
       -- 権限の属性は明示する。RLS を迂回するロールは作らない (docs/adr/0011)。
       EXECUTE format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS', role_name);
@@ -35,7 +39,7 @@ BEGIN
 
   -- PostgreSQL は PUBLIC に CONNECT を既定で与えるので、この GRANT だけでは接続を絞らない。
   -- 明示して、PUBLIC の権限を外した環境でも同じ結果にする。
-  EXECUTE format('GRANT CONNECT ON DATABASE %I TO migrator, app_user, auth_service', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO migrator, app_user, auth_service, outbox_relay', current_database());
   EXECUTE format('GRANT CREATE ON DATABASE %I TO migrator', current_database());
 
   -- RDS と Aurora の IAM DB authentication のロール。ローカルと CI にはないので、あるときだけ付ける。
