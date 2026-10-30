@@ -48,6 +48,15 @@ export const moduleSchemas: readonly string[] = moduleSchemasOf(repositoryRoot);
 export const typesFile = (schema: string): string =>
   `packages/${schema}/src/infrastructure/db.gen.ts`;
 
+/**
+ * 日時の列の型 (docs/adr/0043)。読みは `Temporal` で、書きは `toString()` の文字列に限る。
+ * kysely-codegen の `typeMapping` は型の式をそのまま書くので、`ColumnType` で読みと書きを分けられる。
+ */
+export const typeMapping: Readonly<Record<string, string>> = {
+  timestamptz: "ColumnType<Temporal.Instant, string, string>",
+  date: "ColumnType<Temporal.PlainDate, string, string>",
+};
+
 export interface GeneratedTypes {
   /** リポジトリのルートからの相対の path。 */
   readonly file: string;
@@ -70,6 +79,7 @@ export async function generateTypes(databaseUrl: string): Promise<GeneratedTypes
       // ファイルはここで書く。kysely-codegen には書かせない。
       outFile: null,
       logLevel: "error",
+      typeMapping,
     });
     generated.push({ file: typesFile(schema), content });
   }

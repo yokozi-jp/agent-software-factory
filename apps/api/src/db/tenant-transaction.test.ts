@@ -14,7 +14,7 @@ const tenantB = "00000000-0000-4000-8000-00000000000b";
 
 // 申請の行。claim_id は DB が採番する。共通カラムの値は、アプリがバインドする (docs/db/postgresql-keys.md)。
 const claimRow = (tenantId: string) => {
-  const now = new Date("2026-10-28T00:00:00Z");
+  const now = Temporal.Instant.from("2026-10-28T00:00:00Z").toString();
   const by = { by: "test-user", pgm_cd: "tenant-transaction.test", tx_id: "test-tx" };
   return {
     tenant_id: tenantId,
