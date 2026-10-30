@@ -63,6 +63,21 @@ describe("createPool: 日時を Temporal で読む", () => {
     );
   });
 
+  it("'infinity' を読むと、RangeError になること", async () => {
+    await expect(read(`SELECT 'infinity'::timestamptz AS value`)).rejects.toThrow(RangeError);
+    await expect(read(`SELECT 'infinity'::date AS value`)).rejects.toThrow(RangeError);
+  });
+
+  it("日時の配列を読むと、Date の配列を返さずに例外になること", async () => {
+    await expect(read(`SELECT ARRAY['2026-03-31 23:30-04'::timestamptz] AS value`)).rejects.toThrow(
+      /配列/,
+    );
+    await expect(read(`SELECT ARRAY['2026-03-31'::date] AS value`)).rejects.toThrow(/配列/);
+    await expect(read(`SELECT ARRAY['2026-03-31 23:30'::timestamp] AS value`)).rejects.toThrow(
+      /配列/,
+    );
+  });
+
   it("日時以外の型は、pg の既定のまま読むこと", async () => {
     expect(await read(`SELECT 42 AS value`)).toBe(42);
     expect(await read(`SELECT 'text' AS value`)).toBe("text");

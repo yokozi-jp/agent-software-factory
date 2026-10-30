@@ -9,6 +9,7 @@ import {
   moduleSchemasOf,
   staleTypes,
   typesFile,
+  withColumnTypeImport,
   writeTypes,
   type GeneratedTypes,
 } from "./types.ts";
@@ -89,6 +90,17 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     );
   });
 
+  it("timestamptz と date の列を、読みが Temporal、書きが string の ColumnType にすること", async () => {
+    await db.migrator.query(`CREATE TABLE approval.t_example (at timestamptz NOT NULL, day date)`);
+
+    const { content } = typesOf(await generateTypes(db.url()), "approval");
+
+    expect(content).toContain(`import type { ColumnType } from "kysely";`);
+    expect(content).toContain("at: ColumnType<Temporal.Instant, string, string>;");
+    expect(content).toContain("day: ColumnType<Temporal.PlainDate, string, string> | null;");
+    expect(content).not.toMatch(/\bDate\b/);
+  });
+
   it("書いた型と同じ migration から生成し直すと、ずれがないこと", async () => {
     await writeTypes(await generateTypes(db.url()), root);
 
@@ -115,6 +127,26 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     expect(await staleTypes(types, root)).toEqual([
       "packages/approval/src/infrastructure/db.gen.ts",
     ]);
+  });
+});
+
+describe("withColumnTypeImport", () => {
+  const body = "export interface DB {\n  at: ColumnType<Temporal.Instant, string, string>;\n}\n";
+
+  it("ColumnType を使うのに import がなければ、先頭の export の前に足すこと", () => {
+    const header = "/**\n * generated\n */\n\n";
+
+    expect(withColumnTypeImport(header + body)).toBe(
+      `${header}import type { ColumnType } from "kysely";\n\n${body}`,
+    );
+  });
+
+  it("import があるときと、ColumnType を使わないときは、そのまま返すこと", () => {
+    const imported = `import type { ColumnType } from "kysely";\n\n${body}`;
+    const unused = "export interface DB {}\n";
+
+    expect(withColumnTypeImport(imported)).toBe(imported);
+    expect(withColumnTypeImport(unused)).toBe(unused);
   });
 });
 

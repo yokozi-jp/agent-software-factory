@@ -57,6 +57,17 @@ export const typeMapping: Readonly<Record<string, string>> = {
   date: "ColumnType<Temporal.PlainDate, string, string>",
 };
 
+const columnTypeImport = `import type { ColumnType } from "kysely";`;
+
+/**
+ * kysely-codegen は、`typeMapping` の型の式の中の `ColumnType` を数えないので、`Generated` や配列がない表だけのスキーマでは
+ * `ColumnType` の import を書かない。生成した型が `ColumnType` を使うのに import がなければ、先頭の export の前に足す。
+ */
+export function withColumnTypeImport(content: string): string {
+  if (!content.includes("ColumnType<") || content.includes(columnTypeImport)) return content;
+  return content.replace(/^export /m, `${columnTypeImport}\n\nexport `);
+}
+
 export interface GeneratedTypes {
   /** リポジトリのルートからの相対の path。 */
   readonly file: string;
@@ -72,7 +83,7 @@ export async function generateTypes(databaseUrl: string): Promise<GeneratedTypes
   const cli = new Cli();
   const generated: GeneratedTypes[] = [];
   for (const schema of moduleSchemas) {
-    const content = await cli.generate({
+    const generatedContent = await cli.generate({
       url: databaseUrl,
       dialect: "postgres",
       includePattern: `${schema}.*`,
@@ -81,7 +92,7 @@ export async function generateTypes(databaseUrl: string): Promise<GeneratedTypes
       logLevel: "error",
       typeMapping,
     });
-    generated.push({ file: typesFile(schema), content });
+    generated.push({ file: typesFile(schema), content: withColumnTypeImport(generatedContent) });
   }
   return generated;
 }
