@@ -13,11 +13,13 @@
     "i18n-keys": "cd ../../packages/i18n && i18next-cli status && i18next-cli status --unused"
   },
   "dependencies": {
+    "@agent-software-factory/api": "workspace:*",
     "@agent-software-factory/i18n": "workspace:*",
     "@agent-software-factory/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
     "better-auth": "catalog:",
+    "hono": "catalog:",
     "i18next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

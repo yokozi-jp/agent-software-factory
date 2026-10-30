@@ -66,7 +66,8 @@ const apps: Record<string, string> = {
       name: "@agent-software-factory/api",
       private: true,
       type: "module",
-      scripts: { check: "vp check" },
+      // The generator of the OpenAPI spec in tools/scripts is reached from this script (docs/adr/0047).
+      scripts: { check: "vp check", openapi: "node ../../tools/scripts/src/openapi/cli.ts" },
       dependencies: { "@hono/node-server": "catalog:", hono: "catalog:" },
       devDependencies: { "vite-plus": "catalog:" },
       nx: { name: "api" },

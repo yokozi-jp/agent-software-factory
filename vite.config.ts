@@ -9,6 +9,8 @@ const ignorePatterns = [
   "packages/*/src/infrastructure/db.gen.ts",
   // The same for the shared `messaging` schema (the Outbox, docs/adr/0029).
   "packages/shared-kernel/src/messaging.gen.ts",
+  // Generated from the routes of apps/api (pnpm exec nx openapi api, docs/adr/0047). Committed; CI checks that it matches.
+  "apps/api/openapi.json",
   // Agent skills installed from upstream (tracked by skills-lock.json). Must stay byte-identical.
   ".agents/**",
   // Symlinks to .agents/skills. The rest of .kiro/ (hooks, settings, steering) is checked like any other file.
@@ -165,6 +167,13 @@ const scope = "@agent-software-factory";
 // are the same.
 // The plugin of the rule that checks the key passed to `t`; the override that turns it off for the tests declares it again.
 const i18nPlugins = [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }];
+const webApiImportMessage =
+  "apps/web does not import apps/api. The one exception is `import type { AppType }` in lib/api-client.ts, which " +
+  "gives `hc` the types of the API's routes (docs/adr/0047). Call the API through the client from there.";
+const webParentImport = {
+  regex: "^\\.\\./",
+  message: "Import a file in another directory with `@/` (apps/web/src), not `../`.",
+};
 const webFiles = ["apps/web/src/**", "packages/ui/src/**"];
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
 // shared-kernel (below).
@@ -673,19 +682,32 @@ export default defineConfig({
       // Imports in apps/web/src name a file in another directory with `@/` (the paths of tsconfig.json), not with
       // `../`; `./` stays for a file in the same directory (docs/web-frontend/component-design.md). apps/web/src
       // has no other no-restricted-imports, so this one carries all of them.
+      //
+      // apps/web does not import apps/api, except the type of the API for `hc`, in one file (docs/adr/0047):
+      // lib/api-client.ts, in the override below, which may `import type` it. Oxlint keeps only the last override that
+      // sets a rule for a file, so that override carries the `../` pattern again.
       {
         files: ["apps/web/src/**"],
         rules: {
           "no-restricted-imports": [
             "error",
             {
-              patterns: [
-                {
-                  regex: "^\\.\\./",
-                  message:
-                    "Import a file in another directory with `@/` (apps/web/src), not `../`.",
-                },
+              paths: [{ name: `${scope}/api`, message: webApiImportMessage }],
+              patterns: [webParentImport],
+            },
+          ],
+        },
+      },
+      {
+        files: ["apps/web/src/lib/api-client.ts"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [
+                { name: `${scope}/api`, allowTypeImports: true, message: webApiImportMessage },
               ],
+              patterns: [webParentImport],
             },
           ],
         },

@@ -1,3 +1,4 @@
+import type { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { appOrigin, createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
@@ -10,7 +11,7 @@ const stateChangingPath = "/api/orders";
 
 describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
   let fixture: AuthFixture;
-  let app: AuthFixture["app"];
+  let app: Pick<Hono, "request">;
 
   beforeAll(async () => {
     fixture = await createAuthFixture();
