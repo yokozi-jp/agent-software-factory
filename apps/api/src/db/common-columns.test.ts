@@ -158,6 +158,34 @@ describe("共通カラムの値と楽観排他", () => {
     });
   });
 
+  it("時刻はトランザクションの開始時に 1 回だけ取り、途中で時計が進んでも INSERT の値は変わらないこと", async () => {
+    const { claim_id } = await run(
+      at(
+        createdAt,
+        inTenantTransaction(
+          ClaimTx,
+          { tenantId: tenantA, ...creator },
+          Effect.gen(function* () {
+            yield* TestClock.adjust("1 hour");
+            const write = yield* CurrentWrite;
+            return yield* dbCall(ClaimTx, (trx) =>
+              trx
+                .insertInto("claim.t_claim")
+                .values({ tenant_id: tenantA, ...createdColumns(write) })
+                .returning("claim_id")
+                .executeTakeFirstOrThrow(),
+            );
+          }),
+        ),
+      ),
+    );
+
+    expect(await readRow(claim_id)).toMatchObject({
+      created_at: new Date("2026-10-29T01:00:00Z"),
+      updated_at: new Date("2026-10-29T01:00:00Z"),
+    });
+  });
+
   it("UPDATE で、updated_* が更新の時刻と実行者になり、lock_no が 1 上がり、created_* は変わらないこと", async () => {
     const { claim_id } = await run(insertClaim(tenantA));
 

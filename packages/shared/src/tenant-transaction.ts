@@ -83,8 +83,9 @@ export type ModuleTx = Context.Key<unknown, QueryExecutorProvider> & {
  * Runs `work` in one transaction of the module `tx` with the tenant set (`beginTenantTransaction`): commits when `work`
  * succeeds and rolls back on any other exit (a typed failure, a defect, an interruption). It provides the transaction
  * to `work` under `tx` and requires `Database`. It also provides `CurrentWrite`: the moment, read once before the
- * start, with `actor`, `pgmCd` and `txId` of the scope, for `createdColumns` and `updatedColumns`. Who decides `pgmCd` and
- * `txId` (the request id, the start of a batch) is the job of the entry file. A failure to start, to commit or to roll back is a defect (the error of the driver as it is).
+ * start, with `actor`, `pgmCd` and `txId` of the scope, for `createdColumns` and `updatedColumns`. Who decides `pgmCd`
+ * and `txId` (the request id, the start of a batch) is the job of the entry file. A failure to start, to commit or to
+ * roll back is a defect (the error of the driver as it is).
  *
  * It does not run an effect (no `run*`, docs/adr/0028). The start of the transaction cannot be interrupted, so a
  * caller's `Effect.timeout` does not end the wait for a connection: the pool must set `connectionTimeoutMillis`
