@@ -72,7 +72,7 @@ describe("eventFixtureProblems", () => {
 
   it("今の版の fixture がなければ、足すよう求める", () => {
     expect(eventFixtureProblems([submitted], { "./fixtures/claim.submitted.v1.json": v1 })).toEqual(
-      ["claim.submitted has no fixture for its current version 2: add claim.submitted.v2.json"],
+      ["claim.submitted has no fixture for version 2: add claim.submitted.v2.json"],
     );
   });
 
@@ -95,6 +95,58 @@ describe("eventFixtureProblems", () => {
     ).toEqual([
       "claim.gone.v1.json: no event of this kind is exported",
       "notes.json: the name must be <kind>.v<version>.json",
+    ]);
+  });
+
+  it("過去の版の fixture が欠けていれば、足すよう求める", () => {
+    const v3 = defineEvent("claim.submitted", 3, {});
+    expect(
+      eventFixtureProblems([v3], { "./fixtures/claim.submitted.v3.json": { ...v1, version: 3 } }),
+    ).toEqual([
+      "claim.submitted has no fixture for version 1: add claim.submitted.v1.json",
+      "claim.submitted has no fixture for version 2: add claim.submitted.v2.json",
+    ]);
+  });
+
+  it("今の版より新しい版の fixture と、0 や先頭が 0 の版の名前を拒む", () => {
+    expect(
+      eventFixtureProblems([submitted], {
+        ...files,
+        "./fixtures/claim.submitted.v3.json": { ...v1, version: 3 },
+        "./fixtures/claim.submitted.v0.json": { ...v1, version: 0 },
+        "./fixtures/claim.submitted.v01.json": v1,
+      }),
+    ).toEqual([
+      "claim.submitted.v3.json: the version 3 is newer than the current version 2 of claim.submitted",
+      "claim.submitted.v0.json: the name must be <kind>.v<version>.json",
+      "claim.submitted.v01.json: the name must be <kind>.v<version>.json",
+    ]);
+  });
+
+  it("同じ種類を 2 度公開する、1 未満や整数でない版を拒む", () => {
+    expect(
+      eventFixtureProblems(
+        [
+          submitted,
+          submitted,
+          defineEvent("claim.zero", 0, {}),
+          defineEvent("claim.half", 1.5, {}),
+        ],
+        files,
+      ),
+    ).toEqual([
+      "claim.submitted: exported more than once",
+      "claim.zero: the version 0 must be an integer from 1",
+      "claim.half: the version 1.5 must be an integer from 1",
+      "claim.half has no fixture for version 1: add claim.half.v1.json",
+    ]);
+  });
+
+  it("メッセージが object でなければ、メッセージ全体の問題として示す", () => {
+    expect(
+      eventFixtureProblems([submitted], { ...files, "./fixtures/claim.submitted.v2.json": 1 }),
+    ).toEqual([
+      "claim.submitted.v2.json: (message): Invalid input: expected object, received number",
     ]);
   });
 });

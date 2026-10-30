@@ -22,8 +22,11 @@ tags: [async, convention, events, zod, testing]
 events の package ごとに、`test/fixtures/<種類>.v<版>.json` に、その版のメッセージを 1 つずつ置きます。`test/versions.test.ts` が `eventFixtureProblems` (`packages/shared/src/event.ts`) で、次を確かめます。
 
 - 今のスキーマが、すべての fixture を読める。
-- fixture の名前の版と、メッセージの `version` が同じ。
-- 公開しているすべてのイベントに、今の版の fixture がある。
+- fixture の名前の版と、メッセージの `version` が同じ。名前の版は 1 から始まる整数で、先頭に 0 を付けない。
+- 公開しているすべてのイベントに、1 から今の版までの各版の fixture がある。今の版より新しい版の fixture はない。
+- 同じ種類を 2 度公開していない。
+
+events の package に `test` の script (`vp test run`)、`test/versions.test.ts`、fixture が 1 つ以上あることは、repo-policy が確かめます。
 
 スキーマを足す、変えるときは、同じ変更でその版の fixture を足します。過去の版の fixture は消さず、書き換えません。項目を削除するか型を変えると、この fixture が落ちます。検出力は `packages/shared/src/event.test.ts` の、項目の削除と型の変更の 2 件が確かめます。
 

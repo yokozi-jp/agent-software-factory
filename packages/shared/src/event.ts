@@ -39,12 +39,12 @@ export interface EventDefinition {
 }
 
 const versionOf = z.object({ version: z.number() });
-const fixtureName = /^(?<kind>.+)\.v(?<version>\d+)\.json$/;
+const fixtureName = /^(?<kind>.+)\.v(?<version>[1-9]\d*)\.json$/;
 
 /**
  * Checks the messages of the past versions of the events of a package. `fixtures` maps the path of each file of
  * `fixtures/` (`<kind>.v<version>.json`) to its parsed JSON. Every file must parse with the current schema of its
- * kind and say the version its name says, and every event must have a file for its current version. Returns the
+ * kind and say the version its name says, and no file may be newer than the current version, and every event must have a file for each version from 1 to its current one. Returns the
  * problems; an empty list means the package still reads every message it ever wrote.
  */
 export function eventFixtureProblems(
@@ -53,6 +53,13 @@ export function eventFixtureProblems(
 ): string[] {
   const problems: string[] = [];
   const present = new Set<string>();
+  const seen = new Set<string>();
+  for (const event of events) {
+    if (seen.has(event.kind)) problems.push(`${event.kind}: exported more than once`);
+    seen.add(event.kind);
+    if (!Number.isInteger(event.version) || event.version < 1)
+      problems.push(`${event.kind}: the version ${event.version} must be an integer from 1`);
+  }
   for (const [path, message] of Object.entries(fixtures)) {
     const name = path.slice(path.lastIndexOf("/") + 1);
     const groups = fixtureName.exec(name)?.groups;
@@ -67,10 +74,16 @@ export function eventFixtureProblems(
     }
     const named = Number(groups["version"]);
     present.add(`${event.kind}@${named}`);
+    if (named > event.version) {
+      problems.push(
+        `${name}: the version ${named} is newer than the current version ${event.version} of ${event.kind}`,
+      );
+      continue;
+    }
     const parsed = event.schema.safeParse(message);
     if (!parsed.success) {
       for (const issue of parsed.error.issues)
-        problems.push(`${name}: ${issue.path.join(".")}: ${issue.message}`);
+        problems.push(`${name}: ${issue.path.join(".") || "(message)"}: ${issue.message}`);
       continue;
     }
     const actual = versionOf.parse(parsed.data).version;
@@ -80,9 +93,10 @@ export function eventFixtureProblems(
       );
   }
   for (const event of events)
-    if (!present.has(`${event.kind}@${event.version}`))
-      problems.push(
-        `${event.kind} has no fixture for its current version ${event.version}: add ${event.kind}.v${event.version}.json`,
-      );
+    for (let version = 1; version <= event.version; version++)
+      if (!present.has(`${event.kind}@${version}`))
+        problems.push(
+          `${event.kind} has no fixture for version ${version}: add ${event.kind}.v${version}.json`,
+        );
   return problems;
 }
