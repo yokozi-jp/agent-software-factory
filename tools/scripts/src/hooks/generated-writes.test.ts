@@ -59,6 +59,7 @@ describe("generatedWriteRefusal", () => {
     "packages/claim/src/db.gen.ts",
     "packages/claim/src/infrastructure/db.gen.ts.bak",
     "apps/api/src/infrastructure/db.gen.ts",
+    "vendor/packages/claim/src/infrastructure/db.gen.ts",
   ])("allows %s", (path) => {
     expect(generatedWriteRefusal("fs_write", path)).toBeUndefined();
   });
