@@ -24,8 +24,9 @@ export const Disabled: Story = {
   args: { disabled: true },
   play: async ({ args, canvas }) => {
     const button = canvas.getByRole("button", { name: "保存" });
+    // 無効のボタンは押せない。DOM の click は disabled で届かず、見た目の pointer-events: none も効いている。
     await expect(button).toBeDisabled();
-    // 無効のボタンは pointer-events: none なので、userEvent では押せない。DOM の click が届かないことを確かめる。
+    await expect(getComputedStyle(button).pointerEvents).toBe("none");
     button.click();
     await expect(args.onClick).not.toHaveBeenCalled();
   },

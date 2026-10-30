@@ -10,5 +10,5 @@
     "jsx": "react-jsx",
     "types": []
   },
-  "include": ["*.stories.tsx"]
+  "include": ["**/*.stories.tsx"]
 }
