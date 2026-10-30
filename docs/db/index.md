@@ -13,7 +13,7 @@
 - [PostgreSQL の関数・トリガー・Pub/Sub](postgresql-functions-triggers.md)：DB 側にロジックを持たせるか検討するとき
 - [PostgreSQL のパーティション設計](postgresql-partitioning.md)：巨大なテーブルをパーティション化するとき
 - [PostgreSQL のテーブル物理設計（一時テーブル・VIEW・継承）](postgresql-physical-tables.md)：中間テーブルやビューを設計するとき
-- [PostgreSQL のキー設計（サロゲートキー・連番/UUID・共通カラム）](postgresql-keys.md)：主キーや共通カラムを設計するとき
+- [PostgreSQL のキー設計（サロゲートキー・連番/UUID・共通カラム）](postgresql-keys.md)：主キーや共通カラムを設計するとき、共通カラムの値を入れるコードや楽観排他の更新を書くとき、キーと制約の書き方を確かめるとき
 - [PostgreSQL のテーブル論理設計（スナップショット・導出・業務日付）](postgresql-logical-design-snapshot.md)：属性の持たせ方や業務日付の扱いを決めるとき
 - [PostgreSQL のテーブル論理設計（適用期間・世代管理・論理削除）](postgresql-logical-design-history.md)：履歴や有効期間を持つデータを設計するとき
 - [PostgreSQL のクライアント管理](postgresql-client.md)：アプリから DB に接続する実装を設計するとき、Kysely でクエリを書くとき、モジュールの DB の型を生成し直すとき

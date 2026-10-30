@@ -1,7 +1,7 @@
 ---
 type: Convention
 title: "PostgreSQL のキー設計（サロゲートキー・連番/UUID・共通カラム）"
-description: "PostgreSQL のナチュラルキー/サロゲートキーの選択、連番/UUID、共通カラムの持ち方を定める文書。主キーや共通カラムを設計するときに読む。"
+description: "PostgreSQL のナチュラルキー/サロゲートキーの選択、連番/UUID、共通カラムの持ち方と、このリポジトリの共通カラムの値の入れ方、楽観排他、キーと制約の書き方を定める文書。主キーや共通カラムを設計するとき、共通カラムの値を入れるコードや楽観排他の更新を書くときに読む。"
 tags: [db, postgresql, convention, key-design]
 sources:
   - resource: https://future-architect.github.io/arch-guidelines/documents/forDB/postgresql_guidelines.html
@@ -164,3 +164,37 @@ sources:
 > **チューニング観点での共通カラムの取り外し**
 >
 > 先述の通り、シビアに性能が求められるワークロードの場合、共通カラムのオーバーヘッドが大きくなる。例えば、追記だけで更新が存在しないワークテーブルへの書き込みを最適化したい場合、必要に応じて更新部分の共通カラムを取り除くことも考えられる。本ガイドラインとして、なるべく一律共通カラムを付与することで設計余地を減らすことを重視するが、性能などどうしても超えなければならない課題がある場合は、状況に応じて共通カラムをなくす判断を否定するものではない。
+
+## このリポジトリでは
+
+業務の表の共通カラムの入れ方、キー、制約の書き方をここにまとめる。決定は [業務の表の共通カラム、楽観排他、テナントを含むキーと制約の書き方と検査を決める](https://github.com/yokozi-jp/agent-software-factory/issues/345)、実装は [Issue #362](https://github.com/yokozi-jp/agent-software-factory/issues/362) にある。
+
+### 共通カラムの値
+
+- **付ける表**: 業務の表は上の 14 個のすべてを付ける。Outbox と冪等キーの表のような仕組みの表にも、原則として付ける ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md)、[ADR 0040](../adr/0040-idempotency-key-in-module-schema.md))。例外は `auth` と `migrations` のスキーマだけ。
+- **値を入れる人**: アプリがバインドする。`CURRENT_TIMESTAMP` とトリガーは使わない。DB の既定値は `lock_no` の 1 だけで、INSERT でも `updated_*` を入れる。
+- **時刻**: トランザクションの開始時にアプリが 1 回取り (`currentInstant`)、そのトランザクションの INSERT と UPDATE のすべてで同じ値を使う。
+- **`packages/shared` の関数**: `inTenantTransaction(XTx, { tenantId, actor, pgmCd, txId }, work)` が、開始時の時刻と `actor`、`pgmCd`、`txId` を `CurrentWrite` として `work` に渡す。`work` の中で `yield* CurrentWrite` して、次の関数に渡す。この共通化の形は設計の判断で、出典はない。
+  - `createdColumns(ctx)`: INSERT 用。`created_*` と `updated_*` の両方を返す。`lock_no` は DB の既定値に任せる。
+  - `updatedColumns(ctx)`: UPDATE 用。`updated_*` と `lock_no = lock_no + 1` を返す。
+  - `patchedColumns(ctx, patchId)`: データパッチ用。`patched_*` だけを返し、`updated_*` と `lock_no` は触らない。
+- **`pgmCd` と `txId` を決める人**: 入口 (API の route、ワーカー、バッチ) が決めて scope で渡す。`shared` は決めない。決め方は入口の雛形の Issue で決める。
+
+### 楽観排他の書き方
+
+方式は [Web API の排他制御](../web-api/exclusive-control.md) の (3) で、クライアントは本文に `lockNo` を載せる。比較は [PostgreSQL の排他制御](postgresql-concurrency.md#このリポジトリでは) の案 1 で行う。
+
+```sql
+UPDATE … SET lock_no = lock_no + 1, updated_* = … WHERE tenant_id = $1 AND <id> = $2 AND lock_no = $3 RETURNING …
+```
+
+`updateWithLock(XTx, { update, exists })` が、0 行のときに同じトランザクションで行を SELECT し直し、行がなければ `RowNotFound` (404)、あれば `OptimisticLockConflict` (409) を `Data.TaggedError` で型に出す ([ADR 0028](../adr/0028-effect-in-application-and-infrastructure.md))。別のテナントの行は RLS で見えないので 404 になる。この分け方は設計の判断で、出典はない。親子の表では、親の `lock_no` だけを比べ、子だけを更新するときも親の `lock_no` を上げる。
+
+### キーと制約
+
+- **主キー**: `(tenant_id, <表>_id)` で、`<表>_id` は IDENTITY の連番にする。
+- **一意性**: ユニークインデックスで書き、`tenant_id` を含める。一意制約は使わない ([一意制約](postgresql-constraints.md#一意制約)、[ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md))。テナントを含まない一意性は、別のテナントの行の有無が漏れる。
+- **外部キー**: 置かない。参照整合性はアプリが守る ([外部キー制約](postgresql-constraints.md#外部キー制約)、[ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。標準の慣行は外部キーを使う側で、このリポジトリは取り込んだガイドラインと ADR 0029 に従って外れている。
+- **CHECK 制約**: 置かない。状態の値は domain の型で守る ([検査制約](postgresql-constraints.md#検査制約check制約))。
+
+新しい決定ではなく、既存の規約の確認である。規約への準拠の検査は [Issue #361](https://github.com/yokozi-jp/agent-software-factory/issues/361) で入れる。

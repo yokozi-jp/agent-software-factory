@@ -52,6 +52,8 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - postgresql-column.md のデータ型で、存在しない型名 `double` を `double precision` に直し、`real` は約6桁・`double precision` は約15桁・精度指定のない `float` は `double precision` を意味する、と精度の記述を正した。PostgreSQL: Documentation 8.1 Numeric Types。
 - モジュールごとの `NOLOGIN` のロール (`claim_module` など) を使い、自分のスキーマの読み書きと依存の方向のスキーマの `SELECT` だけを与えることは、postgresql-roles.md の「テーブル単位で細かく権限制御しすぎないようにする」からはみ出す。原文はこの推奨の理由を書いていないので、権限が細かいと管理が難しくなることを避ける趣旨と読む (判断)。このリポジトリでは、モジュールの表の所有を型だけでなく DB で止める必要があり、権限はスキーマ単位で `GRANT` と `ALTER DEFAULT PRIVILEGES` にまとめ、表ごとには書かない。権限の形は、カタログのテストが毎回確かめる。ADR 0029、Issue #268。
 - concurrency-testing.md を足した。競合と原子性を確かめる結合テストの書き方 (`pg_blocking_pids` で待ちを確かめる手順、対照、行数の前後比較) で、原文にない。Issue #352 の決定。
+- postgresql-concurrency.md の「楽観的ロック」に、このリポジトリでは案 1（`UPDATE … WHERE lock_no = $n` の更新件数で比べる）を採る、という節を足した。原文は案 2（`SELECT FOR UPDATE` でバージョンを比べる）を推奨する。採る理由（比較と更新が 1 文で書き忘れても穴が開かない、EF Core と同じ方式、ロックの時間が短い、READ COMMITTED で競合した UPDATE は更新後の行で WHERE を再評価する）、0 行のときの 404 と 409 の分け方、案 2 を使う場面を書いた。EF Core の Optimistic concurrency、PostgreSQL 13.2.1。Issue #345、#362。
+- postgresql-keys.md に、このリポジトリの共通カラムの値の入れ方（アプリがバインドする、`packages/shared` の `createdColumns`、`updatedColumns`、`patchedColumns`）、楽観排他の書き方、キーと制約の書き方（`tenant_id` を含む主キーとユニークインデックス、外部キーと CHECK 制約を置かない）の節を足した。原文にない。Issue #345、#362。
 
 ## 位置づけ
 
