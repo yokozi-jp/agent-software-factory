@@ -5,6 +5,10 @@ const exclude = ["**/node_modules/**", "**/fixtures/**"];
 
 const isolationTest = "src/test/isolation.test.ts";
 
+// The `test-unit` target (pre-commit) runs the unit project without isolation. src/test/isolation.ts is run only
+// by the isolation project, so that run leaves it out of coverage; the `test` target counts it.
+const withoutIsolation = process.env.SCRIPTS_TEST_WITHOUT_ISOLATION === "1";
+
 // Stryker runs the tests that import the files it mutates, whatever their project, in a copy of this project
 // where the paths up to the workspace root lead nowhere. The tools project reads the real workspace, so it
 // stay out of its runs (it sets STRYKER_MUTATOR_WORKER in the processes that run the tests).
@@ -55,6 +59,7 @@ export default defineConfig({
         // Entry points: they only read argv, stdin and the environment, run git and print.
         // The process tests (cli.test.ts) run them as child processes, which coverage does not see.
         "src/**/cli.ts",
+        ...(withoutIsolation ? ["src/test/isolation.ts"] : []),
       ],
       thresholds: {
         // A fixed minimum for every file (#30).
