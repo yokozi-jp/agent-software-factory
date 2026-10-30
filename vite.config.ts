@@ -665,6 +665,20 @@ export default defineConfig({
           ],
         },
       },
+      // The key passed to `t` is a string literal, because i18next-cli finds the keys by reading `t("…")` (docs/adr/0044).
+      // The rule is in tools/lint-plugins/src/i18n-plugin.ts. The tests are outside the rule: i18next-cli does not read
+      // them either. Fixtures that this rule must report: apps/web/src/__fixtures__/i18n-key.ts and
+      // packages/i18n/src/__fixtures__/i18n-key.ts.
+      {
+        files: ["apps/web/src/**", "packages/i18n/src/**"],
+        jsPlugins: [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }],
+        rules: { "i18n/literal-key": "error" },
+      },
+      {
+        files: ["apps/web/src/**/*.test.{ts,tsx}", "packages/i18n/src/**/*.test.ts"],
+        jsPlugins: [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }],
+        rules: { "i18n/literal-key": "off" },
+      },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
       // tools/lint-plugins/src/xss-plugin.ts, because Oxlint's built-in ones cannot say what to write instead.
       // Turning one off takes a disable comment with a reason, and a blanket disable is not allowed.
