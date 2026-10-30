@@ -1,20 +1,36 @@
 import { createI18n, resolveLanguage } from "@agent-software-factory/i18n";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { RouterProvider, createBrowserHistory } from "@tanstack/react-router";
+import { createAuthClient } from "better-auth/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 
 import "temporal-polyfill/global";
 import "./index.css";
-import { routeTree } from "./routeTree.gen.ts";
+import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
+import { createAppRouter, goToSessionExpired } from "./router.ts";
 
-const router = createRouter({ routeTree });
+// 認証は同じオリジンの /api/auth/* に向く (Better Auth の既定。docs/adr/0022)。
+const authClient = createAuthClient();
 
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
+// IdP の ID。apps/api の oidcProviderId と同じ値にする (apps/web は apps/api を import しない)。
+const oidcProviderId = "oidc";
+
+const context: AppContext = {
+  apiFetch: withSessionExpiry(
+    (input, init) => fetch(input, init),
+    () => {
+      goToSessionExpired(router);
+    },
+  ),
+  getSession: () => fetchSession((input) => fetch(input)),
+  signIn: async (callbackURL) => {
+    const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
+    if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);
+  },
+};
+
+const router = createAppRouter(context, createBrowserHistory());
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root not found");

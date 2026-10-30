@@ -1,9 +1,7 @@
 {
-  "app": {
-    "name": "agent-software-factory"
-  },
   "home": {
-    "sampleButton": "Button"
+    "sampleButton": "Button",
+    "title": "Home"
   },
   "problem": {
     "generic": "Something went wrong. Please try again later.",
@@ -12,5 +10,23 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "forbiddenOrigin": "This operation is not allowed.",
     "rateLimited": "Too many requests. Please try again in a while."
+  },
+  "login": {
+    "title": "Sign in",
+    "signIn": "Sign in with IdP",
+    "reason": {
+      "sessionExpired": "Your session has expired. Please sign in again.",
+      "loggedOut": "You have signed out."
+    },
+    "failed": "Sign-in failed. Please try again."
+  },
+  "notFound": {
+    "title": "Page not found."
+  },
+  "forbidden": {
+    "title": "You do not have permission to open this page."
+  },
+  "errorScreen": {
+    "toHome": "Back to home"
   }
 }
