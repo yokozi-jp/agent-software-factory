@@ -40,6 +40,17 @@ const translationAlias = (declarator: ESTree.VariableDeclarator): string | undef
   return undefined;
 };
 
+// `t(…)`, a name that `useTranslation()` bound `t` to, and `i18n.t(…)`.
+const isTranslationCall = (callee: ESTree.Node, aliases: ReadonlySet<string>): boolean => {
+  if (callee.type === "MemberExpression") {
+    return propertyNameOf(callee) === "t" && i18nObjects.has(nameOf(callee.object) ?? "");
+  }
+  const name = nameOf(callee);
+  return name === "t" || (name !== undefined && aliases.has(name));
+};
+
+// Limits: the names are collected for the whole file, not per scope, and a call that comes before the
+// `useTranslation()` that binds its name in the source is not checked. A parameter named `t` is checked like any `t`.
 const literalKey = defineRule({
   meta: {
     type: "problem",
@@ -59,15 +70,7 @@ const literalKey = defineRule({
         if (alias) aliases.add(alias);
       },
       CallExpression(node) {
-        const callee = node.callee;
-        const isTranslation =
-          callee.type === "MemberExpression"
-            ? propertyNameOf(callee) === "t" && i18nObjects.has(nameOf(callee.object) ?? "")
-            : (() => {
-                const name = nameOf(callee);
-                return name === "t" || (name !== undefined && aliases.has(name));
-              })();
-        if (!isTranslation) return;
+        if (!isTranslationCall(node.callee, aliases)) return;
         const key = node.arguments[0];
         if (key && !isLiteralKey(key)) context.report({ node: key, messageId: "nonLiteralKey" });
       },

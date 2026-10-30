@@ -65,6 +65,8 @@ tester.run("literal-key", rule, {
       code: "const { t: translate = fallback } = useTranslation(); translate(key);",
       errors: error,
     },
+    // 引数の `t` も `t` の名前で見る (スコープは見ない)。
+    { code: "const f = (t) => t(key);", errors: error },
     // 同じ呼び出しの第 1 引数だけを見る。
     { code: 'const a = t(key, "default");', errors: error },
   ],

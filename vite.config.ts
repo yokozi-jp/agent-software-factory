@@ -161,6 +161,8 @@ const runtimeGlobalLintRules = {
 const scope = "@agent-software-factory";
 // The React code: the app, and the parts it shares (packages/ui, docs/adr/0034). Their React, console and XSS rules
 // are the same.
+// The plugin of the rule that checks the key passed to `t`; the override that turns it off for the tests declares it again.
+const i18nPlugins = [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }];
 const webFiles = ["apps/web/src/**", "packages/ui/src/**"];
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
 // shared (below).
@@ -671,12 +673,12 @@ export default defineConfig({
       // packages/i18n/src/__fixtures__/i18n-key.ts.
       {
         files: ["apps/web/src/**", "packages/i18n/src/**"],
-        jsPlugins: [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }],
+        jsPlugins: i18nPlugins,
         rules: { "i18n/literal-key": "error" },
       },
       {
         files: ["apps/web/src/**/*.test.{ts,tsx}", "packages/i18n/src/**/*.test.ts"],
-        jsPlugins: [{ name: "i18n", specifier: "./tools/lint-plugins/src/i18n-plugin.ts" }],
+        jsPlugins: i18nPlugins,
         rules: { "i18n/literal-key": "off" },
       },
       // Code that opens an XSS hole (docs/web-frontend/static-analysis.md). The rules are in
