@@ -8,7 +8,7 @@ betterleaks = "1.9.0"
 osv-scanner = "2.7.0"
 # Semgrep CE is only on PyPI. uv installs it from the dependency graph that mise.lock records (wheel hashes),
 # with the Python pinned here, so it does not depend on the Python of the machine (docs/adr/0021).
-"pypi:semgrep" = "1.182.1"
+"pypi:semgrep" = "1.183.0"
 python = "3.13.17"
 shellcheck = "0.11.0"
 uv = "0.13.6"
