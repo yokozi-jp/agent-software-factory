@@ -51,7 +51,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.{ts,tsx}"],
+          include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.ts"],
           setupFiles: ["./test/temporal.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
           exclude: ["**/node_modules/**", "**/__fixtures__/**"],
@@ -65,6 +65,9 @@ export default defineConfig({
         },
       },
     ],
+    // a11y の違反を警告にとどめた story (preview.ts の `a11y.test: "todo"`) の違反は、Storybook の画面にだけ出て CI のログに出ない。
+    // この reporter が実行ログに出す (test/a11y-warnings-reporter.ts)。
+    reporters: ["default", "./test/a11y-warnings-reporter.ts"],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。unit と storybook の両方が通した行を数える。
     coverage: {
       provider: "v8",

@@ -8,6 +8,7 @@
 //   agent-permissions.ts the permission rules of the agents
 //   docs-references.ts   references to docs/ from outside docs/, and to the code from docs/
 //   modules.ts           the dependencies between the modules, and how each resolves and lints them
+//   ui-stories.ts        a story next to each part of packages/ui
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
 // vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
@@ -50,6 +51,7 @@ import {
   uniqueAdrNumbers,
 } from "./tooling.ts";
 import { Tree, type Repo } from "./tree.ts";
+import { uiComponentsHaveStories } from "./ui-stories.ts";
 
 export type { Repo };
 
@@ -91,6 +93,7 @@ export function violations(repo: Repo): string[] {
     ...docsCodePaths(tree),
     ...ciTargetsHaveCommands(tree),
     ...noWorkspaceInCatalog(tree),
+    ...uiComponentsHaveStories(tree),
   ];
   return [...tree.parseErrors, ...failures];
 }
