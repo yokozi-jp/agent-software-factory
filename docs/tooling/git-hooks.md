@@ -16,8 +16,8 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 
 どの hook のどの job が何を確かめ、どの CI の検証の写しかは、[保証カタログ](assurance-catalog.md) の「ローカルの写し」の列と、`lefthook: …` の行にあります。hook は飛ばせるので、保証には数えません。
 
-- `commit-msg` はコミットメッセージを、`pre-commit` はステージした変更を、`pre-push` は push するコミットを見ます。
-- `pre-commit` は 2 段で動きます。1 段目の `checks` (repo-policy、`vp check`、docs-check、Knip、jscpd など) を並列に流し、1 つでも失敗したら、2 段目の `nx-tasks` (`scripts-test`、`db-types`、`lint-effect`。数分かかることがある) を始める前に止めます。並列の 1 段だと、lefthook は最も遅い job を待ってから、数秒で出た失敗を報告していました (lefthook 2.2.2 の `parallel` に、最初の失敗で止める設定はありません)。
+- `commit-msg` はコミットメッセージを、`pre-commit` はステージした変更を、`pre-push` は push するコミットを見ます。 `pre-push` の job は並列に流し、所要時間は一番長い job (`nx-affected-test-tools` か `nx-affected-test`) で決まります。
+- `pre-commit` は 3 段で動き、各段の中は並列です。1 段目の `quick-checks` (secret-scan、jscpd、repo-policy。数秒から約 20 秒) が失敗したら、2 段目の `checks` (`vp check`、docs-check、Knip など。2 分から 2.5 分) を始める前に止めます。`checks` が通ったら、3 段目の `nx-tasks` (`scripts-test`、`db-types`、`lint-effect`。数分かかることがある) を始めます。並列の 1 段だと、lefthook は最も遅い job を待ってから、数秒で出た失敗を報告していました (lefthook 2.2.2 の `parallel` に、最初の失敗で止める設定はありません)。jscpd の重複は、Knip の完了を待ってから報告されていたので、1 段目に移しました。
 - `pre-commit` は、staged ファイルに `vp check --fix` を実行して修正を stage してから、Markdown を lint します。`glob` を持つ job は、それに合うファイルを変えたときだけ実行します。
 - `pre-push` の adr-check、test-weakening、OSV-Scanner は警告だけで、止めません。adr-number は `gh` が読めないとき、Semgrep はオフラインなど検査できないときは止めません。
 

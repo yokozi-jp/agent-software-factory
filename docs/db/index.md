@@ -22,6 +22,7 @@
 - [PostgreSQL の排他制御](postgresql-concurrency.md)：排他制御を設計するとき
 - [競合と原子性のテストの書き方](concurrency-testing.md)：競合や原子性を確かめる結合テストを書くとき、sleep や Promise.all で競合を作りたくなったとき
 - [PostgreSQL のテスト](postgresql-test.md)：DB を含むテストを設計するとき
+- [DB の規約の検査（カタログのテスト）](convention-check.md)：DB の規約を機械で確かめる項目を知りたいとき、検査を足す、規約の例外を書くとき、検査が失敗したとき
 - [PostgreSQL のスキーママイグレーション](postgresql-migration.md)：スキーマを変更するとき、seed を足す、直すとき
 - [PostgreSQL のバージョン](postgresql-version.md)：利用バージョンやアップグレードを計画するとき
 - [PostgreSQL の拡張機能](postgresql-extensions.md)：拡張機能を導入するか検討するとき

@@ -54,6 +54,7 @@ DB設計に関するガイドラインとして、PostgreSQL設計ガイドラ�
 - concurrency-testing.md を足した。競合と原子性を確かめる結合テストの書き方 (`pg_blocking_pids` で待ちを確かめる手順、対照、行数の前後比較) で、原文にない。Issue #352 の決定。
 - postgresql-concurrency.md の「楽観的ロック」に、このリポジトリでは案 1（`UPDATE … WHERE lock_no = $n` の更新件数で比べる）を採る、という節を足した。原文は案 2（`SELECT FOR UPDATE` でバージョンを比べる）を推奨する。採る理由（比較と更新が 1 文で書き忘れても穴が開かない、EF Core と同じ方式、ロックの時間が短い、READ COMMITTED で競合した UPDATE は更新後の行で WHERE を再評価する）、0 行のときの 404 と 409 の分け方、案 2 を使う場面を書いた。EF Core の Optimistic concurrency、PostgreSQL 13.2.1。Issue #345、#362。
 - postgresql-keys.md に、このリポジトリの共通カラムの値の入れ方（アプリがバインドする、`packages/shared` の `createdColumns`、`updatedColumns`、`patchedColumns`）、楽観排他の書き方、キーと制約の書き方（`tenant_id` を含む主キーとユニークインデックス、外部キーと CHECK 制約を置かない）の節を足した。原文にない。Issue #345、#362。
+- convention-check.md を足した。docs/db の規約のうち、migration を流した DB のカタログで機械的に確かめる項目と、確かめない項目、例外の書き方 (`packages/db/src/convention-catalog.ts`) で、原文にない。Issue #361 の決定。検査は規約の本文に合わせた。`float` は `real` だけを止め (`postgresql-column.md` の「使わない型」)、共通カラムは `postgresql-keys.md` の表の 12 個にした。
 
 ## 位置づけ
 
