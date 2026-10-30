@@ -19,6 +19,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 - **置き場所**: 部品は `packages/ui/src/components/` です。業務コンポーネントは置きません ([Webフロントエンドのコンポーネント設計](../web-frontend/component-design.md))。
 - **story**: `packages/ui/src/components/` の各部品に隣の `*.stories.tsx` を必須にします。ない部品は失敗にします。この検査は [Issue #315](https://github.com/yokozi-jp/agent-software-factory/issues/315) で作ります。業務コンポーネントは対象外です。
 - **テスト**: Storybook の story を component test にします。`*.test.tsx` と `vitest-browser-react` は使いません。`packages/ui` に専用のテストは書きません。基盤の確認は `vp check` と `vp build` です。
+- **`apps/web` の画面のテスト**: `apps/web` の画面とルーターのガードも、story の `play` で確かめます。ルーターはメモリ履歴で包み、API はモックにします。unit は `*.test.ts` で書き、使わないのは `*.test.tsx` と `vitest-browser-react` だけです。story の漏れを CI で止めるのは `packages/ui/src/components/` だけです。画面の story の置き場所と、ルーターを包む decorator は、まだ決めていません。Storybook を `apps/web` に入れる [Issue #141](https://github.com/yokozi-jp/agent-software-factory/issues/141) の後、ログイン画面の実施（[Issue #406](https://github.com/yokozi-jp/agent-software-factory/issues/406)）の最初に確かめます。決めた経緯は [ログインとトップとメニューの受け入れ条件と、テストの境界を決める](https://github.com/yokozi-jp/agent-software-factory/issues/401) の解決コメントにあります。
 
 ## 制約
 
