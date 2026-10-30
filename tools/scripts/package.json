@@ -6,6 +6,7 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --project unit --project isolation --coverage",
+    "test-unit": "SCRIPTS_TEST_WITHOUT_ISOLATION=1 vp test run --project unit --coverage",
     "test-tools": "vp test run --project tools",
     "mutation": "stryker run"
   },
@@ -25,6 +26,14 @@
     "name": "scripts",
     "targets": {
       "test": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/.kiro/hooks/*.json"
+        ]
+      },
+      "test-unit": {
+        "cache": true,
         "inputs": [
           "default",
           "^production",
