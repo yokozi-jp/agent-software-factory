@@ -17,7 +17,7 @@
   // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
   "ignoreIssues": {
     "packages/*/src/infrastructure/db.gen.ts": ["types"],
-    "packages/shared/src/messaging.gen.ts": ["types"],
+    "packages/shared-kernel/src/messaging.gen.ts": ["types"],
   },
   "workspaces": {
     ".": {

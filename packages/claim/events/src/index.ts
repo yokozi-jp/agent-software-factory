@@ -1,4 +1,4 @@
-import { defineEvent } from "@agent-software-factory/shared";
+import { defineEvent } from "@agent-software-factory/shared-kernel";
 import { z } from "zod";
 
 // The events that the claim module sends (docs/adr/0046). A message of the claim module's events is read by

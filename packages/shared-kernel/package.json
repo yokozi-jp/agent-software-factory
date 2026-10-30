@@ -1,5 +1,5 @@
 {
-  "name": "@agent-software-factory/shared",
+  "name": "@agent-software-factory/shared-kernel",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -22,6 +22,6 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "shared"
+    "name": "shared-kernel"
   }
 }

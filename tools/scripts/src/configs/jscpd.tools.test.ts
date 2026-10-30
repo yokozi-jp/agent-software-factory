@@ -57,7 +57,7 @@ describe("jscpd with .jscpd.json", () => {
   it.each([
     ["in another app", "apps/web/src/summarize.ts"],
     ["in the same app", "apps/api/src/other.ts"],
-    ["in packages/", "packages/shared/src/summarize.ts"],
+    ["in packages/", "packages/shared-kernel/src/summarize.ts"],
   ])("fails on a copy %s", (_, path) => {
     put(path);
     expect(scan().status).toBe(1);

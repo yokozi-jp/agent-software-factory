@@ -4,14 +4,14 @@
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
-// depend on the modules after it, and on shared; shared depends on no module. This is the one place the direction
+// depend on the modules after it, and on shared-kernel; shared-kernel depends on no module. This is the one place the direction
 // is written: a module resolves only the packages its package.json declares (pnpm puts nothing else in its
 // node_modules, so TypeScript cannot resolve it), and modulesDependOneWay checks the declarations against it.
 const moduleOrder: readonly string[] = ["closing", "approval", "claim"];
 const moduleOrderFile = "tools/scripts/src/checks/repo-policy/modules.ts";
 
 // The scope of the packages of the workspace (their package.json names). vite.config.ts writes it too; it is read
-// as text, so the two are not shared.
+// as text, so the two are not shared-kernel.
 const scope = "@agent-software-factory";
 const dependencyFields = [
   "dependencies",
@@ -27,17 +27,17 @@ export const packageNames = (tree: Tree): string[] =>
   tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
 
 // The packages under packages/ that are not modules of the sample feature (GLOSSARY.md, docs/adr/0026, 0034).
-// shared is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
+// shared-kernel is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
 // fixtures of the overrides that reach every module; it stays when the sample feature is removed. ui holds the
 // shadcn/ui parts that the apps share; it has no layers, and no module depends on it. None depends on a package
 // of the workspace.
 // i18n holds the texts of the screens (the resources of ja and en, the setup of i18next) that web shares with the
 // packages; it has no layers, and no module depends on it (docs/adr/0044).
-const shared = "shared";
+const sharedKernel = "shared-kernel";
 const moduleFixtures = "module-fixtures";
 const ui = "ui";
 const i18n = "i18n";
-const dependOnNone: readonly string[] = [shared, moduleFixtures, ui, i18n];
+const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
 // has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api depends on it
 // (docs/adr/0038). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
@@ -52,10 +52,10 @@ const eventsModuleNames = (tree: Tree): string[] =>
 const eventsSuffix = "-events";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but shared, ui, i18n and db.
+// and module-fixtures. Every package under packages/ but shared-kernel, ui, i18n and db.
 export const modulePackageNames = (tree: Tree): string[] =>
   packageNames(tree).filter(
-    (name) => name !== shared && name !== ui && name !== i18n && name !== db,
+    (name) => name !== sharedKernel && name !== ui && name !== i18n && name !== db,
   );
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
@@ -119,8 +119,8 @@ const isEventsPackage = (tree: Tree, name: string): boolean =>
   name.endsWith(eventsSuffix) &&
   eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
 
-// Every package under packages/ but shared, module-fixtures, ui and i18n is a module of moduleOrder, and depends on no
-// package of the workspace but shared and the modules after it. shared, module-fixtures, ui and i18n depend on none.
+// Every package under packages/ but shared-kernel, module-fixtures, ui and i18n is a module of moduleOrder, and depends on no
+// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui and i18n depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -140,13 +140,13 @@ export function modulesDependOneWay(tree: Tree): string[] {
         const target = dependency.slice(scope.length + 1);
         // A dependency on db is dbDependencies' to refuse, for every package at once.
         if (target === db) continue;
-        if (!dependsOnNone && (target === shared || moduleOrder.indexOf(target) > position))
+        if (!dependsOnNone && (target === sharedKernel || moduleOrder.indexOf(target) > position))
           continue;
         // A module depends on the events package of any module: the events are how the modules talk without
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
         );
       }
   }
@@ -154,7 +154,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
 }
 
 // The events package of each module (packages/<module>/events): it holds the schemas of the events the module
-// sends, and depends on zod and shared only, so that a module which receives the events does not depend on the
+// sends, and depends on zod and shared-kernel only, so that a module which receives the events does not depend on the
 // body of the one that sends them. It is not a module: it has no place in moduleOrder and no type:module tag.
 // `order` is moduleOrder; a test passes another to show what a name of the events packages in it does.
 export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrder): string[] {
@@ -219,9 +219,10 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
       );
     for (const field of dependencyFields)
       for (const dependency of Object.keys(record(json[field]))) {
-        if (!dependency.startsWith(`${scope}/`) || dependency === `${scope}/${shared}`) continue;
+        if (!dependency.startsWith(`${scope}/`) || dependency === `${scope}/${sharedKernel}`)
+          continue;
         failures.push(
-          `${path} has ${dependency} in ${field}. An events package depends on zod and shared only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`,
+          `${path} has ${dependency} in ${field}. An events package depends on zod and shared-kernel only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`,
         );
       }
   }
@@ -278,7 +279,7 @@ export function modulesAreRegistered(tree: Tree): string[] {
 }
 
 // db depends on the modules, in devDependencies and for their types, and on no other package of the workspace. Only
-// apps/api depends on db: the modules and shared have no use for the tools of the database, and apps/web and the
+// apps/api depends on db: the modules and shared-kernel have no use for the tools of the database, and apps/web and the
 // tools must not reach them (docs/adr/0038).
 export function dbDependencies(tree: Tree): string[] {
   if (!packageNames(tree).includes(db)) return [];
@@ -299,7 +300,7 @@ export function dbDependencies(tree: Tree): string[] {
     for (const field of dependencyFields)
       if (`${scope}/${db}` in record(json[field]))
         failures.push(
-          `${path} has ${scope}/${db} in ${field}. Only ${dbApp} depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`,
+          `${path} has ${scope}/${db} in ${field}. Only ${dbApp} depends on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`,
         );
   }
   return failures;

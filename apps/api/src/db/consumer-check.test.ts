@@ -3,7 +3,7 @@ import {
   defineConsumer,
   defineEvent,
   type RegisteredConsumer,
-} from "@agent-software-factory/shared";
+} from "@agent-software-factory/shared-kernel";
 import { Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 

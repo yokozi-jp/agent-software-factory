@@ -10,7 +10,7 @@ import {
   dbCallUnique,
   inTenantTransaction,
   UniqueViolation,
-} from "@agent-software-factory/shared";
+} from "@agent-software-factory/shared-kernel";
 import { Cause, Data, Effect, Exit, type Duration } from "effect";
 import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";

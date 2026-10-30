@@ -63,7 +63,7 @@ export async function beginTenantTransaction<DB>(
  * `app_user` serves every module; the module's `Tx` says which tables and which role a transaction uses.
  */
 export class Database extends Context.Service<Database, { readonly db: Kysely<never> }>()(
-  "shared/Database",
+  "shared-kernel/Database",
 ) {
   static layer = (db: Kysely<never>) => Layer.succeed(Database, Database.of({ db }));
 }

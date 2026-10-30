@@ -11,7 +11,7 @@ tags: [async, convention, events, zod, testing]
 
 ## 書き方
 
-- **スキーマ**: イベントを送るモジュールは、そのモジュールの events の package (`packages/<module>/events`) の `src/index.ts` で、`shared` の `defineEvent(kind, version, shape)` で作ったイベントを公開します。型は `z.infer<typeof event.schema>` で導きます。受け手は `schema` で検証してから処理します。
+- **スキーマ**: イベントを送るモジュールは、そのモジュールの events の package (`packages/<module>/events`) の `src/index.ts` で、`shared-kernel` の `defineEvent(kind, version, shape)` で作ったイベントを公開します。型は `z.infer<typeof event.schema>` で導きます。受け手は `schema` で検証してから処理します。
 - **共通の項目**: `id` (uuid。受け手の `processed_message` のキー)、`tenantId`、`kind`、`version`、`occurredAt` (UTC で小数 3 桁の RFC 3339) は `defineEvent` が足します。種類ごとの項目を `shape` に書きます。
 - **種類の名前**: `<モジュール>.<過去形の事実>` です (`claim.submitted`、`approval.sent_back`)。1 つの種類に 1 つのスキーマで、受け手が違っても分けません。
 - **版**: `version` は 1 から始まる整数で、`defineEvent` の引数と、メッセージの `version` の項目です。受け手は `version` を見て分岐せず、今のスキーマで読みます。
@@ -19,7 +19,7 @@ tags: [async, convention, events, zod, testing]
 
 ## 過去の版のテスト
 
-events の package ごとに、`test/fixtures/<種類>.v<版>.json` に、その版のメッセージを 1 つずつ置きます。`test/versions.test.ts` が `eventFixtureProblems` (`packages/shared/src/event.ts`) で、次を確かめます。
+events の package ごとに、`test/fixtures/<種類>.v<版>.json` に、その版のメッセージを 1 つずつ置きます。`test/versions.test.ts` が `eventFixtureProblems` (`packages/shared-kernel/src/event.ts`) で、次を確かめます。
 
 - 今のスキーマが、すべての fixture を読める。
 - fixture の名前の版と、メッセージの `version` が同じ。名前の版は 1 から始まる整数で、先頭に 0 を付けない。
@@ -28,7 +28,7 @@ events の package ごとに、`test/fixtures/<種類>.v<版>.json` に、その
 
 events の package に `test` の script (`vp test run`)、`test/versions.test.ts`、fixture が 1 つ以上あることは、repo-policy が確かめます。
 
-スキーマを足す、変えるときは、同じ変更でその版の fixture を足します。過去の版の fixture は消さず、書き換えません。項目を削除するか型を変えると、この fixture が落ちます。検出力は `packages/shared/src/event.test.ts` の、項目の削除と型の変更の 2 件が確かめます。
+スキーマを足す、変えるときは、同じ変更でその版の fixture を足します。過去の版の fixture は消さず、書き換えません。項目を削除するか型を変えると、この fixture が落ちます。検出力は `packages/shared-kernel/src/event.test.ts` の、項目の削除と型の変更の 2 件が確かめます。
 
 ## 標準との違い
 

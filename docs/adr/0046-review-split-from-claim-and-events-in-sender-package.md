@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0046: 申請と審査を別のモジュールが持ち、モジュールをまたぐイベントのスキーマは送る側の events の package に置き、届く順序は版の比較で守る"
-description: サンプル機能（経費精算）の、申請と審査の状態の分け方とイベントの置き場所の決定。申請のモジュールは下書きと明細と申請する操作を、承認のモジュールは申請 1 回ごとの審査（承認待ち、確認待ち、承認済み、差戻し、取下げ）を持ち、取下げは承認の操作にする。イベントのスキーマは送る側のモジュールの packages/<module>/events に置き、events は zod と shared にだけ依存し、モジュールはどの events にも依存できる。申請は状態の写しを (回, 審査の版) で更新し、古いイベントは捨てる。締めは審査だけを読む。標準キューのままで FIFO にしない。申請と審査の持ち分を変えるとき、モジュールをまたぐイベントを足すとき、events の package の依存を変えるとき、イベントの届く順序が逆になる問題を扱うとき、FIFO キューを足したくなったときに読む。
+description: サンプル機能（経費精算）の、申請と審査の状態の分け方とイベントの置き場所の決定。申請のモジュールは下書きと明細と申請する操作を、承認のモジュールは申請 1 回ごとの審査（承認待ち、確認待ち、承認済み、差戻し、取下げ）を持ち、取下げは承認の操作にする。イベントのスキーマは送る側のモジュールの packages/<module>/events に置き、events は zod と shared-kernel にだけ依存し、モジュールはどの events にも依存できる。申請は状態の写しを (回, 審査の版) で更新し、古いイベントは捨てる。締めは審査だけを読む。標準キューのままで FIFO にしない。申請と審査の持ち分を変えるとき、モジュールをまたぐイベントを足すとき、events の package の依存を変えるとき、イベントの届く順序が逆になる問題を扱うとき、FIFO キューを足したくなったときに読む。
 tags: [adr, architecture, modules, events, domain-model, ordering]
 ---
 
@@ -21,7 +21,7 @@ tags: [adr, architecture, modules, events, domain-model, ordering]
 - **申請の状態の写し**: 申請のモジュールが 6 つの状態（下書き、承認待ち、確認待ち、差戻し、承認済み、締め済み）の写しを持ち、申請者の一覧は申請のモジュールだけで返します。申請したときは自分で承認待ちにし、その後は審査と締めのイベントで更新します。取下げのボタンは申請の画面に出し、承認の API を呼びます。写しは結果整合で、確認の直後の数秒は確認待ちが残ってよいものとします。
 - **イベントのスキーマの置き場所**:
   - モジュールをまたぐイベントは、依存の向きに関係なく、送る側のモジュールの events の package（`packages/<module>/events`）に置きます。zod のスキーマ、`version`、過去の版の fixture のテストもそこに置きます。
-  - events の package は `zod` と `shared` にだけ依存します。モジュールは、どのモジュールの events の package にも依存できます。モジュール本体どうしの依存は、今のとおり「締め → 承認 → 申請」の一方向です。
+  - events の package は `zod` と `shared-kernel` にだけ依存します。モジュールは、どのモジュールの events の package にも依存できます。モジュール本体どうしの依存は、今のとおり「締め → 承認 → 申請」の一方向です。
   - events の package はモジュールではありません。`moduleOrder` に入れず、`type:module` の印を付けません。
   - 申請、承認、締めの events の package と、その依存の検査（repo-policy の `eventsPackages`）は Issue #409 で入れました。
 - **届く順序**: 標準キューのままにし、FIFO にしません。
@@ -35,7 +35,7 @@ tags: [adr, architecture, modules, events, domain-model, ordering]
 
 - **申請と審査を分ける**: 「取下げと確認は両立しない」と「承認と確認の対象は出した内容そのもの」の 2 つの不変条件が、審査の中で閉じます。集約は不変条件の境界にし、外とは結果整合にします（Vaughn Vernon の [Rule: Model True Invariants in Consistency Boundaries](https://www.informit.com/articles/article.aspx?p=2020371&seqNum=2)）。承認という言葉は上長の 1 つの行為を指すので、集約の名前には**審査**を使います。
 - **イベントのスキーマを送る側に置く**: 受け手が依存の向きに逆らうたびに、送り手が受け手ごとに行を書き、送り手を直すことになるのを避けます。モジュールが増える先を考えての判断です。kgrzybek/modular-monolith-with-ddd は、各モジュールにイベントの契約だけの `IntegrationEvents` を置き、ほかのモジュールが依存してよいのはそこだけにしています（[3.1 High Level View](https://github.com/kgrzybek/modular-monolith-with-ddd#31-high-level-view)）。Spring Modulith は、モジュールの依存の循環を許しません（[Verifying Application Module Structure](https://docs.spring.io/spring-modulith/reference/verification.html)）。
-- **events の依存を zod と shared に限る**: スキーマだけを持つ package が、モジュール本体を引き込むと、依存の向きが崩れます。
+- **events の依存を zod と shared-kernel に限る**: スキーマだけを持つ package が、モジュール本体を引き込むと、依存の向きが崩れます。
 - **版の比較で順序を守る**: FIFO は、同じ送り手のメッセージがキューに入った後の順序しか守りません。DLQ から戻したメッセージと、承認と締めという別の送り手の間の順序は、FIFO でも守れません。そのため、版の比較はどちらにしても要ります。FIFO を足すと、送る処理の順序の制御と、処理できない 1 件で同じ申請の後ろが止まる費用だけが残ります。[順序保証](../async/ordering.md)の「順序制御を必要としない設計」に沿います。
 - **締めが審査だけを読む**: 承認のモジュールから読んだ申請の id を申請のモジュールで探す結合は、依存の向きに反します。審査が明細の写しを持つので、締めに足りないものはありません。
 
@@ -45,7 +45,7 @@ tags: [adr, architecture, modules, events, domain-model, ordering]
 - **状態の正は申請に置き、判断をイベントで渡す**: 取下げと確認が別のトランザクションで両方通り、取り下げた申請が締めに入ります。
 - **`packages/events` にまとめる**: 何でも入る package になり、どのイベントの変更でも全モジュールが affected になります。
 - **受ける側が自分用のスキーマを書く**: スキーマが重複します。
-- **`shared` に置く**: サンプル機能を消しても残る package に、サンプル機能の型が入ります。
+- **`shared-kernel` に置く**: サンプル機能を消しても残る package に、サンプル機能の型が入ります。
 - **受ける側が定めるメッセージ（EIP の Command Message）**: package は増えません。ただし、依存の向きに逆らう受け手が増えるたびに、送り手が受け手ごとに行を書き、送り手を直します。
 - **FIFO キューで順序を守る**: 上の「決定ごとの理由」のとおり、別の送り手の間と DLQ からの戻しの順序は守れません。
 - **締めが申請のモジュールと結合して照合する**: 依存の向きに反します。

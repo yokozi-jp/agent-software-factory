@@ -12,29 +12,29 @@ Effect の一次情報は、入れた版の `node_modules/effect/AGENTS.md` と 
 
 ## 使ってよい機能
 
-| 目的                        | 使う                                                     |
-| --------------------------- | -------------------------------------------------------- |
-| 手続きを書く                | `Effect.gen`、`Effect.fn`                                |
-| 値と失敗を作る              | `Effect.succeed`、`Effect.fail`、`fromResult` (`shared`) |
-| Promise を包む              | `Effect.tryPromise`、`Effect.promise`                    |
-| 型に出す失敗                | `Data.TaggedError`、`Effect.catchTag`                    |
-| 依存                        | `Context.Service`、`Layer`                               |
-| 資源                        | `Effect.acquireUseRelease`                               |
-| 実行 (`http`、入口、テスト) | `ManagedRuntime` と実行の関数                            |
+| 目的                        | 使う                                                            |
+| --------------------------- | --------------------------------------------------------------- |
+| 手続きを書く                | `Effect.gen`、`Effect.fn`                                       |
+| 値と失敗を作る              | `Effect.succeed`、`Effect.fail`、`fromResult` (`shared-kernel`) |
+| Promise を包む              | `Effect.tryPromise`、`Effect.promise`                           |
+| 型に出す失敗                | `Data.TaggedError`、`Effect.catchTag`                           |
+| 依存                        | `Context.Service`、`Layer`                                      |
+| 資源                        | `Effect.acquireUseRelease`                                      |
+| 実行 (`http`、入口、テスト) | `ManagedRuntime` と実行の関数                                   |
 
 使わない機能: `Schema`、`effect/http` や `effect/sql` などの unstable の module、`@effect/sql-pg`、`Logger`、`Config`、`Schedule` による再試行、`Stream`、`Queue`、`Fiber`。同じ役割を別の道具で決めているからです (検証は zod、ログは stdout、再試行は ky と SDK)。`@stability unstable` と `experimental` の API も使いません。
 Tracer と `@hono/otel` の span のつなぎ方は、実施の Issue ([Issue #148](https://github.com/yokozi-jp/agent-software-factory/issues/148)) で決めます。
 
 ## 現在時刻
 
-現在時刻は、入口 (route の handler、ワーカーの 1 件、バッチの 1 回の実行) が `shared` の `currentInstant` で 1 回読み、`now` の引数で渡します。`application` と `domain` は `Clock` も `Temporal.Now` も `Date` も読みません。1 回の処理の中で時刻が 1 つに決まり、テストで固定できます ([ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。
+現在時刻は、入口 (route の handler、ワーカーの 1 件、バッチの 1 回の実行) が `shared-kernel` の `currentInstant` で 1 回読み、`now` の引数で渡します。`application` と `domain` は `Clock` も `Temporal.Now` も `Date` も読みません。1 回の処理の中で時刻が 1 つに決まり、テストで固定できます ([ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。
 
 - 入口のテストは、ランタイムに固定の `Clock` (`Layer.succeed(Clock.Clock)`) か `TestClock.layer()` を与えます。`TestClock` は仮想の時間を持つので、`sleep` や timeout を待つ処理も `TestClock.adjust` で進められます。
 - `application` の関数のテストは、`now` を値で渡します。
 
 ## domain の Result を変える
 
-`domain` の `Result` は、`shared` の `fromResult` で Effect にします。v4 の `Effect.fromResult` は Effect の `Result` を受けるので、自作の `Result` には使えません。v4 の `Result` は `yield*` できません。失敗の `_tag` はそのまま `catchTag` で処理できます。
+`domain` の `Result` は、`shared-kernel` の `fromResult` で Effect にします。v4 の `Effect.fromResult` は Effect の `Result` を受けるので、自作の `Result` には使えません。v4 の `Result` は `yield*` できません。失敗の `_tag` はそのまま `catchTag` で処理できます。
 
 ```ts
 const submitClaim = Effect.fn("submitClaim")(function* (args: {
@@ -58,7 +58,7 @@ const submitClaim = Effect.fn("submitClaim")(function* (args: {
 ## 依存と資源
 
 - 依存は `Context.Service` で宣言し、`Layer` で組み立てます。`Layer` は入口が作った資源を包むだけにし、リクエストごとの状態を持たせません。
-- 接続やトランザクションのような資源は `acquireUseRelease` で閉じます。トランザクションは `shared` の `inTenantTransaction` が閉じます。`application` が自分で開かず、`work` を渡します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
+- 接続やトランザクションのような資源は `acquireUseRelease` で閉じます。トランザクションは `shared-kernel` の `inTenantTransaction` が閉じます。`application` が自分で開かず、`work` を渡します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
 - 保存先の実装は `infrastructure` に置きます。Kysely ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md)) の呼び出しを `Effect.tryPromise` で包みます。DB の行は `parseX` で `domain` の型にします ([失敗の書き方](failures.md))。
 
 ## 実行
