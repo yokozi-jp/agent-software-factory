@@ -165,6 +165,24 @@ describe("countTests", () => {
     expect(countTests(source)).toBe(1);
   });
 
+  // A string of several characters must be read whole: if it were not, the `/*` inside it would
+  // start a comment that the `*/` of the next string ends, and the test between them would be lost.
+  it.each([
+    ["double-quoted", '"@/*"', '"*/"'],
+    ["single-quoted", "'@/*'", "'*/'"],
+    ["template", "`@/*`", "`*/`"],
+  ])("reads a %s string of several characters as one literal", (_name, open, close) => {
+    expect(countTests(`const a = ${open}; it("a", () => {}); const b = ${close};`)).toBe(1);
+  });
+
+  it("counts a declaration written inside a string, as the estimate says", () => {
+    expect(countTests("const text = \"it('a', () => {})\";")).toBe(1);
+  });
+
+  it("does not take // after code for a comment on a line of its own", () => {
+    expect(countTests('const re = /https?:\\/\\//; it("a", () => {});')).toBe(1);
+  });
+
   it("still leaves out a block comment that comes after a string", () => {
     expect(countTests('const a = "x"; /* it("b", () => {}); */ it("c", () => {});')).toBe(1);
   });

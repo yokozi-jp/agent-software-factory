@@ -1,5 +1,5 @@
 import {
-  prepareDatabase,
+  prepareSeededDatabase,
   reportSetupFailure,
   startPostgres,
   templateDatabase,
@@ -23,9 +23,9 @@ export default function setup(project: TestProject) {
 async function start(project: TestProject) {
   const [postgres, idp] = await Promise.all([startPostgres(), startTestIdp()]);
 
-  // 本番と同じ経路で、テンプレートの DB に 1 回だけ migration を流す (docs/adr/0025)。
+  // 本番と同じ経路で、テンプレートの DB に 1 回だけ migration を流し、続けて seed を流す (docs/adr/0025、0036)。
   const base = postgres.getConnectionUri();
-  await prepareDatabase(base, templateDatabase);
+  await prepareSeededDatabase(base, templateDatabase);
 
   project.provide("postgresUri", base);
   project.provide("templateDatabase", templateDatabase);

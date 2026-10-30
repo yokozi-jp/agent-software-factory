@@ -31,6 +31,7 @@ export function discardsChanges(command: string): boolean {
     inCommandPosition(command, `${git(subcommand)}(\\s|$)`, [], "").some((segment) => {
       // The words after the first `git ... <subcommand>` of the segment.
       const rest = segment.replace(new RegExp(`^.*?${git(subcommand)}`), "");
+      // Stryker disable next-line Regex: equivalent, the empty words that /\s/ leaves are filtered out.
       return discardsWith(rest.split(/\s+/).filter((word) => word !== ""));
     }),
   );

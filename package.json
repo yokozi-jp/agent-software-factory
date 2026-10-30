@@ -22,6 +22,7 @@
     "@iwe-org/iwe": "catalog:",
     "@nx/js": "catalog:",
     "eslint-plugin-react-you-might-not-need-an-effect": "catalog:",
+    "eslint-plugin-storybook": "catalog:",
     "jscpd": "catalog:",
     "knip": "catalog:",
     "lefthook": "catalog:",

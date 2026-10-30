@@ -101,6 +101,19 @@ const view = <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 > - [Writing JS plugins | Oxlint](https://oxc.rs/docs/guide/usage/linter/writing-js-plugins.html)
 > - [Vite+ Lint: Writing Your Own Rules](https://github.com/voidzero-dev/vite-plus/blob/main/docs/guide/lint.md)
 
+## TanStack Router の `redirect` と `typescript/only-throw-error`
+
+`apps/web` の route の `beforeLoad` は、未ログインの利用者を `throw redirect(...)` で `/login` に移す ([TanStack Router の Authenticated Routes](https://tanstack.com/router/latest/docs/framework/react/guide/authenticated-routes))。
+`redirect` が返すのは `Error` ではないので、型つきの規則 `typescript/only-throw-error` (ルートの `vite.config.ts`) が止める。
+規則は外さず、`throw` の行に理由つきで disable する。
+
+```ts
+// oxlint-disable-next-line typescript/only-throw-error -- TanStack Router の redirect は throw する値で、Error ではない
+throw redirect({ to: "/login", search: loginSearchFor(location.href) });
+```
+
+`redirect({ href })` に相対パスを渡すと、全体の再読み込みではなく、アプリの中の遷移になる (scheme を持つ href だけが再読み込みになる)。URL から来た値を `href` に渡す前に、相対パスの検査を通す (`apps/web/src/lib/login-redirect.ts` の `safeRedirect`、[Issue #397](https://github.com/yokozi-jp/agent-software-factory/issues/397))。
+
 ## React と JSX のアクセシビリティの検査
 
 `apps/web/src` では、Oxlint の `react` と `jsx-a11y` の plugin を有効にしている。ルートの `vite.config.ts` の `lint.overrides` に `plugins: ["react", "jsx-a11y"]` を置くだけで、plugin の既定の規則が動く。`vp check` (pre-commit と CI) で止まる。Oxlint の既定ではどちらも無効なので、plugin を足さない限り、次のような書き方は検出されない。

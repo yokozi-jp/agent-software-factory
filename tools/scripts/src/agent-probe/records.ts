@@ -50,6 +50,7 @@ export function calls(jsonl: string): Call[] {
     const args = object(payload.args);
     const denial = object(object(object(payload._meta).kiro).policyDenial);
     const status = text(payload.status);
+    // Stryker disable next-line ConditionalExpression: equivalent, JSON.stringify(undefined) is undefined too.
     const rule = denial.matchedRule === undefined ? undefined : JSON.stringify(denial.matchedRule);
     return {
       tool: text(payload.toolName),

@@ -71,9 +71,11 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
     );
     return Number(rows[0]?.n);
   };
+  // テンプレートの DB には seed の行がある (docs/adr/0036)。数えるのは、このテストのテナント A の行だけ。
   const claimCount = async (): Promise<number> => {
     const { rows } = await ctx.db.superuser.query<{ n: string }>(
-      `SELECT count(*)::text AS n FROM claim.t_claim`,
+      `SELECT count(*)::text AS n FROM claim.t_claim WHERE tenant_id = $1`,
+      [tenantA],
     );
     return Number(rows[0]?.n);
   };
@@ -101,10 +103,10 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       ),
     );
 
-    expect(rows).toEqual([
-      { claim_id: "1", lock_no: 1 },
-      { claim_id: "2", lock_no: 1 },
-    ]);
+    // 最初の id は seed の行の後なので決まらない。続けて採番されることを確かめる。
+    const [first, second] = rows.map((row) => Number(row.claim_id));
+    expect(second).toBe((first ?? Number.NaN) + 1);
+    expect(rows.map((row) => row.lock_no)).toEqual([1, 1]);
   });
 
   it("claim_id をアプリから入れられないこと (GENERATED ALWAYS)", async () => {

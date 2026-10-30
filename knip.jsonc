@@ -50,15 +50,19 @@
       // lib/utils.ts, the file `aliases.utils` of components.json names, is an entry too: Knip reads it from the
       // `exports` of package.json (./lib/*), so it needs no pattern here.
       "entry": ["src/components/**/*.tsx"],
+      // The stories of the parts (docs/adr/0033, #315). Knip's Storybook plugin reads every *.stories.tsx as an entry by
+      // default, fixtures included, and then reports the dependencies they name on purpose (@storybook/react,
+      // @testing-library/dom: src/__fixtures__/*.stories.tsx) as unlisted. The fixtures are not stories of the catalog.
+      "storybook": { "entry": ["src/components/**/*.stories.tsx"] },
     },
     "packages/i18n": {
       // The config of i18next-cli: the i18n-keys and i18n-lint scripts and the fixtures' test run it with --config, and
       // nothing imports it (docs/adr/0044).
       "entry": ["i18next.config.ts"],
     },
-    // db depends on the modules by `import type` only (docs/adr/0038). Nothing of it imports them yet except its
-    // fixtures, which Knip does not read; the seed (#332) and the types of the module schemas will. Remove an entry
-    // when a file other than a fixture imports the module.
+    // db depends on the modules by `import type` only (docs/adr/0038). The seed imports the type of
+    // the claim module. Nothing imports approval and closing yet except fixtures, which Knip does not read; their seeds
+    // will. Remove an entry when a file other than a fixture imports the module.
     "packages/db": {
       "ignoreDependencies": ["@agent-software-factory/approval", "@agent-software-factory/closing"],
     },
