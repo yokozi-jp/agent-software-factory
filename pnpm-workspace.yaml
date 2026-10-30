@@ -42,6 +42,8 @@ catalog:
   dbmate: 2.37.0
   # Inside the peer range of Better Auth (^0.28.17 || ^0.29.0), so it and the code share one copy of kysely.
   kysely: ^0.29.7
+  # The seed of packages/db generates the rows that grow in number (docs/adr/0036). A devDependency: production does not import it.
+  "@faker-js/faker": ^10.6.0
   # Pinned: the generated types are committed, and a new version may write them differently (docs/adr/0025).
   kysely-codegen: 0.20.0
   "@testcontainers/postgresql": ^12.2.1

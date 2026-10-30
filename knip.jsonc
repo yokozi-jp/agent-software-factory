@@ -56,9 +56,9 @@
       // nothing imports it (docs/adr/0044).
       "entry": ["i18next.config.ts"],
     },
-    // db depends on the modules by `import type` only (docs/adr/0038). Nothing of it imports them yet except its
-    // fixtures, which Knip does not read; the seed (#332) and the types of the module schemas will. Remove an entry
-    // when a file other than a fixture imports the module.
+    // db depends on the modules by `import type` only (docs/adr/0038). The seed imports the type of
+    // the claim module. Nothing imports approval and closing yet except fixtures, which Knip does not read; their seeds
+    // will. Remove an entry when a file other than a fixture imports the module.
     "packages/db": {
       "ignoreDependencies": ["@agent-software-factory/approval", "@agent-software-factory/closing"],
     },

@@ -20,13 +20,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: [
-        "**/*.test.ts",
-        "src/__fixtures__/**",
-        // The `./seed` export of package.json, with no code yet. Issue #332 writes the seed and its tests; remove this
-        // entry then.
-        "src/seed/**",
-      ],
+      exclude: ["**/*.test.ts", "src/__fixtures__/**"],
       // A fixed minimum for every file, as in apps/api (#30). The totals that apps/api ratchets up are not set here.
       thresholds: { perFile: { lines: 90, branches: 90 } },
     },

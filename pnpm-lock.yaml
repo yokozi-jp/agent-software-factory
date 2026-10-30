@@ -182,6 +182,9 @@ catalogs:
     '@effect/tsgo':
       specifier: 0.61.0
       version: 0.61.0
+    '@faker-js/faker':
+      specifier: ^10.6.0
+      version: 10.6.0
     '@fontsource-variable/geist':
       specifier: ^5.3.0
       version: 5.3.0
@@ -648,6 +651,9 @@ importers:
       dbmate:
         specifier: 'catalog:'
         version: 2.37.0
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.7
       pg:
         specifier: 'catalog:'
         version: 8.23.1
@@ -661,6 +667,9 @@ importers:
       '@agent-software-factory/closing':
         specifier: workspace:*
         version: link:../closing
+      '@faker-js/faker':
+        specifier: 'catalog:'
+        version: 10.6.0
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 12.2.1(supports-color@7.2.0)
@@ -2085,6 +2094,10 @@ packages:
   '@eslint/plugin-kit@0.7.3':
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@faker-js/faker@10.6.0':
+    resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@floating-ui/core@1.8.0':
     resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
@@ -9177,6 +9190,8 @@ snapshots:
     dependencies:
       '@eslint/core': 1.2.1
       levn: 0.4.1
+
+  '@faker-js/faker@10.6.0': {}
 
   '@floating-ui/core@1.8.0':
     dependencies:

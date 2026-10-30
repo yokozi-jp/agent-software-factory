@@ -5,6 +5,7 @@ import {
   connectionUri,
   createTestDatabase,
   prepareDatabase,
+  prepareSeededDatabase,
   reportSetupFailure,
   roles,
 } from "./index.ts";
@@ -26,6 +27,30 @@ describe("prepareDatabase", () => {
     } finally {
       await client.end();
     }
+  });
+});
+
+describe("prepareSeededDatabase", () => {
+  it("migration に続けて seed を流し、型の生成が使う prepareDatabase は流さないこと", async () => {
+    const base = inject("postgresUri");
+    const countClaims = async (database: string): Promise<number> => {
+      const client = new Client({ connectionString: connectionUri(base, database) });
+      await client.connect();
+      try {
+        const { rows } = await client.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM claim.t_claim",
+        );
+        return rows[0]?.count ?? -1;
+      } finally {
+        await client.end();
+      }
+    };
+
+    await prepareSeededDatabase(base, "prepared_seeded");
+    await prepareDatabase(base, "prepared_empty");
+
+    expect(await countClaims("prepared_seeded")).toBeGreaterThan(0);
+    expect(await countClaims("prepared_empty")).toBe(0);
   });
 });
 

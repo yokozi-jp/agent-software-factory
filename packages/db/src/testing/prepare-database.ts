@@ -4,6 +4,7 @@ import { migrate } from "../migrate.ts";
 import { bootstrapSql } from "../bootstrap.ts";
 import { connectionUri, migratorUrl, roles } from "./connection.ts";
 import { rolePassword } from "./credentials.ts";
+import { seed } from "../seed/index.ts";
 
 /**
  * 本番と同じ経路で、`base` の PostgreSQL に `database` を作り、migration を流す (docs/adr/0025)。
@@ -24,4 +25,13 @@ export async function prepareDatabase(base: string, database: string): Promise<v
   await master.end();
 
   await migrate(migratorUrl(base, database, rolePassword));
+}
+
+/**
+ * `prepareDatabase` に続けて seed を流す。結合テストのテンプレートの DB を作る (docs/adr/0036)。各テストはこれを複製し、
+ * seed にない自分のテナントでデータを作る。型の生成 (src/types.ts) は seed を流さないので、`prepareDatabase` を使う。
+ */
+export async function prepareSeededDatabase(base: string, database: string): Promise<void> {
+  await prepareDatabase(base, database);
+  await seed(migratorUrl(base, database, rolePassword));
 }
