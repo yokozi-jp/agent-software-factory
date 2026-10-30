@@ -5,3 +5,4 @@ export type { Result } from "./result.ts";
 export { inTenantTransaction, type ModuleName, type TenantScope } from "./tenant-transaction.ts";
 export { apiDate, apiInstant } from "./api-time.ts";
 export { BUSINESS_TIME_ZONE, currentInstant, toApiDate, toApiInstant } from "./time.ts";
+export { defineEvent, eventFixtureProblems, type EventDefinition } from "./event.ts";
