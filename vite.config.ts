@@ -409,6 +409,11 @@ export default defineConfig({
   lint: {
     ignorePatterns: [...ignorePatterns, ...effectOnlyFixtures],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
+    // Oxlint 1.89.0 builds the module graph that import/no-cycle needs only when the root config lists the import
+    // plugin; an override that lists it alone reports nothing (checked 2026-10-30). Listing plugins replaces
+    // Oxlint's defaults, so they are named here too. The rules of the import plugin stay off but for the ones the
+    // overrides turn on.
+    plugins: ["import", "typescript", "unicorn", "oxc"],
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
       ...typedRules,
@@ -456,6 +461,16 @@ export default defineConfig({
           ],
           ...runtimeGlobalLintRules,
         },
+      },
+      // A cycle between the files of a package or an app (docs/adr/0026). This override sets import/no-cycle and
+      // nothing else, so it takes no rule from the overrides above and below: Oxlint keeps only the last override
+      // that sets a given rule for a file, and none of the others sets this one. apps/web is reached too, which the
+      // override for apps/api/src above is not, and so is the events package nested in each module. The fixture is
+      // packages/module-fixtures/src/__fixtures__/cycle-a.ts.
+      {
+        files: ["apps/*/src/**", "packages/*/src/**", "packages/*/events/src/**"],
+        plugins: ["import"],
+        rules: { "import/no-cycle": "error" },
       },
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
       // They still import the modules by their package names only (docs/adr/0026).

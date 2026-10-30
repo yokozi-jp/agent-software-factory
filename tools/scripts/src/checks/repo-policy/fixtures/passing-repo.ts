@@ -140,6 +140,23 @@ export const packageFiles = (
   [`packages/${name}/src/index.ts`]: "export {};\n",
 });
 
+// The events package of a module, packages/<module>/events, that passes every check (docs/adr/0026): it depends on
+// zod and shared, and has no lint-effect script or tag.
+export const eventsFiles = (
+  module: string,
+  fields: Record<string, unknown> = {},
+): Record<string, string> => ({
+  [`packages/${module}/events/package.json`]: JSON.stringify({
+    name: `@agent-software-factory/${module}-events`,
+    exports: { ".": "./src/index.ts" },
+    scripts: { check: "vp check" },
+    dependencies: { "@agent-software-factory/shared": "workspace:*", zod: "catalog:" },
+    nx: { name: `${module}-events` },
+    ...fields,
+  }),
+  [`packages/${module}/events/src/index.ts`]: "export {};\n",
+});
+
 // The fixture of a module whose domain override must keep the runtime restrictions (docs/adr/0007).
 const domainRuntimeFixtures = (name: string): Record<string, string> => ({
   [`packages/${name}/src/domain/__fixtures__/runtime-apis.ts`]: runtimeFixture,
@@ -198,6 +215,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   ...packageFiles("closing", {
     dependencies: { "@agent-software-factory/approval": "workspace:*" },
   }),
+  ...modules.reduce((files, name) => ({ ...files, ...eventsFiles(name) }), {}),
   // The fixtures are in module-fixtures, as in the repository (docs/adr/0026).
   ...packageFiles("module-fixtures"),
   ...srcFixtures("module-fixtures"),

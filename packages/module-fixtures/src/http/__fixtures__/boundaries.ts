@@ -3,5 +3,5 @@
 // or its `files` stop reaching packages/*/src/http/, the disable comments are unused and
 // `vp check` fails (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/. Only the
 // fixtures of the other layers import this file, to break the rule.
-// oxlint-disable-next-line no-restricted-imports -- fixture: http does not import infrastructure
+// oxlint-disable-next-line no-restricted-imports, import/no-cycle -- fixture: http does not import infrastructure; the two import each other
 import "../../infrastructure/__fixtures__/boundaries.ts";

@@ -145,6 +145,26 @@ for (const name of modules) {
   apps[`packages/${name}/src/index.ts`] = "export {};\n";
 }
 
+// The events package of each module (docs/adr/0026): knip.jsonc lists zod and shared in its ignoreDependencies, since
+// its index.ts is empty until the sample feature writes the schemas.
+for (const name of modules.filter((module) => module !== "module-fixtures")) {
+  apps[`packages/${name}/events/package.json`] = JSON.stringify(
+    {
+      name: `@agent-software-factory/${name}-events`,
+      private: true,
+      type: "module",
+      exports: { ".": "./src/index.ts" },
+      scripts: { check: "vp check" },
+      dependencies: { "@agent-software-factory/shared": "workspace:*", zod: "catalog:" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name: `${name}-events` },
+    },
+    undefined,
+    2,
+  );
+  apps[`packages/${name}/events/src/index.ts`] = "export {};\n";
+}
+
 // packages/db and the modules knip.jsonc lists in its ignoreDependencies (docs/adr/0038): db depends on them for types, and
 // only its fixtures import them, which Knip does not read. claim is the exception: a test of db imports it (the type
 // test of the generated types), so knip.jsonc does not list it, and the fixture imports it from a file that Knip reads.

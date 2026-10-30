@@ -18,6 +18,7 @@ import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./c
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
 import {
   dbDependencies,
+  eventsPackages,
   modulesAreRegistered,
   modulesDependOneWay,
   modulesLintEffect,
@@ -71,6 +72,7 @@ export function violations(repo: Repo): string[] {
     ...sessionSettingGuards(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
+    ...eventsPackages(tree),
     ...modulesAreRegistered(tree),
     ...dbDependencies(tree),
     ...noResolutionBypass(tree),
