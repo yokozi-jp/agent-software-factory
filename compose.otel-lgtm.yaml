@@ -1,0 +1,13 @@
+# ローカルでトレースを見る環境 (docs/tooling/local-telemetry.md、docs/adr/0047)。Grafana、Tempo、Loki、Prometheus と
+# OpenTelemetry Collector が 1 つのイメージに入っている。本番の送り先ではない。
+# 版は固定し、更新は Renovate に任せる。
+name: agent-software-factory-otel
+services:
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.38.1@sha256:0df9bc14142000b161344bd24caf6ddd319b7319055aedaf9b0692b125730af7
+    ports:
+      # ローカルの外に開かない。API の開発サーバーが 3000 を使うので、Grafana は 3001 に出す。
+      - "127.0.0.1:3001:3000" # Grafana
+      - "127.0.0.1:4318:4318" # OTLP/HTTP。API の OTEL_EXPORTER_OTLP_ENDPOINT はここ
+      - "127.0.0.1:3200:3200" # Tempo の HTTP API (トレースの検索)
+      - "127.0.0.1:3100:3100" # Loki の HTTP API

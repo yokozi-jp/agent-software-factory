@@ -299,6 +299,53 @@ export function dbBoundaries(tree: Tree): string[] {
     );
 }
 
+// ADR 0047: the OpenTelemetry SDK, the exporters and the instrumentations are imported by packages/telemetry and the
+// entry files of the apps only. vite.config.ts stops them in every other file with the `otelSdkPattern` of
+// `runtimeImports`, and the override of packages/telemetry/src leaves them out. Three places have a fixture (#43):
+//   apps/api/src and packages/*/src  one import of each kind of the pattern, below `oxlint-disable-next-line
+//                                    no-restricted-imports`. A kind dropped from the pattern, or an override that stops
+//                                    reaching the directory, leaves the comment unused and fails `vp check`.
+//   packages/telemetry/src           the SDK import with no comment, which Oxlint must not report, and the import of
+//                                    an SQS client with the comment, which the override must still report.
+const otelKinds: readonly (readonly [string, string])[] = [
+  ["@opentelemetry/sdk-node", "the SDK"],
+  ["@opentelemetry/exporter-trace-otlp-http", "an exporter"],
+  ["@opentelemetry/instrumentation-pg", "an instrumentation"],
+  ["@opentelemetry/resources", "the resource of the SDK"],
+  ["@opentelemetry/auto-instrumentations-node", "the bundle of instrumentations"],
+];
+const stopsImport = (text: string, name: string): boolean =>
+  new RegExp(
+    `oxlint-disable-next-line no-restricted-imports[^\\n]*\\n[^\\n]*"${name.replaceAll("/", "\\/")}"`,
+  ).test(text);
+
+export function telemetryBoundaries(tree: Tree): string[] {
+  if (!packageNames(tree).includes("telemetry")) return [];
+  const failures: string[] = [];
+  for (const file of [
+    "apps/api/src/__fixtures__/otel-sdk.ts",
+    "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+  ]) {
+    const text = tree.paths.includes(file) ? tree.read(file) : "";
+    for (const [name, what] of otelKinds)
+      if (!stopsImport(text, name))
+        failures.push(
+          `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0047).`,
+        );
+  }
+  const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
+  const text = tree.paths.includes(own) ? tree.read(own) : "";
+  if (!text.includes('"@opentelemetry/sdk-node"') || stopsImport(text, "@opentelemetry/sdk-node"))
+    failures.push(
+      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
+    );
+  if (!stopsImport(text, "@aws-sdk/client-sqs"))
+    failures.push(
+      `${own} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0047).`,
+    );
+  return failures;
+}
+
 // ADR 0029: the imports that bypass the Outbox (`outboxPackages`: the SDK clients of SQS, SES and the like) and the
 // transaction (`connectionPackages`: `pg`, which opens a connection of its own). vite.config.ts stops them with
 // no-restricted-imports `paths`, and Oxlint keeps only the last override that sets the rule for a file, so each

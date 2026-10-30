@@ -22,6 +22,8 @@ sources:
 
 もし、クライアントのエラー状況などを収集したい場合は、Sentryなどのログ基盤の導入を検討すること。
 
+Web Vitals の送信はログではない。`console` は引き続き禁止する ([ADR 0047](../adr/0047-opentelemetry-traces-only-with-explicit-instrumentation.md))。
+
 > [!NOTE]
 > **参考**
 >

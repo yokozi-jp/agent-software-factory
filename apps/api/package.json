@@ -16,7 +16,9 @@
     "@agent-software-factory/closing": "workspace:*",
     "@agent-software-factory/db": "workspace:*",
     "@agent-software-factory/shared-kernel": "workspace:*",
+    "@agent-software-factory/telemetry": "workspace:*",
     "@hono/node-server": "catalog:",
+    "@hono/otel": "catalog:",
     "better-auth": "catalog:",
     "effect": "catalog:",
     "hono": "catalog:",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@hono/vite-dev-server": "catalog:",
+    "@opentelemetry/sdk-trace": "catalog:",
     "@types/node": "catalog:",
     "@types/oidc-provider": "catalog:",
     "@types/pg": "catalog:",

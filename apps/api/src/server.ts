@@ -1,3 +1,5 @@
+// 計装は pg などを import する前に有効にする。最初に import する (docs/adr/0047)。
+import { telemetry } from "./telemetry.ts";
 // Node.js 24 には Temporal がないので、polyfill の global を入れる。Node.js 26 以降は何もしない。
 import "temporal-polyfill/global";
 import { serve } from "@hono/node-server";
@@ -40,3 +42,9 @@ const app = createApp({
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);
 });
+
+// 止める前に、送っていない span を送り切る。
+for (const signal of ["SIGTERM", "SIGINT"] as const)
+  process.once(signal, () => {
+    void telemetry.shutdown().finally(() => process.exit(0));
+  });

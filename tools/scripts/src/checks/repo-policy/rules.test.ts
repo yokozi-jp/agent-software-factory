@@ -2231,7 +2231,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2474,8 +2474,8 @@ describe("ADR 0026: the events package of each module", () => {
     expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
   });
 
-  it("leaves shared-kernel, ui, i18n and db out of the module packages", () => {
-    const names = ["shared-kernel", "ui", "i18n", "db"];
+  it("leaves shared-kernel, ui, i18n, telemetry and db out of the module packages", () => {
+    const names = ["shared-kernel", "ui", "i18n", "telemetry", "db"];
     const tree = new Tree(
       repo(Object.fromEntries(names.map((name) => [`packages/${name}/package.json`, "{}"]))),
     );
@@ -2588,8 +2588,8 @@ describe("ADR 0026: the events package of each module", () => {
         }),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026).`,
-      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 
@@ -2603,7 +2603,7 @@ describe("ADR 0026: the events package of each module", () => {
         ),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 });
@@ -2921,6 +2921,105 @@ describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => 
         failure.includes("packages/*/src/__fixtures__/"),
       ),
     ).toBe(true);
+  });
+});
+
+describe("ADR 0047: packages/telemetry", () => {
+  const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
+  const stops = (name: string) =>
+    `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
+  const kinds = [
+    "@opentelemetry/sdk-node",
+    "@opentelemetry/exporter-trace-otlp-http",
+    "@opentelemetry/instrumentation-pg",
+    "@opentelemetry/resources",
+    "@opentelemetry/auto-instrumentations-node",
+  ];
+  const banned = kinds.map(stops).join("");
+  const ownFixture = `import "@opentelemetry/sdk-node";\n${stops("@aws-sdk/client-sqs")}`;
+  const withTelemetry = (files: Record<string, string | undefined> = {}) =>
+    repo({
+      ...packageFiles("telemetry", { exports }),
+      "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
+      "apps/api/src/__fixtures__/otel-sdk.ts": banned,
+      "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
+      ...files,
+    });
+  const noImport = (file: string, name: string, what: string) =>
+    `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0047).`;
+
+  it("passes telemetry with its two exports and the three fixtures", () => {
+    expect(violationsWithoutOrder(withTelemetry())).toEqual([]);
+  });
+
+  it("is not a module: it is left out of the module packages and may depend on none", () => {
+    const tree = new Tree(withTelemetry());
+    expect(modulePackageNames(tree)).not.toContain("telemetry");
+    expect(
+      violations(
+        repo({
+          ...packageFiles("telemetry", {
+            exports,
+            dependencies: { "@agent-software-factory/claim": "workspace:*" },
+          }),
+          "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
+          "apps/api/src/__fixtures__/otel-sdk.ts": banned,
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
+        }),
+      ),
+    ).toEqual([
+      "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026).",
+    ]);
+  });
+
+  it.each([
+    ["only the entry for any code", { ".": "./src/index.ts" }],
+    ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
+  ])("refuses telemetry with %s", (_, wrong) => {
+    expect(violations(withTelemetry(packageFiles("telemetry", { exports: wrong })))).toEqual([
+      `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0047).`,
+    ]);
+  });
+
+  it("names each kind of import that the fixture of apps/api or of the packages leaves out", () => {
+    const file = "apps/api/src/__fixtures__/otel-sdk.ts";
+    expect(violations(withTelemetry({ [file]: kinds.slice(1).map(stops).join("") }))).toEqual([
+      noImport(file, "@opentelemetry/sdk-node", "the SDK"),
+    ]);
+    const other = "packages/module-fixtures/src/__fixtures__/otel-sdk.ts";
+    expect(violations(withTelemetry({ [other]: undefined }))).toHaveLength(kinds.length);
+  });
+
+  it("refuses a fixture whose import carries no disable comment", () => {
+    const file = "apps/api/src/__fixtures__/otel-sdk.ts";
+    const bare = kinds.map((name) => (name === kinds[3] ? `import "${name}";\n` : stops(name)));
+    expect(violations(withTelemetry({ [file]: bare.join("") }))).toEqual([
+      noImport(file, "@opentelemetry/resources", "the resource of the SDK"),
+    ]);
+  });
+
+  it("asks for the SDK import with no comment and the SQS import with one, in the fixture of telemetry", () => {
+    const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
+    expect(violations(withTelemetry({ [own]: stops("@opentelemetry/sdk-node") }))).toEqual([
+      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
+      `${own} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0047).`,
+    ]);
+  });
+
+  it("asks for both lines when telemetry has no fixture, or when its SDK import carries the comment", () => {
+    const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
+    const failures = (files: Record<string, string | undefined>) =>
+      violations(withTelemetry(files));
+    expect(failures({ [own]: undefined })).toHaveLength(2);
+    expect(
+      failures({ [own]: `${stops("@opentelemetry/sdk-node")}${stops("@aws-sdk/client-sqs")}` }),
+    ).toEqual([
+      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
+    ]);
+  });
+
+  it("asks for nothing when there is no telemetry", () => {
+    expect(violations(repo())).toEqual([]);
   });
 });
 
