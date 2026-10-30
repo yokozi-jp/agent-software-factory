@@ -7,7 +7,7 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 
 # ADR 0033: web の UI は shadcn/ui (Base UI) と Tailwind CSS v4 で作り、カタログは Storybook に一本化する
 
-`apps/web` の UI 部品は shadcn/ui (下位ライブラリは Base UI) で作り、スタイルは Tailwind CSS v4 で書きます。部品のカタログと component test は Storybook に一本化します。決定は [web の UI コンポーネントとカタログの方式を決める](https://github.com/yokozi-jp/agent-software-factory/issues/227) の解決コメントにあり、比較は [Issue #226](https://github.com/yokozi-jp/agent-software-factory/issues/226) です。導入は [Issue #314](https://github.com/yokozi-jp/agent-software-factory/issues/314) で行いました。Storybook は [Issue #141](https://github.com/yokozi-jp/agent-software-factory/issues/141) で入れます。この ADR の範囲は、shadcn (Base UI)、Tailwind v4、Storybook です。
+`apps/web` の UI 部品は shadcn/ui (下位ライブラリは Base UI) で作り、スタイルは Tailwind CSS v4 で書きます。部品のカタログと component test は Storybook に一本化します。決定は [web の UI コンポーネントとカタログの方式を決める](https://github.com/yokozi-jp/agent-software-factory/issues/227) の解決コメントにあり、比較は [Issue #226](https://github.com/yokozi-jp/agent-software-factory/issues/226) です。導入は [Issue #314](https://github.com/yokozi-jp/agent-software-factory/issues/314) で行いました。Storybook は [Issue #141](https://github.com/yokozi-jp/agent-software-factory/issues/141) で入れました。この ADR の範囲は、shadcn (Base UI)、Tailwind v4、Storybook です。
 
 ## 決定
 
@@ -48,4 +48,5 @@ tags: [adr, web, ui, shadcn, base-ui, tailwind, storybook, csp]
 - 取り込んだコードの更新は人が確かめます。Renovate の PR は出ません。
 - `globals.css` には shadcn が書くダークモード用の変数と `.dark` の変種が入っています。ダークモードは使わない範囲で、決めるときは [ダークモード](../web-frontend/dark-mode.md) を読みます。
 - 部品は `packages/ui` に置き、複数のアプリで共有します。ADR 0026 の例外は [ADR 0034](0034-shared-ui-package.md) で決めました ([Issue #330](https://github.com/yokozi-jp/agent-software-factory/issues/330))。
-- Storybook を入れる Issue (#141) と、story の検査の Issue (#315) が、この決定の続きです。
+- Storybook は `apps/web/.storybook/` にあり、`stories` の glob に `apps/web/src` と `packages/ui/src/components` を並べて、1 つのカタログにまとめています。story は Vitest の `storybook` project で流れます。story の検査の Issue (#315) が、この決定の続きです。
+- `packages/ui` の story は、`src/components/tsconfig.json` の program で型を見ます。`@storybook/react-vite` の型が Node.js の型を連れてくるので、`packages/ui` の本体の program (`types: []`) に入れると、`src/__fixtures__/node-modules.ts` が確かめる「ブラウザの部品に Node.js の型がない」が崩れるためです (判断。`vp check` は story を、最も近い `tsconfig.json` で型検査する)。

@@ -40,12 +40,6 @@
         "src/agent-probe/cli.ts",
       ],
     },
-    // The modules depend on effect for application/ and infrastructure/ (docs/adr/0028), which have no code yet:
-    // the sample feature writes it. Their fixtures import it, and Knip does not read __fixtures__/. Remove an entry
-    // when the module's application or infrastructure imports effect.
-    "packages/claim": { "ignoreDependencies": ["effect"] },
-    "packages/approval": { "ignoreDependencies": ["effect"] },
-    "packages/closing": { "ignoreDependencies": ["effect"] },
     // module-fixtures holds only the fixtures of the overrides that reach every module (docs/adr/0026). They import
     // effect, and Knip does not read __fixtures__/, so the dependency always looks unused.
     "packages/module-fixtures": { "ignoreDependencies": ["effect"] },

@@ -58,7 +58,7 @@ const submitClaim = Effect.fn("submitClaim")(function* (args: {
 ## 依存と資源
 
 - 依存は `Context.Service` で宣言し、`Layer` で組み立てます。`Layer` は入口が作った資源を包むだけにし、リクエストごとの状態を持たせません。
-- 接続やトランザクションのような資源は `acquireUseRelease` で閉じます。
+- 接続やトランザクションのような資源は `acquireUseRelease` で閉じます。トランザクションは `shared` の `inTenantTransaction` が閉じます。`application` が自分で開かず、`work` を渡します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。
 - 保存先の実装は `infrastructure` に置きます。Kysely ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md)) の呼び出しを `Effect.tryPromise` で包みます。DB の行は `parseX` で `domain` の型にします ([失敗の書き方](failures.md))。
 
 ## 実行
