@@ -1,0 +1,14 @@
+{
+  // story の fixture だけの program。components/tsconfig.json と同じ理由で、本体の program (packages/ui/tsconfig.json) から分ける。
+  // repo-policy が、root の tsconfig.json を直接 extends することを求める (docs/adr/0020)。
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": []
+  },
+  "include": ["**/*.stories.tsx"]
+}
