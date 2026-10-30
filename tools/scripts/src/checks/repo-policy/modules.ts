@@ -156,13 +156,19 @@ export function modulesDependOneWay(tree: Tree): string[] {
 // The events package of each module (packages/<module>/events): it holds the schemas of the events the module
 // sends, and depends on zod and shared only, so that a module which receives the events does not depend on the
 // body of the one that sends them. It is not a module: it has no place in moduleOrder and no type:module tag.
-export function eventsPackages(tree: Tree): string[] {
+// `order` is moduleOrder; a test passes another to show what a name of the events packages in it does.
+export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrder): string[] {
   const failures: string[] = [];
   const events = eventsModuleNames(tree);
+  for (const name of order)
+    if (name.endsWith(eventsSuffix))
+      failures.push(
+        `${name} is in moduleOrder in ${moduleOrderFile}, but it is the name of an events package, which is not a module. Take it out; an events package is not in moduleOrder (docs/adr/0026).`,
+      );
   for (const module of events) {
     const path = `packages/${module}/events/package.json`;
     const json = record(tree.parsed(path));
-    if (!moduleOrder.includes(module)) {
+    if (!order.includes(module)) {
       failures.push(
         `packages/${module}/events is an events package, but ${module} is not a module of moduleOrder in ${moduleOrderFile}. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
       );
@@ -202,7 +208,7 @@ export function eventsPackages(tree: Tree): string[] {
       }
   }
   for (const module of packageNames(tree))
-    if (moduleOrder.includes(module) && !events.includes(module))
+    if (order.includes(module) && !events.includes(module))
       failures.push(
         `packages/${module} has no events package at packages/${module}/events/package.json. Every module has one, for the events it sends to the other modules (docs/adr/0026, docs/domain-model/add-module.md).`,
       );

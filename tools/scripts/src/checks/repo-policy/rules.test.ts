@@ -21,7 +21,8 @@ import {
   packageFiles,
   packageJson,
 } from "./fixtures/passing-repo.ts";
-import { pathsHint } from "./modules.ts";
+import { eventsPackages, pathsHint } from "./modules.ts";
+import { Tree } from "./tree.ts";
 import { violations as violationsWithBypass, type Repo } from "./rules.ts";
 
 const base = passingRepo;
@@ -2458,6 +2459,14 @@ describe("ADR 0026: the events package of each module", () => {
   it("refuses an events package under a directory that is not a module of moduleOrder", () => {
     expect(violations(repo(eventsFiles("shared")))).toEqual([
       `packages/shared/events is an events package, but shared is not a module of moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
+    ]);
+  });
+
+  it("refuses the name of an events package in moduleOrder", () => {
+    expect(
+      eventsPackages(new Tree(repo()), ["closing", "approval", "claim", "claim-events"]),
+    ).toEqual([
+      "claim-events is in moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts, but it is the name of an events package, which is not a module. Take it out; an events package is not in moduleOrder (docs/adr/0026).",
     ]);
   });
 
