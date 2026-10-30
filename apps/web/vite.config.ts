@@ -11,7 +11,16 @@ const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
 
 export default defineConfig({
   // The router plugin must come before the React plugin.
-  plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react(), tailwindcss()],
+  plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+      // route の HMR の footer は、テストでは動かず、route のファイルの最後の行が未通過と数えられる。テストでは外す。
+      codeSplittingOptions: { addHmr: process.env["VITEST"] === undefined },
+    }),
+    react(),
+    tailwindcss(),
+  ],
   // `@/*` is resolved from the `paths` of tsconfig.json (docs/adr/0033).
   resolve: { tsconfigPaths: true },
   server: {
@@ -70,8 +79,6 @@ export default defineConfig({
         "src/main.tsx",
         // TanStack Router の plugin が書く生成物 (commit している)。
         "src/routeTree.gen.ts",
-        // 画面の route。ログイン画面などの story と一緒に足す。足したら、この行を消す (#406)。
-        "src/routes/**",
       ],
       thresholds: {
         // ファイルごとの固定の下限。

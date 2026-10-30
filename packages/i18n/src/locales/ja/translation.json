@@ -12,5 +12,22 @@
     "sessionExpired": "ログインの有効期限が切れました。もう一度ログインしてください。",
     "forbiddenOrigin": "この操作は許可されていません。",
     "rateLimited": "操作が多すぎます。しばらくしてからもう一度お試しください。"
+  },
+  "login": {
+    "title": "ログイン",
+    "signIn": "IdP でログイン",
+    "reason": {
+      "sessionExpired": "ログインの有効期限が切れました。もう一度ログインしてください。",
+      "loggedOut": "ログアウトしました。"
+    }
+  },
+  "notFound": {
+    "title": "ページが見つかりません。"
+  },
+  "forbidden": {
+    "title": "この画面を開く権限がありません。"
+  },
+  "errorScreen": {
+    "toHome": "トップへ戻る"
   }
 }

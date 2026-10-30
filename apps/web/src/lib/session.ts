@@ -1,0 +1,38 @@
+// セッションの有無を API (`GET /api/me`) で確かめる (docs/adr/0022)。route の guard は UI の都合で、
+// データの認可の境界は API にある。
+
+export type SessionState = "authenticated" | "unauthenticated";
+
+/** 200 はログイン済み、401 は未ログイン。ほかの応答は判断できないので投げる (未ログインとして扱わない)。 */
+export async function fetchSession(
+  fetchApi: (input: string) => Promise<Response>,
+): Promise<SessionState> {
+  const response = await fetchApi("/api/me");
+  if (response.ok) return "authenticated";
+  if (response.status === 401) return "unauthenticated";
+  throw new Error(`GET /api/me returned ${response.status}`);
+}
+
+/**
+ * 操作の途中の API 呼び出し。どの API でも 401 なら `onUnauthorized` を呼ぶ (セッション切れ)。
+ * 応答はそのまま返すので、呼び出し側は 401 の後始末を気にしなくてよい。
+ */
+export function withSessionExpiry(
+  fetchApi: typeof fetch,
+  onUnauthorized: () => void,
+): typeof fetch {
+  return async (input, init) => {
+    const response = await fetchApi(input, init);
+    if (response.status === 401) onUnauthorized();
+    return response;
+  };
+}
+
+/** route の `beforeLoad` が使う、実行環境ごとの部品。本物は main.tsx が、story は mock を渡す。 */
+export interface AppContext {
+  /** 業務の API を呼ぶ fetch。401 (セッション切れ) なら `/login` に移す。 */
+  readonly apiFetch: typeof fetch;
+  getSession(): Promise<SessionState>;
+  /** IdP のログインを始める。ログインしたら `callbackURL` (検証済みの相対パス) に戻る。 */
+  signIn(callbackURL: string): Promise<void>;
+}
