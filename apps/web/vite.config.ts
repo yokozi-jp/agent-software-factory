@@ -5,7 +5,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
-// coverage の全体の値を、切り捨てて書き戻す (docs/tooling/ci.md ("coverage の下限"))。
+// coverage の全体の値を、切り捨てて書き戻す (docs/tooling/ci.md ("coverage の下限"))。apps/api の vite.config.ts に同じ
+// 形の記述があり、jscpd (pnpm lint:dup) が重複と数えるので、名前を付けて形を変えてある。
 const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
 
 export default defineConfig({
@@ -29,15 +30,19 @@ export default defineConfig({
       provider: playwright({ contextOptions: { timezoneId: "America/New_York" } }),
       instances: [{ browser: "chromium" }],
     },
-    // project は 2 つ。unit は src/ の `*.test.ts` で、純粋な関数の確認。storybook は story の `play` で、画面と部品の
-    // component test (docs/adr/0033)。Storybook の Vitest addon の文書は、unit だけの setupFiles を root に置くと story にも
-    // 効くと書くので、setupFiles は unit の中に置く。preview.ts は addon が自動で story に適用する (Storybook 10.3 以降)。
+    // project は 2 つ。unit は src/ の `*.test.ts` で、純粋な関数の確認 (ブラウザで流すのは、上の timezoneId を効かせるため)。
+    // storybook は story の `play` で、画面と部品の component test (docs/adr/0033)。`*.test.tsx` は ADR 0033 で使わないが、
+    // 置かれても黙って流れないことがないよう、unit の include に入れてある。
+    // setupFiles は unit の中に置く。root に置くと story にも効く
+    // (https://storybook.js.org/docs/writing-tests/integrations/vitest-addon の "How do I isolate Storybook tests from others?")。
+    // .storybook/preview.ts は addon が自動で story に適用する。setProjectAnnotations を呼ぶ setup file を置くと、
+    // addon 10.6.5 が「10.3 から自動なので不要」と実行時に知らせる。
     projects: [
       {
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.ts"],
+          include: ["src/**/*.test.{ts,tsx}"],
           setupFiles: ["./test/temporal.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。
           exclude: ["**/node_modules/**", "**/__fixtures__/**"],
