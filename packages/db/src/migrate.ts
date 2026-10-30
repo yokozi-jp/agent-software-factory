@@ -7,14 +7,19 @@ import { promisify } from "node:util";
 import { resolveBinary } from "dbmate";
 
 const run = promisify(execFile);
-const migrationsDir = fileURLToPath(new URL("../migrations", import.meta.url));
+const ownMigrationsDir = fileURLToPath(new URL("../migrations", import.meta.url));
 
 /**
  * 適用していない migration を全部流す。履歴の表は専用の `migrations` スキーマに置き、同時に流しても
  * lock で順番に待ち、schema.sql は書き出さない。DB は作らない (`up` ではなく `migrate`)。
+ * `migrationsDir` は、流す migration のディレクトリ。既定はこの package の migrations/。履歴にあって `migrationsDir` にない
+ * migration は無視される (更新の試験が、足された migration だけを後から流すのに使う。docs/adr/0037)。
  * 失敗したら dbmate の stderr を載せた Error を投げる。
  */
-export async function migrate(databaseUrl: string): Promise<string> {
+export async function migrate(
+  databaseUrl: string,
+  migrationsDir: string = ownMigrationsDir,
+): Promise<string> {
   try {
     const { stdout } = await run(
       resolveBinary(),
