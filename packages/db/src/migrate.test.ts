@@ -39,20 +39,23 @@ describe("bootstrap.sql と migrate", () => {
     await master.query(bootstrapSql);
 
     const roles = await master.query(
-      `SELECT rolname FROM pg_roles WHERE rolname IN ('migrator', 'app_user', 'auth_service')`,
+      `SELECT rolname FROM pg_roles WHERE rolname IN ('migrator', 'app_user', 'auth_service', 'outbox_relay')`,
     );
-    expect(roles.rowCount).toBe(3);
+    expect(roles.rowCount).toBe(4);
   });
 
   it("rds_iam のロールがなければ、何も付かないこと", async () => {
     for (const role of roles) expect(await memberships(role)).toEqual([]);
   });
 
-  it("rds_iam のロールがあれば、3 つのロールに付くこと", async () => {
+  it("rds_iam のロールがあれば、outbox_relay 以外の 3 つのロールに付くこと", async () => {
     await master.query(`CREATE ROLE rds_iam`);
     await master.query(bootstrapSql);
 
-    for (const role of roles) expect(await memberships(role)).toEqual(["rds_iam"]);
+    for (const role of roles.filter((name) => name !== "outbox_relay"))
+      expect(await memberships(role)).toEqual(["rds_iam"]);
+    // outbox_relay は Secrets Manager の秘密でパスワード認証する。rds_iam を持つと IAM 認証しか使えなくなる。
+    expect(await memberships("outbox_relay")).toEqual([]);
   });
 
   it("app_user が 3 つのモジュールのロールに入っていること (memberships は *_module を除く)", async () => {

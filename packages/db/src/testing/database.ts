@@ -23,6 +23,8 @@ export interface TestDatabase {
   readonly authService: Pool;
   /** 業務の処理が使うロール。auth スキーマの権限を持たない。 */
   readonly appUser: Pool;
+  /** Outbox を読んで送る処理が使うロール。messaging.outbox の全テナントの行を読める (docs/adr/0029)。 */
+  readonly outboxRelay: Pool;
   /** このデータベースの接続 URI。ロールを渡さなければ superuser。別のプロセスで動かす API にも渡す。 */
   url(role?: (typeof roles)[number]): string;
   close(): Promise<void>;
@@ -48,15 +50,23 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     options: "-c search_path=auth",
   });
   const appUser = new Pool({ connectionString: loginAs("app_user") });
+  const outboxRelay = new Pool({ connectionString: loginAs("outbox_relay") });
 
   return {
     superuser,
     migrator,
     authService,
     appUser,
+    outboxRelay,
     url: (role) => (role === undefined ? connectionUri(base, name) : loginAs(role)),
     async close() {
-      await Promise.all([superuser.end(), migrator.end(), authService.end(), appUser.end()]);
+      await Promise.all([
+        superuser.end(),
+        migrator.end(),
+        authService.end(),
+        appUser.end(),
+        outboxRelay.end(),
+      ]);
     },
   };
 }

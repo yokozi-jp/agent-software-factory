@@ -14,6 +14,13 @@ const tenantList = { role: "closing_module", schema: "auth", table: "organizatio
 
 const roleOf = (module: string) => `${module}_module`;
 
+/** Outbox を読んで送る処理のロールと、Outbox の表 (Issue #269、docs/adr/0029)。 */
+const relayRole = "outbox_relay";
+const outbox = { schema: "messaging", table: "outbox" };
+const outboxName = `${outbox.schema}.${outbox.table}`;
+/** pg_policies に出る、テナントで比べるポリシーの式。`inTenantTransaction` が設定する app.current_tenant と比べる。 */
+const tenantExpression = "(tenant_id = (current_setting('app.current_tenant'::text))::uuid)";
+
 // 検査は 1 種類ずつの関数にする。どれも pool と、見る対象を受け取り、決めたとおりでない点を文の一覧で返す。
 type Check = (pool: Pool, reads: ModuleReads) => Promise<string[]>;
 
@@ -64,7 +71,7 @@ const roleMemberships: Check = async (pool, reads) => {
 };
 
 const schemasExist: Check = async (pool, reads) => {
-  const modules = Object.keys(reads);
+  const modules = [...Object.keys(reads), outbox.schema];
   const { rows } = await pool.query<{ nspname: string }>(
     `SELECT nspname FROM pg_namespace WHERE nspname = ANY($1)`,
     [modules],
@@ -72,6 +79,42 @@ const schemasExist: Check = async (pool, reads) => {
   return modules
     .filter((module) => !rows.some((row) => row.nspname === module))
     .map((module) => `スキーマ ${module} がない`);
+};
+
+/** 送る処理のロール: ログインできるが、superuser でも BYPASSRLS でも DDL を実行できるロールでもない。 */
+const relayAttributes: Check = async (pool) => {
+  const { rows } = await pool.query<{
+    rolcanlogin: boolean;
+    rolsuper: boolean;
+    rolbypassrls: boolean;
+    rolcreaterole: boolean;
+    rolcreatedb: boolean;
+  }>(
+    `SELECT rolcanlogin, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = $1`,
+    [relayRole],
+  );
+  const row = rows[0];
+  if (row === undefined) return [`ロール ${relayRole} がない`];
+  return [
+    ...(row.rolcanlogin ? [] : [`ロール ${relayRole} が LOGIN できない`]),
+    ...(row.rolsuper ? [`ロール ${relayRole} が superuser`] : []),
+    ...(row.rolbypassrls ? [`ロール ${relayRole} が BYPASSRLS`] : []),
+    ...(row.rolcreaterole ? [`ロール ${relayRole} が CREATEROLE`] : []),
+    ...(row.rolcreatedb ? [`ロール ${relayRole} が CREATEDB`] : []),
+  ];
+};
+
+/** outbox_relay はほかのロールのメンバーにならず、だれもそのメンバーにならない (app_user から SET ROLE できない)。 */
+const relayMemberships: Check = async (pool) => {
+  const { rows } = await pool.query<{ member: string; roleName: string }>(
+    `SELECT mr.rolname AS member, gr.rolname AS "roleName"
+       FROM pg_auth_members m
+       JOIN pg_roles mr ON mr.oid = m.member
+       JOIN pg_roles gr ON gr.oid = m.roleid
+      WHERE mr.rolname = $1 OR gr.rolname = $1`,
+    [relayRole],
+  );
+  return rows.map((row) => `${row.member} が ${row.roleName} のメンバー`);
 };
 
 // ロールごとに USAGE を持つスキーマ: 自分のスキーマと、依存の方向のスキーマ。app_user は何も持たない。
@@ -85,7 +128,8 @@ const canUseOf = (reads: ModuleReads) => {
   return (role: string, schema: string) => usable.get(role)?.has(schema) === true;
 };
 
-const subjects = (reads: ModuleReads) => [...Object.keys(reads).map(roleOf), "app_user"];
+// outbox_relay も入れる: モジュールのスキーマと auth には、何の権限も持たない。
+const subjects = (reads: ModuleReads) => [...Object.keys(reads).map(roleOf), "app_user", relayRole];
 
 const schemaPrivileges: Check = async (pool, reads) => {
   const canUse = canUseOf(reads);
@@ -184,6 +228,107 @@ const authColumns: Check = async (pool, reads) => {
   ];
 };
 
+// messaging スキーマと Outbox の表の権限。モジュールのロールは INSERT だけ、outbox_relay は SELECT、UPDATE、DELETE だけで、
+// app_user は何も持たない。列だけの権限も見つけるので、has_any_column_privilege で調べる。
+const outboxPrivileges = (reads: ModuleReads, role: string, privilege: string): boolean =>
+  Object.keys(reads).map(roleOf).includes(role)
+    ? privilege === "INSERT"
+    : role === relayRole && ["SELECT", "UPDATE", "DELETE"].includes(privilege);
+
+const messagingPrivileges: Check = async (pool, reads) => {
+  const { rows } = await pool.query<{
+    rolname: string;
+    privilege: string;
+    has: boolean;
+    usage: boolean;
+    create: boolean;
+  }>(
+    `SELECT r.rolname, p.privilege,
+            CASE WHEN p.privilege IN ('DELETE', 'TRUNCATE', 'TRIGGER')
+                 THEN has_table_privilege(r.rolname, $3::regclass, p.privilege)
+                 ELSE has_any_column_privilege(r.rolname, $3::regclass, p.privilege) END AS has,
+            has_schema_privilege(r.rolname, $2, 'USAGE') AS usage,
+            has_schema_privilege(r.rolname, $2, 'CREATE') AS "create"
+       FROM unnest($1::text[]) AS r(rolname)
+       CROSS JOIN unnest($4::text[]) AS p(privilege)`,
+    [subjects(reads), outbox.schema, outboxName, tablePrivileges],
+  );
+  const canUse = (role: string) => role !== "app_user";
+  return [
+    ...rows
+      .filter((row) => row.has !== outboxPrivileges(reads, row.rolname, row.privilege))
+      .map((row) => `${row.rolname} の ${outboxName} の ${row.privilege} が${yesNo(row.has)}`),
+    ...[...new Map(rows.map((row) => [row.rolname, row])).values()].flatMap((row) => [
+      ...(row.usage !== canUse(row.rolname)
+        ? [`${row.rolname} の ${outbox.schema} スキーマの USAGE が${yesNo(row.usage)}`]
+        : []),
+      ...(row.create ? [`${row.rolname} が ${outbox.schema} スキーマに CREATE できる`] : []),
+    ]),
+  ];
+};
+
+/** messaging.outbox がある。ないと、権限の問い合わせ自体が失敗するので、権限の検査より先に確かめる。 */
+const outboxExists: Check = async (pool) => {
+  const { rows } = await pool.query<{ found: boolean }>(
+    `SELECT to_regclass($1) IS NOT NULL AS found`,
+    [outboxName],
+  );
+  return rows[0]?.found === true ? [] : [`表 ${outboxName} がない`];
+};
+
+/** messaging.outbox は RLS を ENABLE と FORCE にする (docs/adr/0011)。 */
+const outboxRowSecurity: Check = async (pool) => {
+  const { rows } = await pool.query<{ rls: boolean; forceRls: boolean }>(
+    `SELECT relrowsecurity AS rls, relforcerowsecurity AS "forceRls" FROM pg_class
+      WHERE oid = to_regclass($1)`,
+    [outboxName],
+  );
+  return [
+    ...(rows[0]?.rls === true ? [] : [`${outboxName} が RLS を ENABLE にしていない`]),
+    ...(rows[0]?.forceRls === true ? [] : [`${outboxName} が RLS を FORCE にしていない`]),
+  ];
+};
+
+/**
+ * RLS のポリシー。app.current_tenant で比べないポリシーは、messaging.outbox の outbox_relay 向けの 1 つだけ
+ * (ADR 0011 の例外。docs/adr/0029)。式の文字列を `tenantExpression` と比べるので、`OR true` のような足し込みも見つける。
+ */
+const rlsPolicies: Check = async (pool) => {
+  const { rows } = await pool.query<{
+    schemaname: string;
+    tablename: string;
+    policyname: string;
+    roles: string[];
+    qual: string | null;
+    withCheck: string | null;
+  }>(
+    `SELECT schemaname, tablename, policyname, roles::text[] AS roles, qual, with_check AS "withCheck"
+       FROM pg_policies`,
+  );
+  const isTenantScoped = (row: (typeof rows)[number]) =>
+    [row.qual, row.withCheck].every(
+      (expression) => expression === null || expression === tenantExpression,
+    );
+  const isRelayPolicy = (row: (typeof rows)[number]) =>
+    row.schemaname === outbox.schema &&
+    row.tablename === outbox.table &&
+    row.roles.length === 1 &&
+    row.roles[0] === relayRole;
+  const exceptions = rows.filter((row) => !isTenantScoped(row));
+  return [
+    ...exceptions
+      .filter((row) => !isRelayPolicy(row))
+      .map(
+        (row) =>
+          `${row.schemaname}.${row.tablename} のポリシー ${row.policyname} が app.current_tenant で比べていない` +
+          " (例外は messaging.outbox の outbox_relay 向けの 1 つだけ)",
+      ),
+    ...(exceptions.filter(isRelayPolicy).length === 1
+      ? []
+      : [`${outboxName} に outbox_relay 向けの USING (true) のポリシーが 1 つない`]),
+  ];
+};
+
 const ownerViews: Check = async (pool, reads) => {
   const { rows } = await pool.query<{ nspname: string; relname: string }>(
     `SELECT n.nspname, c.relname
@@ -223,11 +368,21 @@ const crossSchemaForeignKeys: Check = async (pool, reads) => {
 };
 
 // ロールかスキーマがないと、権限の問い合わせ自体が失敗するので、先に確かめて、あれば権限の検査に進まない。
-const existence: readonly Check[] = [roleAttributes, roleMemberships, schemasExist];
+const existence: readonly Check[] = [
+  roleAttributes,
+  roleMemberships,
+  relayAttributes,
+  relayMemberships,
+  schemasExist,
+  outboxExists,
+];
 const privileges: readonly Check[] = [
   schemaPrivileges,
   tablePrivilegeChecks,
   authColumns,
+  messagingPrivileges,
+  outboxRowSecurity,
+  rlsPolicies,
   ownerViews,
   securityDefiners,
   crossSchemaForeignKeys,
@@ -248,7 +403,10 @@ const runAll = async (checks: readonly Check[], pool: Pool, reads: ModuleReads) 
  * - 締めのロールの `auth` の権限は、`auth.organization` の `id` の SELECT だけ。ほかのロールは `auth` に権限がない。
  * - モジュールのスキーマに、所有者の権限で動く view と `SECURITY DEFINER` の関数、スキーマをまたぐ外部キーがない。
  *
- * `messaging.outbox` の INSERT は、表を作る Issue #269 で足す。
+ * - `messaging.outbox` (Issue #269): モジュールのロールは INSERT だけ、`outbox_relay` は SELECT、UPDATE、DELETE だけ、
+ *   `app_user` は何も持たない。`outbox_relay` はログインできるが、superuser でも BYPASSRLS でもなく、モジュールのスキーマと
+ *   `auth` に権限を持たず、だれのメンバーにもならず、だれもそのメンバーにならない。
+ * - RLS のポリシーで `app.current_tenant` で比べないものは、`messaging.outbox` の `outbox_relay` 向けの 1 つだけ。
  *
  * この検査はテスト専用で、migrate や CI の別の段からは呼ばない。migration を流した DB に対する結合テスト
  * (module-roles-catalog.test.ts) が、毎回これを呼んで問題が空であることを確かめる。

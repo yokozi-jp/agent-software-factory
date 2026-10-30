@@ -23,3 +23,11 @@ export { OptimisticLockConflict, RowNotFound, updateWithLock } from "./optimisti
 export { apiDate, apiInstant } from "./api-time.ts";
 export { BUSINESS_TIME_ZONE, currentInstant, toApiDate, toApiInstant } from "./time.ts";
 export { defineEvent, eventFixtureProblems, type EventDefinition } from "./event.ts";
+export { enqueueOutbox, type OutboxEvent } from "./outbox.ts";
+export {
+  defineConsumer,
+  registeredConsumers,
+  type ConsumedMessage,
+  type ConsumeResult,
+  type RegisteredConsumer,
+} from "./consumer.ts";

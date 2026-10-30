@@ -12,6 +12,7 @@ export { rolePassword } from "./credentials.ts";
 export { createTestDatabase, type TestDatabase } from "./database.ts";
 export { reportSetupFailure } from "./global-setup.ts";
 export { prepareDatabase } from "./prepare-database.ts";
+export { processedMessageTableSql } from "./processed-message.ts";
 export {
   diffRowCounts,
   snapshotRowCounts,

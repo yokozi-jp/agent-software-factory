@@ -15,7 +15,10 @@
   "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**", "packages/i18n/test/__fixtures__/**"],
   // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
   // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
-  "ignoreIssues": { "packages/*/src/infrastructure/db.gen.ts": ["types"] },
+  "ignoreIssues": {
+    "packages/*/src/infrastructure/db.gen.ts": ["types"],
+    "packages/shared/src/messaging.gen.ts": ["types"],
+  },
   "workspaces": {
     ".": {
       // Knip's default project files, without the agent skills installed from upstream (skills-lock.json).

@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
   generateTypes,
-  moduleSchemas,
   moduleSchemasOf,
   staleTypes,
+  typedSchemas,
   typesFile,
   withColumnTypeImport,
   writeTypes,
@@ -52,6 +52,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
       "packages/approval/src/infrastructure/db.gen.ts",
       "packages/claim/src/infrastructure/db.gen.ts",
       "packages/closing/src/infrastructure/db.gen.ts",
+      "packages/shared/src/messaging.gen.ts",
     ]);
   });
 
@@ -65,6 +66,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     expect(tableNames(typesOf(types, "claim"))).toEqual(["claim.t_claim"]);
     expect(tableNames(typesOf(types, "approval"))).toEqual(["approval.t_example"]);
     expect(tableNames(typesOf(types, "closing"))).toEqual(["closing.t_example"]);
+    expect(tableNames(typesOf(types, "messaging"))).toEqual(["messaging.outbox"]);
   });
 
   it("auth と migrations のスキーマの表を、どの型のファイルにも入れないこと", async () => {
@@ -73,7 +75,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     const names = types.flatMap(tableNames);
     expect(names.length).toBeGreaterThan(0);
     expect(names.filter((name) => /^(auth|migrations|public)\./.test(name))).toEqual([]);
-    expect(names.every((name) => moduleSchemas.some((s) => name.startsWith(`${s}.`)))).toBe(true);
+    expect(names.every((name) => typedSchemas.some((s) => name.startsWith(`${s}.`)))).toBe(true);
   });
 
   it("migration が作るスキーマが、auth と migrations のほかは、型を生成するスキーマと同じこと", async () => {
@@ -86,7 +88,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     );
 
     expect(rows.map(({ nspname }) => nspname)).toEqual(
-      [...moduleSchemas, "auth", "migrations"].toSorted(),
+      [...typedSchemas, "auth", "migrations"].toSorted(),
     );
   });
 
@@ -150,7 +152,7 @@ describe("withColumnTypeImport", () => {
   });
 });
 
-describe("型を生成するスキーマ (moduleSchemas)", () => {
+describe("モジュールのスキーマ (moduleSchemas)", () => {
   let root: string;
 
   beforeEach(async () => {
