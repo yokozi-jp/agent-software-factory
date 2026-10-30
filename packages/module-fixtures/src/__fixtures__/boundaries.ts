@@ -10,7 +10,7 @@
 // (packageManifests), not here: module-fixtures depends on no package, so no subpath of one could resolve.
 // Knip and jscpd skip __fixtures__/, and nothing imports this file.
 // @ts-expect-error -- fixture: module-fixtures does not depend on shared, so the import does not resolve
-import "@agent-software-factory/shared";
+import "@agent-software-factory/shared-kernel";
 // @ts-expect-error -- fixture: module-fixtures does not depend on shared; the line is for the lint rule below
 // oxlint-disable-next-line no-restricted-imports -- fixture: a deep import
-import "@agent-software-factory/shared/src/index.ts";
+import "@agent-software-factory/shared-kernel/src/index.ts";

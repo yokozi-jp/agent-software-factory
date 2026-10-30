@@ -128,7 +128,10 @@ export const packageJson = (name: string, fields: Record<string, unknown> = {}):
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
     exports: { ".": "./src/index.ts" },
-    scripts: { check: "vp check", ...(name === "shared" ? {} : { "lint-effect": lintEffect }) },
+    scripts: {
+      check: "vp check",
+      ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
+    },
     nx: { name, ...(modules.includes(name) ? { tags: ["type:module"] } : {}) },
     ...fields,
   });
@@ -150,7 +153,7 @@ export const eventsFiles = (
     name: `@agent-software-factory/${module}-events`,
     exports: { ".": "./src/index.ts" },
     scripts: { check: "vp check", test: "vp test run" },
-    dependencies: { "@agent-software-factory/shared": "workspace:*", zod: "catalog:" },
+    dependencies: { "@agent-software-factory/shared-kernel": "workspace:*", zod: "catalog:" },
     nx: { name: `${module}-events` },
     ...fields,
   }),
@@ -211,8 +214,10 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
-  ...packageFiles("shared"),
-  ...packageFiles("claim", { dependencies: { "@agent-software-factory/shared": "workspace:*" } }),
+  ...packageFiles("shared-kernel"),
+  ...packageFiles("claim", {
+    dependencies: { "@agent-software-factory/shared-kernel": "workspace:*" },
+  }),
   ...packageFiles("approval", { dependencies: { "@agent-software-factory/claim": "workspace:*" } }),
   ...packageFiles("closing", {
     dependencies: { "@agent-software-factory/approval": "workspace:*" },
@@ -236,8 +241,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/__fixtures__/with-tables.ts": withTablesFixture,
   "packages/module-fixtures/src/domain/__fixtures__/with-tables.ts": withTablesFixture,
   "packages/module-fixtures/src/http/__fixtures__/with-tables.ts": withTablesFixture,
-  // The rule that stops SQL that sets the role or the tenant reaches packages/shared/src and apps/api/src.
-  "packages/shared/src/__fixtures__/session-setting.ts": sessionSettingFixture,
+  // The rule that stops SQL that sets the role or the tenant reaches packages/shared-kernel/src and apps/api/src.
+  "packages/shared-kernel/src/__fixtures__/session-setting.ts": sessionSettingFixture,
   "apps/api/src/__fixtures__/session-setting.ts": sessionSettingFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.

@@ -4,4 +4,4 @@
 // override turns off no-restricted-imports, the disable comment is unused and `vp check` fails
 // (reportUnusedDisableDirectives).
 // oxlint-disable-next-line no-restricted-imports -- fixture: a relative path into a package (shared stays in the template)
-import "../../../shared/src/index.ts";
+import "../../../shared-kernel/src/index.ts";

@@ -692,7 +692,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
         repo({
           ...noModules,
           "packages/module-fixtures/package.json": undefined,
-          "packages/shared/package.json": undefined,
+          "packages/shared-kernel/package.json": undefined,
           // The rules of vite.config.ts still need their fixtures, outside packages/.
           "apps/api/src/__fixtures__/rules.ts": `${runtimeFixture}${moduleFixture}`,
           ...Object.fromEntries(
@@ -1006,7 +1006,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
           ...fixtures("infrastructure"),
           "packages/module-fixtures/src/application/__fixtures__/boundaries.ts": moduleFixture,
           "packages/module-fixtures/src/infrastructure/__fixtures__/boundaries.ts": moduleFixture,
-          ...packageFiles("shared"),
+          ...packageFiles("shared-kernel"),
         }),
       ),
     ).toEqual([]);
@@ -2214,14 +2214,14 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
       messages.index,
     ]);
     expect(
-      violations(repo({ "packages/shared/package.json": "{}" })).filter((failure) =>
-        failure.startsWith("packages/shared/"),
+      violations(repo({ "packages/shared-kernel/package.json": "{}" })).filter((failure) =>
+        failure.startsWith("packages/shared-kernel/"),
       ),
     ).toEqual([
-      'packages/shared/package.json must have the name "@agent-software-factory/shared", the scope and the directory (docs/adr/0026).',
-      'packages/shared/package.json must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).',
-      'packages/shared/package.json must have the Nx project name "shared" (nx.name), the name of its directory (docs/adr/0026).',
-      'packages/shared/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
+      'packages/shared-kernel/package.json must have the name "@agent-software-factory/shared-kernel", the scope and the directory (docs/adr/0026).',
+      'packages/shared-kernel/package.json must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).',
+      'packages/shared-kernel/package.json must have the Nx project name "shared-kernel" (nx.name), the name of its directory (docs/adr/0026).',
+      'packages/shared-kernel/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
     ]);
   });
 });
@@ -2231,7 +2231,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${to}, or move what both need into shared (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2242,7 +2242,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
           ...manifest("closing", {
             dependencies: {
               "@agent-software-factory/approval": "workspace:*",
-              "@agent-software-factory/shared": "workspace:*",
+              "@agent-software-factory/shared-kernel": "workspace:*",
             },
             devDependencies: workspace,
           }),
@@ -2268,9 +2268,9 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     expect(
       violations(
         repo({
-          ...manifest("shared", {
+          ...manifest("shared-kernel", {
             dependencies: workspace,
-            devDependencies: { "@agent-software-factory/shared": "workspace:*" },
+            devDependencies: { "@agent-software-factory/shared-kernel": "workspace:*" },
           }),
           ...manifest("approval", {
             dependencies: { "@agent-software-factory/api": "workspace:*" },
@@ -2279,8 +2279,8 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
       ),
     ).toEqual([
       wrong("approval", "dependencies", "api"),
-      wrong("shared", "dependencies", "claim"),
-      wrong("shared", "devDependencies", "shared"),
+      wrong("shared-kernel", "dependencies", "claim"),
+      wrong("shared-kernel", "devDependencies", "shared-kernel"),
     ]);
   });
 
@@ -2308,13 +2308,16 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
       violations(
         repo(
           manifest("module-fixtures", {
-            dependencies: { "@agent-software-factory/shared": "workspace:*", effect: "catalog:" },
+            dependencies: {
+              "@agent-software-factory/shared-kernel": "workspace:*",
+              effect: "catalog:",
+            },
             devDependencies: workspace,
           }),
         ),
       ),
     ).toEqual([
-      wrong("module-fixtures", "dependencies", "shared"),
+      wrong("module-fixtures", "dependencies", "shared-kernel"),
       wrong("module-fixtures", "devDependencies", "claim"),
     ]);
   });
@@ -2362,8 +2365,10 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
       `packages/ui/package.json must have the exports ${JSON.stringify(uiExports)}, the folders of the parts and the CSS and nothing else (docs/adr/0034).`,
     ]);
     expect(
-      violations(repo(ui({ dependencies: { "@agent-software-factory/shared": "workspace:*" } }))),
-    ).toEqual([wrong("ui", "dependencies", "shared")]);
+      violations(
+        repo(ui({ dependencies: { "@agent-software-factory/shared-kernel": "workspace:*" } })),
+      ),
+    ).toEqual([wrong("ui", "dependencies", "shared-kernel")]);
   });
 
   it("refuses a module that depends on ui", () => {
@@ -2381,8 +2386,10 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     });
     expect(violations(repo(i18n({})))).toEqual([]);
     expect(
-      violations(repo(i18n({ dependencies: { "@agent-software-factory/shared": "workspace:*" } }))),
-    ).toEqual([wrong("i18n", "dependencies", "shared")]);
+      violations(
+        repo(i18n({ dependencies: { "@agent-software-factory/shared-kernel": "workspace:*" } })),
+      ),
+    ).toEqual([wrong("i18n", "dependencies", "shared-kernel")]);
   });
 
   it("refuses a module that depends on i18n", () => {
@@ -2418,7 +2425,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
 describe("ADR 0026: the events package of each module", () => {
   const events = (module: string) => `packages/${module}/events/package.json`;
   const wrongDependency = (module: string, field: string, dependency: string) =>
-    `${events(module)} has @agent-software-factory/${dependency} in ${field}. An events package depends on zod and shared only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`;
+    `${events(module)} has @agent-software-factory/${dependency} in ${field}. An events package depends on zod and shared-kernel only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes the events packages of the passing repository", () => {
@@ -2426,7 +2433,7 @@ describe("ADR 0026: the events package of each module", () => {
   });
 
   it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
-    "refuses an events package that depends on a package of the workspace but shared, in %s",
+    "refuses an events package that depends on a package of the workspace but shared-kernel, in %s",
     (field) => {
       expect(violations(repo(eventsFiles("approval", { [field]: workspace })))).toEqual([
         wrongDependency("approval", field, "claim"),
@@ -2467,8 +2474,8 @@ describe("ADR 0026: the events package of each module", () => {
     expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
   });
 
-  it("leaves shared, ui, i18n and db out of the module packages", () => {
-    const names = ["shared", "ui", "i18n", "db"];
+  it("leaves shared-kernel, ui, i18n and db out of the module packages", () => {
+    const names = ["shared-kernel", "ui", "i18n", "db"];
     const tree = new Tree(
       repo(Object.fromEntries(names.map((name) => [`packages/${name}/package.json`, "{}"]))),
     );
@@ -2484,8 +2491,8 @@ describe("ADR 0026: the events package of each module", () => {
   });
 
   it("refuses an events package under a directory that is not a module of moduleOrder", () => {
-    expect(violations(repo(eventsFiles("shared")))).toEqual([
-      `packages/shared/events is an events package, but shared is not a module of moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
+    expect(violations(repo(eventsFiles("shared-kernel")))).toEqual([
+      `packages/shared-kernel/events is an events package, but shared-kernel is not a module of moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
     ]);
   });
 
@@ -2554,7 +2561,10 @@ describe("ADR 0026: the events package of each module", () => {
       violations(
         repo({
           ...packageFiles("claim", {
-            dependencies: { "@agent-software-factory/shared": "workspace:*", ...events("closing") },
+            dependencies: {
+              "@agent-software-factory/shared-kernel": "workspace:*",
+              ...events("closing"),
+            },
           }),
           ...packageFiles("approval", {
             dependencies: { "@agent-software-factory/claim": "workspace:*", ...events("approval") },
@@ -2572,14 +2582,14 @@ describe("ADR 0026: the events package of each module", () => {
           ...packageFiles("claim", {
             dependencies: { "@agent-software-factory/billing-events": "workspace:*" },
           }),
-          ...packageFiles("shared", {
+          ...packageFiles("shared-kernel", {
             dependencies: { "@agent-software-factory/claim-events": "workspace:*" },
           }),
         }),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared (docs/adr/0026).`,
-      `packages/shared/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared (docs/adr/0026).`,
+      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared (docs/adr/0026).`,
     ]);
   });
 
@@ -2593,7 +2603,7 @@ describe("ADR 0026: the events package of each module", () => {
         ),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared (docs/adr/0026).`,
     ]);
   });
 });
@@ -2703,7 +2713,7 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
   const dbHas = (dependency: string, field: string) =>
     `packages/db/package.json has @agent-software-factory/${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency} out of db (docs/adr/0038).`;
   const refused = (path: string, field: string) =>
-    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
+    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
 
   it("passes db with the modules in devDependencies, without a place in moduleOrder or a lint-effect script", () => {
     expect(
@@ -2731,7 +2741,7 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
     },
   );
 
-  it.each(["shared", "ui", "api", "web"])(
+  it.each(["shared-kernel", "ui", "api", "web"])(
     "refuses db that depends on %s, even in devDependencies",
     (name) => {
       expect(
@@ -2772,21 +2782,23 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
   });
 
   it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
-    "refuses a module, shared, ui or an app other than apps/api that depends on db, in %s",
+    "refuses a module, shared-kernel, ui or an app other than apps/api that depends on db, in %s",
     (field) => {
       expect(
         violations(
           repo({
             ...db(),
             "packages/claim/package.json": packageJson("claim", { [field]: dbDependency }),
-            "packages/shared/package.json": packageJson("shared", { [field]: dbDependency }),
+            "packages/shared-kernel/package.json": packageJson("shared-kernel", {
+              [field]: dbDependency,
+            }),
             "apps/web/package.json": json({ [field]: dbDependency }),
           }),
         ),
       ).toEqual([
         refused("apps/web/package.json", field),
         refused("packages/claim/package.json", field),
-        refused("packages/shared/package.json", field),
+        refused("packages/shared-kernel/package.json", field),
       ]);
     },
   );
@@ -3087,7 +3099,7 @@ describe("ADR 0028: every module runs the Effect lint", () => {
       violations(
         repo({
           "packages/claim/package.json": packageJson("claim", { scripts: { check: "vp check" } }),
-          "packages/shared/package.json": packageJson("shared", {
+          "packages/shared-kernel/package.json": packageJson("shared-kernel", {
             scripts: { check: "vp check", "lint-effect": "x" },
           }),
         }),
@@ -3890,7 +3902,7 @@ describe("ADR 0029: the imports that bypass the Outbox and the transaction have 
       repo({
         ...noModules,
         "packages/module-fixtures/package.json": undefined,
-        "packages/shared/package.json": undefined,
+        "packages/shared-kernel/package.json": undefined,
         ...remove("src", "http"),
       }),
     );
@@ -4017,7 +4029,7 @@ describe("ADR 0029: withTables is called in infrastructure/ only, and has a fixt
         repo({
           ...noModules,
           "packages/module-fixtures/package.json": undefined,
-          "packages/shared/package.json": undefined,
+          "packages/shared-kernel/package.json": undefined,
           [file("src")]: undefined,
         }),
       ),
@@ -4093,7 +4105,7 @@ describe("ADR 0029: withTables is called in infrastructure/ only, and has a fixt
 
 describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared and apps/api", () => {
   const viteConfig = String(base["vite.config.ts"]);
-  const shared = "packages/shared/src/__fixtures__/session-setting.ts";
+  const shared = "packages/shared-kernel/src/__fixtures__/session-setting.ts";
   const api = "apps/api/src/__fixtures__/session-setting.ts";
   const missing = (place: string) =>
     `vite.config.ts turns on tenant-sql/no-session-setting for ${place}, but no fixture there has \`oxlint-disable-next-line tenant-sql/no-session-setting\`. Add a SET ROLE or set_config in a sql template to ${place}/__fixtures__/session-setting.ts, so that an override that stops reaching ${place} fails \`vp check\` (docs/adr/0029).`;
@@ -4106,14 +4118,16 @@ describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared
 
   it("names a place without a fixture", () => {
     expect(sessionFailures(repo({ [shared]: undefined }))).toEqual([
-      missing("packages/shared/src"),
+      missing("packages/shared-kernel/src"),
     ]);
     expect(sessionFailures(repo({ [api]: undefined }))).toEqual([missing("apps/api/src")]);
   });
 
   it("does not count a fixture without the disable comment", () => {
     const plain = sessionSettingFixture.replace("oxlint-disable-next-line", "other-comment");
-    expect(sessionFailures(repo({ [shared]: plain }))).toEqual([missing("packages/shared/src")]);
+    expect(sessionFailures(repo({ [shared]: plain }))).toEqual([
+      missing("packages/shared-kernel/src"),
+    ]);
   });
 
   it("asks nothing when the rule is not on, or the place does not exist", () => {
@@ -4121,7 +4135,10 @@ describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared
     expect(
       sessionFailures(repo({ "vite.config.ts": off, [shared]: undefined, [api]: undefined })),
     ).toEqual([]);
-    const noShared = repo({ "packages/shared/package.json": undefined, [shared]: undefined });
+    const noShared = repo({
+      "packages/shared-kernel/package.json": undefined,
+      [shared]: undefined,
+    });
     expect(sessionFailures(noShared)).toEqual([]);
     const noApi = Object.fromEntries(
       Object.keys(base)

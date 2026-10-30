@@ -516,11 +516,14 @@ export function withTablesGuards(tree: Tree): string[] {
 }
 
 // ADR 0029: SQL that changes the role or the tenant of the connection is written in the helper of the transaction only.
-// vite.config.ts turns tenant-sql/no-session-setting on for packages/shared/src and apps/api/src, each of which has a
+// vite.config.ts turns tenant-sql/no-session-setting on for packages/shared-kernel/src and apps/api/src, each of which has a
 // fixture (#43) that the rule must report, so that an override that stops reaching one of them fails `vp check`.
 const sessionSettingAnnotation = "oxlint-disable-next-line tenant-sql/no-session-setting";
 const sessionSettingPlaces = [
-  { package: "packages/shared/src", exists: (tree: Tree) => packageNames(tree).includes("shared") },
+  {
+    package: "packages/shared-kernel/src",
+    exists: (tree: Tree) => packageNames(tree).includes("shared-kernel"),
+  },
   {
     package: "apps/api/src",
     exists: (tree: Tree) => tree.paths.some((path) => path.startsWith("apps/api/src/")),

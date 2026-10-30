@@ -10,7 +10,7 @@ const noThrow = defineRule({
       noThrow:
         "domain does not `throw`: a caller cannot see from the type that the function fails, so a missing handler is not stopped. " +
         'Return a Result: `{ _tag: "Err", error: { _tag: "<what happened>" } }`, with the type Result from ' +
-        "@agent-software-factory/shared (`import type`). Only the parseX functions of infrastructure throw, " +
+        "@agent-software-factory/shared-kernel (`import type`). Only the parseX functions of infrastructure throw, " +
         "for a row that is not a domain value (docs/adr/0027, docs/domain-model/failures.md).",
     },
   },

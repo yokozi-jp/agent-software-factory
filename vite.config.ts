@@ -8,7 +8,7 @@ const ignorePatterns = [
   // that they match the migrations. Still type-checked through the files that import them.
   "packages/*/src/infrastructure/db.gen.ts",
   // The same for the shared `messaging` schema (the Outbox, docs/adr/0029).
-  "packages/shared/src/messaging.gen.ts",
+  "packages/shared-kernel/src/messaging.gen.ts",
   // Agent skills installed from upstream (tracked by skills-lock.json). Must stay byte-identical.
   ".agents/**",
   // Symlinks to .agents/skills. The rest of .kiro/ (hooks, settings, steering) is checked like any other file.
@@ -123,14 +123,14 @@ const runtimePropertyEntries = runtimeGlobals.map(({ name, message }) => ({
   message: `${message} (\`globalThis.${name}\` is the same global.)`,
 }));
 // Reading the clock (docs/adr/0043). Only an entry point reads the current time, once, from the Effect `Clock` (currentInstant
-// of packages/shared), and passes it down as `now`. So `Date` as a value (`new Date()`, `Date.now()`) and
+// of packages/shared-kernel), and passes it down as `now`. So `Date` as a value (`new Date()`, `Date.now()`) and
 // `Temporal.Now` are stopped, also from globalThis (a `Date` in a type annotation is not reported). A library that
 // needs a `Date` takes a disable comment with the reason.
 const clockMessage = (instead: string) =>
   `Do not read the clock here: ${instead}, so that a test fixes the time and one request has one time ` +
   "(docs/adr/0043, docs/domain-model/application-effect.md).";
 const entryClockMessage = clockMessage(
-  "an entry point reads it once with currentInstant of @agent-software-factory/shared and passes it down as `now`",
+  "an entry point reads it once with currentInstant of @agent-software-factory/shared-kernel and passes it down as `now`",
 );
 function clockEntries(message: string) {
   return {
@@ -185,7 +185,7 @@ const layerMessage =
   "Layers point inward: domain imports nothing, application imports domain, and infrastructure and http import " +
   "application and domain but not each other (docs/adr/0026).";
 const domainMessage =
-  `domain imports nothing but types of ${scope}/shared (\`import type\`). Put the code that needs a library or ` +
+  `domain imports nothing but types of ${scope}/shared-kernel (\`import type\`). Put the code that needs a library or ` +
   "another module in application or infrastructure (docs/adr/0026).";
 
 // Effect (docs/adr/0028). The features that the ADR does not use are each done by another tool already: validation
@@ -286,9 +286,9 @@ function moduleImports(layer?: string, allowSql = false) {
     // Oxlint 1.89 checks the patterns in order, and a negated group that matches ends the check of that import.
     // So the value imports of shared are stopped first, then every package but shared.
     patterns.push(
-      { regex: `^${scope}/shared$`, allowTypeImports: true, message: domainMessage },
+      { regex: `^${scope}/shared-kernel$`, allowTypeImports: true, message: domainMessage },
       { regex: "^[^.@]", message: domainMessage },
-      { group: ["@*/*", `!${scope}/shared`], message: domainMessage },
+      { group: ["@*/*", `!${scope}/shared-kernel`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
   const paths: RestrictedPath[] = [...runtimeImports.paths, ...bypassPaths];
@@ -502,7 +502,7 @@ export default defineConfig({
       // shared is not a module (docs/adr/0026): it holds the helper of the transaction, which writes SQL with `sql`.
       // It keeps every other restriction of the modules.
       {
-        files: ["packages/shared/src/**"],
+        files: ["packages/shared-kernel/src/**"],
         rules: { "no-restricted-imports": ["error", moduleImports(undefined, true)] },
       },
       // packages/db is not a module (docs/adr/0038). It runs the migrations and starts containers, so it leaves the
@@ -584,9 +584,9 @@ export default defineConfig({
       // (docs/adr/0029). shared and apps/api are the places that may use `sql`; the modules may not (sqlPaths). The
       // rule is in tools/lint-plugins/src/tenant-sql-plugin.ts. The helper is the one file that sets them, and its
       // test sets and reads them to check the helper, so both are outside the rule; every other test is under it.
-      // Fixtures that this rule must report: apps/api/src/__fixtures__/session-setting.ts and packages/shared/src/__fixtures__/session-setting.ts.
+      // Fixtures that this rule must report: apps/api/src/__fixtures__/session-setting.ts and packages/shared-kernel/src/__fixtures__/session-setting.ts.
       {
-        files: ["packages/shared/src/**", "apps/api/src/**"],
+        files: ["packages/shared-kernel/src/**", "apps/api/src/**"],
         jsPlugins: [
           { name: "tenant-sql", specifier: "./tools/lint-plugins/src/tenant-sql-plugin.ts" },
         ],
@@ -594,7 +594,7 @@ export default defineConfig({
       },
       {
         files: [
-          "packages/shared/src/tenant-transaction.ts",
+          "packages/shared-kernel/src/tenant-transaction.ts",
           "apps/api/src/db/tenant-transaction.test.ts",
         ],
         jsPlugins: [
