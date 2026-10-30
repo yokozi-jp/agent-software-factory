@@ -62,7 +62,10 @@ export const conventionExceptions: readonly ConventionException[] = [
 ];
 
 /** DDL を実行できてはいけないロール (docs/adr/0025)。 */
-const restrictedRoles = ["app_user", "auth_service", "outbox_relay"];
+// outbox_relay はここに入れない。その属性 (SUPERUSER、CREATEROLE、CREATEDB) と権限は、モジュールの検査
+// (module-roles-catalog.ts) が確かめる。ロールの属性はクラスタ全体のもので、そのテストが壊した間、この検査が
+// 並行して失敗するのを避ける。
+const restrictedRoles = ["app_user", "auth_service"];
 
 interface Violation {
   readonly check: ConventionCheck;
@@ -374,7 +377,7 @@ const publicGrants = `
      AND a.privilege_type NOT IN ('CONNECT', 'TEMPORARY')`;
 
 /**
- * app_user、auth_service、outbox_relay が DDL を実行できず、PUBLIC に余計な権限がない (docs/adr/0025)。
+ * app_user と auth_service が DDL を実行できず、PUBLIC に余計な権限がない (docs/adr/0025)。
  * DDL を実行できるのは、スキーマかデータベースに CREATE できるロール、オブジェクトの所有者 (所有者のメンバーで
  * 権限を継承するロールを含む)、superuser、CREATEROLE、CREATEDB を持つロール。
  */

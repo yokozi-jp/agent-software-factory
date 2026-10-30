@@ -62,7 +62,13 @@ describe("enqueueOutbox と messaging.outbox", () => {
     inTenantTransaction(ClaimTx, { tenantId, ...writer }, work);
 
   const rows = async (): Promise<OutboxRow[]> =>
-    (await ctx.db.superuser.query<OutboxRow>(`SELECT * FROM messaging.outbox ORDER BY id`)).rows;
+    (
+      await ctx.db.superuser.query<OutboxRow>(
+        // テンプレートの DB には seed の行がある (docs/adr/0036)。数えるのは、このテストのテナントの行だけ。
+        `SELECT * FROM messaging.outbox WHERE tenant_id = ANY($1) ORDER BY id`,
+        [[tenantA, tenantB]],
+      )
+    ).rows;
 
   it("イベントを 1 行に入れ、決めた列にイベントの値と共通カラムが入ること", async () => {
     const event = submitted(tenantA);
@@ -179,7 +185,8 @@ describe("enqueueOutbox と messaging.outbox", () => {
       );
 
       const { rows: seen } = await ctx.db.outboxRelay.query<{ tenant_id: string }>(
-        `SELECT tenant_id FROM messaging.outbox ORDER BY tenant_id`,
+        `SELECT tenant_id FROM messaging.outbox WHERE tenant_id = ANY($1) ORDER BY tenant_id`,
+        [[tenantA, tenantB]],
       );
 
       expect(seen.map((row) => row.tenant_id)).toEqual([tenantA, tenantB]);

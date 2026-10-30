@@ -4,7 +4,7 @@ import type { StorybookConfig } from "@storybook/react-vite";
 // (docs/adr/0033)。Storybook の stories は main.ts からの相対 path の glob の配列で、別のディレクトリを並べられる。
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.tsx", "../../../packages/ui/src/components/**/*.stories.tsx"],
-  addons: ["@storybook/addon-vitest"],
+  addons: ["@storybook/addon-a11y", "@storybook/addon-vitest"],
   framework: "@storybook/react-vite",
 };
 

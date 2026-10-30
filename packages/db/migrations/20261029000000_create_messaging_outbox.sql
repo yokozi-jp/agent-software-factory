@@ -17,7 +17,8 @@
 -- CompletedEventPublications.deletePublicationsOlderThan と同じ)。Outbox の表そのものをキューにはしない。
 --
 -- 権限と RLS:
--- - モジュールのロール (<module>_module): INSERT だけ。ポリシーは app.current_tenant で比べる。
+-- - モジュールのロール (<module>_module): INSERT だけ。ポリシーは app.current_tenant で比べる。所有者の migrator も、
+--   seed のためにこのポリシーで INSERT できる。
 -- - outbox_relay: SELECT、UPDATE、DELETE だけ。USING (true) のポリシーで全テナントの行を扱う。これが
 --   ADR 0011 の「全テナントを一度に処理しない」への唯一の例外 (ADR 0029)。
 -- - app_user: 何も持たない。outbox_relay のメンバーにもならない。
@@ -66,8 +67,10 @@ ALTER TABLE messaging.outbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messaging.outbox FORCE ROW LEVEL SECURITY;
 
 -- missing_ok を使わず、テナントを設定し忘れたらエラーにする (docs/adr/0011)。
+-- migrator (表の所有者) も入れる: seed が migrator でテナントを切り替えて書く (docs/adr/0036)。このポリシーも
+-- テナントで比べるので、migrator も別のテナントの行は入れられない。
 CREATE POLICY tenant_insert ON messaging.outbox
-  FOR INSERT TO claim_module, approval_module, closing_module
+  FOR INSERT TO migrator, claim_module, approval_module, closing_module
   WITH CHECK (tenant_id = current_setting('app.current_tenant')::uuid);
 
 -- RLS の例外は、この 1 つだけ (docs/adr/0029。カタログのテストが pg_policies で確かめる)。

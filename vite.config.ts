@@ -643,6 +643,27 @@ export default defineConfig({
           "react-effect/no-initialize-state": "error",
         },
       },
+      // How a story is written (docs/adr/0033, #315). The rules are those of eslint-plugin-storybook's recommended config
+      // that need no type information, which Oxlint's JS plugins cannot give. The warnings of that config are errors here.
+      // A story without `await` before `expect` or `userEvent` passes before the interaction ends, so it checks nothing.
+      // The rule for it in the plugin, await-interactions, reads only the imports of `@storybook/test`, not
+      // `storybook/test` (10.6.5), so it is left out; typescript/no-floating-promises of the type-aware rules above
+      // reports it, and a warning fails `vp check` (denyWarnings).
+      {
+        files: ["apps/web/src/**/*.stories.tsx", "packages/ui/src/**/*.stories.tsx"],
+        jsPlugins: [{ name: "storybook", specifier: "eslint-plugin-storybook" }],
+        rules: {
+          "storybook/context-in-play-function": "error",
+          "storybook/default-exports": "error",
+          "storybook/hierarchy-separator": "error",
+          "storybook/no-redundant-story-name": "error",
+          "storybook/no-renderer-packages": "error",
+          "storybook/prefer-pascal-case": "error",
+          "storybook/story-exports": "error",
+          "storybook/use-storybook-expect": "error",
+          "storybook/use-storybook-testing-library": "error",
+        },
+      },
       // The frontend logs nothing to the browser console (docs/logging/frontend.md).
       // Collect client errors with an error tracking service instead.
       {

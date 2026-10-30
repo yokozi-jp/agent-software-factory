@@ -15,6 +15,8 @@ const i18n = await createI18n("ja");
 configure({ asyncUtilTimeout: 5000 });
 
 const preview: Preview = {
+  // a11y (axe) の違反を、最初は警告にとどめる。'error' にすると、違反のある story のテストが失敗する。
+  parameters: { a11y: { test: "todo" } },
   decorators: [(Story) => createElement(I18nextProvider, { i18n }, createElement(Story))],
 };
 

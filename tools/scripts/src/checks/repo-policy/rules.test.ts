@@ -21,7 +21,7 @@ import {
   packageFiles,
   packageJson,
 } from "./fixtures/passing-repo.ts";
-import { eventsPackages, pathsHint } from "./modules.ts";
+import { eventsPackages, modulePackageNames, packageNames, pathsHint } from "./modules.ts";
 import { Tree } from "./tree.ts";
 import { violations as violationsWithBypass, type Repo } from "./rules.ts";
 
@@ -2456,6 +2456,33 @@ describe("ADR 0026: the events package of each module", () => {
     ]);
   });
 
+  it("takes package.json and events/package.json from packages/<name>/ only, and by that exact name", () => {
+    const stray = {
+      "vendor/packages/stray/events/package.json": "{}",
+      "packages/stray/events/package.json.bak": "{}",
+      "vendor/packages/stray/package.json": "{}",
+      "packages/stray/package.json.bak": "{}",
+    };
+    expect(eventsPackages(new Tree(repo(stray)))).toEqual(eventsPackages(new Tree(repo())));
+    expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
+  });
+
+  it("leaves shared, ui, i18n and db out of the module packages", () => {
+    const names = ["shared", "ui", "i18n", "db"];
+    const tree = new Tree(
+      repo(Object.fromEntries(names.map((name) => [`packages/${name}/package.json`, "{}"]))),
+    );
+    expect(packageNames(tree)).toEqual(expect.arrayContaining(names));
+    expect(modulePackageNames(tree).filter((name) => names.includes(name))).toEqual([]);
+    expect(modulePackageNames(tree)).toContain("module-fixtures");
+  });
+
+  it("says in the hint what to write for the @/* import", () => {
+    expect(pathsHint).toContain("compilerOptions.paths");
+    expect(pathsHint).toContain("./src/");
+    expect(pathsHint).toContain("docs/adr/0033");
+  });
+
   it("refuses an events package under a directory that is not a module of moduleOrder", () => {
     expect(violations(repo(eventsFiles("shared")))).toEqual([
       `packages/shared/events is an events package, but shared is not a module of moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
@@ -2861,6 +2888,8 @@ describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => 
           "packages/db/src/imports.ts": fixture,
           "packages/db/src/__fixtures__/deep/imports.ts": fixture,
           "packages/db/src/__fixtures__/notes.md": fixture,
+          "vendor/packages/db/src/__fixtures__/imports.ts": fixture,
+          "packages/db/src/__fixtures__/imports.ts.bak": fixture,
         }),
       ),
     ).toHaveLength(3);
@@ -2934,6 +2963,8 @@ describe("ADR 0026: nothing resolves a package that a package.json does not decl
     ["a target that is not a list", { "@/*": "./src/*" }],
     ["an empty list of targets", { "@/*": [] }],
     ["one entry outside src/", { "@/*": ["./src/*"], "#x": ["./lib/x.ts"] }],
+    ["one target outside src/ in a list", { "@/*": ["./src/*", "../x/*"] }],
+    ["a target that is not a string", { "@/*": [5] }],
   ])("refuses a tsconfig.json whose paths have %s", (_name, paths) => {
     expect(
       violations(
@@ -3866,6 +3897,46 @@ describe("ADR 0029: the imports that bypass the Outbox and the transaction have 
     expect(failures.filter(bypassFailure)).toEqual([]);
   });
 
+  it("takes the fixture of packages/db/src from that directory, in a file *.ts or *.tsx", () => {
+    const only = (path: string) =>
+      violationsWithBypass(withDb({ ...remove("db"), [path]: bypassOutboxFixture }));
+    expect(only("packages/db/src/__fixtures__/other.tsx")).toEqual([]);
+    expect(only("vendor/packages/db/src/__fixtures__/bypass.ts")).toEqual([
+      missing("@x/sqs", "db"),
+    ]);
+    expect(only("packages/db/src/__fixtures__/bypass.ts.bak")).toEqual([missing("@x/sqs", "db")]);
+  });
+
+  it("takes the fixture of apps/api/src from that directory, in any folder below it", () => {
+    const only = (path: string) =>
+      violationsWithBypass(repo({ ...remove("api"), [path]: bypassFixture }));
+    const none = [missing("@x/sqs", "api"), missing("pg", "api")];
+    expect(only("apps/api/src/routes/__fixtures__/bypass.ts")).toEqual([]);
+    expect(only("vendor/apps/api/src/__fixtures__/bypass.ts")).toEqual(none);
+    expect(only("apps/api/src/__fixtures__/bypass.ts.bak")).toEqual(none);
+  });
+
+  it("reads a list that has a comment between the = and the [", () => {
+    const commented = viteConfig.replace(
+      'const connectionPackages = ["pg"];',
+      'const connectionPackages = // the clients\n  ["pg"];',
+    );
+    expect(violationsWithBypass(repo({ "vite.config.ts": commented }))).toEqual([]);
+  });
+
+  it("asks the fixtures of src, and of no layer, when the only package is shared", () => {
+    const onlyShared = repo({
+      ...noModules,
+      "packages/module-fixtures/package.json": undefined,
+      ...remove("src", "http"),
+    });
+    expect(violationsWithBypass(onlyShared).filter(bypassFailure)).toEqual([
+      missing("@x/sqs", "src"),
+      missing("pg", "src"),
+      missing("sql", "src"),
+    ]);
+  });
+
   it("asks nothing of a layer that vite.config.ts does not have", () => {
     const withoutHttp = viteConfig.replace('  http: ["domain"],\n', "");
     const failures = violationsWithBypass(
@@ -3953,6 +4024,66 @@ describe("ADR 0029: withTables is called in infrastructure/ only, and has a fixt
     ).toEqual([]);
   });
 
+  it("asks for src, and for no layer, when the only package is shared", () => {
+    expect(
+      withTablesFailures(
+        repo({
+          ...noModules,
+          "packages/module-fixtures/package.json": undefined,
+          [file("src")]: undefined,
+          [file("src/domain")]: undefined,
+          [file("src/http")]: undefined,
+        }),
+      ),
+    ).toEqual([missing("src")]);
+  });
+
+  it("does not take a text without a call of withTables for the call that infrastructure may make", () => {
+    const layered = { "vite.config.ts": withInfrastructure };
+    expect(
+      withTablesFailures(
+        repo({ ...layered, [file("src/infrastructure")]: "export const x = 1;\n" }),
+      ),
+    ).toEqual([allowedMissing]);
+  });
+
+  it.each([
+    [
+      "a comment after code",
+      "const a = 1; // oxlint-disable-next-line no-restricted-properties\n  trx.withTables();\n",
+      false,
+    ],
+    [
+      "an indented comment",
+      "  // oxlint-disable-next-line no-restricted-properties\n  trx.withTables();\n",
+      true,
+    ],
+    [
+      "a comment with no space after //",
+      "//oxlint-disable-next-line no-restricted-properties\ntrx.withTables();\n",
+      true,
+    ],
+    [
+      "two spaces before the rule",
+      "// oxlint-disable-next-line  no-restricted-properties\ntrx.withTables();\n",
+      true,
+    ],
+    [
+      "a tab before the rule",
+      "// oxlint-disable-next-line\tno-restricted-properties\ntrx.withTables();\n",
+      true,
+    ],
+    [
+      "a space after //",
+      "//  oxlint-disable-next-line no-restricted-properties\ntrx.withTables();\n",
+      true,
+    ],
+  ])("disable comment: %s", (_name, text, counts) => {
+    expect(withTablesFailures(repo({ [file("src")]: text }))).toEqual(
+      counts ? [] : [missing("src")],
+    );
+  });
+
   it("does not ask for layers when there is no module", () => {
     expect(withTablesFailures(repo({ ...noModules, [file("src")]: undefined }))).toEqual([
       missing("src"),
@@ -3998,5 +4129,65 @@ describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared
         .map((path) => [path, undefined]),
     );
     expect(sessionFailures(repo(noApi))).toEqual([]);
+  });
+});
+
+describe("ADR 0033: each part of packages/ui has a story next to it", () => {
+  const components = "packages/ui/src/components";
+
+  it("passes a part with a story and a story with no part", () => {
+    expect(
+      violations(
+        repo({
+          [`${components}/button.tsx`]: "export {};",
+          [`${components}/button.stories.tsx`]: "export {};",
+          [`${components}/orphan.stories.tsx`]: "export {};",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("names a part with no story, and the file to add", () => {
+    expect(violations(repo({ [`${components}/dialog.tsx`]: "export {};" }))).toEqual([
+      `${components}/dialog.tsx has no story. Add ${components}/dialog.stories.tsx, whose play functions are the part's component test (docs/adr/0033).`,
+    ]);
+  });
+
+  it("names every part with no story, at any depth", () => {
+    expect(
+      violations(
+        repo({
+          [`${components}/button.tsx`]: "export {};",
+          [`${components}/button.stories.tsx`]: "export {};",
+          [`${components}/dialog.tsx`]: "export {};",
+          [`${components}/form/field.tsx`]: "export {};",
+        }),
+      ).map((failure) => failure.split(" ")[0]),
+    ).toEqual([`${components}/dialog.tsx`, `${components}/form/field.tsx`]);
+  });
+
+  it("wants the story next to the part, not in another directory", () => {
+    expect(
+      violations(
+        repo({
+          [`${components}/form/field.tsx`]: "export {};",
+          [`${components}/field.stories.tsx`]: "export {};",
+        }),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("reads only tsx files in packages/ui/src/components", () => {
+    expect(
+      violations(
+        repo({
+          [`${components}/helper.ts`]: "export {};",
+          [`${components}/button.test.tsx`]: "export {};",
+          "packages/ui/src/lib/format.tsx": "export {};",
+          "packages/ui/src/componentsx/part.tsx": "export {};",
+          "apps/web/src/components/menu.tsx": "export {};",
+        }),
+      ),
+    ).toEqual([]);
   });
 });

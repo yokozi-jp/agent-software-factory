@@ -108,7 +108,7 @@ down が `RAISE EXCEPTION` だけであることと、up の先頭の `SET LOCAL
 
 手で触るためのローカルのデータと、結合テストのテンプレートの DB に入れるデータは、migration の外の seed に置きます。決定と根拠は [ADR 0036](../adr/0036-seed-in-typescript-through-rls.md) にあります。次の書き方を守ります。
 
-- **置き場所**: `packages/db/src/seed/` の TypeScript で、モジュールごとのファイルと `index.ts` に分けます。`packages/db` への移動 ([Issue #337](https://github.com/yokozi-jp/agent-software-factory/issues/337)) と seed の入口の実装 ([Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332)) が終わるまで、このディレクトリはありません。
+- **置き場所**: `packages/db/src/seed/` の TypeScript で、モジュールごとのファイルと `index.ts` に分けます。入口は `index.ts` の `seed(databaseUrl)` で、今は `claim.ts` だけがあります。
 - **流し方**: `pnpm db:seed` (`DATABASE_URL` に `migrator` の接続 URL を渡す)、またはコードから `seed(databaseUrl)`。`migrator` の 1 つのトランザクションの中で `set_config('app.current_tenant', …, true)` を切り替えて、RLS を通して書きます。`inTenantTransaction` と superuser は使いません。
 - **冪等にしない**: テナント A の行があれば、何もせずに失敗します。やり直すときは DB を作り直してから流します。
 - **データ**: 名前で呼ぶデータは固定のリテラル、件数を増やすデータは `fakerJA` と固定の `faker.seed()` で作ります。id は採番に任せ、`now()` と乱数は使いません。

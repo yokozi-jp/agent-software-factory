@@ -32,7 +32,7 @@ tags: [domain-model, runbook, modules, nx]
    - `apps/api/src/db/databases.ts` で、型を import して `ModuleDatabases` と `createModuleDatabases` に足します。
    - `apps/api/src/app.ts` で、パッケージを import します。
 5. **migration で `CREATE SCHEMA <name>;` を足す**: `packages/db/migrations/` に、前向きの migration を新しく書きます ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。既存の migration は書き換えません。
-   - `messaging.outbox` への書き込みも、同じ migration で足します。カタログのテストは、すべてのモジュールのロールが `INSERT` を持つことを求めます。`GRANT INSERT ON messaging.outbox TO <name>_module;` と、`ALTER POLICY tenant_insert ON messaging.outbox TO <既存のロール>, <name>_module;` を書きます (ロールが持つのは `INSERT` だけです)。
+   - `messaging.outbox` への書き込みも、同じ migration で足します。カタログのテストは、すべてのモジュールのロールが `INSERT` を持つことを求めます。`GRANT INSERT ON messaging.outbox TO <name>_module;` と、`ALTER POLICY tenant_insert ON messaging.outbox TO <既存のロール (migrator を含む)>, <name>_module;` を書きます (ロールが持つのは `INSERT` だけです)。
 6. **イベントを受けるなら、`processed_message` を足す**: モジュールがほかのモジュールのイベントを受けるときは、`packages/db/templates/processed_message.sql` の `{{module}}` を `<name>` に替えて、前向きの migration として `packages/db/migrations/` に写します ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。受ける処理は `shared` の `defineConsumer` で登録し、`apps/api/src/db/consumers.test.ts` の `examples` に処理の名前ごとの入力例を足します。入力例がないと全件テストが落ちます。
 7. **型を生成する**: `pnpm exec nx db-types db` を実行し、`packages/<name>/src/infrastructure/db.gen.ts` を commit します。
 8. **`knip.jsonc` を直す**: `effect` を使うコードがまだないモジュールは、`workspaces` に `"packages/<name>": { "ignoreDependencies": ["effect"] }` を足します。`packages/db` の `ignoreDependencies` にも、`packages/db/package.json` の `devDependencies` に足したモジュールの名前を足します。
