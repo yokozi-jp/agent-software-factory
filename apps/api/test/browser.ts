@@ -1,6 +1,6 @@
 import { oidcProviderId } from "../src/auth/auth.ts";
 
-/** Hono アプリと外の HTTP サーバー (Keycloak) をまたいで、ブラウザのように Cookie を持ち回す。 */
+/** Hono アプリと外の HTTP サーバー (テスト用 IdP) をまたいで、ブラウザのように Cookie を持ち回す。 */
 interface RequestableApp {
   request(input: string, init?: RequestInit): Response | Promise<Response>;
 }
@@ -88,7 +88,7 @@ export class TestBrowser {
     throw new Error("too many redirects");
   }
 
-  /** Keycloak のログイン画面を通ってログインする。成功するとアプリのセッション Cookie を持つ。 */
+  /** テスト用 IdP (test/oidc-provider.ts) のログイン画面を通ってログインする。成功するとアプリのセッション Cookie を持つ。 */
   async login({ username, password }: { username: string; password: string }): Promise<Response> {
     const start = await this.request("/api/auth/sign-in/social", {
       method: "POST",
@@ -97,10 +97,11 @@ export class TestBrowser {
     });
     const url = await readUrl(start);
 
-    const loginPage = await this.request(url);
+    const loginPage = await this.follow(url);
     const html = await loginPage.text();
-    const action = /<form[^>]*id="kc-form-login"[^>]*action="([^"]+)"/.exec(html)?.[1];
-    if (action === undefined) throw new Error("Keycloak のログイン画面にフォームがない");
+    const action = /<form[^>]*id="op-login-form"[^>]*action="([^"]+)"/.exec(html)?.[1];
+    if (action === undefined)
+      throw new Error(`IdP のログイン画面にフォームがない (status ${loginPage.status})`);
 
     const submitted = await this.request(action.replaceAll("&amp;", "&"), {
       method: "POST",
@@ -108,7 +109,7 @@ export class TestBrowser {
       body: new URLSearchParams({ username, password }).toString(),
     });
     const callback = submitted.headers.get("location");
-    if (callback === null) throw new Error("Keycloak がログインを拒否した");
+    if (callback === null) throw new Error("IdP がログインを拒否した");
 
     // IdP から戻る遷移は、別のサイトから始まる。
     return this.follow(callback, {}, { crossSite: true });

@@ -28,9 +28,10 @@
     "@hono/vite-dev-server": "catalog:",
     "@testcontainers/postgresql": "catalog:",
     "@types/node": "catalog:",
+    "@types/oidc-provider": "catalog:",
     "@types/pg": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "testcontainers": "catalog:",
+    "oidc-provider": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

@@ -3,7 +3,7 @@ import { genericOAuth, organization } from "better-auth/plugins";
 import type { Pool } from "pg";
 
 // 認証は Better Auth の Cookie の BFF にする (docs/adr/0022)。
-// ログインは OIDC の 1 経路だけで、IdP の違い (ローカルと CI は Keycloak、本番は Cognito か Entra ID) は
+// ログインは OIDC の 1 経路だけで、IdP の違い (ローカルと CI は node-oidc-provider、本番は Cognito か Entra ID) は
 // issuer、client ID、secret の設定だけにする。メールとパスワードのログインは使わない。
 
 /** 無操作で 30 分、最長で 8 時間 (OWASP Session Management Cheat Sheet、docs/adr/0022)。 */
@@ -11,7 +11,7 @@ const defaultSessionSeconds = { idle: 30 * 60, absolute: 8 * 60 * 60 } as const;
 
 /**
  * IdP の ID。画面が `signIn.social({ provider })` に渡し、callback の path にも入る。
- * IdP が Keycloak でも Cognito でも変えない (差し替えを設定だけにするため)。
+ * IdP が node-oidc-provider でも Cognito でも変えない (差し替えを設定だけにするため)。
  */
 export const oidcProviderId = "oidc";
 
