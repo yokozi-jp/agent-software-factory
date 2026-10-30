@@ -465,9 +465,10 @@ export default defineConfig({
       // A cycle between the files of a package or an app (docs/adr/0026). This override sets import/no-cycle and
       // nothing else, so it takes no rule from the overrides above and below: Oxlint keeps only the last override
       // that sets a given rule for a file, and none of the others sets this one. apps/web is reached too, which the
-      // override for apps/api/src above is not. The fixture is packages/module-fixtures/src/__fixtures__/cycle-a.ts.
+      // override for apps/api/src above is not, and so is the events package nested in each module. The fixture is
+      // packages/module-fixtures/src/__fixtures__/cycle-a.ts.
       {
-        files: ["apps/*/src/**", "packages/*/src/**"],
+        files: ["apps/*/src/**", "packages/*/src/**", "packages/*/events/src/**"],
         plugins: ["import"],
         rules: { "import/no-cycle": "error" },
       },

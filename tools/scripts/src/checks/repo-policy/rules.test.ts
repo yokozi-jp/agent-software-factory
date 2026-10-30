@@ -2545,6 +2545,7 @@ describe("ADR 0026: the events package of each module", () => {
   });
 });
 
+// The parts of the fixture of packages/db (docs/adr/0038), and a file that has all three.
 const dbFixtureParts = {
   value: "oxlint-disable-next-line no-restricted-imports",
   type: "import type {",
