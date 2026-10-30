@@ -46,6 +46,12 @@
     "packages/claim": { "ignoreDependencies": ["effect"] },
     "packages/approval": { "ignoreDependencies": ["effect"] },
     "packages/closing": { "ignoreDependencies": ["effect"] },
+    // The events packages declare zod and shared for the schemas of the events, which the sample feature writes
+    // (docs/adr/0026). Their index.ts is empty until then, so both look unused. Remove an entry when a schema of
+    // the package imports it.
+    "packages/claim/events": { "ignoreDependencies": ["zod", "@agent-software-factory/shared"] },
+    "packages/approval/events": { "ignoreDependencies": ["zod", "@agent-software-factory/shared"] },
+    "packages/closing/events": { "ignoreDependencies": ["zod", "@agent-software-factory/shared"] },
     // module-fixtures holds only the fixtures of the overrides that reach every module (docs/adr/0026). They import
     // effect, and Knip does not read __fixtures__/, so the dependency always looks unused.
     "packages/module-fixtures": { "ignoreDependencies": ["effect"] },

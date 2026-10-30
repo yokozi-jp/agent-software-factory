@@ -11,6 +11,7 @@ import {
   withTablesAllowedFixture,
   withTablesFixture,
   domainFixture,
+  eventsFiles,
   factoryAgent,
   migration,
   moduleFixture,
@@ -2413,6 +2414,137 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
 });
 
 // The parts of the fixture of packages/db (docs/adr/0038), and a file that has all three.
+describe("ADR 0026: the events package of each module", () => {
+  const events = (module: string) => `packages/${module}/events/package.json`;
+  const wrongDependency = (module: string, field: string, dependency: string) =>
+    `${events(module)} has @agent-software-factory/${dependency} in ${field}. An events package depends on zod and shared only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`;
+  const workspace = { "@agent-software-factory/claim": "workspace:*" };
+
+  it("passes the events packages of the passing repository", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
+    "refuses an events package that depends on a package of the workspace but shared, in %s",
+    (field) => {
+      expect(violations(repo(eventsFiles("approval", { [field]: workspace })))).toEqual([
+        wrongDependency("approval", field, "claim"),
+      ]);
+    },
+  );
+
+  it("refuses an events package that depends on the module it belongs to", () => {
+    expect(
+      violations(
+        repo(
+          eventsFiles("claim", {
+            dependencies: { "@agent-software-factory/claim": "workspace:*" },
+          }),
+        ),
+      ),
+    ).toEqual([wrongDependency("claim", "dependencies", "claim")]);
+  });
+
+  it("refuses an events package that has the tag type:module", () => {
+    expect(
+      violations(
+        repo(eventsFiles("claim", { nx: { name: "claim-events", tags: ["type:module"] } })),
+      ),
+    ).toEqual([
+      `${events("claim")} has the tag type:module. An events package is not a module: a module is a name of moduleOrder, and the tag would ask for a place there (docs/adr/0026).`,
+    ]);
+  });
+
+  it("refuses an events package under a directory that is not a module of moduleOrder", () => {
+    expect(violations(repo(eventsFiles("shared")))).toEqual([
+      `packages/shared/events is an events package, but shared is not a module of moduleOrder in tools/scripts/src/checks/repo-policy/modules.ts. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
+    ]);
+  });
+
+  it("refuses a module with no events package", () => {
+    expect(
+      violations(
+        repo({ ...eventsFiles("claim"), "packages/claim/events/package.json": undefined }),
+      ),
+    ).toEqual([
+      `packages/claim has no events package at packages/claim/events/package.json. Every module has one, for the events it sends to the other modules (docs/adr/0026, docs/domain-model/add-module.md).`,
+    ]);
+  });
+
+  it("refuses the name, the exports, the Nx project name, the check script and the index.ts that differ", () => {
+    expect(
+      violations(
+        repo({
+          ...eventsFiles("claim", {
+            name: "@agent-software-factory/claim",
+            exports: { ".": "./src/index.ts", "./x": "./src/x.ts" },
+            scripts: {},
+            nx: { name: "claim" },
+          }),
+          "packages/claim/events/src/index.ts": undefined,
+        }),
+      ),
+    ).toEqual([
+      `${events("claim")} must have the name "@agent-software-factory/claim-events", the scope and the module and events (docs/adr/0026).`,
+      `${events("claim")} must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+      `packages/claim/events/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
+      `${events("claim")} must have the Nx project name "claim-events" (nx.name), the module and events (docs/adr/0026).`,
+      `${events("claim")} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
+    ]);
+  });
+
+  it("lets each module depend on the events package of any module, itself included", () => {
+    const events = (module: string) => ({
+      [`@agent-software-factory/${module}-events`]: "workspace:*",
+    });
+    expect(
+      violations(
+        repo({
+          ...packageFiles("claim", {
+            dependencies: { "@agent-software-factory/shared": "workspace:*", ...events("closing") },
+          }),
+          ...packageFiles("approval", {
+            dependencies: { "@agent-software-factory/claim": "workspace:*", ...events("approval") },
+            devDependencies: events("claim"),
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses a module that depends on the events package of a module that does not exist, and shared on any", () => {
+    expect(
+      violations(
+        repo({
+          ...packageFiles("claim", {
+            dependencies: { "@agent-software-factory/billing-events": "workspace:*" },
+          }),
+          ...packageFiles("shared", {
+            dependencies: { "@agent-software-factory/claim-events": "workspace:*" },
+          }),
+        }),
+      ),
+    ).toEqual([
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs billing-events, or move what both need into shared (docs/adr/0026).`,
+      `packages/shared/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs claim-events, or move what both need into shared (docs/adr/0026).`,
+    ]);
+  });
+
+  it("still refuses a module that depends on the body of a module before it", () => {
+    expect(
+      violations(
+        repo(
+          packageFiles("claim", {
+            dependencies: { "@agent-software-factory/approval": "workspace:*" },
+          }),
+        ),
+      ),
+    ).toEqual([
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs approval, or move what both need into shared (docs/adr/0026).`,
+    ]);
+  });
+});
+
 const dbFixtureParts = {
   value: "oxlint-disable-next-line no-restricted-imports",
   type: "import type {",

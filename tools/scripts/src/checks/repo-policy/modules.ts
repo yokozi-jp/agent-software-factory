@@ -44,6 +44,13 @@ const dependOnNone: readonly string[] = [shared, moduleFixtures, ui, i18n];
 const db = "db";
 const dbApp = "apps/api";
 
+// The events package of a module is packages/<module>/events (docs/adr/0026): nested in the module, as a project of
+// its own. The modules whose directory has one.
+const eventsModuleNames = (tree: Tree): string[] =>
+  tree.paths.flatMap((path) => /^packages\/([^/]+)\/events\/package\.json$/.exec(path)?.[1] ?? []);
+
+const eventsSuffix = "-events";
+
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
 // and module-fixtures. Every package under packages/ but shared, ui, i18n and db.
 export const modulePackageNames = (tree: Tree): string[] =>
@@ -108,6 +115,10 @@ export function packageManifests(tree: Tree): string[] {
   });
 }
 
+const isEventsPackage = (tree: Tree, name: string): boolean =>
+  name.endsWith(eventsSuffix) &&
+  eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
+
 // Every package under packages/ but shared, module-fixtures, ui and i18n is a module of moduleOrder, and depends on no
 // package of the workspace but shared and the modules after it. shared, module-fixtures, ui and i18n depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
@@ -131,11 +142,70 @@ export function modulesDependOneWay(tree: Tree): string[] {
         if (target === db) continue;
         if (!dependsOnNone && (target === shared || moduleOrder.indexOf(target) > position))
           continue;
+        // A module depends on the events package of any module: the events are how the modules talk without
+        // depending on each other's body.
+        if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         failures.push(
           `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared and the modules after it in closing → approval → claim, and shared, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared (docs/adr/0026).`,
         );
       }
   }
+  return failures;
+}
+
+// The events package of each module (packages/<module>/events): it holds the schemas of the events the module
+// sends, and depends on zod and shared only, so that a module which receives the events does not depend on the
+// body of the one that sends them. It is not a module: it has no place in moduleOrder and no type:module tag.
+export function eventsPackages(tree: Tree): string[] {
+  const failures: string[] = [];
+  const events = eventsModuleNames(tree);
+  for (const module of events) {
+    const path = `packages/${module}/events/package.json`;
+    const json = record(tree.parsed(path));
+    if (!moduleOrder.includes(module)) {
+      failures.push(
+        `packages/${module}/events is an events package, but ${module} is not a module of moduleOrder in ${moduleOrderFile}. Only a module has one (docs/adr/0026, docs/domain-model/add-module.md).`,
+      );
+      continue;
+    }
+    if (json.name !== `${scope}/${module}${eventsSuffix}`)
+      failures.push(
+        `${path} must have the name "${scope}/${module}${eventsSuffix}", the scope and the module and events (docs/adr/0026).`,
+      );
+    if (JSON.stringify(json.exports) !== JSON.stringify(publicApi))
+      failures.push(
+        `${path} must have the exports ${JSON.stringify(publicApi)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+      );
+    if (!tree.paths.includes(`packages/${module}/events/src/index.ts`))
+      failures.push(
+        `packages/${module}/events/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
+      );
+    const nx = record(json.nx);
+    if (nx.name !== `${module}${eventsSuffix}`)
+      failures.push(
+        `${path} must have the Nx project name "${module}${eventsSuffix}" (nx.name), the module and events (docs/adr/0026).`,
+      );
+    if (record(json.scripts).check !== "vp check")
+      failures.push(
+        `${path} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
+      );
+    if (list(nx.tags).includes(moduleTag))
+      failures.push(
+        `${path} has the tag ${moduleTag}. An events package is not a module: a module is a name of moduleOrder, and the tag would ask for a place there (docs/adr/0026).`,
+      );
+    for (const field of dependencyFields)
+      for (const dependency of Object.keys(record(json[field]))) {
+        if (!dependency.startsWith(`${scope}/`) || dependency === `${scope}/${shared}`) continue;
+        failures.push(
+          `${path} has ${dependency} in ${field}. An events package depends on zod and shared only: the schemas of the events must not pull in the code of a module (docs/adr/0026).`,
+        );
+      }
+  }
+  for (const module of packageNames(tree))
+    if (moduleOrder.includes(module) && !events.includes(module))
+      failures.push(
+        `packages/${module} has no events package at packages/${module}/events/package.json. Every module has one, for the events it sends to the other modules (docs/adr/0026, docs/domain-model/add-module.md).`,
+      );
   return failures;
 }
 

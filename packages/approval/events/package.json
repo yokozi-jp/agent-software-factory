@@ -1,0 +1,23 @@
+{
+  "name": "@agent-software-factory/approval-events",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@agent-software-factory/shared": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "approval-events"
+  }
+}
