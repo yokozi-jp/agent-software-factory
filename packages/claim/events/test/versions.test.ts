@@ -1,4 +1,4 @@
-import { eventFixtureProblems } from "@agent-software-factory/shared";
+import { eventFixtureProblems } from "@agent-software-factory/shared-kernel";
 import { expect, it } from "vite-plus/test";
 import { claimEvents } from "../src/index.ts";
 

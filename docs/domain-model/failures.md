@@ -20,7 +20,7 @@ tags: [domain-model, convention, result, error-handling]
 
 ## Result
 
-`Result` の型は `shared` に置き、`domain` は `import type` で使います。
+`Result` の型は `shared-kernel` に置き、`domain` は `import type` で使います。
 
 ```ts
 type Result<T, E> =

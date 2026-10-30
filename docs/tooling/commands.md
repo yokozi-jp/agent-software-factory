@@ -30,7 +30,7 @@ tags: [tooling, reference, nx, vite-plus, pnpm]
 apps/
   api/   Hono (Node.js)。GET /health
   web/   React + TanStack Router
-packages/  サンプル機能のモジュール (claim、approval、closing) と共有コード (shared)。ADR 0026
+packages/  サンプル機能のモジュール (claim、approval、closing) と共有コード (shared-kernel)。ADR 0026
   <module>/src/  index.ts (公開 API) と層 (domain/、application/、infrastructure/、http/)
 tools/
   lint-plugins/ 自作の Oxlint の JS plugin とそのテスト (Nx の project lint-plugins。ADR 0030)

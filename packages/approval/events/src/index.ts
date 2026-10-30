@@ -1,4 +1,4 @@
-import { defineEvent } from "@agent-software-factory/shared";
+import { defineEvent } from "@agent-software-factory/shared-kernel";
 import { z } from "zod";
 
 // The events that the approval module sends (docs/adr/0046). The claim module reads them to update its copy of the

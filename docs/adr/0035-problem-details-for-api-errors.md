@@ -21,15 +21,15 @@ tags: [adr, web-api, error, problem-details, rfc9457, hono, openapi, i18n]
 - **文面**: `title` と `detail` は英語で固定し、`Content-Language` を付けません。利用者向けの文面は web が `type` から i18n で出します。
 - **5xx**: `type`、`title`、`status` だけを返し、例外のメッセージとスタックは、どの環境でも出しません。今の span があれば、拡張の `trace_id` を全ての Problem に付けます。利用者はブラウザの向こうの業務の利用者で、`response-body.md` の「内部 API なら詳細を許容」に当たりません。環境で出し分けると、設定の誤りで漏れます。
 - **検証エラー**: 400 の `errors` は `[{ pointer, code, ...差し込みの値 }]` です。zod の issue から作り、`pointer` は RFC 9457 の例と同じ JSON Pointer、`code` は zod の issue の `code` です。`errors` の要素に `detail` は持ちません (規約の「`detail` は必須」を外します)。`title` と同じく英語の文面を返しても web は使わず、`pointer` と `code` から i18n で出すためです。422 も入力項目に結びつくなら `pointer` を持ちます。web はどちらも入力欄の直下に出し、欄に当たらないものはフォームの上に出します。
-- **変換の場所**: 次の 4 か所だけで、`shared` の 1 つの関数を通します。ほかの場所で `c.json(..., 4xx)` を書きません。
+- **変換の場所**: 次の 4 か所だけで、`shared-kernel` の 1 つの関数を通します。ほかの場所で `c.json(..., 4xx)` を書きません。
   - `defaultHook` (`@hono/zod-openapi`): 400。
   - `app.onError`: `HTTPException` はそのステータス、それ以外は 500。5xx のログもここで書きます。ログのキーとレベルは [Issue #229](https://github.com/yokozi-jp/agent-software-factory/issues/229) に任せます。
   - `app.notFound`: 404。
   - route の失敗の `_tag` の `switch`: 422 と 409。
 
-  `sessionGuard`、`requireSession`、`csrfProtection` の middleware は、4 か所の外に応答を作らず、`shared` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
+  `sessionGuard`、`requireSession`、`csrfProtection` の middleware は、4 か所の外に応答を作らず、`shared-kernel` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
 
-- **置き場所**: Problem の schema と関数は `shared` の公開 API に置きます。`shared` が `@hono/zod-openapi` に依存します。各モジュールの `http` の層が使うので、`apps/api` には置けません ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。`domain` は `import type` のままで、HTTP を知りません。
+- **置き場所**: Problem の schema と関数は `shared-kernel` の公開 API に置きます。`shared-kernel` が `@hono/zod-openapi` に依存します。各モジュールの `http` の層が使うので、`apps/api` には置けません ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。`domain` は `import type` のままで、HTTP を知りません。
 - **Better Auth**: `/api/auth/*` は Better Auth の `{ code, message }` のまま、契約の外に置きます。その前に掛かる自前の middleware は Problem Details です ([ADR 0022](0022-better-auth-cookie-bff.md))。
 - **405**: 返しません。Hono の既定の 404 のままにします。`status-codes.md` の「405 を返す」とは違います。
 - **型の連鎖**: `domain` の `_tag` の union → `http` の `switch` と、route の `type` の一覧の `satisfies` での突き合わせ → route の zod schema の `type` のリテラルの union → `hc` → web の `Record<ProblemType, キー>`。`_tag` を足して `http` の対応を忘れると `switch` の網羅で、`type` の一覧に足し忘れると `satisfies` で、web の文面を足し忘れると `Record` で、型の検査が止まります ([ADR 0027](0027-domain-model-as-pure-functions-and-unions.md) の「失敗を型に出す」を web まで伸ばします)。web は型付きの失敗で `parseResponse` を使わず、`res.status` で分岐します。`parseResponse` の `DetailedError` は `detail.data` が型を持たないためです (Hono 4.13.13)。
@@ -62,7 +62,7 @@ Content-Type: application/problem+json
 - 型と spec の前提は、scratch の最小構成で確かめました (2026-10-28。hono 4.13.13、zod 4.6.7、`@hono/zod-openapi` 1.6.3、TypeScript 7.0.2、oasdiff 1.34.1)。確かめたのは次の点です。実装の型テストは [Issue #307](https://github.com/yokozi-jp/agent-software-factory/issues/307) で書きます。
   - `application/problem+json` の応答は、`hc` の `res.json()` で型が付きます。
   - `res.status === 422` で分岐すると、`res.json()` の `type` がその route の 422 のリテラルの union に絞られます (400、409 も同じ。違うリテラルを書くとコンパイルが落ちる)。
-  - `defaultHook` の戻り値は route の応答の型に入りません。`res.status` の型は route に書いた 200、400、422、409 だけで、`onError` と `notFound` と middleware が返す 404、500、401 などは入りません。web は `res.status` の残りを共通の Problem として扱い、共通の `type` の union (`shared` の schema) で絞ります。`defaultHook` の 400 は、route が 400 を書いたときだけ型に出ます。
+  - `defaultHook` の戻り値は route の応答の型に入りません。`res.status` の型は route に書いた 200、400、422、409 だけで、`onError` と `notFound` と middleware が返す 404、500、401 などは入りません。web は `res.status` の残りを共通の Problem として扱い、共通の `type` の union (`shared-kernel` の schema) で絞ります。`defaultHook` の 400 は、route が 400 を書いたときだけ型に出ます。
   - `.openapi({ "x-extensible-enum": [...] })` で、spec の `type` を `string` と `x-extensible-enum` にでき、TypeScript の型はリテラルの union のままです。
   - oasdiff 1.34.1 は、`enum` の `type` に値を足すと `response-property-enum-value-added` (ERR) で止め、`x-extensible-enum` に足すと止めません。
 - `domain` の失敗の `_tag` を足したら、`http` の `switch`、route の `type` の一覧、web の文面の 3 か所を足します。足し忘れは型の検査が止めます。

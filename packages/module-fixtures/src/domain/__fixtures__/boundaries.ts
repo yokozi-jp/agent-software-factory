@@ -3,15 +3,15 @@
 // or its `files` stop reaching packages/*/src/domain/, the disable comments are unused and
 // `vp check` fails (reportUnusedDisableDirectives). Knip and jscpd skip __fixtures__/. Only the
 // fixtures of the other layers import this file, to break the rule.
-// @ts-expect-error -- fixture: the module does not depend on shared, so the import does not resolve
-// oxlint-disable-next-line no-restricted-imports -- fixture: domain imports only the types of shared
-import "@agent-software-factory/shared";
+// @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
+// oxlint-disable-next-line no-restricted-imports -- fixture: domain imports only the types of shared-kernel
+import "@agent-software-factory/shared-kernel";
 // @ts-expect-error -- fixture: the module does not depend on hono, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no library
 import "hono";
 // oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no other layer
 import "../../application/__fixtures__/boundaries.ts";
-// The one import that domain may have: a type of shared. It carries no disable comment, so `vp check`
+// The one import that domain may have: a type of shared-kernel. It carries no disable comment, so `vp check`
 // fails if the rule stops it.
-// @ts-expect-error -- fixture: the module does not depend on shared, so the import does not resolve
-export type { Shared } from "@agent-software-factory/shared";
+// @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
+export type { SharedKernel } from "@agent-software-factory/shared-kernel";

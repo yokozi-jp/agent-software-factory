@@ -46,10 +46,10 @@ export const moduleSchemas: readonly string[] = moduleSchemasOf(repositoryRoot);
 
 /**
  * モジュールのスキーマのほかに、型を生成する共有のスキーマと、型を書くファイル。
- * `messaging` は Outbox の表で、型は `packages/shared` に置く (docs/adr/0029)。
+ * `messaging` は Outbox の表で、型は `packages/shared-kernel` に置く (docs/adr/0029)。
  */
 export const sharedSchemaFiles: Readonly<Record<string, string>> = {
-  messaging: "packages/shared/src/messaging.gen.ts",
+  messaging: "packages/shared-kernel/src/messaging.gen.ts",
 };
 
 /** 型を生成するスキーマ: モジュールのスキーマと共有のスキーマ。 */

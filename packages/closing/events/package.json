@@ -11,7 +11,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@agent-software-factory/shared": "workspace:*",
+    "@agent-software-factory/shared-kernel": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

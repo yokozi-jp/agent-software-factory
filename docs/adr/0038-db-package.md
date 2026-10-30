@@ -20,9 +20,9 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
   - `apps/api/test/` には、`apps/api` のコードを試す道具 (テスト用 IdP の `oidc-provider.ts`、`auth-fixtures.ts`、`browser.ts`、`server-process.ts`、IdP のユーザー) を残します。`apps/api/test/global-setup.ts` は `@agent-software-factory/db/testing` の `prepareSeededDatabase` (`prepareDatabase` に続けて seed を流す) を呼びます。型の生成は seed を流さないので `prepareDatabase` を使います。
 - **exports**: `"."` (`migrate` と `bootstrapSql`)、`"./seed"`、`"./testing"` の 3 つ。faker、testcontainers、Vitest を、本番のコードが import する `"."` に持ち込まないために分けます。repo-policy が形を確かめます。
 - **依存**:
-  - `db` はモジュール (`claim`、`approval`、`closing`) に `import type` だけで依存し、`devDependencies` に書きます。`dependencies` に書いた module、`shared` や `ui`、`apps/*` への依存は repo-policy が止めます。
+  - `db` はモジュール (`claim`、`approval`、`closing`) に `import type` だけで依存し、`devDependencies` に書きます。`dependencies` に書いた module、`shared-kernel` や `ui`、`apps/*` への依存は repo-policy が止めます。
   - 実行時に要る `dbmate` と `pg` は `db` の `dependencies`、`kysely-codegen` と testcontainers は `devDependencies` に置きます。
-  - `db` に依存できるのは `apps/api` だけです (repo-policy が、ほかのすべての `package.json` を確かめます)。モジュール、`shared`、`apps/web`、`tools/*` は `db` に依存しません。
+  - `db` に依存できるのは `apps/api` だけです (repo-policy が、ほかのすべての `package.json` を確かめます)。モジュール、`shared-kernel`、`apps/web`、`tools/*` は `db` に依存しません。
 - **`moduleOrder` と依存なしの一覧**: `db` はどちらにも入れず、`modules.ts` の `dbDependencies` が上の規則で見ます。`moduleOrder` は module の方向を決める表で、`db` はその中のどこにも置けません。依存なしの一覧は「workspace の package に依存しない」という意味で、`db` はモジュールに依存します。
 - **層の規則と Effect**: `db` は業務のコードを持たず、層に分けません。層の override は `packages/*/src/<layer>/**` だけに掛かるので届きません。`lint-effect` の script も求めません。
 - **Oxlint**: `packages/db/src/**` では、入口のファイルと同じく ADR 0007 のランタイムの制限 (`process` など) と `import/no-nodejs-modules` を外します。migration を流す `child_process` と、テストの `process` を使うためです。深い import の禁止は残します。workspace の package からの値の import は `no-restricted-imports` の `allowTypeImports` で止め、`import type` だけを通します。`packages/db/src/__fixtures__/imports.ts` が、値の import が止まること、`import type` と `node:child_process` が通ることを確かめ、repo-policy がその fixture の有無を確かめます。

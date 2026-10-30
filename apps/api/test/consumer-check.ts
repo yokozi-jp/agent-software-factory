@@ -9,7 +9,7 @@ import {
   type Database,
   type RegisteredConsumer,
   type WriteActor,
-} from "@agent-software-factory/shared";
+} from "@agent-software-factory/shared-kernel";
 import type { Effect } from "effect";
 
 /**

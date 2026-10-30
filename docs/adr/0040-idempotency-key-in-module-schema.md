@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0040: POST と PATCH のすべてに Idempotency-Key を必須にし、キーはモジュールのスキーマの専用の表に業務の更新と同じトランザクションで書く"
-description: API の書き込みの二重送信を防ぐ Idempotency-Key の決定。対象は POST と PATCH のすべてで、キーがなければ 400。キーはモジュールごとのスキーマの専用の表に、業務の更新と同じトランザクションで書き、一意キーは (tenant_id, user_id, idempotency_key)、行に request_hash（method、経路、クエリ文字列、本文のバイト列の SHA-256）、状態コード、本文、expires_at を持つ。ヘッダーは引用符付きの String で値は UUID。処理中の重複は lock_timeout 5 秒で待たせて切れたら 409 と Retry-After、ハッシュが違えば 400、保存期間は 24 時間、保存は 2xx だけで再試行には保存した状態コードと本文をそのまま返す。実装は packages/shared の関数を各モジュールの application の層が呼び、Hono の middleware にはしない。取り込んだ規約との違いは一意キーに tenant_id と user_id を足す 1 点。比べた案は、library（hono-idempotency）、処理中の印を別のトランザクションで書く形、業務の表のカラム、Redis と DynamoDB、任意のヘッダー、advisory lock。API の書き込みを足すとき、POST か PATCH の route を書くとき、冪等キーの表や共有の関数を書くとき、再試行のしくみを足すとき、library や Redis で冪等性を済ませたくなったとき、Hono の middleware にしたくなったときに読む。
+description: API の書き込みの二重送信を防ぐ Idempotency-Key の決定。対象は POST と PATCH のすべてで、キーがなければ 400。キーはモジュールごとのスキーマの専用の表に、業務の更新と同じトランザクションで書き、一意キーは (tenant_id, user_id, idempotency_key)、行に request_hash（method、経路、クエリ文字列、本文のバイト列の SHA-256）、状態コード、本文、expires_at を持つ。ヘッダーは引用符付きの String で値は UUID。処理中の重複は lock_timeout 5 秒で待たせて切れたら 409 と Retry-After、ハッシュが違えば 400、保存期間は 24 時間、保存は 2xx だけで再試行には保存した状態コードと本文をそのまま返す。実装は packages/shared-kernel の関数を各モジュールの application の層が呼び、Hono の middleware にはしない。取り込んだ規約との違いは一意キーに tenant_id と user_id を足す 1 点。比べた案は、library（hono-idempotency）、処理中の印を別のトランザクションで書く形、業務の表のカラム、Redis と DynamoDB、任意のヘッダー、advisory lock。API の書き込みを足すとき、POST か PATCH の route を書くとき、冪等キーの表や共有の関数を書くとき、再試行のしくみを足すとき、library や Redis で冪等性を済ませたくなったとき、Hono の middleware にしたくなったときに読む。
 tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 ---
 
@@ -21,7 +21,7 @@ tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 - **共通カラム**: 冪等キーの表にも、[共通カラム](../db/postgresql-keys.md#このリポジトリでは) を原則として付けます ([Issue #345](https://github.com/yokozi-jp/agent-software-factory/issues/345))。
 - **保存する応答**: 2xx だけです。2xx 以外は rollback し、キーの行も残しません。そのため、業務の失敗 (422 など) を直して同じキーで再試行すると、業務の処理をもう一度実行します。
 - **再試行への応答**: 完了後の再試行には、保存した状態コードと本文をそのまま返します。返し直しの印 (`Idempotent-Replayed` など) は付けません。ヘッダーは保存しません。
-- **実装の場所**: `packages/shared` の関数を、各モジュールの `application` の層が、業務の処理を引数に渡して呼びます ([ADR 0028](0028-effect-in-application-and-infrastructure.md))。Hono の middleware にはしません。業務と同じトランザクションにするには、トランザクションを開く層が呼ぶ必要があるためです。ヘッダーの形式の検査は Hono の層に置きます。
+- **実装の場所**: `packages/shared-kernel` の関数を、各モジュールの `application` の層が、業務の処理を引数に渡して呼びます ([ADR 0028](0028-effect-in-application-and-infrastructure.md))。Hono の middleware にはしません。業務と同じトランザクションにするには、トランザクションを開く層が呼ぶ必要があるためです。ヘッダーの形式の検査は Hono の層に置きます。
 - **外への副作用**: トランザクションに入らないので、Outbox に書いて同じトランザクションで commit します ([ADR 0029](0029-module-data-ownership-and-shared-outbox.md))。
 - **対象外**: 非同期のコンシューマーの冪等性 ([ADR 0029](0029-module-data-ownership-and-shared-outbox.md) の `processed_message`、[非同期処理の冪等性](../async/idempotency.md)) は、この ADR の範囲ではありません。
 
