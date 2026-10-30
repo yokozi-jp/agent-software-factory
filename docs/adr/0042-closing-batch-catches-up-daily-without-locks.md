@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0042: 締めのバッチは、締めの表から締める月を決めて毎日追いつき、Step Functions の Map でテナントを回し、ロックを取らない"
-description: 締めのバッチ（経費精算の月次の締め）の決定。業務日付マスタを置かず、締めの表の「最後に締めた月」から締める月を決めて毎日 10:00 に追いつく。Scheduler → Step Functions → RunTask の間で、テナントの一覧のタスク（waitForTaskToken）と Map と RunTask.sync でテナントを回す。オンラインとはロックも REPEATABLE READ も使わない。照合は結合落ちの検知だけ、再開の単位はテナントと月、バッチは Hono にせず環境変数を zod で検査する CLI、テナントの一覧のため closing_module に auth の organization の id の列だけを読ませる。比べた案は、業務日付マスタ、前の月が未締めなら失敗、Scheduler から ECS を直接起動、アプリがテナントを回す、FOR UPDATE、REPEATABLE READ、自分の出力の照合、CLI の引数。締めのジョブを実装するとき、業務日付のマスタを置きたくなったとき、締めにロックを足したくなったとき、バッチの入口を Hono にしたくなったとき、Step Functions の Retry や redrive を変えるときに読む。
+description: 締めのバッチ（経費精算の月次の締め）の決定。業務日付マスタを置かず、締めの表の「最後に締めた月」から締める月を決めて毎日 10:00 に追いつく。Scheduler → Step Functions → RunTask の間で、テナントの一覧のタスク（waitForTaskToken）と Map と RunTask.sync でテナントを回す。オンラインとはロックも REPEATABLE READ も使わない。照合は審査だけを読み申請のモジュールとの結合落ちの検知はしない、再開の単位はテナントと月、バッチは Hono にせず環境変数を zod で検査する CLI、テナントの一覧のため closing_module に auth の organization の id の列だけを読ませる。比べた案は、業務日付マスタ、前の月が未締めなら失敗、Scheduler から ECS を直接起動、アプリがテナントを回す、FOR UPDATE、REPEATABLE READ、自分の出力の照合、CLI の引数。締めのジョブを実装するとき、業務日付のマスタを置きたくなったとき、締めにロックを足したくなったとき、バッチの入口を Hono にしたくなったとき、Step Functions の Retry や redrive を変えるときに読む。
 tags: [adr, batch, closing, step-functions, ecs, idempotency, outbox]
 ---
 
@@ -32,7 +32,7 @@ tags: [adr, batch, closing, step-functions, ecs, idempotency, outbox]
 ## 試験
 
 - 純粋な関数の unit test: 締める月の範囲、境界の時刻、CSV。
-- 結合テスト: ジョブの `application` の関数を、testcontainers の PostgreSQL と S3Mock に向けて呼びます。2 回流しても結果が同じこと、0 件、日回し（毎日起動して 3 か月続け、境界の前後 1 ms の確認を置く）、月を飛ばした後の追いつき、途中で落とした後の再開、2 つのテナントの分離、同時に 2 本、結合落ちを確かめます。
+- 結合テスト: ジョブの `application` の関数を、testcontainers の PostgreSQL と S3Mock に向けて呼びます。2 回流しても結果が同じこと、0 件、日回し（毎日起動して 3 か月続け、境界の前後 1 ms の確認を置く）、月を飛ばした後の追いつき、途中で落とした後の再開、2 つのテナントの分離、同時に 2 本、審査の明細の写しだけから CSV を作ることを確かめます。
 - Step Functions はテストで通しません。定義はインフラの spec の CDK assertions で確かめ、TestState API は検証環境で使います。
 
 ## 標準との違い
@@ -43,7 +43,7 @@ tags: [adr, batch, closing, step-functions, ecs, idempotency, outbox]
   - 失敗した実行の数を `ExecutionsFailed` の 1 つのメトリクスで検知できる（[Viewing metrics](https://docs.aws.amazon.com/step-functions/latest/dg/procedure-cw-metrics.html)）。
   - このテンプレートが対象にする SI のバッチでは、ジョブ同士の依存が普通にある。
 - **毎日起動して空振りさせる**: 月次のジョブも毎日起動し、アプリの側で何もしないで終わらせる形は、[スケジュールジョブ](../batch/scheduled-jobs.md) に沿います。前回が失敗しても次回がそのまま続きを流す形も、規約が勧めるものです。
-- **自分の出力の照合をしない**: [ジョブ設計](../batch/job-design.md) は、結合落ちを検知し、自分の出力の正しさはテストで担保するとしています。それに沿います。
+- **自分の出力の照合をしない**: [ジョブ設計](../batch/job-design.md) は、自分の出力の正しさはテストで担保するとしています。それに沿います。結合落ちの検知は、締めが申請のモジュールと結合しないのでしません（上の「照合」、[ADR 0046](0046-review-split-from-claim-and-events-in-sender-package.md)）。
 - **Effect をワークフローに使わない**: Effect 4 の `Workflow` は unstable の module で、定義に `Schema` が要ります（[Workflow の API](https://effect.website/docs/v4/api/effect/workflow/Workflow)）。ADR 0028 は、unstable の module、`Schema`、`Schedule` の再試行を使わないと決めています。ADR 0023 も、AWS の呼び出しを Effect の再試行で重ねないと決めています。
 - **バッチを Hono のアプリにしない**: 非 HTTP のイベントを `app.request()` で route に流す形は、Hono の標準ではありません（[ワーカーとバッチを Hono のアプリとして書く案の標準とアンチパターンを調べる（ECS の常駐、Lambda Event Functions と Web Functions、Step Functions の RunTask）](https://github.com/yokozi-jp/agent-software-factory/issues/348)）。
 - **避けるアンチパターン**: 前の月が未締めなら失敗させて毎回手で再実行する運用（[追い越し制御](../interface/overtaking-control.md) が避けるよう勧める）。時刻の範囲に `BETWEEN` を使うこと（PostgreSQL の wiki の [Don't Do This](https://wiki.postgresql.org/wiki/Don't_Do_This)）。
