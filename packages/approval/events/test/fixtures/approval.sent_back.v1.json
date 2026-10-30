@@ -1,0 +1,12 @@
+{
+  "id": "0198f6e0-0000-7000-8000-000000000006",
+  "tenantId": "0198f6e0-0000-7000-8000-000000000090",
+  "kind": "approval.sent_back",
+  "version": 1,
+  "occurredAt": "2026-10-30T01:02:03.000Z",
+  "claimId": "0198f6e0-0000-7000-8000-000000000010",
+  "round": 1,
+  "reviewVersion": 1,
+  "actorId": "emp-100",
+  "reason": "receipt missing"
+}

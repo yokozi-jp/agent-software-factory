@@ -186,6 +186,24 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
       failures.push(
         `packages/${module}/events/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
       );
+    if (record(json.scripts).test !== "vp test run")
+      failures.push(
+        `${path} must have the test script "vp test run", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
+      );
+    if (!tree.paths.includes(`packages/${module}/events/test/versions.test.ts`))
+      failures.push(
+        `packages/${module}/events/test/versions.test.ts does not exist. It checks the schemas against the fixtures of the past versions (docs/async/event-contract.md).`,
+      );
+    if (
+      !tree.paths.some((candidate) =>
+        new RegExp(`^packages/${module}/events/test/fixtures/[^/]+\\.v[1-9]\\d*\\.json$`).test(
+          candidate,
+        ),
+      )
+    )
+      failures.push(
+        `packages/${module}/events/test/fixtures/ has no <kind>.v<version>.json. Each event has a fixture of its current version (docs/async/event-contract.md).`,
+      );
     const nx = record(json.nx);
     if (nx.name !== `${module}${eventsSuffix}`)
       failures.push(

@@ -23,8 +23,8 @@ tags: [domain-model, runbook, modules, nx]
 2. **events の package を足す**: 既存のモジュールの `packages/<name>/events/` (`package.json`、`tsconfig.json`、`src/index.ts`) を写します。モジュールが外へ送るイベントのスキーマを置く、モジュールの中の入れ子の package です ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
    - `package.json` の `name` は `@agent-software-factory/<name>-events`、`nx.name` は `<name>-events` にします。`exports` は `"."` だけ、`check` の script は写したままにします。`nx.tags` と `lint-effect` の script は付けません。events の package はモジュールではありません。
    - 依存は `zod` と `shared` だけです。ほかの events の package にも依存しません。
+   - イベントを足したら、`test/fixtures/<種類>.v<版>.json` にその版のメッセージを置きます。`test/versions.test.ts` と `test` の script は既存の events の package から写します ([モジュール間のイベントの契約](../async/event-contract.md))。
    - `pnpm-workspace.yaml` の `packages/*/events` が入れ子の package を workspace に入れるので、足すものはありません。
-   - `knip.jsonc` の `workspaces` に、`"packages/<name>/events": { "ignoreDependencies": ["zod", "@agent-software-factory/shared"] }` を足します。スキーマを書いて `zod` と `shared` を使ったら、この項目を消します。
    - ほかのモジュールがこのモジュールのイベントを受けるときは、その `package.json` の `dependencies` に `@agent-software-factory/<name>-events` を `workspace:*` で足します。モジュールは、どのモジュールの events の package にも依存できます。モジュール本体への依存の向きは変わりません。
 3. **`moduleOrder` に足す**: `tools/scripts/src/checks/repo-policy/modules.ts` の `moduleOrder` を、依存の向き (先頭が一番手前) に合わせて足します。
 4. **`apps/api` に登録する**:
