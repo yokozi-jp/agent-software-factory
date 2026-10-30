@@ -543,11 +543,18 @@ export default defineConfig({
           ],
         },
       },
-      // packages/telemetry is not a module (docs/adr/0047). It starts the OpenTelemetry SDK, so it is the one package that
-      // may import it, and its Node-only entry (src/node.ts) leaves the runtime restrictions as an entry file does
-      // (docs/adr/0007). It has no layers, keeps the ban on deep imports, and does not send (outboxPaths).
+      // packages/telemetry is not a module (docs/adr/0047). Its Node-only entry (src/node.ts) starts the OpenTelemetry SDK,
+      // so it, the policy it passes to the instrumentations (policy.ts), the tests and the fixture of this override may
+      // import the SDK and leave the runtime restrictions as an entry file does (docs/adr/0007). index.ts, the entry that
+      // any code may import, stays under the restrictions of packages/*/src above, so it cannot pull the SDK in. These
+      // files have no layers, keep the ban on deep imports, and do not send (outboxPaths).
       {
-        files: ["packages/telemetry/src/**"],
+        files: [
+          "packages/telemetry/src/node.ts",
+          "packages/telemetry/src/policy.ts",
+          "packages/telemetry/src/**/*.test.ts",
+          "packages/telemetry/src/__fixtures__/otel-sdk.ts",
+        ],
         plugins: ["import"],
         rules: {
           ...runtimeRulesOff,

@@ -53,4 +53,4 @@ curl -s http://127.0.0.1:3200/api/traces/<traceID>
 
 ## 版を上げる
 
-`compose.otel-lgtm.yaml` のイメージはタグとダイジェストで固定しています。Renovate が更新の PR を出します。上げたら起動して、上の手順でトレースが出ることを確かめます。
+`compose.otel-lgtm.yaml` のイメージはタグとダイジェストで固定しています。Renovate が更新の PR を出します ([Renovate の docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/) は、`compose` で始まる名前の `.yaml` を既定で読む)。上げたら起動して、上の手順でトレースが出ることを確かめます。
