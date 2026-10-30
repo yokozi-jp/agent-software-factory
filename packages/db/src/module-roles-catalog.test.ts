@@ -268,6 +268,24 @@ describe("checkModuleRoles", () => {
       expected: "claim_module が messaging スキーマに CREATE できる",
     },
     {
+      name: "outbox_relay の public の表の SELECT",
+      run: (d) =>
+        d.superuser.query(
+          `CREATE TABLE public.t_leak (id int); GRANT SELECT ON public.t_leak TO outbox_relay`,
+        ),
+      expected: "outbox_relay の public.t_leak の SELECT がある",
+    },
+    {
+      name: "outbox_relay のポリシーの式が true でない",
+      run: (d) =>
+        d.migrator.query(
+          `DROP POLICY relay_all_tenants ON messaging.outbox;
+           CREATE POLICY relay_all_tenants ON messaging.outbox FOR ALL TO outbox_relay USING (id IS NOT NULL)`,
+        ),
+      expected:
+        "messaging.outbox のポリシー relay_all_tenants が app.current_tenant で比べていない",
+    },
+    {
       name: "outbox_relay をほかのロールに入れる",
       run: (d) => d.superuser.query(`GRANT migrator TO outbox_relay`),
       expected: "outbox_relay が migrator のメンバー",

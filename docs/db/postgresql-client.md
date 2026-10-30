@@ -82,7 +82,7 @@ O/Rマッパ（Object-Relational Mapping）はプログラミング言語のオ�
   - repository は `dbCall(XTx, (trx) => …)` で Kysely を呼ぶ。DB の失敗は defect で、型に出ない。一意制約の違反を業務の失敗にしたいときは `dbCallUnique` を使う。違反は制約の名前つきの `UniqueViolation` (`Data.TaggedError`) になり、repository が `catchTag` で業務の意味に読み替える。
   - repository は自分の `XTx` を要求するので、トランザクションの外では動かず、別のモジュールのトランザクションの中では型エラーになる。型を合わせる cast は `shared` の 1 か所だけにある。
   - `inTenantTransaction` は `Database` (`shared` の `Context.Service`。pool の根で、入口が `ManagedRuntime` の `Layer` として 1 つ作る) を要求する。Effect の外から始めるときは、原始操作の `beginTenantTransaction(db, { module, tenantId })` を使う。Kysely の `ControlledTransaction` を返すので、呼び出し側が commit か rollback する。
-  - 試作は `prototype/tx-helper` ブランチの `prototype/tx-helper.md`。Outbox の行と受信の重複除去は、この関数の上に [Issue #269](https://github.com/yokozi-jp/agent-software-factory/issues/269) で足す。
+  - 試作は `prototype/tx-helper` ブランチの `prototype/tx-helper.md`。Outbox の行は `shared` の `enqueueOutbox` (`outbox.ts`)、受信の重複除去は `defineConsumer` (`consumer.ts`) が、この関数の上で書く ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。
 - **pool の待ち**: pool は `@agent-software-factory/db` の `createPool` で作る。`poolTimeouts` を既定で入れる。
   - `connectionTimeoutMillis` (5 秒): pool が空のとき、接続を待つ長さ。必ず設定する。トランザクションを始める処理は `acquireUseRelease` の acquire で、中断できない。呼び出し側の `Effect.timeout` では待ちが切れず、待ちが無限になる。pg の既定は待ち続ける。時間が来ると defect になる。
   - `idle_in_transaction_session_timeout` (30 秒): `BEGIN` の後に何も送らない接続を、PostgreSQL が切る。プロセスが固まったときに、ロックを持ったまま接続が残るのを止める。

@@ -253,18 +253,41 @@ const messagingPrivileges: Check = async (pool, reads) => {
        CROSS JOIN unnest($4::text[]) AS p(privilege)`,
     [subjects(reads), outbox.schema, outboxName, tablePrivileges],
   );
-  const canUse = (role: string) => role !== "app_user";
+  const needsUsage = (role: string) => role !== "app_user";
   return [
     ...rows
       .filter((row) => row.has !== outboxPrivileges(reads, row.rolname, row.privilege))
       .map((row) => `${row.rolname} の ${outboxName} の ${row.privilege} が${yesNo(row.has)}`),
     ...[...new Map(rows.map((row) => [row.rolname, row])).values()].flatMap((row) => [
-      ...(row.usage !== canUse(row.rolname)
+      ...(row.usage !== needsUsage(row.rolname)
         ? [`${row.rolname} の ${outbox.schema} スキーマの USAGE が${yesNo(row.usage)}`]
         : []),
       ...(row.create ? [`${row.rolname} が ${outbox.schema} スキーマに CREATE できる`] : []),
     ]),
   ];
+};
+
+/**
+ * outbox_relay は messaging.outbox のほかに権限を持たない。モジュールのスキーマと auth は subjects の検査が見るので、
+ * ここでは、それ以外のスキーマ (public など) の表と view を見る。システムのスキーマは見ない。
+ */
+const relayElsewhere: Check = async (pool, reads) => {
+  const { rows } = await pool.query<{ nspname: string; relname: string; privilege: string }>(
+    `SELECT n.nspname, c.relname, p.privilege
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest($3::text[]) AS p(privilege)
+      WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
+        AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
+        AND n.nspname <> ALL ($2::text[])
+        AND CASE WHEN p.privilege IN ('DELETE', 'TRUNCATE', 'TRIGGER')
+                 THEN has_table_privilege($1, c.oid, p.privilege)
+                 ELSE has_any_column_privilege($1, c.oid, p.privilege) END`,
+    [relayRole, [...Object.keys(reads), "auth", outbox.schema], tablePrivileges],
+  );
+  return rows.map(
+    (row) => `${relayRole} の ${row.nspname}.${row.relname} の ${row.privilege} がある`,
+  );
 };
 
 /** messaging.outbox がある。ないと、権限の問い合わせ自体が失敗するので、権限の検査より先に確かめる。 */
@@ -309,11 +332,14 @@ const rlsPolicies: Check = async (pool) => {
     [row.qual, row.withCheck].every(
       (expression) => expression === null || expression === tenantExpression,
     );
+  // 例外のポリシーは、messaging.outbox の outbox_relay だけに掛かり、式が `true` (USING (true)) のものに限る。
   const isRelayPolicy = (row: (typeof rows)[number]) =>
     row.schemaname === outbox.schema &&
     row.tablename === outbox.table &&
     row.roles.length === 1 &&
-    row.roles[0] === relayRole;
+    row.roles[0] === relayRole &&
+    row.qual === "true" &&
+    (row.withCheck === null || row.withCheck === "true");
   const exceptions = rows.filter((row) => !isTenantScoped(row));
   return [
     ...exceptions
@@ -321,7 +347,7 @@ const rlsPolicies: Check = async (pool) => {
       .map(
         (row) =>
           `${row.schemaname}.${row.tablename} のポリシー ${row.policyname} が app.current_tenant で比べていない` +
-          " (例外は messaging.outbox の outbox_relay 向けの 1 つだけ)",
+          " (例外は messaging.outbox の outbox_relay 向けの USING (true) の 1 つだけ)",
       ),
     ...(exceptions.filter(isRelayPolicy).length === 1
       ? []
@@ -381,6 +407,7 @@ const privileges: readonly Check[] = [
   tablePrivilegeChecks,
   authColumns,
   messagingPrivileges,
+  relayElsewhere,
   outboxRowSecurity,
   rlsPolicies,
   ownerViews,
