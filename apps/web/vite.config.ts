@@ -62,6 +62,9 @@ export default defineConfig({
         plugins: [storybookTest({ configDir: ".storybook" })],
         test: {
           name: "storybook",
+          // Storybook の plugin の既定は 15 秒。各ファイルの最初の story は、ブラウザで部品と a11y の axe を読み込むので、
+          // 負荷の高いマシン (load average 約 50 で 11 秒、pre-push では 15 秒を超えた) では既定に収まらない。
+          testTimeout: 60_000,
         },
       },
     ],
