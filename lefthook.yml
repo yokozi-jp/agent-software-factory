@@ -11,150 +11,164 @@ commit-msg:
       run: pnpm exec commitlint --edit {1}
 
 pre-commit:
-  parallel: true
+  # Two stages, run in order: the checks first (in parallel), then the Nx tasks (in parallel). If a check fails, the
+  # commit stops before the Nx tasks start. With every job in one parallel stage, lefthook waits for the slowest job
+  # (scripts-test, over 2 minutes) before it reports a failure that came in seconds (e.g. repo-policy).
+  # The Nx tasks (scripts-test, db-types, lint-effect) are the jobs that can take minutes; Nx skips them when its
+  # cached result still holds, and their globs skip them when nothing they read changed.
+  piped: true
   jobs:
-    - name: secret-scan
-      run: node tools/scripts/src/checks/secret-scan/cli.ts staged
-    # Lint Markdown only after the formatter has rewritten the staged files.
-    - name: format-and-lint
+    - name: checks
       group:
-        piped: true
+        parallel: true
         jobs:
-          - name: check
-            glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
-            exclude:
+          - name: secret-scan
+            run: node tools/scripts/src/checks/secret-scan/cli.ts staged
+          # Lint Markdown only after the formatter has rewritten the staged files.
+          - name: format-and-lint
+            group:
+              piped: true
+              jobs:
+                - name: check
+                  glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,json,jsonc,md,css,html,yml,yaml}"
+                  exclude:
+                    - ".agents/**"
+                    - ".kiro/skills/**"
+                    - "**/routeTree.gen.ts"
+                  run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
+                  stage_fixed: true
+                - name: markdownlint
+                  glob: "*.md"
+                  run: pnpm exec markdownlint-cli2 {staged_files}
+          # pnpm-workspace.yaml pins iwe, so an upgrade re-checks docs/.
+          - name: docs-check
+            glob:
+              - "docs/**"
+              - "tools/scripts/src/checks/docs-check/*.ts"
+              - "tools/scripts/src/checks/json.ts"
+              - "pnpm-workspace.yaml"
+            run: node tools/scripts/src/checks/docs-check/cli.ts staged
+          - name: shellcheck
+            glob:
+              - "*.sh"
+              - "mise.toml"
+              - "mise.lock"
+            run: tools/scripts/sh/shellcheck.sh
+          # jactionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
+          - name: lint-workflows
+            glob:
+              - ".github/workflows/*.{yml,yaml}"
+              - ".github/jactionlint.yaml"
+              - "tools/scripts/sh/lint-workflows.sh"
+              - "mise.toml"
+              - "mise.lock"
+            run: tools/scripts/sh/lint-workflows.sh
+          # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
+          # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
+          - name: duplicate-code
+            glob:
+              - "apps/**"
+              - "packages/**"
+              - ".jscpd.json"
+              - "pnpm-workspace.yaml"
+            run: pnpm lint:dup
+          # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
+          # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
+          # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.
+          - name: unused-code
+            glob:
+              - "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"
+              - "**/package.json"
+              - "**/tsconfig.json"
+              - "knip.jsonc"
+              - "pnpm-workspace.yaml"
+              - "lefthook.yml"
+              - ".github/workflows/*.{yml,yaml}"
+              - "nx.json"
+              - "mise.toml"
+              - ".markdownlint-cli2.yaml"
+              - ".kiro/settings/mcp.json"
+            run: pnpm lint:unused
+          - name: skills-lock
+            glob:
               - ".agents/**"
               - ".kiro/skills/**"
-              - "**/routeTree.gen.ts"
-            run: pnpm exec vp check --fix --no-error-on-unmatched-pattern {staged_files}
-            stage_fixed: true
-          - name: markdownlint
-            glob: "*.md"
-            run: pnpm exec markdownlint-cli2 {staged_files}
-    # pnpm-workspace.yaml pins iwe, so an upgrade re-checks docs/.
-    - name: docs-check
-      glob:
-        - "docs/**"
-        - "tools/scripts/src/checks/docs-check/*.ts"
-        - "tools/scripts/src/checks/json.ts"
-        - "pnpm-workspace.yaml"
-      run: node tools/scripts/src/checks/docs-check/cli.ts staged
-    - name: shellcheck
-      glob:
-        - "*.sh"
-        - "mise.toml"
-        - "mise.lock"
-      run: tools/scripts/sh/shellcheck.sh
-    # jactionlint also runs shellcheck on run: scripts, so a shellcheck upgrade (mise.toml) re-checks workflows too.
-    - name: lint-workflows
-      glob:
-        - ".github/workflows/*.{yml,yaml}"
-        - ".github/jactionlint.yaml"
-        - "tools/scripts/sh/lint-workflows.sh"
-        - "mise.toml"
-        - "mise.lock"
-      run: tools/scripts/sh/lint-workflows.sh
-    # jscpd scans the working tree as a whole (.jscpd.json), since a clone spans files you did not stage.
-    # pnpm-workspace.yaml pins the jscpd version, so an upgrade re-runs the check.
-    - name: duplicate-code
-      glob:
-        - "apps/**"
-        - "packages/**"
-        - ".jscpd.json"
-        - "pnpm-workspace.yaml"
-      run: pnpm lint:dup
-    # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
-    # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
-    # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.
-    - name: unused-code
-      glob:
-        - "*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"
-        - "**/package.json"
-        - "**/tsconfig.json"
-        - "knip.jsonc"
-        - "pnpm-workspace.yaml"
-        - "lefthook.yml"
-        - ".github/workflows/*.{yml,yaml}"
-        - "nx.json"
-        - "mise.toml"
-        - ".markdownlint-cli2.yaml"
-        - ".kiro/settings/mcp.json"
-      run: pnpm lint:unused
-    - name: skills-lock
-      glob:
-        - ".agents/**"
-        - ".kiro/skills/**"
-        - "skills-lock.json"
-        - "tools/scripts/src/checks/skills-lock/*.ts"
-        - "tools/scripts/src/checks/json.ts"
-      run: node tools/scripts/src/checks/skills-lock/cli.ts
-    # Runs the Renovate pinned in tools/scripts/sh/renovate.sh through `pnpm dlx`, so it needs the network.
-    - name: renovate-config
-      glob:
-        - "renovate.jsonc"
-        - "tools/scripts/sh/renovate.sh"
-      run: tools/scripts/sh/renovate.sh validate
-    # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
-    # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
-    # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
-    # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
-    # compiler and the runtime. Keep this list in step with `sharedGlobals`, and with the inputs of the
-    # `test` target in tools/scripts/package.json (.kiro/hooks/*.json, which kiro-hooks.test.ts reads).
-    - name: scripts-test
-      glob:
-        - "tools/scripts/**"
-        - "pnpm-workspace.yaml"
-        - "vite.config.ts"
-        - "tsconfig.json"
-        - ".node-version"
-        - ".kiro/hooks/*.json"
-      run: pnpm exec nx test scripts
-    # The Kysely types of the module schemas match the migrations (packages/db/src/types.ts, docs/adr/0025). It starts a
-    # PostgreSQL container (about 10 s), so it runs only when a migration, a generated type file, the generator or the
-    # version of kysely-codegen (pnpm-workspace.yaml) changes. Nx skips the run when the cached result still holds.
-    - name: db-types
-      glob:
-        - "packages/db/migrations/**"
-        - "packages/db/bootstrap.sql"
-        - "packages/db/src/types.ts"
-        - "packages/*/src/infrastructure/db.gen.ts"
-        - "packages/db/src/testing/connection.ts"
-        - "packages/db/src/testing/prepare-database.ts"
-        - "pnpm-workspace.yaml"
-      run: pnpm exec nx db-types-check db
-    # effect-tsgo on application and infrastructure of the modules (oxlint.effect.json, docs/tooling/effect-lint.md).
-    # The lint target (vp check) does not load its plugin. Nx skips the run when the cached result still holds.
-    - name: lint-effect
-      glob:
-        - "packages/**"
-        - "oxlint.effect.json"
-        - "pnpm-workspace.yaml"
-        - "pnpm-lock.yaml"
-        - "vite.config.ts"
-        - "tsconfig.json"
-      run: pnpm exec nx run-many -t lint-effect
-    - name: repo-policy
-      glob:
-        - "**/package.json"
-        - "**/vite.config.ts"
-        - ".vite-hooks/**"
-        - ".betterleaks.toml"
-        - "mise.toml"
-        - ".kiro/steering/**"
-        - "tools/scripts/src/checks/repo-policy/**"
-        # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
-        - ".node-version"
-        - "pnpm-workspace.yaml"
-        # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
-        - "*.md"
-        - "lefthook.yml"
-        - ".github/**"
-        - ".kiro/hooks/**"
-        - "tools/scripts/sh/**"
-        - "docs/**"
-        - "**/*.ts"
-      # Check what is staged, so unstaged edits to other files cannot fail the commit.
-      run: node tools/scripts/src/checks/repo-policy/cli.ts staged
+              - "skills-lock.json"
+              - "tools/scripts/src/checks/skills-lock/*.ts"
+              - "tools/scripts/src/checks/json.ts"
+            run: node tools/scripts/src/checks/skills-lock/cli.ts
+          # Runs the Renovate pinned in tools/scripts/sh/renovate.sh through `pnpm dlx`, so it needs the network.
+          - name: renovate-config
+            glob:
+              - "renovate.jsonc"
+              - "tools/scripts/sh/renovate.sh"
+            run: tools/scripts/sh/renovate.sh validate
+          - name: repo-policy
+            glob:
+              - "**/package.json"
+              - "**/vite.config.ts"
+              - ".vite-hooks/**"
+              - ".betterleaks.toml"
+              - "mise.toml"
+              - ".kiro/steering/**"
+              - "tools/scripts/src/checks/repo-policy/**"
+              # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
+              - ".node-version"
+              - "pnpm-workspace.yaml"
+              # Plain-text references to docs/ live in these files. "*.md" matches Markdown at any depth (AGENTS.md, README.md ...).
+              - "*.md"
+              - "lefthook.yml"
+              - ".github/**"
+              - ".kiro/hooks/**"
+              - "tools/scripts/sh/**"
+              - "docs/**"
+              - "**/*.ts"
+            # Check what is staged, so unstaged edits to other files cannot fail the commit.
+            run: node tools/scripts/src/checks/repo-policy/cli.ts staged
+
+    - name: nx-tasks
+      group:
+        parallel: true
+        jobs:
+          # The checks and hooks written in TypeScript (tools/scripts). Nx skips the run when the cached result
+          # still holds. Besides the project, the tests depend on the files in `sharedGlobals` of nx.json:
+          # pnpm-workspace.yaml pins Vitest and the other tools, the root vite.config.ts holds the
+          # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
+          # compiler and the runtime. Keep this list in step with `sharedGlobals`, and with the inputs of the
+          # `test` target in tools/scripts/package.json (.kiro/hooks/*.json, which kiro-hooks.test.ts reads).
+          - name: scripts-test
+            glob:
+              - "tools/scripts/**"
+              - "pnpm-workspace.yaml"
+              - "vite.config.ts"
+              - "tsconfig.json"
+              - ".node-version"
+              - ".kiro/hooks/*.json"
+            run: pnpm exec nx test scripts
+          # The Kysely types of the module schemas match the migrations (packages/db/src/types.ts, docs/adr/0025). It starts a
+          # PostgreSQL container (about 10 s), so it runs only when a migration, a generated type file, the generator or the
+          # version of kysely-codegen (pnpm-workspace.yaml) changes. Nx skips the run when the cached result still holds.
+          - name: db-types
+            glob:
+              - "packages/db/migrations/**"
+              - "packages/db/bootstrap.sql"
+              - "packages/db/src/types.ts"
+              - "packages/*/src/infrastructure/db.gen.ts"
+              - "packages/db/src/testing/connection.ts"
+              - "packages/db/src/testing/prepare-database.ts"
+              - "pnpm-workspace.yaml"
+            run: pnpm exec nx db-types-check db
+          # effect-tsgo on application and infrastructure of the modules (oxlint.effect.json, docs/tooling/effect-lint.md).
+          # The lint target (vp check) does not load its plugin. Nx skips the run when the cached result still holds.
+          - name: lint-effect
+            glob:
+              - "packages/**"
+              - "oxlint.effect.json"
+              - "pnpm-workspace.yaml"
+              - "pnpm-lock.yaml"
+              - "vite.config.ts"
+              - "tsconfig.json"
+            run: pnpm exec nx run-many -t lint-effect
 
 pre-push:
   commands:
