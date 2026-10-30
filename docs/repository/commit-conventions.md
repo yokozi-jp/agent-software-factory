@@ -43,7 +43,6 @@ chore(deps): hono を 4.14 に上げる
 
 ### commit の前にメッセージを検査する
 
-pre-commit は 2 段で動きます。速い検査 (`quick` の group: repo-policy、`vp check`、docs-check、Knip、jscpd など) を並列に流し、1 つでも失敗したら、遅い検査 (`slow` の group: `scripts-test`、`db-types`、`lint-effect`) を始める前に止めます。遅い検査が 1 分以上かかっても、速い検査の失敗は先に分かります。
 commit-msg hook は pre-commit の全部の job が終わった後に動きます。pre-commit は、他のセッションが動いていて負荷が高いと数分かかることがあり、件名の規則 (`subject-case` など) で落ちると、待った時間が無駄になります。`git commit` の前に、メッセージだけを commitlint に通します。
 
 ```sh
