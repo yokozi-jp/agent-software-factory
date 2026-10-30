@@ -24,7 +24,7 @@ export interface WriteContext extends WriteActor {
  * values for every write.
  */
 export class CurrentWrite extends Context.Service<CurrentWrite, WriteContext>()(
-  "shared/CurrentWrite",
+  "shared-kernel/CurrentWrite",
 ) {}
 
 /**

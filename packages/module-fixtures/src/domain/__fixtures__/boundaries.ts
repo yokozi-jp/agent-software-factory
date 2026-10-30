@@ -14,4 +14,4 @@ import "../../application/__fixtures__/boundaries.ts";
 // The one import that domain may have: a type of shared-kernel. It carries no disable comment, so `vp check`
 // fails if the rule stops it.
 // @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
-export type { Shared } from "@agent-software-factory/shared-kernel";
+export type { SharedKernel } from "@agent-software-factory/shared-kernel";
