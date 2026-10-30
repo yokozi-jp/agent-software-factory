@@ -149,12 +149,14 @@ export const eventsFiles = (
   [`packages/${module}/events/package.json`]: JSON.stringify({
     name: `@agent-software-factory/${module}-events`,
     exports: { ".": "./src/index.ts" },
-    scripts: { check: "vp check" },
+    scripts: { check: "vp check", test: "vp test run" },
     dependencies: { "@agent-software-factory/shared": "workspace:*", zod: "catalog:" },
     nx: { name: `${module}-events` },
     ...fields,
   }),
   [`packages/${module}/events/src/index.ts`]: "export {};\n",
+  [`packages/${module}/events/test/versions.test.ts`]: "export {};\n",
+  [`packages/${module}/events/test/fixtures/${module}.done.v1.json`]: "{}\n",
 });
 
 // The fixture of a module whose domain override must keep the runtime restrictions (docs/adr/0007).
