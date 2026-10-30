@@ -28,7 +28,7 @@ tags: [adr, authorization, domain, application, security, testing]
   経理は RBAC、申請者本人と上長は ReBAC、段と職務分掌は ABAC の組み合わせです。OWASP は、役割だけでなく関係と属性で判断すること、利用者の種類とリソースの組み合わせごとに許可を列挙してテストすることを勧めています（[Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)）。経理に見せるのを確認待ちまで進んだ審査に限るのは、最小権限の判断です。
 
 - **職務分掌**: 審査の不変条件にします。申請者本人は自分の審査を承認も確認もできません。1 つの審査で承認した人は確認できません（上長が経理でもある場合は、別の経理が確認する）。
-- **domain と application の線引き**: 業務の規則（その審査の上長か、職務分掌、状態）は、domain の遷移の関数で確かめます。誰が要求したか（申請者本人か、経理の役割か、見えるか）は、application の 1 か所の方針の関数 `authorize(actor, 操作, 対象)` で確かめ、見えるものだけを読みます。基準は、業務の実体、値、状態遷移の規則は domain、身元、役割、クレームに依る確認は application です（Derek Comartin の [Authorization: Domain or Application Layer?](https://codeopinion.com/authorization-domain-or-application-layer/)）。application が認可を確かめるのは、Vernon『実践ドメイン駆動設計』14 章の考え方に沿います（[O'Reilly](https://www.oreilly.com/library/view/implementing-domain-driven-design/9780133039900/ch14.html)）。
+- **domain と application の線引き**: 業務の規則（その審査の上長か、職務分掌、状態）は、domain の遷移の関数で確かめます。誰が要求したか（申請者本人か、経理の役割か、見えるか）は、application の 1 か所の方針の関数 `authorize(actor, 操作, 対象)` で確かめ、見えるものだけを読みます（見えなければ 404）。基準は、業務の実体、値、状態遷移の規則は domain、身元、役割、クレームに依る確認は application です。この基準は Derek Comartin の [Authorization: Domain or Application Layer?](https://codeopinion.com/authorization-domain-or-application-layer/) の主張で、ブログなので、このリポジトリの基準にすると決めたのは判断です。Vernon『実践ドメイン駆動設計』の 14 章（[O'Reilly](https://www.oreilly.com/library/view/implementing-domain-driven-design/9780133039900/ch14.html)）は、アプリケーションサービスの層を扱う章で、認可をそこで確かめる形の参考にしました（章の本文は確かめていない）。
 - **操作する人の渡し方**: 現在時刻と同じく、`actor` を引数で渡します。`Layer` にリクエストごとの状態を持たせません（[application の Effect の書き方](../domain-model/application-effect.md)）。Effect の `HttpApiMiddleware` の `CurrentUser` は unstable の module なので使いません（[ADR 0028](0028-effect-in-application-and-infrastructure.md)）。
 - **RLS との分担**: RLS はテナントだけを分け、利用者ごとのポリシーを足しません（ADR 0011）。
 - **許可の証**: Scott Wlaschin のアクセストークンの型の方法に沿います（[Capability-based security](https://fsharpforfunandprofit.com/posts/capability-based-security/) の連載）。
@@ -52,6 +52,17 @@ tags: [adr, authorization, domain, application, security, testing]
 - **拒否のログ**: 別のログは足しません。403 と 404 は、アクセスログの状態コードと利用者の id で追えます（[Hono のロギングの規則を決める](https://github.com/yokozi-jp/agent-software-factory/issues/229)）。拒否の急増の検知は、可観測性の送り先を決めるときに回します。
 - **ライブラリと方針エンジンを入れない**: `@casl/ability`、`casbin`、Cedar、OpenFGA、SpiceDB、Cerbos、OPA は入れません。役割が 3 つで関係が 2 種類だからです。方針が 1 か所の関数にあるので、部署の階層や代理承認が要る案件では、その関数を Cedar などに替えます（判断）。PDP と PEP を分ける考え方（[AuthZEN Authorization API 1.0](https://openid.net/authorization-api-1-0-final-specification-approved/)）は、プロセスの中の関数で行います。
 
+## 決定ごとの理由
+
+- **上長を申請のときに決める**: 申請の後の異動や退職で承認者が変わると、審査の進み方が読めなくなります。決めた時点の上長を審査に固定すれば、承認できるかを審査だけで判断できます。
+- **表の線引き（RBAC、ReBAC、ABAC の組み合わせ）**: 役割だけでは「その審査の上長」と「段」を表せないため、関係と属性を足します（OWASP の勧め）。
+- **職務分掌を審査の不変条件にする**: 業務の規則なので domain に置きます。application だけで確かめると、別の入口から遷移の関数を呼んだときに抜けます。
+- **線引き、許可の証**: 上の「ルール」のとおりです。呼び忘れを型で止め、証を作る場所を 1 か所に限ります。
+- **網羅のテスト**: 役割と関係の組み合わせの取り違えが認可の事故の主な形で、OWASP が組み合わせごとの列挙を勧めます。期待の表を本番の表と分けるのは、自分と比べるだけにしないためです。
+- **BOLA のテスト**: 他人のリソースの id で読める欠陥は、route を足すたびに入りえます。spec から対象を取り出せば、route の足し忘れが検査の抜けになりません。
+- **HTTP の応答**: 見えない理由（存在しない、見られない）を区別すると、存在を教えます。403 は、見えるものにだけ返します。
+- **拒否のログ**: アクセスログに状態コードと利用者の id があり、同じ情報を二重に持たないためです。
+
 ## Considered Options
 
 - **認可をすべて domain に置く**: 遷移の関数が操作する人を受け取ると、domain が身元と役割を知ることになります。見えるかどうか（404）は読む前に決まるので、遷移の関数では判断できません。
@@ -61,6 +72,10 @@ tags: [adr, authorization, domain, application, security, testing]
 - **認可のライブラリと方針エンジン**: 役割が 3 つ、関係が 2 種類のうちは、設定と運用の費用が見合いません。
 - **本番の方針の表から網羅のテストの期待を作る**: 自分と比べるだけになり、方針の誤りを検出できません。
 - **RLS に利用者ごとのポリシーを足す**: ADR 0011 がテナントだけを分けると決めています。上長の関係は人事システムの情報で、RLS に持ち込むと DB が業務の規則を持ちます。
+- **職務分掌を application の方針だけで確かめる**: 別の入口（バッチ、ワーカー）から遷移の関数を呼ぶと、規則が抜けます。
+- **BOLA のテストを route ごとに手で書く**: route を足すたびに書き忘れが起こります。spec から取り出せば、足した route が自動で対象になります。
+- **見えない場合と許されない場合をどちらも 403 にする**: 他人の申請の id が存在するかを教えてしまいます（OWASP API1）。
+- **拒否のログ専用の仕組みを足す**: アクセスログで足ります。急増の検知は、可観測性の送り先を決めるときに扱います。
 - **上長を承認のときに人事システムで引く**: 申請の後の異動で承認者が変わり、人事システムの障害が承認を止めます。申請のときに決めれば、審査の上長が固定されます。
 
 ## Consequences

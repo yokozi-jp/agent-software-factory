@@ -44,7 +44,7 @@ sources:
 - security.md の CORS に、このリポジトリが同一オリジン構成を採り CORS の middleware を入れないこと、ローカル開発は Vite の proxy で同一オリジンに見せることを注記として足した。推奨の中身は変えていない。ADR 0013、ADR 0022。
 - response-body.md のエラーの節を ADR 0035 に合わせた。例の `Content-Language: ja` を外し (`title` は英語で固定)、`type` の例を `/types/123` から `/problems/validation` にして、命名の規則 (`about:blank`、`/problems/<kebab>`、`/problems/<module>/<kebab-tag>`) と、`status` と `trace_id` の項目を足した。`errors` の項目を `detail` と `pointer` から `pointer`、zod の issue の `code`、差し込みの値にした (文面は web が出す)。「エラー詳細」の内部 API なら詳細を許容する表に、このリポジトリでは 5xx で内部の情報を出さない注記を足した。RFC 9457 3.1.1 (`type` を主な識別子にする)、ADR 0035。
 - status-codes.md の 405 に、このリポジトリでは返さず Hono の既定の 404 のままにする注記を足した。Hono に組み込みの 405 がなく、web は `hc` の型でメソッドの誤りを止める。ADR 0035。
-- status-codes.md の 403 と 409 の行に、このリポジトリでの使い方を足した。403 は見えるが許されない操作、409 は楽観排他の衝突に加えて状態の不一致（見えない場合は 404）。RFC 9110 15.5.10、OWASP API Security Top 10 2023 API1、ADR 0045。
+- status-codes.md の 403 と 409 の行に、このリポジトリでの使い方を足した。403 は見えるが許されない操作、409 は楽観排他の衝突に加えて状態の不一致（承認待ちでない審査を承認するなど。見えない場合は 404）。RFC 9110 15.5.10、OWASP API Security Top 10 2023 API1、ADR 0045。
 - authentication-and-authorization.md に、このリポジトリでは Better Auth の `/api/auth/*` だけが Problem Details の例外で、自前の middleware は Problem Details を返す注記を足した。ADR 0022、ADR 0035。
 
 ## 位置づけ
