@@ -1,9 +1,13 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import {
   classifyMigrations,
   decide,
   type Decision,
   harnessEntry,
+  harnessMarker,
+  migrationsDirectory,
   report,
   seedEntry,
   type MigrationChanges,
@@ -108,5 +112,19 @@ describe("report", () => {
       stdout: "migration-compat: skipped. none\n",
       stderr: "",
     });
+  });
+});
+
+describe("the files of the base that the rules look for", () => {
+  // Without this, renaming the variable or moving the harness would make every pull request pass with a notice.
+  const root = join(import.meta.dirname, "../../../../..");
+
+  it("exist in this repository, and the harness reads the variable that cli.ts passes", () => {
+    expect(readFileSync(join(root, seedEntry), "utf8")).not.toBe("");
+    expect(readFileSync(join(root, harnessEntry), "utf8")).toContain(harnessMarker);
+  });
+
+  it("include a migrations directory that has migrations", () => {
+    expect(readdirSync(join(root, migrationsDirectory)).length).toBeGreaterThan(0);
   });
 });

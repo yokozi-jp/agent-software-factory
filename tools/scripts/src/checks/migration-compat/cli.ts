@@ -84,7 +84,8 @@ function main(): number {
       return fail(`could not check out ${base} in ${worktree}.`);
     const files = decision.files.map((file) => join(top, file));
     const installed = run("pnpm", ["install", "--frozen-lockfile"], worktree);
-    if (installed !== 0) return fail(`pnpm install in the base worktree failed (${installed}).`);
+    if (installed !== 0)
+      return fail(`pnpm install in the base worktree failed (${installed ?? "killed"}).`);
     const tested = run(
       "vp",
       ["test", "run", "--project", "integration"],
