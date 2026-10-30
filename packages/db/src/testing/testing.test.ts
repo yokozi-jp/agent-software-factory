@@ -7,9 +7,37 @@ import {
   prepareDatabase,
   reportSetupFailure,
   roles,
+  startPostgres,
 } from "./index.ts";
 
 // db/testing は、packages/db 自身のテストと apps/api のテストが使う道具 (docs/adr/0038)。
+describe("startPostgres", () => {
+  it("永続化の設定を切った PostgreSQL を起動すること (globalSetup が起動したものと、起動し直したものの両方)", async () => {
+    const restarted = await startPostgres();
+    try {
+      for (const uri of [inject("postgresUri"), restarted.getConnectionUri()]) {
+        const client = new Client({ connectionString: uri });
+        await client.connect();
+        try {
+          const { rows } = await client.query<{ name: string; setting: string }>(
+            `SELECT name, setting FROM pg_settings
+             WHERE name IN ('fsync', 'synchronous_commit', 'full_page_writes') ORDER BY name`,
+          );
+          expect(rows).toEqual([
+            { name: "fsync", setting: "off" },
+            { name: "full_page_writes", setting: "off" },
+            { name: "synchronous_commit", setting: "off" },
+          ]);
+        } finally {
+          await client.end();
+        }
+      }
+    } finally {
+      await restarted.stop();
+    }
+  });
+});
+
 describe("prepareDatabase", () => {
   it("データベースを作り、3 つのロールと migration のスキーマを用意すること", async () => {
     const base = inject("postgresUri");

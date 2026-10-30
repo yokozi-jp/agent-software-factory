@@ -16,6 +16,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
   - `src/migrate.ts` (入口 `migrate`)、`src/bootstrap.ts` (`bootstrapSql`)、`src/types.ts` (型の生成の CLI と、ずれを見つける関数)。
   - `src/testing/`: `connection.ts`、`credentials.ts`、`prepare-database.ts`、`database.ts`、globalSetup の失敗の表示 (`global-setup.ts`)、競合の待ち合わせ (`await-blocked.ts`) と行数の前後比較 (`row-counts.ts`。[競合と原子性のテストの書き方](../db/concurrency-testing.md))。
   - `src/seed/`: [Issue #332](https://github.com/yokozi-jp/agent-software-factory/issues/332) が中身を置く。今は `./seed` の exports を満たす空のファイルだけ。
+  - `src/testing/postgres-container.ts`: `startPostgres()` が、テスト用の PostgreSQL を `fsync`、`synchronous_commit`、`full_page_writes` を off にして起動します。`apps/api` と `db` の globalSetup が使います。使い捨ての DB なので、ディスクへの同期書き込みを待たないためです ([PostgreSQL 公式の Non-Durable Settings](https://www.postgresql.org/docs/17/non-durability.html))。OS が落ちたときにデータが壊れるだけで、ロックとトランザクションの分離、実行計画は変わりません。`packages/db` のテストの所要時間は、負荷が高いマシンで 2 回の測定で 15〜25% 短くなりました。tmpfs と `shared_buffers` の増量は、同じ測定で上乗せがなかったので使いません。本番に近い既定のまま起動するのは、型の生成 (`src/types.ts`) と migration のテスト (`migrate.test.ts`) です。
   - `apps/api/test/` には、`apps/api` のコードを試す道具 (テスト用 IdP の `oidc-provider.ts`、`auth-fixtures.ts`、`browser.ts`、`server-process.ts`、IdP のユーザー) を残します。`apps/api/test/global-setup.ts` は `@agent-software-factory/db/testing` の `prepareDatabase` を呼びます。
 - **exports**: `"."` (`migrate` と `bootstrapSql`)、`"./seed"`、`"./testing"` の 3 つ。faker、testcontainers、Vitest を、本番のコードが import する `"."` に持ち込まないために分けます。repo-policy が形を確かめます。
 - **依存**:

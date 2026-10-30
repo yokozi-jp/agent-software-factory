@@ -88,3 +88,5 @@ Amazon Auroraについてはデフォルト値を推奨する。性能検証な�
 ### その他のパラメータ
 
 AWS RDS/Auroraの場合は、原則デフォルトパラメータ値を利用する。性能検証などで課題が見つかり次第、アーキテクト / DBAと相談の上パラメータを変更する。
+
+このリポジトリでは、テストが起動する使い捨ての PostgreSQL に限り、永続化の設定 (`fsync`、`synchronous_commit`、`full_page_writes`) を off にする。[PostgreSQL 公式の Non-Durable Settings](https://www.postgresql.org/docs/17/non-durability.html) に沿った設定で、本番のパラメータは変えない ([ADR 0038](../adr/0038-db-package.md))。

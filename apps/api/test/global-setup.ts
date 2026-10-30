@@ -1,10 +1,9 @@
 import {
-  postgresImage,
   prepareDatabase,
   reportSetupFailure,
+  startPostgres,
   templateDatabase,
 } from "@agent-software-factory/db/testing";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { startTestIdp } from "./oidc-provider.ts";
 import type { TestProject } from "vite-plus/test/node";
 
@@ -22,10 +21,7 @@ export default function setup(project: TestProject) {
 }
 
 async function start(project: TestProject) {
-  const [postgres, idp] = await Promise.all([
-    new PostgreSqlContainer(postgresImage).start(),
-    startTestIdp(),
-  ]);
+  const [postgres, idp] = await Promise.all([startPostgres(), startTestIdp()]);
 
   // 本番と同じ経路で、テンプレートの DB に 1 回だけ migration を流す (docs/adr/0025)。
   const base = postgres.getConnectionUri();

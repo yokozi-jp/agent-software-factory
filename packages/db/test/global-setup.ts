@@ -1,10 +1,9 @@
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import type { TestProject } from "vite-plus/test/node";
 
 import {
-  postgresImage,
   prepareDatabase,
   reportSetupFailure,
+  startPostgres,
   templateDatabase,
 } from "../src/testing/index.ts";
 
@@ -14,7 +13,7 @@ export default function setup(project: TestProject) {
 }
 
 async function start(project: TestProject) {
-  const postgres = await new PostgreSqlContainer(postgresImage).start();
+  const postgres = await startPostgres();
   const base = postgres.getConnectionUri();
   await prepareDatabase(base, templateDatabase);
 
