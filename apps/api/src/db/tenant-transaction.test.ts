@@ -11,7 +11,7 @@ import {
   inTenantTransaction,
   UniqueViolation,
 } from "@agent-software-factory/shared";
-import { Cause, Data, Effect, Exit } from "effect";
+import { Cause, Data, Effect, Exit, type Duration } from "effect";
 import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
@@ -250,6 +250,29 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       expect(await idleInTransaction()).toBe(0);
     });
 
+    it("commit が失敗したら defect になり、行は残らず、トランザクションも残らないこと", async () => {
+      // 遅延させた一意制約は、commit の時に初めて破れる。
+      await ctx.db.migrator.query(
+        `CREATE TABLE approval.t_deferred (tenant_id uuid NOT NULL, code text NOT NULL,
+           CONSTRAINT uq_deferred_code UNIQUE (tenant_id, code) DEFERRABLE INITIALLY DEFERRED)`,
+      );
+      const insert = dbCall(ApprovalTx, (trx) =>
+        sql`INSERT INTO approval.t_deferred (tenant_id, code) VALUES (${tenantA}, 'x')`.execute(
+          trx,
+        ),
+      );
+
+      const exit = await runExit(
+        inTenantTransaction(ApprovalTx, { tenantId: tenantA }, Effect.andThen(insert, insert)),
+      );
+
+      expect(Exit.hasDies(exit)).toBe(true);
+      expect(Exit.hasFails(exit)).toBe(false);
+      const { rows } = await ctx.db.superuser.query(`SELECT 1 FROM approval.t_deferred`);
+      expect(rows).toEqual([]);
+      expect(await idleInTransaction()).toBe(0);
+    });
+
     it("rollback した後の同じ接続で、次のトランザクションが動くこと", async () => {
       await runExit(
         inClaim(
@@ -370,11 +393,14 @@ describe("pool が空のとき", () => {
     await db.close();
   });
 
-  it("connectionTimeoutMillis で待ちが終わり、defect になること", async () => {
+  /** pool の接続を 1 本にして、その 1 本を 1.5 秒つかむトランザクションを始めてから、`during` を流す。 */
+  const withHeldPool = async (
+    during: (layer: ReturnType<typeof Database.layer>) => Promise<void>,
+  ): Promise<void> => {
     const pool = createPool({
       connectionString: db.url("app_user"),
       max: 1,
-      connectionTimeoutMillis: 300,
+      connectionTimeoutMillis: 600,
     });
     const kysely = new Kysely<never>({ dialect: new PostgresDialect({ pool }) });
     const layer = Database.layer(kysely);
@@ -385,21 +411,44 @@ describe("pool が空のとき", () => {
         ),
       );
       await new Promise((resolve) => setTimeout(resolve, 200));
-      const startedAt = performance.now();
-
-      const exit = await Effect.runPromiseExit(
-        inTenantTransaction(ClaimTx, { tenantId: tenantA }, Effect.void).pipe(
-          Effect.provide(layer),
-        ),
-      );
-      const waited = performance.now() - startedAt;
-
-      expect(Exit.hasDies(exit)).toBe(true);
-      expect(waited).toBeLessThan(1200);
+      await during(layer);
       await holder;
     } finally {
       await kysely.destroy();
     }
+  };
+
+  /** 空のトランザクションを 1 つ始める。`timeout` があれば、Effect.timeout を掛ける。 */
+  const attempt = (layer: ReturnType<typeof Database.layer>, timeout?: Duration.Input) => {
+    const empty = inTenantTransaction(ClaimTx, { tenantId: tenantA }, Effect.void);
+    return Effect.runPromiseExit(
+      (timeout === undefined ? empty : empty.pipe(Effect.timeout(timeout))).pipe(
+        Effect.provide(layer),
+      ),
+    );
+  };
+
+  it("connectionTimeoutMillis で待ちが終わり、defect になること", async () => {
+    await withHeldPool(async (layer) => {
+      const startedAt = performance.now();
+
+      const exit = await attempt(layer);
+
+      expect(Exit.hasDies(exit)).toBe(true);
+      expect(performance.now() - startedAt).toBeLessThan(1200);
+    });
+  });
+
+  it("接続を待つ間は中断できず、Effect.timeout では待ちが切れないこと (切るのは connectionTimeoutMillis)", async () => {
+    await withHeldPool(async (layer) => {
+      const startedAt = performance.now();
+
+      const exit = await attempt(layer, "100 millis");
+
+      // 100 ms の timeout は、待ちが終わるまで効かない。結果は TimeoutError だが、返るのは待ちが終わった後 (600 ms)。
+      expect(Exit.hasFails(exit)).toBe(true);
+      expect(performance.now() - startedAt).toBeGreaterThan(450);
+    });
   });
 });
 

@@ -32,7 +32,7 @@ export interface TenantScope {
  * Right after the start it runs `SET LOCAL ROLE <module>_module` (docs/adr/0029): the transaction then has the
  * privileges of that module only, its own tables for reading and writing and the tables of the modules it depends on
  * for reading. The role also ends with the transaction. The module name picks the role from a fixed list; it is never
- * part of the SQL text as a value from outside. If a step fails, it rolls back and throws.
+ * part of the SQL text as a value from outside. If a step fails, it rolls back and throws that error.
  *
  * Application code uses `inTenantTransaction`; this is the primitive under it, for code outside Effect.
  */
@@ -46,7 +46,11 @@ export async function beginTenantTransaction<DB>(
     await sql`SELECT set_config('app.current_tenant', ${scope.tenantId}, true)`.execute(trx);
     return trx;
   } catch (error) {
-    await trx.rollback().execute();
+    // If the rollback fails too, the error of the setup is the one to report.
+    await trx
+      .rollback()
+      .execute()
+      .catch(() => undefined);
     throw error;
   }
 }
@@ -96,7 +100,17 @@ export const inTenantTransaction = <K extends ModuleTx, A, E, R>(
     // The only cast: the pool is untyped, and the tag of the module says which database type the transaction has.
     (trx) => work.pipe(Effect.provideService(tx, trx as K["Service"])),
     (trx, exit) =>
-      Effect.promise(() =>
-        Exit.isSuccess(exit) ? trx.commit().execute() : trx.rollback().execute(),
-      ),
+      Effect.promise(async () => {
+        if (!Exit.isSuccess(exit)) return trx.rollback().execute();
+        try {
+          await trx.commit().execute();
+        } catch (error) {
+          // A commit that fails (a deferred constraint, say) leaves the connection checked out: the rollback releases it.
+          await trx
+            .rollback()
+            .execute()
+            .catch(() => undefined);
+          throw error;
+        }
+      }),
   );
