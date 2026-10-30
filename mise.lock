@@ -41,13 +41,13 @@ specifiers = ["1.182.1"]
 uv = { path = ".mise/locks/pypi-semgrep/1.182.1", digest = "sha256:e2bedbbd31217624ece5d336d7f48f80af32e5763f473cdafaf5a24174b6e9d8" }
 
 [[tools.python]]
-version = "3.13.17"
+version = "3.15.2"
 backend = "core:python"
-specifiers = ["3.13.17"]
+specifiers = ["3.15.2"]
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:f829adc9d888e76c8801b4799ed444188d35239fcae3a9808a99ec5cb0d8d92c"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17+20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:7b03163a980c607ba8194709d4a4086735a7a9c488cc475b098157306927b36b"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.15.2+20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.shellcheck]]
