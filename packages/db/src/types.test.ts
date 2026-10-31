@@ -52,7 +52,7 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
       "packages/approval/src/infrastructure/db.gen.ts",
       "packages/claim/src/infrastructure/db.gen.ts",
       "packages/closing/src/infrastructure/db.gen.ts",
-      "packages/shared-kernel/src/messaging.gen.ts",
+      "packages/shared-kernel/src/messaging/messaging.gen.ts",
     ]);
   });
 

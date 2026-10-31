@@ -1,4 +1,4 @@
-import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel";
+import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel/problem";
 import type { Hook } from "@hono/zod-openapi";
 import type { Env } from "hono";
 

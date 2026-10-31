@@ -3,7 +3,7 @@ import {
   type MailSender,
   type NotificationStore,
 } from "@agent-software-factory/approval";
-import { currentInstant } from "@agent-software-factory/shared-kernel";
+import { currentInstant } from "@agent-software-factory/shared-kernel/time";
 import { Effect, type ManagedRuntime } from "effect";
 
 import type { QueueMessage } from "./poller.ts";

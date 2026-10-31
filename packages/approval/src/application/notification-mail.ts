@@ -1,5 +1,5 @@
 import type { NotificationRequested } from "@agent-software-factory/approval-events";
-import { BUSINESS_TIME_ZONE } from "@agent-software-factory/shared-kernel";
+import { BUSINESS_TIME_ZONE } from "@agent-software-factory/shared-kernel/time";
 import { Data, Effect } from "effect";
 
 import type { OutgoingMail } from "./mail-sender.ts";

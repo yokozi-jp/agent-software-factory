@@ -1,7 +1,7 @@
 import { NotificationStoreLayer } from "@agent-software-factory/approval";
 import type { MailSender } from "@agent-software-factory/approval";
-import { createPool } from "@agent-software-factory/db";
-import { Database } from "@agent-software-factory/shared-kernel";
+import { createPool } from "@agent-software-factory/db/node";
+import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
 import { SESv2Client } from "@aws-sdk/client-sesv2";
 import { Layer, ManagedRuntime } from "effect";
 import { Kysely, PostgresDialect } from "kysely";

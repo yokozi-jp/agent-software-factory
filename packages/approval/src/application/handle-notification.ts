@@ -1,5 +1,5 @@
 import { notificationRequested } from "@agent-software-factory/approval-events";
-import type { WriteActor } from "@agent-software-factory/shared-kernel";
+import type { WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 
 import { MailSender } from "./mail-sender.ts";

@@ -6,12 +6,20 @@
 // @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: domain imports only the types of shared-kernel
 import "@agent-software-factory/shared-kernel";
+// @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
+// oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no value of the entry result either
+import "@agent-software-factory/shared-kernel/result";
+// @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
+// oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no other entry of shared-kernel, not even its types
+import type {} from "@agent-software-factory/shared-kernel/time";
 // @ts-expect-error -- fixture: the module does not depend on hono, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no library
 import "hono";
 // oxlint-disable-next-line no-restricted-imports -- fixture: domain imports no other layer
 import "../../application/__fixtures__/boundaries.ts";
-// The one import that domain may have: a type of shared-kernel. It carries no disable comment, so `vp check`
-// fails if the rule stops it.
+// The imports that domain may have: a type of shared-kernel and of its entry result (docs/adr/0051). They carry no
+// disable comment, so `vp check` fails if the rule stops them.
 // @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
 export type { SharedKernel } from "@agent-software-factory/shared-kernel";
+// @ts-expect-error -- fixture: the module does not depend on shared-kernel, so the import does not resolve
+export type { Result } from "@agent-software-factory/shared-kernel/result";

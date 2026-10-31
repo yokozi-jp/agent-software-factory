@@ -1,7 +1,7 @@
 import { ApprovalTx } from "@agent-software-factory/approval";
 import { ClaimTx } from "@agent-software-factory/claim";
 import { ClosingTx } from "@agent-software-factory/closing";
-import { createPool } from "@agent-software-factory/db";
+import { createPool } from "@agent-software-factory/db/node";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import {
   beginTenantTransaction,
@@ -10,7 +10,7 @@ import {
   dbCallUnique,
   inTenantTransaction,
   UniqueViolation,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/tenant-db";
 import { Cause, Data, Effect, Exit, type Duration } from "effect";
 import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";

@@ -2,7 +2,7 @@ import { Context, Effect, Exit, Layer } from "effect";
 import { sql, type ControlledTransaction, type Kysely, type QueryExecutorProvider } from "kysely";
 
 import { CurrentWrite, type WriteActor } from "./common-columns.ts";
-import { currentInstant } from "./time.ts";
+import { currentInstant } from "../time/time.ts";
 
 /** The modules of the sample feature, by their schema names (GLOSSARY.md, docs/adr/0026). */
 export type ModuleName = "claim" | "approval" | "closing";

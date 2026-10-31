@@ -1,4 +1,4 @@
-import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel";
+import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel/problem";
 import type { MiddlewareHandler } from "hono";
 
 import type { Auth } from "./auth.ts";

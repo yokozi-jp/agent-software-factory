@@ -1,4 +1,4 @@
-import { validationProblemSchema } from "@agent-software-factory/shared-kernel";
+import { validationProblemSchema } from "@agent-software-factory/shared-kernel/problem";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { describe, expect, it } from "vite-plus/test";
 

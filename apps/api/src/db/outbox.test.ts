@@ -3,10 +3,10 @@ import { ClaimTx } from "@agent-software-factory/claim";
 import {
   CurrentWrite,
   dbCall,
-  defineEvent,
-  enqueueOutbox,
   inTenantTransaction,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/tenant-db";
+import { defineEvent } from "@agent-software-factory/shared-kernel";
+import { enqueueOutbox } from "@agent-software-factory/shared-kernel/messaging";
 import { Cause, Effect, Exit } from "effect";
 import { sql } from "kysely";
 import { describe, expect, it } from "vite-plus/test";

@@ -1,10 +1,12 @@
 import {
   purgeExpiredIdempotencyKeys,
+  type PurgeResult,
+} from "@agent-software-factory/shared-kernel/idempotency-db";
+import {
   type Database,
   type ModuleName,
   type ModuleTx,
-  type PurgeResult,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 
 // 期限切れの冪等キーを消すバッチの本体 (Issue #325、docs/adr/0040)。入口 (purge-idempotency-keys.ts) が環境変数を検査して呼ぶ。

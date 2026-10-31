@@ -170,10 +170,25 @@ export const apiDependencies: Record<string, string> = {
   hono: "catalog:",
   ...Object.fromEntries(modules.map((name) => [`@agent-software-factory/${name}`, "workspace:*"])),
 };
+// The entries of shared-kernel, one for each feature (docs/adr/0051).
+export const sharedKernelExports: Record<string, string> = {
+  ".": "./src/index.ts",
+  ...Object.fromEntries(
+    [
+      "result",
+      "time",
+      "messaging",
+      "tenant-db",
+      "idempotency-db",
+      "idempotency-http",
+      "problem",
+    ].map((entry) => [`./${entry}`, `./src/${entry}/index.ts`]),
+  ),
+};
 export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
-    exports: { ".": "./src/index.ts" },
+    exports: name === "shared-kernel" ? sharedKernelExports : { ".": "./src/index.ts" },
     scripts: {
       check: "vp check",
       ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),

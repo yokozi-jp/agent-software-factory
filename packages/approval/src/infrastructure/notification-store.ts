@@ -3,11 +3,13 @@ import {
   CurrentWrite,
   Database,
   inTenantTransaction,
+  type WriteActor,
+} from "@agent-software-factory/shared-kernel/tenant-db";
+import {
   isMessageProcessed,
   recordProcessedMessage,
   type ConsumedMessage,
-  type WriteActor,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/messaging";
 import { Effect, Layer } from "effect";
 
 import { NotificationStore } from "../application/notification-store.ts";

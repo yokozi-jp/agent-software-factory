@@ -1,14 +1,14 @@
 import { Effect } from "effect";
 import type { z } from "zod";
 
-import { CurrentWrite, type WriteActor } from "./common-columns.ts";
+import { CurrentWrite, type WriteActor } from "../tenant-db/common-columns.ts";
 import { recordProcessedMessage, type ConsumedMessage } from "./processed-message.ts";
 import {
   inTenantTransaction,
   type Database,
   type ModuleName,
   type ModuleTx,
-} from "./tenant-transaction.ts";
+} from "../tenant-db/tenant-transaction.ts";
 
 /**
  * The result of a consumer. `Processed` carries what `handle` returned. `Duplicate` means the message was processed

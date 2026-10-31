@@ -88,7 +88,8 @@ const uiPublicApi = {
 // The packages that are not modules and export something other than src/index.ts: the exports they must have, and
 // what the message says about them. Adding a package of this kind is one entry here (docs/domain-model/add-package.md).
 //   ui         no index.ts: the folders of the parts and the CSS (docs/adr/0034).
-//   db         the production entry, the seed and the tools of the tests as three entries, so that faker,
+//   shared-kernel  one entry for each feature, and `.` for the contract that imports no library but zod (docs/adr/0051).
+//   db         the Node-only production entry (no `.`), the seed and the tools of the tests as three entries, so that faker,
 //              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
 //   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
 //              apps import (docs/adr/0048).
@@ -101,13 +102,26 @@ const ownExports: Readonly<
     exports: uiPublicApi,
     says: "the folders of the parts and the CSS and nothing else (docs/adr/0034)",
   },
-  [db]: {
+  [sharedKernel]: {
     exports: {
       ".": "./src/index.ts",
+      "./result": "./src/result/index.ts",
+      "./time": "./src/time/index.ts",
+      "./messaging": "./src/messaging/index.ts",
+      "./tenant-db": "./src/tenant-db/index.ts",
+      "./idempotency-db": "./src/idempotency-db/index.ts",
+      "./idempotency-http": "./src/idempotency-http/index.ts",
+      "./problem": "./src/problem/index.ts",
+    },
+    says: "the contract and one entry for each feature, and nothing else (docs/adr/0051)",
+  },
+  [db]: {
+    exports: {
+      "./node": "./src/node.ts",
       "./seed": "./src/seed/index.ts",
       "./testing": "./src/testing/index.ts",
     },
-    says: "the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038)",
+    says: "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051)",
   },
   [telemetry]: {
     exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
@@ -134,9 +148,15 @@ export function packageManifests(tree: Tree): string[] {
       failures.push(
         `${path} must have the exports ${JSON.stringify(exported)}, ${own?.says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
       );
-    if (name !== ui && !tree.paths.includes(`packages/${name}/src/index.ts`))
+    // The first entry is the one the package is named by: src/index.ts, or src/node.ts for db, which has no `.` (docs/adr/0051).
+    const mainEntry = Object.values(exported)[0];
+    if (
+      name !== ui &&
+      mainEntry !== undefined &&
+      !tree.paths.includes(`packages/${name}/${mainEntry.slice(2)}`)
+    )
       failures.push(
-        `packages/${name}/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
+        `packages/${name}/${mainEntry.slice(2)}, the public API that the exports name, does not exist (docs/adr/0026).`,
       );
     if (record(json.nx).name !== name)
       failures.push(

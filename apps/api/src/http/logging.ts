@@ -4,7 +4,7 @@ import {
   type LogFields,
   type Logger,
 } from "@agent-software-factory/logging";
-import { commonProblemTypes } from "@agent-software-factory/shared-kernel";
+import { commonProblemTypes } from "@agent-software-factory/shared-kernel/problem";
 import type { Context, MiddlewareHandler } from "hono";
 import { tryGetContext } from "hono/context-storage";
 

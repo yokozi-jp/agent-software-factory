@@ -8,7 +8,7 @@ import {
   requireIdempotencyKey,
   type IdempotencyEnv,
 } from "./idempotency-http.ts";
-import { IdempotencyInProgress } from "./idempotency.ts";
+import { IdempotencyInProgress } from "../idempotency-db/idempotency.ts";
 
 const uuid = "9f1c1f6e-2f0e-4c3a-9c53-2a5c3e0d6b11";
 

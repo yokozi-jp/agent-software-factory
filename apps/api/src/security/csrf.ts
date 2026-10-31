@@ -3,7 +3,7 @@ import {
   commonProblemTypes,
   problemResponse,
   statusTitle,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/problem";
 import type { MiddlewareHandler } from "hono";
 
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
