@@ -12,7 +12,9 @@ services:
       POSTGRES_PASSWORD: postgres # betterleaks:allow
     volumes:
       # データは名前付きボリュームに置く。`down` では残り、`down -v` で消える (docs/tooling/local-worker.md)。
-      - postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18 のイメージは /var/lib/postgresql に mount する形 (PGDATA が版ごとの下位ディレクトリになった)。/data まで mount すると起動しない。
+      # 根拠は docs/tooling/local-worker.md。
+      - postgres-data:/var/lib/postgresql
       # 初回の起動 (データのディレクトリが空のとき) だけ、名前の順に流れる。ロールは本番と同じ bootstrap.sql で作る。
       - ./packages/db/bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
       - ./docker/postgres-local-roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro

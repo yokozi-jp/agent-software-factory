@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
+    "dev:idp": "node test/dev-idp.ts",
+    "dev:auth": "node --env-file-if-exists=.env src/server.ts",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vp test run --coverage",
     "check": "vp check",

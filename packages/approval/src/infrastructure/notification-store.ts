@@ -1,3 +1,4 @@
+// idempotency-exempt: a consumer of the notification queue, not an HTTP request; processed_message deduplicates it (docs/adr/0029, docs/async/idempotency.md)
 import {
   CurrentWrite,
   Database,

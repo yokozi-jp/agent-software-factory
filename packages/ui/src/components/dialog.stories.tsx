@@ -36,7 +36,9 @@ export const Default: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "開く" }));
     // ダイアログは portal で body の直下に出るので、canvas ではなく screen から探す。
     const dialog = await screen.findByRole("dialog", { name: "確認" });
-    await expect(within(dialog).getByText("この操作を続けますか。")).toBeVisible();
+    // 開くときに fade-in (opacity 0 → 1、100ms) する。`toBeVisible` は opacity 0 を見えないと数えるので、
+    // 要素が出た直後に一度だけ確かめると、負荷の高い CI で落ちる (#523)。見えるまで待つ。
+    await waitFor(() => expect(within(dialog).getByText("この操作を続けますか。")).toBeVisible());
     await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   },

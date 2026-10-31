@@ -32,6 +32,12 @@
           "{workspaceRoot}/.kiro/hooks/*.json"
         ]
       },
+      "test-isolation": {
+        "inputs": [
+          "{projectRoot}/src/test/**/*",
+          "{projectRoot}/vite.config.ts"
+        ]
+      },
       "test-tools": {
         "cache": true,
         "inputs": [

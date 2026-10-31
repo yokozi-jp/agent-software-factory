@@ -20,7 +20,14 @@ interface Operation {
   operationId?: string;
   deprecated?: boolean;
   "x-sunset"?: string;
+  parameters?: Parameter[];
   responses: Record<string, { content?: Record<string, { schema: Schema }> }>;
+}
+interface Parameter {
+  name: string;
+  in: string;
+  required: boolean;
+  schema: { type: string };
 }
 interface Schema {
   properties: Record<string, { "x-extensible-enum"?: string[] }>;
@@ -55,6 +62,27 @@ const operation = (spec: Spec, path: string, method: string): Operation => {
   if (found === undefined) throw new Error(`the spec fixture has no ${method} ${path}`);
   return found;
 };
+// A write operation that the API does not have yet: GET /api/me with the method changed, and the parameters given.
+const addWrite = (
+  spec: Spec,
+  method: "post" | "patch",
+  parameters: Parameter[] | undefined,
+): void => {
+  const write: Operation = {
+    ...structuredClone(operation(spec, "/api/me", "get")),
+    operationId: `${method}Thing`,
+  };
+  if (parameters !== undefined) write.parameters = parameters;
+  spec.paths["/api/things"] = { [method]: write };
+};
+const idempotencyKey = (overrides: Partial<Parameter> = {}): Parameter => ({
+  name: "Idempotency-Key",
+  in: "header",
+  required: true,
+  schema: { type: "string" },
+  ...overrides,
+});
+
 // The 200 response of GET /api/me, and the 401 response of the same operation (a Problem Details schema).
 const meSchema = (spec: Spec): Schema => {
   const schema = operation(spec, "/api/me", "get").responses["200"]?.content?.["application/json"]
@@ -135,6 +163,82 @@ describe("openapi-lint.sh with the real Spectral", () => {
     const result = lint();
     expect(result.status).toBe(1);
     expect(output(result)).toContain("problem-details-error-response");
+  }, 300_000);
+});
+
+describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/0040)", () => {
+  it.each(["post", "patch"] as const)(
+    "passes a %s operation with the required Idempotency-Key header",
+    (method) => {
+      const spec = committed();
+      addWrite(spec, method, [idempotencyKey()]);
+      write(spec);
+
+      expect(lint()).toMatchObject({ status: 0 });
+    },
+    300_000,
+  );
+
+  it("passes the header name in another case, because HTTP header names are case-insensitive", () => {
+    const spec = committed();
+    addWrite(spec, "post", [idempotencyKey({ name: "idempotency-key" })]);
+    write(spec);
+
+    expect(lint()).toMatchObject({ status: 0 });
+  }, 300_000);
+
+  it.each(["post", "patch"] as const)(
+    "fails a %s operation without parameters",
+    (method) => {
+      const spec = committed();
+      addWrite(spec, method, undefined);
+      write(spec);
+
+      const result = lint();
+      expect(result.status).toBe(1);
+      expect(output(result)).toContain("idempotency-key-required");
+    },
+    300_000,
+  );
+
+  it.each(["post", "patch"] as const)(
+    "fails a %s operation whose parameters are not the Idempotency-Key",
+    (method) => {
+      const spec = committed();
+      addWrite(spec, method, [idempotencyKey({ name: "X-Request-Id" })]);
+      write(spec);
+
+      const result = lint();
+      expect(result.status).toBe(1);
+      expect(output(result)).toContain("idempotency-key-required");
+    },
+    300_000,
+  );
+
+  it("fails an Idempotency-Key header that is optional", () => {
+    const spec = committed();
+    addWrite(spec, "post", [idempotencyKey({ required: false })]);
+    write(spec);
+
+    const result = lint();
+    expect(result.status).toBe(1);
+    expect(output(result)).toContain("idempotency-key-required");
+  }, 300_000);
+
+  it("fails an Idempotency-Key that is not a header", () => {
+    const spec = committed();
+    addWrite(spec, "patch", [idempotencyKey({ in: "query" })]);
+    write(spec);
+
+    const result = lint();
+    expect(result.status).toBe(1);
+    expect(output(result)).toContain("idempotency-key-required");
+  }, 300_000);
+
+  it("does not ask a GET operation for the header", () => {
+    write(committed());
+
+    expect(lint()).toMatchObject({ status: 0 });
   }, 300_000);
 });
 
