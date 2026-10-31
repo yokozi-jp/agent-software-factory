@@ -25,6 +25,12 @@ import {
 
 const env = process.env;
 
+// git whose failure keeps stderr: the check fails on these, and CI must show why (tryGit drops it).
+function git(cwd: string, args: readonly string[]): { out: string } | { error: string } {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return result.status === 0 ? { out: result.stdout } : { error: result.stderr.trim() };
+}
+
 function fail(message: string): number {
   process.stderr.write(`migration-compat: ${message}\n`);
   return 2;
@@ -55,7 +61,7 @@ function main(): number {
       `could not find the merge base of ${ref} and HEAD. Fetch the history (fetch-depth: 0).`,
     );
 
-  const diff = tryGit(top, [
+  const diff = git(top, [
     "-c",
     "core.quotePath=false",
     "diff",
@@ -65,9 +71,9 @@ function main(): number {
     "--",
     migrationsDirectory,
   ]);
-  if (diff === undefined) return fail(`git diff from ${base} failed.`);
+  if ("error" in diff) return fail(`git diff from ${base} failed: ${diff.error}`);
 
-  const decision = decide(classifyMigrations(diff), {
+  const decision = decide(classifyMigrations(diff.out), {
     hasSeed: tryGit(top, ["cat-file", "-e", `${base}:${seedEntry}`]) !== undefined,
     hasHarness: tryGit(top, ["show", `${base}:${harnessEntry}`])?.includes(harnessMarker) === true,
   });
@@ -80,8 +86,8 @@ function main(): number {
 
   const worktree = mkdtempSync(join(env.RUNNER_TEMP || tmpdir(), "migration-compat-"));
   try {
-    if (tryGit(top, ["worktree", "add", "--detach", worktree, base]) === undefined)
-      return fail(`could not check out ${base} in ${worktree}.`);
+    const added = git(top, ["worktree", "add", "--detach", worktree, base]);
+    if ("error" in added) return fail(`could not check out ${base} in ${worktree}: ${added.error}`);
     const files = decision.files.map((file) => join(top, file));
     const installed = run("pnpm", ["install", "--frozen-lockfile"], worktree);
     if (installed !== 0)
