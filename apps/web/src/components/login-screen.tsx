@@ -6,13 +6,13 @@ import type { LoginMessageKind } from "@/lib/login-message.ts";
 
 export interface LoginScreenProps {
   /** URL の識別子から選んだメッセージの種類 (`selectLoginMessage`)。 */
-  readonly message?: LoginMessageKind | undefined;
+  readonly kind?: LoginMessageKind | undefined;
   /** IdP のログインを始める。失敗したら投げる (画面が「ログインできなかった」を出す)。 */
   readonly onSignIn: () => Promise<void>;
 }
 
 // 中央のカードに「IdP でログイン」の 1 ボタン (画面案 B、Issue #402)。理由があれば、ボタンの上に alert で 1 枚出す。
-export function LoginScreen({ message: initialMessage, onSignIn }: LoginScreenProps) {
+export function LoginScreen({ kind: initialKind, onSignIn }: LoginScreenProps) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   const messages = {
@@ -23,7 +23,7 @@ export function LoginScreen({ message: initialMessage, onSignIn }: LoginScreenPr
     loggedOut: t("login.reason.loggedOut"),
   } satisfies Record<LoginMessageKind, string>;
   // ボタンを押して失敗したときは、URL の識別子より新しい出来事なので、先に出す。
-  const kind = failed ? "failed" : initialMessage;
+  const kind = failed ? "failed" : initialKind;
   const message = kind === undefined ? undefined : messages[kind];
 
   return (

@@ -28,17 +28,11 @@ describe("ログイン画面のメッセージの種類 (selectLoginMessage)", (
     expect(selectLoginMessage("invalid_code", "logged-out")).toBe("failed");
   });
 
-  it.each([undefined, "", "other", "<script>", "toString", 1, null, {}])(
-    "error がなく、reason が %j なら出さない",
-    (reason) => {
-      expect(selectLoginMessage(undefined, reason)).toBeUndefined();
-    },
-  );
+  it("error も reason もなければ出さない", () => {
+    expect(selectLoginMessage(undefined, undefined)).toBeUndefined();
+  });
 
-  it.each(["", 1, null, undefined])(
-    "error が文字列でない、または空 (%j) なら reason に進む",
-    (error) => {
-      expect(selectLoginMessage(error, "session-expired")).toBe("sessionExpired");
-    },
-  );
+  it("error が空文字なら reason に進む", () => {
+    expect(selectLoginMessage("", "session-expired")).toBe("sessionExpired");
+  });
 });

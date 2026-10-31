@@ -29,7 +29,7 @@ function LoginPage() {
   const { redirect: returnTo, reason, error } = Route.useSearch();
   return (
     <LoginScreen
-      message={selectLoginMessage(error, reason)}
+      kind={selectLoginMessage(error, reason)}
       onSignIn={() => signIn(returnTo ?? "/")}
     />
   );

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { expect, fn, userEvent } from "storybook/test";
 
 import { ForbiddenScreen } from "./components/error-screens.tsx";
+import { LoginScreen as LoginScreenView } from "./components/login-screen.tsx";
 import { withSessionExpiry, type AppContext, type SessionState } from "./lib/session.ts";
 import { createAppRouter, goToSessionExpired, type AppRouter } from "./router.ts";
 
@@ -31,6 +32,8 @@ interface AppProps {
   apiStatus?: number;
 }
 
+const accountUnavailable =
+  "このアカウントでは利用できません。心当たりがない場合は、管理者に連絡してください。";
 const notFoundTitle = "お探しのページは見つかりません。URL を確認するか、トップへ戻ってください。";
 
 let latest: ReadyApp | undefined;
@@ -161,9 +164,6 @@ export const LoginAfterLogout: Story = {
   },
 };
 
-const accountUnavailable =
-  "このアカウントでは利用できません。心当たりがない場合は、管理者に連絡してください。";
-
 export const LoginWithAccountUnavailable: Story = {
   args: { path: "/login?error=account_unavailable" },
   play: async ({ args, canvas }) => {
@@ -182,6 +182,19 @@ export const LoginWithAnUnknownError: Story = {
     const alert = await canvas.findByRole("alert");
     await expect(alert).toHaveTextContent("ログインできませんでした。もう一度お試しください。");
     await expect(alert).not.toHaveTextContent("state_mismatch");
+    await expect(canvas.getByRole("button", { name: "IdP でログイン" })).toBeVisible();
+  },
+};
+
+// 「一時的に使えない」の識別子は人事システムの確認 (Issue #156) が決める。それまでは URL から出せないので、画面だけを確かめる。
+export const LoginTemporarilyUnavailable: Story = {
+  render: () => (
+    <LoginScreenView kind="temporarilyUnavailable" onSignIn={() => Promise.resolve()} />
+  ),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "ただいま利用できません。しばらくしてから、もう一度お試しください。",
+    );
     await expect(canvas.getByRole("button", { name: "IdP でログイン" })).toBeVisible();
   },
 };
