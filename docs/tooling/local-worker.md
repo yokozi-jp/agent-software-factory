@@ -68,7 +68,7 @@ pnpm --filter @agent-software-factory/worker send-sample [宛先のメールア�
 ## 版を上げるとき
 
 ElasticMQ と Mailpit のイメージは `compose.local.yaml` が持ち、結合テスト (`apps/worker/test/containers.ts`) もそこから読みます。ElasticMQ の設定は `docker/elasticmq.conf` です。`compose.local.yaml` は、Renovate の docker-compose manager の既定の対象 (`compose` で始まる `.yaml`) なので、版の更新の PR が出ます ([Renovate の docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/))。
-PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage` (テストと型の生成) と、`compose.local.yaml` の 2 か所にあります。上げるときは両方を同じ版にします。ずれを止める検査は [Issue #515](https://github.com/yokozi-jp/agent-software-factory/issues/515) で扱います。
+PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage` (テストと型の生成) と、`compose.local.yaml` の 2 か所にあります。上げるときは両方を同じ版にします。compose は digest を付け (`postgres:18@sha256:...`)、`postgresImage` は付けないので、repo-policy (`onePostgresVersion`) は `@` の前のタグ部分 (`postgres:18`) が同じことを確かめ、ずれていれば止めます ([Issue #515](https://github.com/yokozi-jp/agent-software-factory/issues/515))。Renovate が compose の digest だけを上げるのは、タグが同じなので通ります。
 
 ## この環境に入っていないもの
 

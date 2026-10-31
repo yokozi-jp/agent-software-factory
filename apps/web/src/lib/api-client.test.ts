@@ -21,7 +21,12 @@ describe("API クライアント (hc)", () => {
     const res = await client.api.me.$get();
 
     if (res.status === 200) {
-      expectTypeOf(await res.json()).toEqualTypeOf<{ id: string; email: string; name: string }>();
+      expectTypeOf(await res.json()).toEqualTypeOf<{
+        id: string;
+        email: string;
+        name: string;
+        roles: string[];
+      }>();
     } else {
       expectTypeOf(res.status).toEqualTypeOf<401>();
       const body = await res.json();

@@ -46,7 +46,8 @@ export async function startServerProcess(env: Record<string, string>): Promise<S
     let stdout = "";
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
-      const port = /listening on http:\/\/localhost:(\d+)/.exec(stdout)?.[1];
+      // 入口が info で出す 1 行 (JSON Lines) の message。docs/adr/0049
+      const port = /api listening on port (\d+)/.exec(stdout)?.[1];
       if (port !== undefined) resolve(`http://127.0.0.1:${port}`);
     });
     child.once("exit", (code) =>

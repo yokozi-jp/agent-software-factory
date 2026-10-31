@@ -40,7 +40,17 @@ const i18n = "i18n";
 // telemetry starts the OpenTelemetry SDK in a Node-only entry, and holds the helper that drops the query string from
 // a URL before it becomes an attribute (docs/adr/0048). It has no layers, and no module depends on it: the entry files of apps/api do.
 const telemetry = "telemetry";
-const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n, telemetry];
+// logging holds the Logger interface that the app depends on, and the pino implementation in a Node-only entry
+// (docs/adr/0049). It has no layers, and no module depends on it: the entry files and the middleware of apps/api do.
+const logging = "logging";
+const dependOnNone: readonly string[] = [
+  sharedKernel,
+  moduleFixtures,
+  ui,
+  i18n,
+  telemetry,
+  logging,
+];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
 // has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api and apps/worker
 // (the pool and the tools of the tests) depend on it
@@ -57,7 +67,7 @@ const eventsSuffix = "-events";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
 // and module-fixtures. Every package under packages/ but the ones in `notModules`.
-const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, db];
+const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, logging, db];
 export const modulePackageNames = (tree: Tree): string[] =>
   packageNames(tree).filter((name) => !notModules.includes(name));
 
@@ -71,6 +81,7 @@ const publicApi = { ".": "./src/index.ts" };
 const uiPublicApi = {
   "./globals.css": "./src/styles/globals.css",
   "./components/*": "./src/components/*.tsx",
+  "./hooks/*": "./src/hooks/*.ts",
   "./lib/*": "./src/lib/*.ts",
 };
 
@@ -81,6 +92,8 @@ const uiPublicApi = {
 //              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
 //   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
 //              apps import (docs/adr/0048).
+//   logging    the entry for any code (the Logger interface), the Node-only entry that creates the pino logger (which the
+//              entry files of the apps import), and the tools of the tests, so that they stay out of production (docs/adr/0049).
 const ownExports: Readonly<
   Record<string, { readonly exports: Record<string, string>; readonly says: string }>
 > = {
@@ -99,6 +112,10 @@ const ownExports: Readonly<
   [telemetry]: {
     exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
     says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
+  },
+  [logging]: {
+    exports: { ".": "./src/index.ts", "./node": "./src/node.ts", "./testing": "./src/testing.ts" },
+    says: "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)",
   },
 };
 
@@ -137,8 +154,8 @@ const isEventsPackage = (tree: Tree, name: string): boolean =>
   name.endsWith(eventsSuffix) &&
   eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
 
-// Every package under packages/ but shared-kernel, module-fixtures, ui, i18n and telemetry is a module of moduleOrder, and depends on no
-// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui, i18n and telemetry depend on none.
+// Every package under packages/ but shared-kernel, module-fixtures, ui, i18n, telemetry and logging is a module of moduleOrder, and depends on no
+// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui, i18n, telemetry and logging depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -164,7 +181,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
         );
       }
   }

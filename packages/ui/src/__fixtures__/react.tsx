@@ -18,5 +18,5 @@ export function IndexKey({ items }: { items: string[] }) {
 // oxlint-disable-next-line web-xss/no-html-injection -- fixture: a string inserted as HTML
 export const html = <div dangerouslySetInnerHTML={{ __html: "<b>fixture</b>" }} />;
 
-// oxlint-disable-next-line no-console -- fixture: the frontend logs nothing to the browser console
+// oxlint-disable-next-line no-console, no-restricted-globals -- fixture: the frontend logs nothing to the browser console
 console.log("fixture");

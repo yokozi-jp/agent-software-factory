@@ -87,12 +87,20 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Roles of the user in the active tenant, such as accounting. Empty when there is none."
                     }
                   },
                   "required": [
                     "id",
                     "email",
-                    "name"
+                    "name",
+                    "roles"
                   ]
                 }
               }

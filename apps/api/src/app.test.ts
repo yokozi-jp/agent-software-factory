@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 
+import { memoryLogger } from "../test/memory-logger.ts";
 import { app, createApp } from "./app.ts";
 
 describe("ヘルスチェック (GET /health)", () => {
@@ -66,17 +67,17 @@ describe("エラー応答 (docs/adr/0035)", () => {
   });
 
   it("予期しない例外は、メッセージを出さない about:blank の 500 にすること", async () => {
-    const failing = createApp();
+    const { logger, lines } = memoryLogger();
+    const failing = createApp({ logger });
     failing.get("/boom", () => {
       throw new Error("password=hunter2");
     });
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await failing.request("/boom");
 
     expect(await res.clone().text()).not.toContain("hunter2");
     await expectBlankProblem(res, 500, "Internal Server Error");
-    expect(error).toHaveBeenCalledOnce();
-    error.mockRestore();
+    // 5xx は error の 1 行で、event.code を持つ (docs/adr/0049)。
+    expect(lines().filter((line) => line["event.code"] === "API-001")).toHaveLength(1);
   });
 });

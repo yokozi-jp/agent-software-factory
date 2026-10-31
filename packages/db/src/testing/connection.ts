@@ -2,7 +2,7 @@
  * テストと型の生成 (src/types.ts) が起動する PostgreSQL のイメージ。版を上げるときは、ここ 1 か所を直す。
  * 型を生成する DB とテストの DB の版がずれないようにする。
  */
-export const postgresImage = "postgres:17";
+export const postgresImage = "postgres:18";
 
 /** bootstrap.sql が作るロール。 */
 export const roles = ["migrator", "app_user", "auth_service", "outbox_relay"] as const;

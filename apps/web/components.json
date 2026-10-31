@@ -16,7 +16,7 @@
     "components": "@/components",
     "ui": "@agent-software-factory/ui/components",
     "lib": "@/lib",
-    "hooks": "@/hooks",
+    "hooks": "@agent-software-factory/ui/hooks",
     "utils": "@agent-software-factory/ui/lib/utils"
   },
   "menuColor": "default",

@@ -43,9 +43,15 @@ const otelSdkPattern = {
   message: otelSdkMessage,
 };
 
+// pino is the implementation behind the Logger (docs/adr/0049). Code outside packages/logging/src/node.ts and the tests
+// depends on the `Logger` interface of @agent-software-factory/logging, so that the logger can be replaced in one place.
+const pinoMessage =
+  "Take a Logger from @agent-software-factory/logging as an argument. pino is created in packages/logging/src/node.ts (docs/adr/0049).";
+
 const runtimeImports = {
   paths: [
     { name: "bun", message: runtimeImportMessage },
+    { name: "pino", message: pinoMessage },
     { name: "@hono/node-server", message: runtimeImportMessage },
     { name: "@hono/aws-lambda", message: runtimeImportMessage },
     { name: "@hono/node-ws", message: runtimeImportMessage },
@@ -125,6 +131,11 @@ const runtimeGlobals = [
   },
   { name: "Bun", message: runtimeImportMessage },
   { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
+  {
+    name: "console",
+    message:
+      "Do not write to the console. Take a Logger (@agent-software-factory/logging) as an argument and log through it (docs/adr/0049, docs/logging/format.md).",
+  },
 ];
 const runtimeGlobalEntries = [
   ...runtimeGlobals,
@@ -295,13 +306,15 @@ const deepImports = [subpathImport, relativeDeepImport];
 // What the tests of apps/api may import past the index.ts of a package: the tools of the tests and the seed of
 // packages/db (docs/adr/0038). Production code in apps/api/src does not, so it stays under deepImports.
 const dbSubpaths = ["testing", "seed"];
-// The entry files of apps/api import the Node-only entry of packages/telemetry too (docs/adr/0048).
+// The entry files of apps/api import the Node-only entries of packages/telemetry and packages/logging too (docs/adr/0048, 0049).
 const testDeepImports = [
   {
     group: [
       `${scope}/*/**`,
       ...dbSubpaths.map((path) => `!${scope}/db/${path}`),
       `!${scope}/telemetry/node`,
+      `!${scope}/logging/node`,
+      `!${scope}/logging/testing`,
     ],
     message: deepMessage,
   },
@@ -613,6 +626,19 @@ export default defineConfig({
           "packages/telemetry/src/**/*.test.ts",
           "packages/telemetry/src/__fixtures__/otel-sdk.ts",
         ],
+        plugins: ["import"],
+        rules: {
+          ...runtimeRulesOff,
+          "no-restricted-imports": ["error", { paths: outboxPaths, patterns: deepImports }],
+        },
+      },
+      // packages/logging is not a module (docs/adr/0049). Its Node-only entry (src/node.ts) creates the pino logger, so it and
+      // the tests may import pino and the SDK, and leave the runtime restrictions as an entry file does (docs/adr/0007):
+      // the entry writes to the standard output and sets the exit code. index.ts, the entry that any code may import,
+      // stays under the restrictions of packages/*/src above, so it cannot pull pino in. These files have no layers,
+      // keep the ban on deep imports, and do not send (outboxPaths).
+      {
+        files: ["packages/logging/src/node.ts", "packages/logging/src/**/*.test.ts"],
         plugins: ["import"],
         rules: {
           ...runtimeRulesOff,

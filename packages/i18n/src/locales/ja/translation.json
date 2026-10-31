@@ -18,15 +18,49 @@
       "sessionExpired": "ログインの有効期限が切れました。もう一度ログインしてください。",
       "loggedOut": "ログアウトしました。"
     },
-    "failed": "ログインできませんでした。もう一度お試しください。"
+    "failed": "ログインできませんでした。もう一度お試しください。",
+    "accountUnavailable": "このアカウントでは利用できません。心当たりがない場合は、管理者に連絡してください。",
+    "temporarilyUnavailable": "ただいま利用できません。しばらくしてから、もう一度お試しください。"
   },
   "notFound": {
-    "title": "ページが見つかりません。"
+    "title": "お探しのページは見つかりません。URL を確認するか、トップへ戻ってください。"
   },
   "forbidden": {
-    "title": "この画面を開く権限がありません。"
+    "title": "このページを表示する権限がありません。"
   },
   "errorScreen": {
-    "toHome": "トップへ戻る"
+    "toHome": "トップへ戻る",
+    "toLogin": "ログインへ"
+  },
+  "nav": {
+    "label": "メインメニュー",
+    "toggle": "メニューを開閉",
+    "skipToContent": "本文へ移動",
+    "approvals": "承認",
+    "review": "確認",
+    "closing": "締め",
+    "group": {
+      "approval": "承認・確認",
+      "closing": "締め"
+    }
+  },
+  "userMenu": {
+    "theme": "テーマ",
+    "signOut": "ログアウト",
+    "signOutFailed": "ログアウトできませんでした。もう一度お試しください。"
+  },
+  "theme": {
+    "light": "ライト",
+    "dark": "ダーク",
+    "system": "システム"
+  },
+  "approvals": {
+    "title": "承認"
+  },
+  "review": {
+    "title": "確認"
+  },
+  "closing": {
+    "title": "締め"
   }
 }
