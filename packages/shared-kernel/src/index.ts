@@ -40,10 +40,12 @@ export {
   problemResponse,
   problemSchema,
   problemTypes,
+  statusTitle,
   validationErrorSchema,
   validationProblemSchema,
   type CommonProblemType,
   type Kebab,
   type ProblemInput,
+  type ProblemType,
   type ValidationError,
 } from "./problem.ts";

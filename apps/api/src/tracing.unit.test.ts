@@ -32,6 +32,18 @@ describe("受信のトレース", () => {
     ).toHaveLength(1);
   });
 
+  it("エラー応答の trace_id は、受信の span の trace id と同じ (docs/adr/0035)", async () => {
+    exporter.reset();
+
+    const res = await createApp().request("/not-found");
+    const body: unknown = await res.json();
+
+    await vi.waitFor(() => expect(exporter.getFinishedSpans()).not.toHaveLength(0));
+    expect(body).toMatchObject({
+      trace_id: exporter.getFinishedSpans()[0]?.spanContext().traceId,
+    });
+  });
+
   it("クエリ文字列、リクエストのヘッダー、Cookie は span に載らない", async () => {
     exporter.reset();
     const secret = "s3cret-value-that-must-not-reach-a-trace";

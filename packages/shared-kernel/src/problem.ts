@@ -23,40 +23,12 @@ export const commonProblemTypes = {
 
 export type CommonProblemType = (typeof commonProblemTypes)[keyof typeof commonProblemTypes];
 
-type Upper =
-  | "A"
-  | "B"
-  | "C"
-  | "D"
-  | "E"
-  | "F"
-  | "G"
-  | "H"
-  | "I"
-  | "J"
-  | "K"
-  | "L"
-  | "M"
-  | "N"
-  | "O"
-  | "P"
-  | "Q"
-  | "R"
-  | "S"
-  | "T"
-  | "U"
-  | "V"
-  | "W"
-  | "X"
-  | "Y"
-  | "Z";
-
 /** `ApprovalNotAllowed` → `approval-not-allowed`. The type-level twin of `toKebab`. */
 export type Kebab<
   S extends string,
   First extends boolean = true,
 > = S extends `${infer Head}${infer Rest}`
-  ? `${Head extends Upper ? `${First extends true ? "" : "-"}${Lowercase<Head>}` : Head}${Kebab<Rest, false>}`
+  ? `${Head extends Lowercase<Head> ? Head : `${First extends true ? "" : "-"}${Lowercase<Head>}`}${Kebab<Rest, false>}`
   : S;
 
 function toKebab(tag: string): string {
@@ -162,8 +134,11 @@ export const commonProblemResponses = {
   },
 } as const;
 
+/** Every `type` a problem can have: `about:blank`, a common one, or a module one (`/problems/<module>/<kebab-tag>`). */
+export type ProblemType = typeof ABOUT_BLANK | CommonProblemType | `/problems/${string}/${string}`;
+
 export interface ProblemInput {
-  readonly type: string;
+  readonly type: ProblemType;
   readonly title: string;
   readonly status: ContentfulStatusCode;
   readonly detail?: string;
@@ -212,12 +187,14 @@ const statusTitles: Readonly<Record<number, string>> = {
   504: "Gateway Timeout",
 };
 
-function titleOf(status: number): string {
+/** The `title` of a problem that the status code alone explains (`about:blank`). */
+export function statusTitle(status: number): string {
   return statusTitles[status] ?? (status >= 500 ? "Server Error" : "Client Error");
 }
 
 /**
  * For `app.onError`. An `HTTPException` becomes its status as `about:blank`; any other error becomes a 500.
+ * The `res` of an `HTTPException` is ignored on purpose: every error response is built here, in one shape.
  * `onServerError` receives every error that answers 5xx, to write the log; the response never carries the message.
  */
 export function problemErrorHandler(
@@ -226,10 +203,10 @@ export function problemErrorHandler(
   return (error, c) => {
     const status = error instanceof HTTPException ? error.status : 500;
     if (status >= 500) onServerError(error, c);
-    return problemResponse(c, { type: ABOUT_BLANK, title: titleOf(status), status });
+    return problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(status), status });
   };
 }
 
 /** For `app.notFound`. */
 export const problemNotFoundHandler: NotFoundHandler = (c) =>
-  problemResponse(c, { type: ABOUT_BLANK, title: titleOf(404), status: 404 });
+  problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(404), status: 404 });

@@ -2,6 +2,7 @@ import {
   ABOUT_BLANK,
   commonProblemTypes,
   problemResponse,
+  statusTitle,
 } from "@agent-software-factory/shared-kernel";
 import type { MiddlewareHandler } from "hono";
 
@@ -42,7 +43,7 @@ export function csrfProtection(origin: string): MiddlewareHandler {
     if (contentType !== "application/json") {
       return problemResponse(c, {
         type: ABOUT_BLANK,
-        title: "Unsupported Media Type",
+        title: statusTitle(415),
         status: 415,
         detail: "The Content-Type must be application/json.",
       });
