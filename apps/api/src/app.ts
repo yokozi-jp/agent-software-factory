@@ -3,6 +3,7 @@
 import "@agent-software-factory/approval";
 import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
+import { problemErrorHandler, problemNotFoundHandler } from "@agent-software-factory/shared-kernel";
 import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
@@ -69,6 +70,21 @@ export function createApp({ auth }: AppDependencies = {}) {
       xFrameOptions: false,
     }),
   );
+  // エラー応答の変換 4 か所のうちの 2 つ (docs/adr/0035)。残りは defaultHook と route の _tag の switch。
+  // 5xx のログはここで書く。キーとレベルは Hono のロギング (Issue #327) が決めるまで、console.error に最小限を出す。
+  withoutRoutes.onError(
+    problemErrorHandler((error, c) => {
+      console.error(
+        JSON.stringify({
+          message: "unhandled error",
+          "exception.type": error.name,
+          "url.path": c.req.path,
+          "http.request.method": c.req.method,
+        }),
+      );
+    }),
+  );
+  withoutRoutes.notFound(problemNotFoundHandler);
   const app = withoutRoutes.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
 
   if (auth !== undefined) {

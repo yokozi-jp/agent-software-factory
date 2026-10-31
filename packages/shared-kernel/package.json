@@ -12,7 +12,10 @@
     "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src"
   },
   "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@opentelemetry/api": "catalog:",
     "effect": "catalog:",
+    "hono": "catalog:",
     "kysely": "catalog:",
     "zod": "catalog:"
   },

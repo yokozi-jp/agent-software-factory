@@ -77,6 +77,18 @@ describe("セッションの期間 (ADR 0022、OWASP Session Management)", () =>
     },
   );
 
+  it("最長の期限を過ぎたときの 401 は session-expired の Problem Details にすること", async () => {
+    const browser = await signedInAt(new Date());
+    await useEvery20Minutes(browser, 8 * hour);
+    vi.setSystemTime(Date.now() + 20 * minute);
+
+    const res = await browser.request("/api/me");
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("Content-Type")).toBe("application/problem+json");
+    expect(await res.json()).toMatchObject({ type: "/problems/session-expired", status: 401 });
+  });
+
   it("8時間を超えたことが分かった時点で、セッションの行を消すこと", async () => {
     const alone = await createAuthFixture();
     try {

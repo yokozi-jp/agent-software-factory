@@ -1,3 +1,4 @@
+import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel";
 import type { MiddlewareHandler } from "hono";
 
 import type { Auth } from "./auth.ts";
@@ -36,7 +37,11 @@ export function sessionGuard(auth: Auth): MiddlewareHandler<{ Variables: Session
         for (const cookie of revoked.headers.getSetCookie()) {
           c.header("set-cookie", cookie, { append: true });
         }
-        return c.json({ error: "session expired" }, 401);
+        return problemResponse(c, {
+          type: commonProblemTypes.sessionExpired,
+          title: "The session has expired.",
+          status: 401,
+        });
       }
     }
 
@@ -51,7 +56,12 @@ export function sessionGuard(auth: Auth): MiddlewareHandler<{ Variables: Session
 /** セッションがなければ 401 を返す。`sessionGuard` のあとに置く。 */
 export function requireSession(): MiddlewareHandler<{ Variables: SessionVariables }> {
   return async (c, next) => {
-    if (c.get("session") === null) return c.json({ error: "unauthenticated" }, 401);
+    if (c.get("session") === null)
+      return problemResponse(c, {
+        type: commonProblemTypes.unauthenticated,
+        title: "Authentication is required.",
+        status: 401,
+      });
     return next();
   };
 }

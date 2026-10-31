@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { problemSchema } from "@agent-software-factory/shared-kernel";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { appOrigin, createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
@@ -8,6 +9,13 @@ const form = { "content-type": "application/x-www-form-urlencoded" };
 
 // 状態を変える API の入口。業務の API はまだ無いので、テストが足す。
 const stateChangingPath = "/api/orders";
+
+/** 応答が Problem Details で、期待する type であること。 */
+async function expectProblem(res: Response, type: string) {
+  expect(res.headers.get("Content-Type")).toBe("application/problem+json");
+  const problem = problemSchema([type]).parse(await res.json());
+  expect(problem.status).toBe(res.status);
+}
 
 describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
   let fixture: AuthFixture;
@@ -40,6 +48,7 @@ describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
     });
 
     expect(res.status).toBe(403);
+    await expectProblem(res, "/problems/forbidden-origin");
   });
 
   it("別のオリジンからの JSON の送信を 403 で拒否すること", async () => {
@@ -50,6 +59,7 @@ describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
     });
 
     expect(res.status).toBe(403);
+    await expectProblem(res, "/problems/forbidden-origin");
   });
 
   it("ブラウザが Sec-Fetch-Site で cross-site と示したリクエストを 403 で拒否すること", async () => {
@@ -60,6 +70,7 @@ describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
     });
 
     expect(res.status).toBe(403);
+    await expectProblem(res, "/problems/forbidden-cross-site-request");
   });
 
   it.each([
@@ -76,6 +87,7 @@ describe("CSRF 対策 (ADR 0022、RFC 10017 6.1.3.3)", () => {
       });
 
       expect(res.status).toBe(415);
+      await expectProblem(res, "about:blank");
     },
   );
 
