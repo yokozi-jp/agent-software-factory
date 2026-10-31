@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 
-import { createTestDatabase, type TestDatabase } from "./testing/index.ts";
+import { rolledBackPerTest, type RolledBackQueries } from "./testing/index.ts";
 import { checkModuleRoles, type ModuleReads } from "./module-roles-catalog.ts";
 import { moduleSchemas } from "./types.ts";
 
@@ -12,24 +12,8 @@ const reads: ModuleReads = {
 };
 
 describe("checkModuleRoles", () => {
-  let db: TestDatabase;
-
-  beforeEach(async () => {
-    db = await createTestDatabase();
-  });
-
-  afterEach(async () => {
-    // ロールの属性とメンバーシップはクラスタ全体のもので、複製した DB に閉じない。壊した検出力のテストの後に戻す。
-    await db.superuser.query(
-      `ALTER ROLE claim_module NOLOGIN NOSUPERUSER NOBYPASSRLS;
-       GRANT claim_module TO app_user WITH INHERIT FALSE, SET TRUE;
-       REVOKE migrator FROM claim_module;
-       ALTER ROLE outbox_relay LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
-       REVOKE outbox_relay FROM app_user;
-       REVOKE migrator FROM outbox_relay`,
-    );
-    await db.close();
-  });
+  // 規則を壊すテストは、テストごとのトランザクションの中で壊す。ロールの変更はクラスタ全体に及ぶので、コミットしない (Issue #448)。
+  const db = rolledBackPerTest();
 
   it("migration を流した DB では、問題がないこと", async () => {
     expect(await checkModuleRoles(db.superuser, reads)).toEqual([]);
@@ -44,7 +28,7 @@ describe("checkModuleRoles", () => {
   // 検出力: わざと規則を破った DB で、検査が失敗を返すこと (#30)。DDL は表の所有者の migrator、GRANT などは superuser。
   const breakages: readonly {
     name: string;
-    run: (db: TestDatabase) => Promise<unknown>;
+    run: (d: RolledBackQueries) => Promise<unknown>;
     expected: string;
   }[] = [
     {
@@ -334,12 +318,9 @@ describe("checkModuleRoles", () => {
 
   it("outbox_relay のロールか Outbox の表がなければ、その失敗だけを返すこと", async () => {
     await db.superuser.query(`ALTER ROLE outbox_relay RENAME TO outbox_relay_moved`);
-    try {
-      const withoutRole = await checkModuleRoles(db.superuser, reads);
-      expect(withoutRole).toContain("ロール outbox_relay がない");
-    } finally {
-      await db.superuser.query(`ALTER ROLE outbox_relay_moved RENAME TO outbox_relay`);
-    }
+    expect(await checkModuleRoles(db.superuser, reads)).toContain("ロール outbox_relay がない");
+    // 次の確かめはロールがある前提なので、同じトランザクションの中で名前を戻す (ROLLBACK を待たない)。
+    await db.superuser.query(`ALTER ROLE outbox_relay_moved RENAME TO outbox_relay`);
 
     await db.migrator.query(`DROP TABLE messaging.outbox`);
 

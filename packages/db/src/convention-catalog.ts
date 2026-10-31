@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Queryable } from "./queryable.ts";
 
 // docs/db の規約のうち、migration を流した DB のカタログ (pg_catalog) で判定できるものを確かめる (Issue #361)。
 // SQL の静的な解析はしない。規約の出典は検査ごとに書く。人がレビューで見る項目 (名前が意味に合うか、結合する列の
@@ -63,8 +63,7 @@ export const conventionExceptions: readonly ConventionException[] = [
 
 /** DDL を実行できてはいけないロール (docs/adr/0025)。 */
 // outbox_relay はここに入れない。その属性 (SUPERUSER、CREATEROLE、CREATEDB) と権限は、モジュールの検査
-// (module-roles-catalog.ts) が確かめる。ロールの属性はクラスタ全体のもので、そのテストが壊した間、この検査が
-// 並行して失敗するのを避ける。
+// (module-roles-catalog.ts) が確かめる。
 const restrictedRoles = ["app_user", "auth_service"];
 
 interface Violation {
@@ -131,7 +130,7 @@ function groupByTable<Row extends { schema: string; table: string }>(rows: Row[]
   return groups;
 }
 
-async function snapshot(pool: Pool): Promise<Snapshot> {
+async function snapshot(pool: Queryable): Promise<Snapshot> {
   const [schemas, tables, columns, constraints, keywords] = await Promise.all([
     pool.query<{ nspname: string }>(
       `SELECT nspname FROM pg_namespace n WHERE ${userSchema("nspname")}`,
@@ -381,7 +380,7 @@ const publicGrants = `
  * DDL を実行できるのは、スキーマかデータベースに CREATE できるロール、オブジェクトの所有者 (所有者のメンバーで
  * 権限を継承するロールを含む)、superuser、CREATEROLE、CREATEDB を持つロール。
  */
-async function privileges(pool: Pool): Promise<Violation[]> {
+async function privileges(pool: Queryable): Promise<Violation[]> {
   const report = (where: { schema: string; table?: string }, message: string) =>
     violation("privileges", where, message);
   const [attributes, inherited, creates, databaseCreates, owned, publics] = await Promise.all([
@@ -394,8 +393,7 @@ async function privileges(pool: Pool): Promise<Violation[]> {
       [restrictedRoles],
     ),
     // モジュールのロールへの INHERIT は、ここでは見ない。app_user が INHERIT FALSE、SET TRUE で入っていることは、
-    // モジュールの検査 (module-roles-catalog.ts) が確かめる。ロールのメンバーシップはクラスタ全体のもので、
-    // そのテストが INHERIT TRUE にした間、この検査が並行して失敗するのを避ける。
+    // モジュールの検査 (module-roles-catalog.ts) が確かめる。
     pool.query<{ rolname: string; roleName: string }>(
       `SELECT mr.rolname, gr.rolname AS "roleName"
          FROM pg_auth_members m
@@ -426,7 +424,8 @@ async function privileges(pool: Pool): Promise<Violation[]> {
        SELECT r.rolname, n.nspname, p.proname
          FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
          JOIN pg_roles r ON r.oid = p.proowner
-        WHERE r.rolname = ANY($1) AND ${userSchema("n.nspname")}`,
+        WHERE r.rolname = ANY($1) AND ${userSchema("n.nspname")}
+        ORDER BY 1, 2, 3`,
       [restrictedRoles],
     ),
     pool.query<{ schema: string; name: string | null; label: string; privilege: string }>(
@@ -479,7 +478,7 @@ const covers = (exception: ConventionException, found: Violation) =>
  * (convention-catalog.test.ts) が、毎回これを呼んで問題が空であることを確かめる。
  */
 export async function checkConventions(
-  pool: Pool,
+  pool: Queryable,
   exceptions: readonly ConventionException[] = conventionExceptions,
 ): Promise<string[]> {
   const snap = await snapshot(pool);
