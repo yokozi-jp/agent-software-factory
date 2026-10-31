@@ -40,6 +40,7 @@ pre-commit:
             glob:
               - "**/package.json"
               - "**/vite.config.ts"
+              - "**/tsconfig.json"
               - ".vite-hooks/**"
               - ".betterleaks.toml"
               - "mise.toml"
