@@ -5,7 +5,7 @@ okf_version: "0.2"
 # ドキュメント
 
 - [開発環境の構築](local-env-setup/index.md)：開発に参加するとき、マシンを作り直したとき
-- [開発ツール](tooling/index.md)：コマンドを探すとき、Git hook、CI、secret scan で止まったとき、それらを変えるとき
+- [開発ツール](tooling/index.md)：コマンドを探すとき、Git hook、CI、secret scan で止まったとき、それらを変えるとき、検査 (lint、sh のラッパー、CI の step) を足すとき (足す場所の一覧は `tooling/ci.md` の「検査を足すとき」)
 - [リポジトリ運用](repository/index.md)：コミットや PR を書くとき、リリースするとき、GitHub の設定を変えるとき
 - [Architecture Decision Records](adr/index.md)：ツールや構成を追加、変更する前に既存の決定を確かめるとき、ADR を書くとき
 - [ナレッジ管理](knowledge/index.md)：docs、steering、AGENTS.md を追加、変更するとき、知識をどこに書くか迷ったとき

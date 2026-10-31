@@ -48,6 +48,7 @@ import {
   nxRunsTasks,
   oneBetterleaks,
   oneNodeMajor,
+  shellScriptsHaveTests,
   steeringFrontmatter,
   uniqueAdrNumbers,
 } from "./tooling.ts";
@@ -91,6 +92,7 @@ export function violations(repo: Repo): string[] {
     ...catalogMatchesConfigs(tree),
     ...agentPermissions(tree),
     ...executableScripts(tree),
+    ...shellScriptsHaveTests(tree),
     ...docsReferences(tree),
     ...docsCodePaths(tree),
     ...ciTargetsHaveCommands(tree),
