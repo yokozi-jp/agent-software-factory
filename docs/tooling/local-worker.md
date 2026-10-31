@@ -30,7 +30,9 @@ docker compose -f compose.local.yaml up -d --wait
 ## データベースを用意する
 
 初回の起動で、PostgreSQL に本番と同じ `packages/db/bootstrap.sql` が流れ、ロールができます。パスワードは `docker/postgres-local-roles.sql` が設定します (すべて `local-password`)。この初期化は、データのディレクトリが空のときだけ流れます ([Docker Official Image の postgres](https://hub.docker.com/_/postgres) の Initialization scripts)。データは名前付きボリューム `postgres-data` にあり、`down` では残ります。ロールの作り方を変えたら `down -v` でやり直します。
-PostgreSQL 18 のイメージは、ボリュームを `/var/lib/postgresql` に mount する形です。`/var/lib/postgresql/data` に mount すると、起動時にこの形を勧めるメッセージを出して止まります ([Issue #531](https://github.com/yokozi-jp/agent-software-factory/issues/531))。16 以前の形で作った `agent-software-factory-local_postgres-data` が残っていると、新しい mount では使えません。一度 `down -v` で消してから起動し直し、migration をやり直します。
+
+PostgreSQL 18 のイメージは、`PGDATA` が `/var/lib/postgresql/18/docker` に変わり、ボリュームを `/var/lib/postgresql` に mount する形です ([Docker Official Image の postgres](https://hub.docker.com/_/postgres) の PGDATA、[docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259))。`/var/lib/postgresql/data` に mount すると、起動時に止まります ([Issue #531](https://github.com/yokozi-jp/agent-software-factory/issues/531))。16 以前の形で作った `agent-software-factory-local_postgres-data` も、18 は「`/var/lib/postgresql` にデータがある」とエラーを出して起動しません (postgres:16 で作ったボリュームを postgres:18 に mount して確かめた)。一度 `down -v` で消してから起動し直し、migration をやり直します。
+
 migration は `migrator` で流します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。
 
 ```sh
