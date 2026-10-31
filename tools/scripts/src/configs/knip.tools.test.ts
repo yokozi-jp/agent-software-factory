@@ -48,7 +48,7 @@ const skipped = new Set([
   ".tanstack",
 ]);
 
-// The apps of the copy. knip.jsonc names apps/api (its entries src/index.ts and src/server.ts, and the dependencies
+// The apps of the copy. knip.jsonc names apps/api (its entry src/index.ts, and the dependencies
 // it keeps) and the workspaces of pnpm-workspace.yaml; small apps written here take the place of the real ones, so
 // that a change to the code of the apps does not make the tools tests run (docs/tooling/ci.md).
 const sdkClients = [
@@ -67,8 +67,10 @@ const apps: Record<string, string> = {
       private: true,
       type: "module",
       // The generator of the OpenAPI spec in tools/scripts is reached from this script (docs/adr/0047).
+      // src/server.ts is reached from dev:auth, as in the real app (knip.jsonc does not name it).
       scripts: {
         check: "vp check",
+        "dev:auth": "node src/server.ts",
         openapi: "node --import ./test/temporal.ts ../../tools/scripts/src/openapi/cli.ts",
       },
       dependencies: { "@hono/node-server": "catalog:", hono: "catalog:" },
