@@ -6,10 +6,9 @@ import {
 import type { TestDatabase } from "@agent-software-factory/db/testing";
 import {
   type ConsumeResult,
-  type Database,
   type RegisteredConsumer,
-  type WriteActor,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/messaging";
+import { type Database, type WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
 import type { Effect } from "effect";
 
 /**

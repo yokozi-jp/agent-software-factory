@@ -1,19 +1,21 @@
 import { ClaimTx } from "@agent-software-factory/claim";
-import { createPool } from "@agent-software-factory/db";
+import { createPool } from "@agent-software-factory/db/node";
 import { awaitBlocked, idempotencyKeyTableSql } from "@agent-software-factory/db/testing";
 import {
   createdColumns,
   CurrentWrite,
   dbCall,
   Database,
+  inTenantTransaction,
+} from "@agent-software-factory/shared-kernel/tenant-db";
+import {
   IdempotencyInProgress,
   IdempotencyPayloadMismatch,
-  inTenantTransaction,
   NonSuccessResponse,
   withIdempotencyKey,
   type IdempotencyRequest,
   type IdempotentResponse,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/idempotency-db";
 import { Cause, Data, Deferred, Effect, Exit, Option } from "effect";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";

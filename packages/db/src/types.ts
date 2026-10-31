@@ -49,7 +49,7 @@ export const moduleSchemas: readonly string[] = moduleSchemasOf(repositoryRoot);
  * `messaging` は Outbox の表で、型は `packages/shared-kernel` に置く (docs/adr/0029)。
  */
 export const sharedSchemaFiles: Readonly<Record<string, string>> = {
-  messaging: "packages/shared-kernel/src/messaging.gen.ts",
+  messaging: "packages/shared-kernel/src/messaging/messaging.gen.ts",
 };
 
 /** 型を生成するスキーマ: モジュールのスキーマと共有のスキーマ。 */

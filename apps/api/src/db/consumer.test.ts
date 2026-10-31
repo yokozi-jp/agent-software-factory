@@ -1,5 +1,5 @@
 import { ClaimTx } from "@agent-software-factory/claim";
-import { createPool } from "@agent-software-factory/db";
+import { createPool } from "@agent-software-factory/db/node";
 import {
   diffRowCounts,
   processedMessageTableSql,
@@ -8,13 +8,15 @@ import {
 import {
   dbCall,
   Database,
-  defineConsumer,
-  defineEvent,
-  enqueueOutbox,
-  registeredConsumers,
   createdColumns,
   CurrentWrite,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/tenant-db";
+import {
+  defineConsumer,
+  enqueueOutbox,
+  registeredConsumers,
+} from "@agent-software-factory/shared-kernel/messaging";
+import { defineEvent } from "@agent-software-factory/shared-kernel";
 import { Data, Effect, Exit, Fiber } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";

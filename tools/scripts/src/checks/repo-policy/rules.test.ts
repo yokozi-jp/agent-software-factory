@@ -19,6 +19,7 @@ import {
   lintEffect,
   packageFiles,
   packageJson,
+  sharedKernelExports,
 } from "./fixtures/passing-repo.ts";
 import { eventsPackages, modulePackageNames, packageNames, pathsHint } from "./modules.ts";
 import { Tree } from "./tree.ts";
@@ -2270,7 +2271,7 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
       ),
     ).toEqual([
       'packages/shared-kernel/package.json must have the name "@agent-software-factory/shared-kernel", the scope and the directory (docs/adr/0026).',
-      'packages/shared-kernel/package.json must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).',
+      `packages/shared-kernel/package.json must have the exports ${JSON.stringify(sharedKernelExports)}, the contract and one entry for each feature, and nothing else (docs/adr/0051).`,
       'packages/shared-kernel/package.json must have the Nx project name "shared-kernel" (nx.name), the name of its directory (docs/adr/0026).',
       'packages/shared-kernel/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
     ]);
@@ -2739,7 +2740,7 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
 
 describe("ADR 0038: db depends on the modules by type only, and only apps/api and apps/worker depend on db", () => {
   const dbExports = {
-    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
     "./seed": "./src/seed/index.ts",
     "./testing": "./src/testing/index.ts",
   };
@@ -2749,7 +2750,7 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api an
       scripts: { check: "vp check" },
       ...fields,
     }),
-    "packages/db/src/index.ts": "export {};\n",
+    "packages/db/src/node.ts": "export {};\n",
   });
   const claim = { "@agent-software-factory/claim": "workspace:*" };
   const dbDependency = { "@agent-software-factory/db": "workspace:*" };
@@ -2880,20 +2881,20 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api an
   });
 
   it.each([
-    ["exports of the production entry only", { ".": "./src/index.ts" }],
-    ["no seed", { ".": "./src/index.ts", "./testing": "./src/testing/index.ts" }],
+    ["exports of the production entry only", { "./node": "./src/node.ts" }],
+    ["no seed", { "./node": "./src/node.ts", "./testing": "./src/testing/index.ts" }],
     ["a subpath too", { ...dbExports, "./x": "./src/x.ts" }],
   ])("refuses db with %s", (_, exports) => {
     expect(violations(repo({ ...db({ exports }) }))).toEqual([
-      `packages/db/package.json must have the exports ${JSON.stringify(dbExports)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038).`,
+      `packages/db/package.json must have the exports ${JSON.stringify(dbExports)}, the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051).`,
     ]);
   });
 
-  it("asks db for the check script and src/index.ts, like every package", () => {
+  it("asks db for the check script and the file of every export, like every package", () => {
     expect(
-      violations(repo({ ...db({ scripts: {} }), "packages/db/src/index.ts": undefined })),
+      violations(repo({ ...db({ scripts: {} }), "packages/db/src/node.ts": undefined })),
     ).toEqual([
-      "packages/db/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).",
+      "packages/db/src/node.ts, the public API that the exports name, does not exist (docs/adr/0026).",
       'packages/db/package.json must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).',
     ]);
   });
@@ -4195,9 +4196,9 @@ describe("ADR 0033: each part of packages/ui has a story next to it", () => {
 describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () => {
   const store = "packages/claim/src/application/submit-claim.ts";
   const importing = (names: string): string =>
-    `import { ${names} } from "@agent-software-factory/shared-kernel";\nexport {};\n`;
+    `import { ${names} } from "@agent-software-factory/shared-kernel/${names.includes("withIdempotencyKey") ? "idempotency-db" : "tenant-db"}";\nexport {};\n`;
   const failure = (path: string): string =>
-    `${path} opens a transaction but does not use withIdempotencyKey. A write of an HTTP request goes through withIdempotencyKey of @agent-software-factory/shared-kernel; a writer that is not one (a consumer, a batch) says why with a line \`// idempotency-exempt: <reason>\` (docs/adr/0040).`;
+    `${path} opens a transaction but does not use withIdempotencyKey. A write of an HTTP request goes through withIdempotencyKey of @agent-software-factory/shared-kernel/idempotency-db; a writer that is not one (a consumer, a batch) says why with a line \`// idempotency-exempt: <reason>\` (docs/adr/0040).`;
 
   it("passes a file that opens a transaction and uses withIdempotencyKey", () => {
     expect(
@@ -4217,7 +4218,7 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
       violations(
         repo({
           [path]:
-            'import {\n  Database,\n  beginTenantTransaction,\n} from "@agent-software-factory/shared-kernel";\n',
+            'import {\n  Database,\n  beginTenantTransaction,\n} from "@agent-software-factory/shared-kernel/tenant-db";\n',
         }),
       ),
     ).toEqual([failure(path)]);
@@ -4257,7 +4258,7 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
           "packages/claim/src/domain/rule.ts": text,
           "packages/claim/src/application/submit-claim.test.ts": text,
           "packages/claim/src/application/__fixtures__/bypass.ts": text,
-          "packages/shared-kernel/src/consumer.ts": text,
+          "packages/shared-kernel/src/messaging/consumer.ts": text,
           "apps/api/src/db/idempotency.ts": text,
         }),
       ),
@@ -4265,7 +4266,7 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
   });
 
   describe("the header name of apps/web is the one of shared-kernel", () => {
-    const api = "packages/shared-kernel/src/idempotency-http.ts";
+    const api = "packages/shared-kernel/src/idempotency-http/idempotency-http.ts";
     const web = "apps/web/src/lib/use-idempotent-mutation.ts";
     const declare = (name: string): string => `export const IDEMPOTENCY_KEY_HEADER = "${name}";\n`;
     const mismatch = (webName: string, apiName: string): string =>

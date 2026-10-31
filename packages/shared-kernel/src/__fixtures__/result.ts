@@ -1,7 +1,7 @@
 // Detection-power fixture (#43) for the type Result (docs/adr/0027). Each declaration below is a value that the
 // type must refuse. If the type is loosened, the `@ts-expect-error` comment is unused and `vp check` fails.
 // Knip and jscpd skip __fixtures__/, and nothing imports this file.
-import type { Result } from "../result.ts";
+import type { Result } from "../result/result.ts";
 
 type NoLines = { readonly _tag: "NoLines" };
 type TotalExceedsLimit = { readonly _tag: "TotalExceedsLimit"; readonly limit: number };

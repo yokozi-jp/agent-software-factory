@@ -14,7 +14,7 @@ rules:
   problem-details-error-response:
     description: Every 4xx and 5xx response is application/problem+json with type, title and status.
     message: >-
-      {{error}}. Write the response with the shared Problem Details schema (packages/shared-kernel/src/problem.ts)
+      {{error}}. Write the response with the shared Problem Details schema (packages/shared-kernel/src/problem/problem.ts)
       under the content type application/problem+json, as docs/adr/0035 says.
     severity: error
     given: $.paths[*][*].responses[?(@property.match(/^[45]/))]
@@ -55,7 +55,7 @@ rules:
     description: Every POST and PATCH operation has the Idempotency-Key header as a required header parameter.
     message: >-
       {{error}}. Add `request: { headers: idempotencyKeyHeaderSchema }` to the route and `requireIdempotencyKey` as its
-      middleware (packages/shared-kernel/src/idempotency-http.ts), as docs/adr/0040 says.
+      middleware (packages/shared-kernel/src/idempotency-http/idempotency-http.ts), as docs/adr/0040 says.
     severity: error
     given: $.paths[*][?(@property === 'post' || @property === 'patch')]
     then:

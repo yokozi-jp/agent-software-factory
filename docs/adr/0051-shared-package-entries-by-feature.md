@@ -1,26 +1,26 @@
 ---
 type: ADR
-title: "ADR 0051: 共有 package の入口 (exports) は機能ごとに切り、各入口が触る外部ライブラリを表にする (たたき台)"
-description: shared-kernel、db、i18n、logging、telemetry の exports を、機能ごとの入口に揃える提案。Effect のような手段を理由に入口を作らず、. は外部ライブラリを import しない契約だけにする。shared-kernel の入口の割り当て、domain が import してよい入口、lint と repo-policy で止める方法、決まっていない論点を書く。共有 package の exports を足す、変えるとき、shared-kernel に関数を足すとき、どの入口に置くか迷うときに読む。
+title: "ADR 0051: 共有 package の入口 (exports) は機能ごとに切り、各入口が触る外部ライブラリを表にする"
+description: shared-kernel、db、i18n、logging、telemetry の exports を、機能ごとの入口に揃える決定。Effect のような手段を理由に入口を作らず、. は外部ライブラリを import しない契約だけにする。shared-kernel の入口の割り当て、domain が import してよい入口、lint と repo-policy で止める方法、決まっていない論点を書く。共有 package の exports を足す、変えるとき、shared-kernel に関数を足すとき、どの入口に置くか迷うときに読む。
 tags: [adr, architecture, packages, exports, lint]
 ---
 
-# ADR 0051: 共有 package の入口 (exports) は機能ごとに切り、各入口が触る外部ライブラリを表にする (たたき台)
+# ADR 0051: 共有 package の入口 (exports) は機能ごとに切り、各入口が触る外部ライブラリを表にする
 
-状態: たたき台。決定ではありません ([Issue #558](https://github.com/yokozi-jp/agent-software-factory/issues/558))。
+状態: 決定 ([Issue #558](https://github.com/yokozi-jp/agent-software-factory/issues/558))。
 
 共有 package の入口の切り方が揃っておらず、どの入口がどの外部ライブラリに触るかを、ファイルを開いて import を読むまで分かりません。`logging` と `telemetry` は `.` (契約) と `./node` (外部 SDK) に分けていますが、`db` と `i18n` は分けていません。`shared-kernel` は `.` だけで、20 以上のファイルが `kysely`、`hono`、`effect`、`zod` に触るものと触らないものを混ぜて再 export しています。目的は差し替えではなく、コードを読む負荷を下げることです。
 
-## 決定 (案)
+## 決定
 
 - **入口は機能ごとに切る**: 入口の単位は「何をする機能か」(時刻、メッセージング、冪等性) です。Effect、Kysely、Hono は手段で、入口の理由にしません。ただし 1 つの機能が DB と HTTP の両方に触るときは、`-db` と `-http` の 2 つの入口に分けます (`./idempotency-db`、`./idempotency-http`)。
 - **`.` は外部ライブラリを import しない契約だけ**: 型、判別可能な union、`zod` のスキーマ。`zod` は例外として許します (`defineEvent`。`events` の package が `kysely` を引き込まないため)。`domain` の規則 (ADR 0026、0027) は変えず、`shared-kernel` から値を import せず、型の `import type` だけを許します。許す入口は `.` と `./result` です。
 - **例外は表に書く**: `i18n` は外部依存が `i18next` 1 つで、使うのは `apps/web` だけなので、入口を分けず `.` に `i18next` を置きます。
-- **外部ライブラリは入口の表に書く**: 各 package の `package.json` の `exports` の入口ごとに、触る外部ライブラリを ADR か docs の表に書きます。表と `dependencies` が食い違うのを repo-policy で止めます。
+- **外部ライブラリは入口の表に書く**: `shared-kernel` の入口ごとに、触る外部ライブラリを下の表と `vite.config.ts` の `sharedKernelEntries` に書きます。表にない外部ライブラリを入口が import すると、`no-restricted-imports` が止めます (`hono/client` のような subpath も止めます)。`exports` の形は repo-policy の `ownExports` が止めます。
 - **Node.js 専用の入口は `./node`**: `process` や `node:*` を使う入口に限ります。外部ライブラリがあるだけでは付けません (i18next はブラウザでも動く)。
 - **テスト用の道具は `./testing`**: 本番の入口に混ぜません (`logging`、`db` で既にそうしています)。
 
-### `shared-kernel` の入口の割り当て (案)
+### `shared-kernel` の入口の割り当て
 
 | 入口                 | ファイル                                                                                          | 触る外部ライブラリ                                |
 | -------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
@@ -35,7 +35,7 @@ tags: [adr, architecture, packages, exports, lint]
 
 `./result` は、`Result` 型 (`domain` が `import type` で使う) と `fromResult` (`application` が使う) を、1 つの機能 (失敗の表し方) として置きます。`domain` は型だけを import するので、`effect` は実行時に読まれません。
 
-### 他の package の入口 (案)
+### 他の package の入口
 
 | package                | 入口                                      | 触る外部ライブラリ       |
 | ---------------------- | ----------------------------------------- | ------------------------ |
@@ -44,7 +44,7 @@ tags: [adr, architecture, packages, exports, lint]
 | `i18n`                 | `.`                                       | `i18next` (例外)         |
 | `logging`、`telemetry` | 今のまま                                  |                          |
 
-`db` は `.` を持たない案です (論点 5)。
+`db` は `.` を持ちません (論点 5)。
 
 ## 決まっていない論点
 
@@ -52,7 +52,7 @@ tags: [adr, architecture, packages, exports, lint]
 2. ~~**`from-result.ts` の置き場**~~ (決めた): `result.ts` と `from-result.ts` を `src/result/` に置き、`./result` の入口にします。`Result` が `.` から離れるので、`domain` の lint は `.` と `./result` の型の import を許す形に直します。`no-restricted-imports` の `allowTypeImports` は、Oxlint 1.89.0 で `paths` と `patterns` (`regex` と `group`) のどちらでも効くことを、手元で確かめました。`import type { R }` と `import { type T }` は通り、値の import (`import { f }`) は止まります。Oxlint の `regex` は先読みを使えないので (ADR 0026)、`./result` 以外の入口 (`./time` など) を `domain` から止める pattern は、`layers` に書く入口の一覧から `^…/shared-kernel/(time|messaging|…)$` のように列挙して組み立てます。
 3. ~~**`domain` の規則**~~ (決めた): 変えません。`.` に `zod` を残します。`domain` は値を import しないので、`zod` は読まれません。
 4. ~~**`events` の package**~~ (決めた): `defineEvent` は `.` に残します。`events` の package は `.` だけを import し、`kysely` を引き込みません。
-5. **`db` と `i18n`**: `db` は `bootstrap`、`migrate`、`pool` を `./node` に移します (決めた)。`.` を空にして消すかは未決で、消すと `repo-policy` の `ownExports` を直します。`i18n` は今のまま (決めた)。
+5. ~~**`db` と `i18n`**~~ (決めた): `db` は `bootstrap`、`migrate`、`pool` を `./node` に移し、`.` を消します。repo-policy は `exports` の最初の項目のファイルの有無を確かめるので、`db` は `src/node.ts` を見ます。`i18n` は今のまま。
 
 ## Considered Options
 
@@ -64,8 +64,11 @@ tags: [adr, architecture, packages, exports, lint]
 ## Consequences
 
 - import のパス (`.../shared-kernel/messaging`) から、どの機能の何に依存するかが分かります。
+- `shared-kernel` の `src/` は入口ごとのディレクトリ (`src/result/`、`src/time/` など) に分け、各ディレクトリの `index.ts` が入口です。
+- `domain` の lint は、`.` と `./result` の `import type` だけを許します。ほかの入口は型でも止めます。`domain` の pattern は、入口を許す `deepImports` の否定の `group` より前に置きます (否定の `group` が一致すると、その import の検査がそこで終わるため)。
+- 入口の検出力の fixture は、`packages/shared-kernel/src/__fixtures__/root-entry.ts` (`.`) と `src/<入口>/__fixtures__/library.ts` に置きます。
 - 全モジュールと `apps/*` の `shared-kernel` の import を書き換えます。
-- `vite.config.ts` の `no-restricted-imports`、`tools/scripts/src/checks/repo-policy/modules.ts` の `ownExports`、`knip.jsonc` の `entry`、fixture を直します。[Issue #550](https://github.com/yokozi-jp/agent-software-factory/issues/550) (制限の表) と、ブランチ `refactor/shared-kernel` ([Issue #458](https://github.com/yokozi-jp/agent-software-factory/issues/458)) と同じファイルを触るので、先に済ませるか順序を決めます。
+- `vite.config.ts` の `no-restricted-imports`、`tools/scripts/src/checks/repo-policy/modules.ts` の `ownExports`、`knip.jsonc` の `entry`、fixture を直しました。[Issue #550](https://github.com/yokozi-jp/agent-software-factory/issues/550) (制限の表) と `shared-kernel` への改名 ([Issue #458](https://github.com/yokozi-jp/agent-software-factory/issues/458)) は main に入っています。
 - 機能で切ると、入口の追加が機能の追加と同じ粒度になり、`exports` の項目が増えます。
 
 ## 出典

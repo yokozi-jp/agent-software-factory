@@ -14,3 +14,7 @@ import "@agent-software-factory/shared-kernel";
 // @ts-expect-error -- fixture: module-fixtures does not depend on shared-kernel; the line is for the lint rule below
 // oxlint-disable-next-line no-restricted-imports -- fixture: a deep import
 import "@agent-software-factory/shared-kernel/src/index.ts";
+// An entry of shared-kernel is not a deep import (docs/adr/0051). It carries no disable comment, so `vp check` fails if
+// the rule stops it.
+// @ts-expect-error -- fixture: module-fixtures does not depend on shared-kernel, so the import does not resolve
+import "@agent-software-factory/shared-kernel/time";

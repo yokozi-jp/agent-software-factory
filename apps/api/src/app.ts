@@ -9,7 +9,7 @@ import {
   problemErrorHandler,
   problemNotFoundHandler,
   problemResponse,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/problem";
 import { noopLogger, type Logger } from "@agent-software-factory/logging";
 import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";

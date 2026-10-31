@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./result": "./src/result/index.ts",
+    "./time": "./src/time/index.ts",
+    "./messaging": "./src/messaging/index.ts",
+    "./tenant-db": "./src/tenant-db/index.ts",
+    "./idempotency-db": "./src/idempotency-db/index.ts",
+    "./idempotency-http": "./src/idempotency-http/index.ts",
+    "./problem": "./src/problem/index.ts"
   },
   "scripts": {
     "check": "vp check",

@@ -1,9 +1,9 @@
 import { ClaimTx } from "@agent-software-factory/claim";
 import {
   defineConsumer,
-  defineEvent,
   type RegisteredConsumer,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/messaging";
+import { defineEvent } from "@agent-software-factory/shared-kernel";
 import { Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 

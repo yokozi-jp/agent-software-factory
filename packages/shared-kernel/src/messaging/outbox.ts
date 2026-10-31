@@ -2,11 +2,11 @@ import { Effect, Option } from "effect";
 import { sql, type Insertable } from "kysely";
 import { z } from "zod";
 
-import { createdColumns, CurrentWrite } from "./common-columns.ts";
-import { dbCall } from "./db-call.ts";
-import { insertRow } from "./insert-row.ts";
+import { createdColumns, CurrentWrite } from "../tenant-db/common-columns.ts";
+import { dbCall } from "../tenant-db/db-call.ts";
+import { insertRow } from "../tenant-db/insert-row.ts";
 import type { MessagingOutbox } from "./messaging.gen.ts";
-import type { ModuleTx } from "./tenant-transaction.ts";
+import type { ModuleTx } from "../tenant-db/tenant-transaction.ts";
 
 /**
  * What every event has (`defineEvent`, docs/adr/0046): the `id` (the key of the receiver's `processed_message`), the

@@ -1,7 +1,7 @@
 import "@agent-software-factory/approval";
 import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
-import { registeredConsumers } from "@agent-software-factory/shared-kernel";
+import { registeredConsumers } from "@agent-software-factory/shared-kernel/messaging";
 import { describe, expect, it } from "vite-plus/test";
 
 import { consumerProblems } from "../../test/consumer-check.ts";

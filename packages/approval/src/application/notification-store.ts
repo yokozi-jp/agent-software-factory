@@ -1,4 +1,5 @@
-import type { ConsumedMessage, WriteActor } from "@agent-software-factory/shared-kernel";
+import type { ConsumedMessage } from "@agent-software-factory/shared-kernel/messaging";
+import type { WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Context, type Effect } from "effect";
 
 /**

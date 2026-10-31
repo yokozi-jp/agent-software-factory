@@ -3,7 +3,7 @@ import { telemetry } from "./telemetry.ts";
 // Node.js 24 には Temporal がないので、polyfill の global を入れる。Node.js 26 以降は何もしない。
 import "temporal-polyfill/global";
 import { serve } from "@hono/node-server";
-import { createPool, poolTimeouts } from "@agent-software-factory/db";
+import { createPool, poolTimeouts } from "@agent-software-factory/db/node";
 import {
   createNodeLogger,
   startOrFail,

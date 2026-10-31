@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import { sql } from "kysely";
 
-import { CurrentWrite, type WriteActor } from "./common-columns.ts";
-import { dbCall } from "./db-call.ts";
-import { Database, inTenantTransaction, type ModuleTx } from "./tenant-transaction.ts";
+import { CurrentWrite, type WriteActor } from "../tenant-db/common-columns.ts";
+import { dbCall } from "../tenant-db/db-call.ts";
+import { Database, inTenantTransaction, type ModuleTx } from "../tenant-db/tenant-transaction.ts";
 
 // The cleanup of expired idempotency keys (Issue #325, docs/adr/0040). A row of `idempotency_key` is kept for 24 hours
 // (`expires_at`); this deletes the rows past it, so the table does not grow for ever.

@@ -198,7 +198,7 @@ apps["packages/db/package.json"] = JSON.stringify(
     name: "@agent-software-factory/db",
     private: true,
     type: "module",
-    exports: { ".": "./src/index.ts" },
+    exports: { "./node": "./src/node.ts" },
     scripts: { check: "vp check" },
     devDependencies: {
       ...Object.fromEntries(
@@ -214,7 +214,7 @@ apps["packages/db/package.json"] = JSON.stringify(
   undefined,
   2,
 );
-apps["packages/db/src/index.ts"] =
+apps["packages/db/src/node.ts"] =
   'import type {} from "@agent-software-factory/claim";\nimport type {} from "@agent-software-factory/approval";\nexport {};\n';
 // packages/i18n and the config of i18next-cli that knip.jsonc names as its entry (docs/adr/0044). Nothing imports the
 // config; the i18n-keys script runs it with --config.

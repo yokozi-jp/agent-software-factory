@@ -2,7 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
-import { bootstrapSql, migrate } from "./index.ts";
+import { bootstrapSql, migrate } from "./node.ts";
 import { postgresImage, migratorUrl, roles } from "./testing/connection.ts";
 
 // migration を流す入口 (src/migrate.ts) と、ロールを作る bootstrap.sql (docs/adr/0025)。

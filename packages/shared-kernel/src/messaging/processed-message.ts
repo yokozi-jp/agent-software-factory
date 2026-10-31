@@ -1,10 +1,10 @@
 import { Effect } from "effect";
 import { sql, type ColumnType, type Insertable } from "kysely";
 
-import { createdColumns, CurrentWrite } from "./common-columns.ts";
-import { dbCall } from "./db-call.ts";
-import { insertRow } from "./insert-row.ts";
-import type { ModuleTx } from "./tenant-transaction.ts";
+import { createdColumns, CurrentWrite } from "../tenant-db/common-columns.ts";
+import { dbCall } from "../tenant-db/db-call.ts";
+import { insertRow } from "../tenant-db/insert-row.ts";
+import type { ModuleTx } from "../tenant-db/tenant-transaction.ts";
 
 /** What a receiver needs of a message: the `id` (the key of `processed_message`) and the `tenantId`. */
 export interface ConsumedMessage {

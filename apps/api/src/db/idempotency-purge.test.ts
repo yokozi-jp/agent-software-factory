@@ -1,5 +1,5 @@
 import { ClaimTx } from "@agent-software-factory/claim";
-import { createPool } from "@agent-software-factory/db";
+import { createPool } from "@agent-software-factory/db/node";
 import {
   countIdempotencyKeys,
   idempotencyKeyTableSql,
@@ -12,10 +12,12 @@ import {
   Database,
   dbCall,
   inTenantTransaction,
+} from "@agent-software-factory/shared-kernel/tenant-db";
+import {
   purgeExpiredIdempotencyKeys,
   withIdempotencyKey,
   type IdempotentResponse,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/idempotency-db";
 import { Deferred, Effect, Exit } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";

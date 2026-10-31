@@ -6,10 +6,11 @@ const writerFile = /^packages\/[^/]+\/src\/(?:application|infrastructure)\/.+\.t
 const isTestOrFixture = (path: string): boolean =>
   path.endsWith(".test.ts") || path.includes("/__fixtures__/");
 
-// An import of the function, from the package name of shared-kernel. A mention in a comment does not count.
+// An import of the function, from an entry of shared-kernel (tenant-db, idempotency-db; docs/adr/0051). A mention in a
+// comment does not count.
 const importsFromSharedKernel = (name: string): RegExp =>
   new RegExp(
-    `import\\s*\\{[^}]*\\b(?:${name})\\b[^}]*\\}\\s*from\\s*["']@agent-software-factory/shared-kernel["']`,
+    `import\\s*\\{[^}]*\\b(?:${name})\\b[^}]*\\}\\s*from\\s*["']@agent-software-factory/shared-kernel/(?:tenant-db|idempotency-db)["']`,
   );
 const opensTransaction = importsFromSharedKernel("inTenantTransaction|beginTenantTransaction");
 const usesIdempotency = importsFromSharedKernel("withIdempotencyKey");
@@ -31,11 +32,11 @@ export function writersUseIdempotencyKey(tree: Tree): string[] {
     })
     .map(
       (path) =>
-        `${path} opens a transaction but does not use withIdempotencyKey. A write of an HTTP request goes through withIdempotencyKey of @agent-software-factory/shared-kernel; a writer that is not one (a consumer, a batch) says why with a line \`// idempotency-exempt: <reason>\` (docs/adr/0040).`,
+        `${path} opens a transaction but does not use withIdempotencyKey. A write of an HTTP request goes through withIdempotencyKey of @agent-software-factory/shared-kernel/idempotency-db; a writer that is not one (a consumer, a batch) says why with a line \`// idempotency-exempt: <reason>\` (docs/adr/0040).`,
     );
 }
 
-const apiHeaderFile = "packages/shared-kernel/src/idempotency-http.ts";
+const apiHeaderFile = "packages/shared-kernel/src/idempotency-http/idempotency-http.ts";
 const webHeaderFile = "apps/web/src/lib/use-idempotent-mutation.ts";
 const headerName = /export const IDEMPOTENCY_KEY_HEADER\s*=\s*"([^"]*)"/;
 

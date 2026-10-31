@@ -1,10 +1,10 @@
 import { Data, Effect } from "effect";
 import { sql } from "kysely";
 
-import { createdColumns, CurrentWrite } from "./common-columns.ts";
-import { dbCall } from "./db-call.ts";
-import { insertRow } from "./insert-row.ts";
-import type { ModuleTx } from "./tenant-transaction.ts";
+import { createdColumns, CurrentWrite } from "../tenant-db/common-columns.ts";
+import { dbCall } from "../tenant-db/db-call.ts";
+import { insertRow } from "../tenant-db/insert-row.ts";
+import type { ModuleTx } from "../tenant-db/tenant-transaction.ts";
 
 // Idempotency-Key (docs/adr/0040): the key goes into the module's own table `idempotency_key`, in the transaction of the
 // business write, so the result and the record of the key commit or roll back together.

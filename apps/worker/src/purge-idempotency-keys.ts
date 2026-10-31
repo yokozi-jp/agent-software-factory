@@ -1,6 +1,6 @@
 // Node.js 24 には Temporal がない (Node.js 26 から組み込み、docs/adr/0043)。polyfill の global を入れる。
 import "temporal-polyfill/global";
-import { Database } from "@agent-software-factory/shared-kernel";
+import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 
 import { loadEnv, purgeEnvSchema } from "./env.ts";

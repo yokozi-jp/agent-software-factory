@@ -1,8 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import type { Context, MiddlewareHandler } from "hono";
 
-import type { IdempotencyInProgress } from "./idempotency.ts";
-import { commonProblemTypes, problemResponse, statusTitle } from "./problem.ts";
+import type { IdempotencyInProgress } from "../idempotency-db/idempotency.ts";
+import { commonProblemTypes, problemResponse, statusTitle } from "../problem/problem.ts";
 
 // The HTTP side of Idempotency-Key (docs/adr/0040): the header is checked in the Hono layer, before anything runs.
 

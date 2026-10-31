@@ -7,7 +7,7 @@ import {
   seedIdempotencyKeys,
   type ExpiryExpression,
 } from "@agent-software-factory/db/testing";
-import { Database } from "@agent-software-factory/shared-kernel";
+import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 import type { Kysely } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";

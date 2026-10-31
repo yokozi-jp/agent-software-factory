@@ -12,7 +12,7 @@ const ignorePatterns = [
   // that they match the migrations. Still type-checked through the files that import them.
   "packages/*/src/infrastructure/db.gen.ts",
   // The same for the shared `messaging` schema (the Outbox, docs/adr/0029).
-  "packages/shared-kernel/src/messaging.gen.ts",
+  "packages/shared-kernel/src/messaging/messaging.gen.ts",
   // Generated from the routes of apps/api (pnpm exec nx openapi api, docs/adr/0047). Committed; apps/api/src/openapi.unit.test.ts checks that it matches the routes.
   "apps/api/openapi.json",
   // Agent skills installed from upstream (tracked by skills-lock.json). Must stay byte-identical.
@@ -207,7 +207,7 @@ const layerMessage =
   "Layers point inward: domain imports nothing, application imports domain, and infrastructure and http import " +
   "application and domain but not each other (docs/adr/0026).";
 const domainMessage =
-  `domain imports nothing but types of ${scope}/shared-kernel (\`import type\`). Put the code that needs a library or ` +
+  `domain imports nothing but types of ${scope}/shared-kernel and ${scope}/shared-kernel/result (\`import type\`). Put the code that needs a library or ` +
   "another module in application or infrastructure (docs/adr/0026).";
 
 // Effect (docs/adr/0028). The features that the ADR does not use are each done by another tool already: validation
@@ -275,7 +275,32 @@ const effectRunMessage =
 // Imports that reach past the index.ts of another package: a subpath of the package name, or a relative path
 // into the src/ of a package or an app. The package.json exports stop the first from resolving, and this rule
 // names both.
-const subpathImport = { regex: `^${scope}/[^/]+/`, message: deepMessage };
+// The entries of the shared packages, and the libraries each may import (docs/adr/0051). The key is the subpath of
+// `exports` in package.json (".": the contract). Other packages import these subpaths; any other subpath is a deep
+// import. repo-policy (ownExports) checks that package.json has these entries and no other.
+const sharedKernelEntries: Readonly<Record<string, readonly string[]>> = {
+  ".": ["zod"],
+  result: ["effect"],
+  time: ["effect", "zod"],
+  messaging: ["effect", "kysely", "zod"],
+  "tenant-db": ["effect", "kysely"],
+  "idempotency-db": ["effect", "kysely"],
+  "idempotency-http": ["hono", "@hono/zod-openapi"],
+  problem: ["hono", "@hono/zod-openapi", "@opentelemetry/api"],
+};
+const sharedKernelSubpaths = Object.keys(sharedKernelEntries).filter((entry) => entry !== ".");
+// All the libraries that the entries above share out. An entry imports none of those it is not listed for.
+const sharedKernelLibraries = [
+  ...new Set(Object.values(sharedKernelEntries).flatMap((libraries) => libraries)),
+];
+// The subpaths that other code may import: the entries of shared-kernel, and the Node-only entry of db (the
+// package has no `.`, docs/adr/0038). Oxlint 1.89 ends the check of an import at a negated group that matches it,
+// so a pattern that must still apply to these (the domain layer) goes before deepImports.
+const publicSubpaths = [
+  ...sharedKernelSubpaths.map((entry) => `!${scope}/shared-kernel/${entry}`),
+  `!${scope}/db/node`,
+];
+const subpathImport = { group: [`${scope}/*/**`, ...publicSubpaths], message: deepMessage };
 const relativeDeepImport = { regex: "^\\.{1,2}/(?:.*/)?[^/]+/src(?:/|$)", message: deepMessage };
 const deepImports = [subpathImport, relativeDeepImport];
 
@@ -287,6 +312,7 @@ const testDeepImports = [
   {
     group: [
       `${scope}/*/**`,
+      ...publicSubpaths,
       ...dbSubpaths.map((path) => `!${scope}/db/${path}`),
       `!${scope}/telemetry/node`,
       `!${scope}/logging/node`,
@@ -302,7 +328,21 @@ const testDeepImports = [
 // override carries all the restrictions of its files.
 // `shared` is not a module: it owns the SQL of the transaction helper, so it may import `sql` (sqlPaths).
 function moduleImports(layer?: string, allowSql = false) {
-  const patterns: Record<string, unknown>[] = [...runtimeImports.patterns, ...deepImports];
+  const patterns: Record<string, unknown>[] = [...runtimeImports.patterns];
+  // The patterns of domain go before deepImports, whose negated groups end the check of an entry of shared-kernel.
+  if (layer === "domain")
+    patterns.push(
+      {
+        regex: `^${scope}/shared-kernel(?:/result)?$`,
+        allowTypeImports: true,
+        message: domainMessage,
+      },
+      {
+        regex: `^${scope}/shared-kernel/(?:${sharedKernelSubpaths.filter((entry) => entry !== "result").join("|")})$`,
+        message: domainMessage,
+      },
+    );
+  patterns.push(...deepImports);
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
     if (other.length > 0)
@@ -313,9 +353,8 @@ function moduleImports(layer?: string, allowSql = false) {
   }
   if (layer === "domain")
     // Oxlint 1.89 checks the patterns in order, and a negated group that matches ends the check of that import.
-    // So the value imports of shared-kernel are stopped first, then every package but shared-kernel.
+    // So the entries of shared-kernel are stopped first (above), then every package but shared-kernel.
     patterns.push(
-      { regex: `^${scope}/shared-kernel$`, allowTypeImports: true, message: domainMessage },
       { regex: "^[^.@]", message: domainMessage },
       { group: ["@*/*", `!${scope}/shared-kernel`], message: domainMessage },
     );
@@ -336,6 +375,46 @@ function moduleImports(layer?: string, allowSql = false) {
       message: effectRunMessage,
     });
   return { paths, patterns };
+}
+
+// The options of no-restricted-imports for a file of one entry of shared-kernel: the restrictions of shared-kernel, and a
+// ban on the libraries (and their subpaths, `hono/client`) that the entry is not listed for.
+function sharedKernelEntryImports(entry: string, allowed: readonly string[]) {
+  const base = moduleImports(undefined, true);
+  const banned = sharedKernelLibraries.filter((library) => !allowed.includes(library));
+  const message =
+    `${entry === "." ? "The entry `.`" : `The entry \`${entry}\``} of shared-kernel imports ${allowed.join(", ")} and no other ` +
+    "library of the entries: put the code that needs one in the entry that already imports it, or add the library to " +
+    "the entry in sharedKernelEntries (docs/adr/0051).";
+  return {
+    paths: [...base.paths, ...banned.map((name) => ({ name, message }))],
+    patterns: [
+      ...base.patterns,
+      ...banned.map((name) => ({
+        regex: `^${name.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}/`,
+        message,
+      })),
+    ],
+  };
+}
+
+function sharedKernelEntryOverride(
+  entry: string,
+  allowed: readonly string[],
+): {
+  files: string[];
+  rules: { "no-restricted-imports": ["error", ReturnType<typeof sharedKernelEntryImports>] };
+} {
+  return {
+    files:
+      entry === "."
+        ? [
+            "packages/shared-kernel/src/*.ts",
+            "packages/shared-kernel/src/__fixtures__/root-entry.ts",
+          ]
+        : [`packages/shared-kernel/src/${entry}/**`],
+    rules: { "no-restricted-imports": ["error", sharedKernelEntryImports(entry, allowed)] },
+  };
 }
 
 // How domain is written (docs/adr/0027): pure functions that return a Result. domain takes the time and the
@@ -568,6 +647,13 @@ export default defineConfig({
         files: ["packages/shared-kernel/src/**"],
         rules: { "no-restricted-imports": ["error", moduleImports(undefined, true)] },
       },
+      // Each entry of shared-kernel imports only the libraries it is listed for in sharedKernelEntries (docs/adr/0051), so that
+      // the import path of an entry says which libraries it pulls in. These overrides carry the restrictions of the one above,
+      // because Oxlint keeps only the last override that sets a rule for a file. The fixtures are
+      // packages/shared-kernel/src/__fixtures__/root-entry.ts and src/<entry>/__fixtures__/library.ts.
+      ...Object.entries(sharedKernelEntries).map(([entry, allowed]) =>
+        sharedKernelEntryOverride(entry, allowed),
+      ),
       // packages/db is not a module (docs/adr/0038). It runs the migrations and starts containers, so it leaves the
       // runtime restrictions as an entry file does (docs/adr/0007), keeps the ban on deep imports, and imports the
       // packages of the workspace as types only. It has no layers, so the overrides above reach it only by
@@ -689,7 +775,7 @@ export default defineConfig({
       },
       {
         files: [
-          "packages/shared-kernel/src/tenant-transaction.ts",
+          "packages/shared-kernel/src/tenant-db/tenant-transaction.ts",
           "apps/api/src/db/tenant-transaction.test.ts",
         ],
         jsPlugins: [

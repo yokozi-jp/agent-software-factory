@@ -9,7 +9,7 @@ import {
   RowNotFound,
   updatedColumns,
   updateWithLock,
-} from "@agent-software-factory/shared-kernel";
+} from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { describe, expect, it } from "vite-plus/test";

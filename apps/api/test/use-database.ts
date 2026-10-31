@@ -1,6 +1,6 @@
-import { createPool } from "@agent-software-factory/db";
+import { createPool } from "@agent-software-factory/db/node";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
-import { Database, type WriteActor } from "@agent-software-factory/shared-kernel";
+import { Database, type WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { afterEach, beforeEach } from "vite-plus/test";

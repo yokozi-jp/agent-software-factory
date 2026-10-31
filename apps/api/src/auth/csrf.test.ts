@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { commonProblemResponses } from "@agent-software-factory/shared-kernel";
+import { commonProblemResponses } from "@agent-software-factory/shared-kernel/problem";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { appOrigin, createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
