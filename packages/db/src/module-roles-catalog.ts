@@ -153,6 +153,12 @@ const schemaPrivileges: Check = async (pool, reads) => {
   ]);
 };
 
+/**
+ * 自分のモジュールのロールだけが読む表。他人の user_id と保存した応答が入るので、依存の方向のモジュールにも
+ * SELECT を付けない (冪等キーの表。Issue #323、docs/adr/0040)。
+ */
+const ownerOnlyTables = ["idempotency_key"];
+
 /** 表の権限。auth の表には、表全体の権限を誰にも与えない。締めの id の SELECT は列の権限で、authColumns が調べる。 */
 const tablePrivilegeChecks: Check = async (pool, reads) => {
   const canUse = canUseOf(reads);
@@ -177,7 +183,8 @@ const tablePrivilegeChecks: Check = async (pool, reads) => {
       (row) =>
         row.has !==
         (canUse(row.rolname, row.nspname) &&
-          (row.privilege === "SELECT" ||
+          ((row.privilege === "SELECT" &&
+            (row.rolname === roleOf(row.nspname) || !ownerOnlyTables.includes(row.relname))) ||
             (row.rolname === roleOf(row.nspname) && ownPrivileges.includes(row.privilege)))),
     )
     .map(

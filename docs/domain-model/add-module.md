@@ -18,7 +18,7 @@ tags: [domain-model, runbook, modules, nx]
    - `package.json` の `name` は `@agent-software-factory/<name>`、`nx.name` は `<name>` にします。`exports` と、`check` と `lint-effect` の script は写したままにします。
    - `nx` に `"tags": ["type:module"]` を付けます。この印が、モジュールの見分け方です。`packages/shared-kernel` と `packages/module-fixtures` には付けません。
    - 依存してよいモジュールを `workspace:*` で書きます。向きは「締め → 承認 → 申請」です。
-   - `index.ts` は、データベースの型 (`<Name>Database`) を export します。`infrastructure/database.ts` は `Kysely<DB>` の型です。`infrastructure/transaction.ts` は、トランザクションの tag (`<Name>Tx`、`static readonly module`) で、`index.ts` が export します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。`db.gen.ts` は手順 6 で生成します。
+   - `index.ts` は、データベースの型 (`<Name>Database`) を export します。`infrastructure/database.ts` は `Kysely<DB>` の型です。`infrastructure/transaction.ts` は、トランザクションの tag (`<Name>Tx`、`static readonly module`) で、`index.ts` が export します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。`db.gen.ts` は手順 8 で生成します。
    - `__fixtures__/database.ts` は、ほかのモジュールの表へのクエリが型エラーになる `@ts-expect-error` です。
 2. **events の package を足す**: 既存のモジュールの `packages/<name>/events/` (`package.json`、`tsconfig.json`、`src/index.ts`) を写します。モジュールが外へ送るイベントのスキーマを置く、モジュールの中の入れ子の package です ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
    - `package.json` の `name` は `@agent-software-factory/<name>-events`、`nx.name` は `<name>-events` にします。`exports` は `"."` だけ、`check` の script は写したままにします。`nx.tags` と `lint-effect` の script は付けません。events の package はモジュールではありません。
@@ -34,10 +34,11 @@ tags: [domain-model, runbook, modules, nx]
 5. **migration で `CREATE SCHEMA <name>;` を足す**: `packages/db/migrations/` に、前向きの migration を新しく書きます ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。既存の migration は書き換えません。
    - `messaging.outbox` への書き込みも、同じ migration で足します。カタログのテストは、すべてのモジュールのロールが `INSERT` を持つことを求めます。`GRANT INSERT ON messaging.outbox TO <name>_module;` と、`ALTER POLICY tenant_insert ON messaging.outbox TO <既存のロール (migrator を含む)>, <name>_module;` を書きます (ロールが持つのは `INSERT` だけです)。
 6. **イベントを受けるなら、`processed_message` を足す**: モジュールがほかのモジュールのイベントを受けるときは、`packages/db/templates/processed_message.sql` の `{{module}}` を `<name>` に替えて、前向きの migration として `packages/db/migrations/` に写します ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。受ける処理は `shared-kernel` の `defineConsumer` で登録し、`apps/api/src/db/consumers.test.ts` の `examples` に処理の名前ごとの入力例を足します。入力例がないと全件テストが落ちます。外部の API（SES など）を呼ぶ受信は、`defineConsumer` が行を先に入れてトランザクションの中で処理するため合いません。`shared-kernel` の `isMessageProcessed` で行を確かめ、外部の API を呼び、`recordProcessedMessage` で行を入れます。例は `approval` の `handleNotification` です（[ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md)）。
-7. **型を生成する**: `pnpm exec nx db-types db` を実行し、`packages/<name>/src/infrastructure/db.gen.ts` を commit します。
-8. **`knip.jsonc` を直す**: `effect` を使うコードがまだないモジュールは、`workspaces` に `"packages/<name>": { "ignoreDependencies": ["effect"] }` を足します。`packages/db` の `ignoreDependencies` にも、`packages/db/package.json` の `devDependencies` に足したモジュールの名前を足します。
-9. **`GLOSSARY.md` の「モジュール」の名前を足す**。
-10. **`pnpm install` を実行する**: workspace の依存を `node_modules` に反映します。
+7. **POST か PATCH の API を持つなら、`idempotency_key` を足す**: `packages/db/templates/idempotency_key.sql` の `{{module}}` を `<name>` に替えて、前向きの migration として `packages/db/migrations/` に写します ([ADR 0040](../adr/0040-idempotency-key-in-module-schema.md))。書き込みの use case は、`inTenantTransaction` の中で `shared-kernel` の `withIdempotencyKey` に業務の処理を渡して呼びます。ヘッダーの検査は route の `requireIdempotencyKey` です。
+8. **型を生成する**: `pnpm exec nx db-types db` を実行し、`packages/<name>/src/infrastructure/db.gen.ts` を commit します。
+9. **`knip.jsonc` を直す**: `effect` を使うコードがまだないモジュールは、`workspaces` に `"packages/<name>": { "ignoreDependencies": ["effect"] }` を足します。`packages/db` の `ignoreDependencies` にも、`packages/db/package.json` の `devDependencies` に足したモジュールの名前を足します。
+10. **`GLOSSARY.md` の「モジュール」の名前を足す**。
+11. **`pnpm install` を実行する**: workspace の依存を `node_modules` に反映します。
 
 ## どれが止めるか
 

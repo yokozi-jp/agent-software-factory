@@ -36,6 +36,27 @@ export {
   type ConsumedMessage,
 } from "./processed-message.ts";
 export {
+  IDEMPOTENCY_RETRY_AFTER_SECONDS,
+  IdempotencyInProgress,
+  IdempotencyPayloadMismatch,
+  NonSuccessResponse,
+  requestHash,
+  withIdempotencyKey,
+  type IdempotencyRequest,
+  type IdempotencyScope,
+  type IdempotentResponse,
+} from "./idempotency.ts";
+export {
+  idempotencyInProgressResponse,
+  idempotencyKeyHeaderSchema,
+  idempotencyPayloadMismatchResponse,
+  IDEMPOTENCY_KEY_HEADER,
+  parseIdempotencyKey,
+  requireIdempotencyKey,
+  type IdempotencyEnv,
+  type ParsedIdempotencyKey,
+} from "./idempotency-http.ts";
+export {
   ABOUT_BLANK,
   commonProblemResponses,
   commonProblemTypes,

@@ -19,6 +19,11 @@ export const commonProblemTypes = {
   sessionExpired: "/problems/session-expired",
   forbiddenOrigin: "/problems/forbidden-origin",
   forbiddenCrossSiteRequest: "/problems/forbidden-cross-site-request",
+  // Idempotency-Key (docs/adr/0040). All four are 400 except `idempotencyInProgress`, which is 409.
+  idempotencyKeyMissing: "/problems/idempotency-key-missing",
+  idempotencyKeyMalformed: "/problems/idempotency-key-malformed",
+  idempotencyPayloadMismatch: "/problems/idempotency-payload-mismatch",
+  idempotencyInProgress: "/problems/idempotency-in-progress",
 } as const;
 
 export type CommonProblemType = (typeof commonProblemTypes)[keyof typeof commonProblemTypes];
