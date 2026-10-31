@@ -2,9 +2,9 @@ import { commonProblemTypes, problemResponse } from "@agent-software-factory/sha
 import type { Hook } from "@hono/zod-openapi";
 import type { Env } from "hono";
 
-// 検証エラー (400) は、shared-kernel の problemResponse で作る (docs/adr/0035、docs/adr/0047)。識別子は `type` だけ。`errors` の要素は web が i18n で文面にするための `pointer` (JSON Pointer) と `code` (zod の issue の code)。
-// route に応答のステータスとして 400 を書くと、spec にも出る。
-
+// 検証エラー (400) は、shared-kernel の problemResponse で作る (docs/adr/0035、docs/adr/0047)。
+// `errors` の要素は、web が i18n で文面にするための `pointer` (JSON Pointer) と `code` (zod の issue の code)。
+// route に応答のステータスとして 400 を書くと、spec にも出る (commonProblemResponses)。
 function toPointer(path: readonly PropertyKey[]): string {
   return path.map((key) => `/${String(key).replaceAll("~", "~0").replaceAll("/", "~1")}`).join("");
 }
