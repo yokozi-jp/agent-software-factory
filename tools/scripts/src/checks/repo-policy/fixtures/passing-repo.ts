@@ -254,6 +254,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
     'const connectionPackages = ["pg"];',
     // The raw SQL of Kysely, which a module may not import.
     'const sqlImportNames = ["sql"];',
+    // The kinds of OpenTelemetry import that the ban stops (docs/adr/0048), one fixture each.
+    'const otelSdkKinds = ["sdk-", "exporter-", "instrumentation", "resources$", "auto-instrumentations"];',
     // The messages of those imports say what to write instead, and name the ADR.
     'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
     'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',
