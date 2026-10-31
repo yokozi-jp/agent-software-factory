@@ -4,18 +4,16 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   apiDependencies,
-  bypassFixture,
-  bypassModuleFixture,
-  bypassOutboxFixture,
-  sessionSettingFixture,
-  withTablesAllowedFixture,
-  withTablesFixture,
+  connectionPassFixture,
+  connectionStopFixture,
+  consoleFixture,
   domainFixture,
   eventsFiles,
   factoryAgent,
   migration,
+  lintRestrictions,
   moduleFixture,
-  otelSdkKinds,
+  outboxFixture,
   passingRepo,
   runtimeFixture,
   lintEffect,
@@ -24,22 +22,17 @@ import {
 } from "./fixtures/passing-repo.ts";
 import { eventsPackages, modulePackageNames, packageNames, pathsHint } from "./modules.ts";
 import { Tree } from "./tree.ts";
-import { violations as violationsWithBypass, type Repo } from "./rules.ts";
+import { violations as allViolations, type Repo } from "./rules.ts";
 
 const base = passingRepo;
 
-// The failures about the fixtures of the imports that bypass the Outbox and the transaction (bypassGuards), of
-// withTables (withTablesGuards) and of the SQL that sets the role (sessionSettingGuards). A test that changes the
-// layers or removes the fixtures of the overrides would hear about them too, so `violations` leaves them out; the
-// tests of ADR 0029 at the end call `violationsWithBypass`.
-const bypassFailure = (failure: string): boolean =>
-  failure.startsWith("vite.config.ts stops the import of ") ||
-  failure.startsWith("vite.config.ts stops withTables ") ||
-  failure.startsWith("vite.config.ts turns on tenant-sql/no-session-setting ") ||
-  failure.includes("a call of withTables with no disable comment") ||
-  failure.includes("bypass the Outbox and the transaction");
+// The failures about the table of lint restrictions and its fixtures (lintRestrictionsAgree). A test that removes
+// the fixtures or the packages would hear about them too, so `violations` leaves them out; the tests of ADR 0050
+// call `allViolations`. Every such failure names the table, or is the one template of a missing line.
+const tableFailure = (failure: string): boolean =>
+  failure.includes("lint-restrictions.json") || failure.includes("を書いた行がない。");
 const violations = (repository: Repo): string[] =>
-  violationsWithBypass(repository).filter((failure) => !bypassFailure(failure));
+  allViolations(repository).filter((failure) => !tableFailure(failure));
 
 interface Options {
   // Index modes that differ from the default (100755 for *.sh, 100644 otherwise).
@@ -2195,7 +2188,7 @@ describe("ADR 0026: the edges", () => {
             .map((path) => [path, undefined]),
         ),
       }),
-    ).filter((failure) => !bypassFailure(failure));
+    );
   const withBody = (body: string) =>
     config.replace('{\n  domain: [],\n  http: ["domain"],\n}', `{${body}}`);
   // layers after a line of another const, so that only the multiline `^` finds it.
@@ -2667,14 +2660,6 @@ describe("ADR 0026: the events package of each module", () => {
   });
 });
 
-// The parts of the fixture of packages/db (docs/adr/0038), and a file that has all three.
-const dbFixtureParts = {
-  value: "oxlint-disable-next-line no-restricted-imports",
-  type: "import type {",
-  node: 'from "node:child_process"',
-};
-const dbImportsFixture = `// ${dbFixtureParts.value} -- fixture\nimport "@x/claim";\n${dbFixtureParts.type} A } from "@x/claim";\nimport { run } ${dbFixtureParts.node};\n`;
-
 describe("ADR 0026: a module with the tag type:module is registered everywhere", () => {
   const order = "tools/scripts/src/checks/repo-policy/modules.ts";
   const guide = "Follow docs/domain-model/add-module.md.";
@@ -2765,7 +2750,6 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api an
       ...fields,
     }),
     "packages/db/src/index.ts": "export {};\n",
-    "packages/db/src/__fixtures__/imports.ts": dbImportsFixture,
   });
   const claim = { "@agent-software-factory/claim": "workspace:*" };
   const dbDependency = { "@agent-software-factory/db": "workspace:*" };
@@ -2915,115 +2899,12 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api an
   });
 });
 
-describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => {
-  const part = dbFixtureParts;
-  const fixture = dbImportsFixture;
-  const withDb = (files: Record<string, string | undefined> = {}) =>
-    repo({
-      ...packageFiles("db"),
-      "packages/db/package.json": packageJson("db", {
-        exports: {
-          ".": "./src/index.ts",
-          "./seed": "./src/seed/index.ts",
-          "./testing": "./src/testing/index.ts",
-        },
-      }),
-      "packages/db/src/__fixtures__/imports.ts": fixture,
-      ...files,
-    });
-  const missing = (text: string, what: string) =>
-    `No packages/db/src/__fixtures__/ has \`${text}\`: it needs ${what}, so that an override that stops reaching db, or one that is too strict, fails \`vp check\` (docs/adr/0038).`;
-
-  it("passes db with a fixture for the value import, the type import and the Node.js module", () => {
-    expect(violations(withDb())).toEqual([]);
-  });
-
-  it("passes when the three lines are in different files", () => {
-    expect(
-      violations(
-        withDb({
-          "packages/db/src/__fixtures__/imports.ts": `// ${part.value}\n`,
-          "packages/db/src/__fixtures__/types.ts": `${part.type} A } from "@x/claim";\n`,
-          "packages/db/src/__fixtures__/node.tsx": `import x ${part.node};\n`,
-        }),
-      ),
-    ).toEqual([]);
-  });
-
-  it("names each missing fixture", () => {
-    expect(violations(withDb({ "packages/db/src/__fixtures__/imports.ts": undefined }))).toEqual([
-      missing(
-        part.value,
-        "a value import of a package of the workspace, which the rule must report",
-      ),
-      missing(
-        part.type,
-        "an `import type` of a package of the workspace, which the rule must let through",
-      ),
-      missing(part.node, "an import of node:child_process, which the rule must let through"),
-    ]);
-  });
-
-  it("does not count a file outside packages/db/src/__fixtures__/", () => {
-    expect(
-      violations(
-        withDb({
-          "packages/db/src/__fixtures__/imports.ts": undefined,
-          "packages/db/src/imports.ts": fixture,
-          "packages/db/src/__fixtures__/deep/imports.ts": fixture,
-          "packages/db/src/__fixtures__/notes.md": fixture,
-          "vendor/packages/db/src/__fixtures__/imports.ts": fixture,
-          "packages/db/src/__fixtures__/imports.ts.bak": fixture,
-        }),
-      ),
-    ).toHaveLength(3);
-  });
-
-  it("does not take the fixtures of db for the fixtures of the overrides of every package", () => {
-    const only = (name: string) => ({
-      ...Object.fromEntries(
-        Object.keys(base)
-          .filter((path) => path.startsWith("packages/module-fixtures/src/__fixtures__/"))
-          .map((path) => [path, undefined]),
-      ),
-      [`packages/${name}/src/__fixtures__/boundaries.ts`]: moduleFixture,
-    });
-    expect(
-      violations(withDb(only("db"))).some((failure) =>
-        failure.includes("packages/*/src/__fixtures__/"),
-      ),
-    ).toBe(true);
-  });
-});
-
 describe("ADR 0048: packages/telemetry", () => {
   const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
-  const stops = (name: string) =>
-    `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
-  const kinds = [
-    "@opentelemetry/sdk-node",
-    "@opentelemetry/exporter-trace-otlp-http",
-    "@opentelemetry/instrumentation-pg",
-    "@opentelemetry/resources",
-    "@opentelemetry/auto-instrumentations-node",
-  ];
-  const banned = kinds.map(stops).join("");
-  const ownFixture = `import "@opentelemetry/sdk-node";\n${stops("@aws-sdk/client-sqs")}`;
-  const withTelemetry = (files: Record<string, string | undefined> = {}) =>
-    repo({
-      ...packageFiles("telemetry", { exports }),
-      "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
-      "apps/api/src/__fixtures__/otel-sdk.ts": banned,
-      "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
-      "apps/web/src/__fixtures__/telemetry-node.ts": stops(
-        "@agent-software-factory/telemetry/node",
-      ),
-      ...files,
-    });
-  const noImport = (file: string, kind: string) =>
-    `${file} has no import of a package whose name matches the regular expression ^@opentelemetry/(?:${kind}) below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists \`${kind}\` in otelSdkKinds (\`$\` ends the name), so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`;
+  const withTelemetry = (fields: Record<string, unknown> = {}) =>
+    repo(packageFiles("telemetry", { exports, ...fields }));
 
-  it("passes telemetry with its two exports and the three fixtures", () => {
+  it("passes telemetry with its two exports", () => {
     expect(violationsWithoutOrder(withTelemetry())).toEqual([]);
   });
 
@@ -3032,18 +2913,7 @@ describe("ADR 0048: packages/telemetry", () => {
     expect(modulePackageNames(tree)).not.toContain("telemetry");
     expect(
       violations(
-        repo({
-          ...packageFiles("telemetry", {
-            exports,
-            dependencies: { "@agent-software-factory/claim": "workspace:*" },
-          }),
-          "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
-          "apps/api/src/__fixtures__/otel-sdk.ts": banned,
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
-          "apps/web/src/__fixtures__/telemetry-node.ts": stops(
-            "@agent-software-factory/telemetry/node",
-          ),
-        }),
+        withTelemetry({ dependencies: { "@agent-software-factory/claim": "workspace:*" } }),
       ),
     ).toEqual([
       "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026).",
@@ -3054,89 +2924,9 @@ describe("ADR 0048: packages/telemetry", () => {
     ["only the entry for any code", { ".": "./src/index.ts" }],
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
   ])("refuses telemetry with %s", (_, wrong) => {
-    expect(violations(withTelemetry(packageFiles("telemetry", { exports: wrong })))).toEqual([
+    expect(violations(repo(packageFiles("telemetry", { exports: wrong })))).toEqual([
       `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048).`,
     ]);
-  });
-
-  it("names each kind of import that the fixture of apps/api or of the packages leaves out", () => {
-    const file = "apps/api/src/__fixtures__/otel-sdk.ts";
-    expect(violations(withTelemetry({ [file]: kinds.slice(1).map(stops).join("") }))).toEqual([
-      noImport(file, otelSdkKinds[0] ?? ""),
-    ]);
-    const other = "packages/module-fixtures/src/__fixtures__/otel-sdk.ts";
-    expect(violations(withTelemetry({ [other]: undefined }))).toHaveLength(kinds.length);
-  });
-
-  it("asks for a fixture of a kind that is added to otelSdkKinds in vite.config.ts", () => {
-    const config = base["vite.config.ts"] ?? "";
-    const added = config.replace(/^const otelSdkKinds = \[/m, 'const otelSdkKinds = ["logs-", ');
-    const file = "apps/api/src/__fixtures__/otel-sdk.ts";
-    const other = "packages/module-fixtures/src/__fixtures__/otel-sdk.ts";
-    expect(violations(withTelemetry({ "vite.config.ts": added }))).toEqual([
-      noImport(file, "logs-"),
-      noImport(other, "logs-"),
-    ]);
-  });
-
-  it("refuses an otelSdkPattern that is not built from otelSdkKinds", () => {
-    const config = base["vite.config.ts"] ?? "";
-    const own = config.replace(
-      /^const otelSdkPattern.*$/m,
-      'const otelSdkPattern = { regex: "^@opentelemetry/sdk-" };',
-    );
-    expect(violations(withTelemetry({ "vite.config.ts": own }))).toEqual([
-      'vite.config.ts does not build the regex of otelSdkPattern from otelSdkKinds (`otelSdkKinds.join("|")`): a second list of the kinds would let the ban and the fixtures disagree (docs/adr/0048).',
-    ]);
-  });
-
-  it("asks for the otelSdkKinds array when vite.config.ts has none", () => {
-    const config = base["vite.config.ts"] ?? "";
-    const without = config.replace(/^const otelSdkKinds.*$/m, "");
-    expect(violations(withTelemetry({ "vite.config.ts": without }))).toEqual([
-      "vite.config.ts has no otelSdkKinds array. It lists the kinds of OpenTelemetry import that the ban stops, and repo-policy asks for a fixture of each (docs/adr/0048).",
-    ]);
-  });
-
-  it("refuses a fixture whose import carries no disable comment", () => {
-    const file = "apps/api/src/__fixtures__/otel-sdk.ts";
-    const bare = kinds.map((name) => (name === kinds[3] ? `import "${name}";\n` : stops(name)));
-    expect(violations(withTelemetry({ [file]: bare.join("") }))).toEqual([
-      noImport(file, "resources$"),
-    ]);
-  });
-
-  it("asks for the SDK import with no comment and the SQS import with one, in the fixture of telemetry", () => {
-    const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
-    expect(violations(withTelemetry({ [own]: stops("@opentelemetry/sdk-node") }))).toEqual([
-      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0048).`,
-      `${own} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0048).`,
-    ]);
-  });
-
-  it("asks for both lines when telemetry has no fixture, or when its SDK import carries the comment", () => {
-    const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
-    const failures = (files: Record<string, string | undefined>) =>
-      violations(withTelemetry(files));
-    expect(failures({ [own]: undefined })).toHaveLength(2);
-    expect(
-      failures({ [own]: `${stops("@opentelemetry/sdk-node")}${stops("@aws-sdk/client-sqs")}` }),
-    ).toEqual([
-      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0048).`,
-    ]);
-  });
-
-  it("asks for the import of the Node-only entry in the fixture of apps/web", () => {
-    const web = "apps/web/src/__fixtures__/telemetry-node.ts";
-    const missing = `${web} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0048).`;
-    expect(violations(withTelemetry({ [web]: undefined }))).toEqual([missing]);
-    expect(
-      violations(withTelemetry({ [web]: 'import "@agent-software-factory/telemetry/node";\n' })),
-    ).toEqual([missing]);
-  });
-
-  it("asks for nothing when there is no telemetry", () => {
-    expect(violations(repo())).toEqual([]);
   });
 });
 
@@ -3146,68 +2936,19 @@ describe("ADR 0049: packages/logging", () => {
     "./node": "./src/node.ts",
     "./testing": "./src/testing.ts",
   };
-  const stops = (name: string) =>
-    `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
-  const runtimeApis = [
-    "const alias: unknown = console;",
-    "export const a: unknown = globalThis.console;",
-    'export const b: unknown = globalThis["console"];',
-    "export const { console: c }: { console: unknown } = globalThis;",
-    "export const d: unknown = console;",
-  ].join("\n");
-  const withLogging = (files: Record<string, string | undefined> = {}) =>
-    repo({
-      ...packageFiles("logging", { exports }),
-      "apps/api/src/__fixtures__/logger-imports.ts": stops("pino"),
-      "packages/module-fixtures/src/__fixtures__/logger-imports.ts": stops("pino"),
-      // The files already carry the annotations of docs/adr/0007 in the passing repository; the lines of console come after them.
-      "apps/api/src/__fixtures__/runtime-apis.ts": `${base["apps/api/src/__fixtures__/runtime-apis.ts"] ?? ""}\n${runtimeApis}`,
-      "packages/module-fixtures/src/__fixtures__/runtime-apis.ts": `${base["packages/module-fixtures/src/__fixtures__/runtime-apis.ts"] ?? ""}\n${runtimeApis}`,
-      ...files,
-    });
 
-  it("passes logging with its two exports and the fixtures of console and pino", () => {
-    expect(violations(withLogging())).toEqual([]);
-    expect(modulePackageNames(new Tree(withLogging()))).not.toContain("logging");
+  it("passes logging with its three exports", () => {
+    const withLogging = repo(packageFiles("logging", { exports }));
+    expect(violations(withLogging)).toEqual([]);
+    expect(modulePackageNames(new Tree(withLogging))).not.toContain("logging");
   });
 
-  it("refuses logging with an export other than the two entries", () => {
+  it("refuses logging with an export other than the three entries", () => {
     expect(
-      violations(withLogging(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
+      violations(repo(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
     ).toEqual([
       `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049).`,
     ]);
-  });
-
-  it.each(["apps/api/src/__fixtures__", "packages/module-fixtures/src/__fixtures__"])(
-    "asks for the pino import below the disable comment in %s",
-    (dir) => {
-      const file = `${dir}/logger-imports.ts`;
-      const missing = `${file} must import pino below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban outside packages/logging/src/node.ts fails \`vp check\` (docs/adr/0049).`;
-      expect(violations(withLogging({ [file]: undefined }))).toEqual([missing]);
-      expect(violations(withLogging({ [file]: 'import "pino";\n' }))).toEqual([missing]);
-    },
-  );
-
-  it.each([
-    ["= console;", "a bare console and an alias of it"],
-    ["globalThis.console", "console read from globalThis"],
-    ['globalThis["console"]', "console read from globalThis by a string"],
-    ["{ console:", "console destructured from globalThis"],
-  ])("asks for the line with %s in the runtime-apis fixture", (line, what) => {
-    const file = "apps/api/src/__fixtures__/runtime-apis.ts";
-    const without = runtimeApis
-      .split("\n")
-      .filter((text) => !text.includes(line))
-      .join("\n");
-    const existing = base[file] ?? "";
-    expect(violations(withLogging({ [file]: `${existing}\n${without}` }))).toEqual([
-      `${file} has no line with \`${line}\` (${what}), so nothing shows that the ban on console reaches it. Put it below \`oxlint-disable-next-line no-restricted-globals\` or \`no-restricted-properties\` (docs/adr/0049).`,
-    ]);
-  });
-
-  it("asks for nothing when there is no logging", () => {
-    expect(violations(repo())).toEqual([]);
   });
 });
 
@@ -3963,476 +3704,431 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
   });
 });
 
-describe("ADR 0029: the imports that bypass the Outbox and the transaction have a fixture", () => {
-  const viteConfig = String(base["vite.config.ts"]);
-  const places = {
-    src: {
-      name: "packages/*/src",
-      file: "packages/module-fixtures/src/__fixtures__/bypass.ts",
-    },
-    http: {
-      name: "packages/*/src/http",
-      file: "packages/module-fixtures/src/http/__fixtures__/bypass.ts",
-    },
-    api: { name: "apps/api/src", file: "apps/api/src/__fixtures__/bypass.ts" },
-    entry: {
-      name: "the entry files and the tests of apps/api/src",
-      file: "apps/api/src/__fixtures__/bypass.test.ts",
-    },
-    db: { name: "packages/db/src", file: "packages/db/src/__fixtures__/bypass.ts" },
-  } as const;
-  const missing = (name: string, place: keyof typeof places) =>
-    `vite.config.ts stops the import of ${name} in ${places[place].name}, but no fixture there has \`oxlint-disable-next-line no-restricted-imports\` on the line above an import of it. Add one to ${places[place].file}, so that an override that stops reaching ${places[place].name}, or a rule that drops ${name}, fails \`vp check\` (docs/adr/0029).`;
-  const remove = (...keys: (keyof typeof places)[]) =>
-    Object.fromEntries(keys.map((key) => [places[key].file, undefined]));
-  // The repository with the db package, which asks for its fixture too.
-  const withDb = (files: Record<string, string | undefined> = {}) =>
-    repo({
-      ...packageFiles("db"),
-      "packages/db/package.json": packageJson("db", {
-        exports: {
-          ".": "./src/index.ts",
-          "./seed": "./src/seed/index.ts",
-          "./testing": "./src/testing/index.ts",
-        },
-      }),
-      "packages/db/src/__fixtures__/imports.ts": dbImportsFixture,
-      [places.db.file]: bypassOutboxFixture,
-      ...files,
-    });
-
-  it("passes when every override has a fixture for every package it stops", () => {
-    expect(violationsWithBypass(repo())).toEqual([]);
-    expect(violationsWithBypass(withDb())).toEqual([]);
-  });
-
-  it("names each package that has no fixture, in each override", () => {
-    expect(violationsWithBypass(withDb(remove("src", "http", "api", "entry", "db")))).toEqual([
-      missing("@x/sqs", "src"),
-      missing("pg", "src"),
-      missing("sql", "src"),
-      missing("@x/sqs", "http"),
-      missing("pg", "http"),
-      missing("sql", "http"),
-      missing("@x/sqs", "api"),
-      missing("pg", "api"),
-      missing("@x/sqs", "entry"),
-      missing("@x/sqs", "db"),
-    ]);
-  });
-
-  it("asks the entry files, the tests and db for the SDK clients only, which they may not import", () => {
-    expect(
-      violationsWithBypass(
-        withDb({ [places.entry.file]: bypassFixture, [places.db.file]: bypassFixture }),
-      ),
-    ).toEqual([]);
-  });
-
-  it("names a package added to either list without a fixture", () => {
-    const sdk = viteConfig.replace('  "@x/sqs",', '  "@x/sqs",\n  "@x/ses",');
-    expect(violationsWithBypass(repo({ "vite.config.ts": sdk }))).toEqual([
-      missing("@x/ses", "src"),
-      missing("@x/ses", "http"),
-      missing("@x/ses", "api"),
-      missing("@x/ses", "entry"),
-    ]);
-    const connection = viteConfig.replace('["pg"]', '["pg", "postgres"]');
-    expect(violationsWithBypass(repo({ "vite.config.ts": connection }))).toEqual([
-      missing("postgres", "src"),
-      missing("postgres", "http"),
-      missing("postgres", "api"),
-    ]);
-  });
-
-  it("does not take the fixture of one override for another", () => {
-    expect(violationsWithBypass(repo(remove("api")))).toEqual([
-      missing("@x/sqs", "api"),
-      missing("pg", "api"),
-    ]);
-    expect(
-      violationsWithBypass(
-        repo({ ...remove("api"), [places.api.file.replace(".ts", ".test.ts")]: bypassFixture }),
-      ),
-    ).toEqual([missing("@x/sqs", "api"), missing("pg", "api")]);
-    expect(
-      violationsWithBypass(repo({ ...remove("entry"), [places.api.file]: bypassFixture })),
-    ).toEqual([missing("@x/sqs", "entry")]);
-  });
-
-  it("does not count a disable comment that is not on the line above the import", () => {
-    const apart = bypassModuleFixture.replace('\nimport "pg";', '\n\nimport "pg";');
-    expect(violationsWithBypass(repo({ [places.src.file]: apart }))).toEqual([
-      missing("pg", "src"),
-    ]);
-  });
-
-  it("does not count a type import, which the rule lets through for pg", () => {
-    const typeOnly = bypassModuleFixture.replace('import "pg";', 'import type { Pool } from "pg";');
-    expect(violationsWithBypass(repo({ [places.src.file]: typeOnly }))).toEqual([
-      missing("pg", "src"),
-    ]);
-  });
-
-  it("does not count a disable comment of another rule", () => {
-    const other = bypassModuleFixture.replace(
-      "disable-next-line no-restricted-imports -- fixture: sqs",
-      "disable-next-line no-restricted-globals -- fixture: sqs",
-    );
-    expect(violationsWithBypass(repo({ [places.src.file]: other }))).toEqual([
-      missing("@x/sqs", "src"),
-    ]);
-  });
-
-  it("does not count a file outside a __fixtures__/ directory", () => {
-    expect(
-      violationsWithBypass(
-        repo({
-          ...remove("src"),
-          "packages/module-fixtures/src/bypass.ts": bypassModuleFixture,
-        }),
-      ),
-    ).toEqual([missing("@x/sqs", "src"), missing("pg", "src"), missing("sql", "src")]);
-  });
-
-  it("does not count a name that is commented out of a list", () => {
-    const commented = viteConfig.replace('["pg"]', '[\n  // "pg", [moved]\n]');
-    expect(violationsWithBypass(repo({ "vite.config.ts": commented }))).toEqual([]);
-    expect(violationsWithBypass(repo({ "vite.config.ts": commented, ...remove("src") }))).toEqual([
-      missing("@x/sqs", "src"),
-      missing("sql", "src"),
-    ]);
-  });
-
-  it.each(["outboxPackages", "connectionPackages", "sqlImportNames"])(
-    "fails when vite.config.ts has no %s, so that removing the list does not turn the check off",
-    (name) => {
-      const removed = viteConfig.replace(new RegExp(`const ${name} = \\[[^\\]]*\\];`), "");
-      expect(violationsWithBypass(repo({ "vite.config.ts": removed }))).toEqual([
-        `vite.config.ts has no ${name} array. It lists the imports that bypass the Outbox, the transaction and the types of a module (the SDK clients of SQS and SES, pg, and the raw SQL of Kysely), which no-restricted-imports stops (docs/adr/0029).`,
-      ]);
-    },
+describe("ADR 0050: the table of lint restrictions and its fixtures agree", () => {
+  type Table = typeof lintRestrictions;
+  const tablePath = "lint-restrictions.json";
+  const howTo = 'docs/tooling/ci.md ("禁止の表")';
+  const outbox = "packages/module-fixtures/src/__fixtures__/outbox.ts";
+  const outboxTest = "apps/api/src/__fixtures__/outbox.test.ts";
+  const connectionTest = "apps/api/src/__fixtures__/connection.test.ts";
+  const consoleFile = "packages/module-fixtures/src/__fixtures__/console.ts";
+  // A copy of the table of the passing repository, changed by `change`.
+  const table = (change: (copy: Table) => void): string => {
+    const copy = structuredClone(lintRestrictions);
+    change(copy);
+    return JSON.stringify(copy);
+  };
+  const failures = (files: Record<string, string | undefined>) =>
+    allViolations(repo(files)).filter(tableFailure);
+  const noStop = (file: string, rule: string, text: string, reason: string, adr: string) =>
+    `\`${file}\` に、\`oxlint-disable-next-line ${rule}\` の次の行で \`${text}\` を書いた行がない。${reason} (${adr})。`;
+  const noPass = (file: string, text: string, reason: string, adr: string) =>
+    `\`${file}\` に、disable のコメントを前に置かずに \`${text}\` を書いた行がない。${reason} (${adr})。`;
+  const unlistedStop = (file: string, line: number, rule: string, key: string) =>
+    `\`${file}\` の ${line} 行目は \`${rule}\` で止める行だが、${tablePath} の ${key} に、このファイルでこの行を止める行がない。表に行を足すか、fixture から行を消す (${howTo})。`;
+  const unlistedPass = (file: string, line: number, key: string) =>
+    `\`${file}\` の ${line} 行目は通す行 (前の行に disable のコメントがなく、import か ${key} の文字列を書いた行) だが、${tablePath} の ${key} に、このファイルでこの行を通す行がない。表に行を足すか、fixture から行を消す (${howTo})。`;
+  const sqsMissing = noStop(
+    outbox,
+    "no-restricted-imports",
+    '"@x/sqs"',
+    "Outbox を通す",
+    "docs/adr/0029",
   );
 
-  const bypassSubject = "an import that would bypass the Outbox and the transaction";
-  const messages = [
-    ["outboxBypassMessage", "enqueueOutbox", bypassSubject],
-    ["connectionMessage", "inTenantTransaction", bypassSubject],
-    ["sqlMessage", "public API function", "an import of raw SQL in a module"],
-    ["withTablesMessage", "public API function", "a call of withTables outside infrastructure"],
-  ] as const;
-  const rule = (subject: string) =>
-    `The message of ${subject} says what to write instead and names the ADR (docs/adr/0029).`;
+  it("passes when every row has its line, and every line of the fixtures has its row", () => {
+    expect(allViolations(repo())).toEqual([]);
+  });
 
-  it.each(messages)(
-    "fails when %s does not name what to write instead (%s)",
-    (name, fix, subject) => {
-      const without = viteConfig.replace(
-        new RegExp(`(const ${name} = "[^"]*?)${fix}`),
-        "$1something",
+  describe("a row of the table", () => {
+    it("asks for the line it stops, below the disable comment of its rule", () => {
+      expect(failures({ [outbox]: undefined })).toEqual([sqsMissing]);
+      expect(failures({ [outbox]: "export const other = 1;\n" })).toEqual([sqsMissing]);
+    });
+
+    it("does not count a disable comment that is not on the line above", () => {
+      const apart = outboxFixture.replace("\nimport", "\n\nimport");
+      expect(failures({ [outbox]: apart })).toEqual([
+        sqsMissing,
+        unlistedPass(outbox, 3, "outbox"),
+      ]);
+    });
+
+    it("does not count a disable comment of another rule", () => {
+      const other = outboxFixture.replace("no-restricted-imports", "no-restricted-globals");
+      expect(failures({ [outbox]: other })).toEqual([
+        sqsMissing,
+        unlistedStop(outbox, 2, "no-restricted-globals", "outbox"),
+      ]);
+    });
+
+    it("asks for the line it lets through, with no disable comment above it", () => {
+      const missing = noPass(connectionTest, '"pg"', "テストは pool を作る", "docs/adr/0029");
+      expect(failures({ [connectionTest]: undefined })).toEqual([missing]);
+      expect(failures({ [connectionTest]: connectionStopFixture })).toEqual([
+        missing,
+        unlistedStop(connectionTest, 2, "no-restricted-imports", "connection"),
+      ]);
+    });
+
+    it("reads the rule among the rules of the comment, before its reason", () => {
+      const several = outboxFixture.replace(
+        "no-restricted-imports -- fixture",
+        "a/b, no-restricted-imports -- fixture: no-restricted-globals",
       );
-      expect(violationsWithBypass(repo({ "vite.config.ts": without }))).toEqual([
-        `vite.config.ts: ${name} does not mention ${fix}. ${rule(subject)}`,
+      expect(failures({ [outbox]: several })).toEqual([unlistedStop(outbox, 2, "a/b", "outbox")]);
+      const inReason = outboxFixture.replace(
+        "no-restricted-imports -- fixture",
+        "a/b -- no-restricted-imports",
+      );
+      expect(failures({ [outbox]: inReason })).toEqual([
+        sqsMissing,
+        unlistedStop(outbox, 2, "a/b", "outbox"),
       ]);
-    },
-  );
-
-  it.each(messages)("fails when %s does not name the ADR", (name, _fix, subject) => {
-    const without = viteConfig.replace(
-      new RegExp(`(const ${name} = "[^"]*?)\\(docs/adr/0029[^)]*\\)`),
-      "$1(see the docs)",
-    );
-    expect(violationsWithBypass(repo({ "vite.config.ts": without }))).toEqual([
-      `vite.config.ts: ${name} does not mention docs/adr/0029. ${rule(subject)}`,
-    ]);
-  });
-
-  it.each(messages)("fails when vite.config.ts has no %s", (name, _fix, subject) => {
-    const removed = viteConfig.replace(new RegExp(`const ${name} = "[^"]*";`), "");
-    expect(violationsWithBypass(repo({ "vite.config.ts": removed }))).toEqual([
-      `vite.config.ts has no ${name}. ${rule(subject)}`,
-    ]);
-  });
-
-  it("names a raw SQL import of a module that has no fixture, in the places of the packages only", () => {
-    const more = viteConfig.replace('["sql"]', '["sql", "CompiledQuery"]');
-    expect(violationsWithBypass(repo({ "vite.config.ts": more }))).toEqual([
-      missing("CompiledQuery", "src"),
-      missing("CompiledQuery", "http"),
-    ]);
-  });
-
-  it("does not take an import for the raw SQL fixture", () => {
-    const plain = bypassModuleFixture.replace(
-      'export { sql } from "kysely";',
-      'import { other } from "kysely";',
-    );
-    expect(violationsWithBypass(repo({ [places.src.file]: plain }))).toEqual([
-      missing("sql", "src"),
-    ]);
-    const typeOnly = bypassModuleFixture.replace(
-      'export { sql } from "kysely";',
-      'import type { sql } from "kysely";',
-    );
-    expect(violationsWithBypass(repo({ [places.src.file]: typeOnly }))).toEqual([
-      missing("sql", "src"),
-    ]);
-    const imported = bypassModuleFixture.replace(
-      'export { sql } from "kysely";',
-      'import { sql } from "kysely";',
-    );
-    expect(violationsWithBypass(repo({ [places.src.file]: imported }))).toEqual([]);
-  });
-
-  it("asks nothing of packages/*/src when there is no package under packages/", () => {
-    const failures = violationsWithBypass(
-      repo({
-        ...noModules,
-        "packages/module-fixtures/package.json": undefined,
-        "packages/shared-kernel/package.json": undefined,
-        ...remove("src", "http"),
-      }),
-    );
-    expect(failures.filter(bypassFailure)).toEqual([]);
-  });
-
-  it("takes the fixture of packages/db/src from that directory, in a file *.ts or *.tsx", () => {
-    const only = (path: string) =>
-      violationsWithBypass(withDb({ ...remove("db"), [path]: bypassOutboxFixture }));
-    expect(only("packages/db/src/__fixtures__/other.tsx")).toEqual([]);
-    expect(only("vendor/packages/db/src/__fixtures__/bypass.ts")).toEqual([
-      missing("@x/sqs", "db"),
-    ]);
-    expect(only("packages/db/src/__fixtures__/bypass.ts.bak")).toEqual([missing("@x/sqs", "db")]);
-  });
-
-  it("takes the fixture of apps/api/src from that directory, in any folder below it", () => {
-    const only = (path: string) =>
-      violationsWithBypass(repo({ ...remove("api"), [path]: bypassFixture }));
-    const none = [missing("@x/sqs", "api"), missing("pg", "api")];
-    expect(only("apps/api/src/routes/__fixtures__/bypass.ts")).toEqual([]);
-    expect(only("vendor/apps/api/src/__fixtures__/bypass.ts")).toEqual(none);
-    expect(only("apps/api/src/__fixtures__/bypass.ts.bak")).toEqual(none);
-  });
-
-  it("reads a list that has a comment between the = and the [", () => {
-    const commented = viteConfig.replace(
-      'const connectionPackages = ["pg"];',
-      'const connectionPackages = // the clients\n  ["pg"];',
-    );
-    expect(violationsWithBypass(repo({ "vite.config.ts": commented }))).toEqual([]);
-  });
-
-  it("asks the fixtures of src, and of no layer, when the only package is shared", () => {
-    const onlyShared = repo({
-      ...noModules,
-      "packages/module-fixtures/package.json": undefined,
-      ...remove("src", "http"),
     });
-    expect(violationsWithBypass(onlyShared).filter(bypassFailure)).toEqual([
-      missing("@x/sqs", "src"),
-      missing("pg", "src"),
-      missing("sql", "src"),
-    ]);
-  });
 
-  it("asks nothing of a layer that vite.config.ts does not have", () => {
-    const withoutHttp = viteConfig.replace('  http: ["domain"],\n', "");
-    const failures = violationsWithBypass(
-      repo({ "vite.config.ts": withoutHttp, ...remove("http") }),
-    );
-    expect(failures.filter(bypassFailure)).toEqual([]);
-  });
-
-  it("asks nothing of apps/api/src when the repository has no file in it", () => {
-    const withoutApiSource = Object.fromEntries(
-      Object.keys(base)
-        .filter((path) => path.startsWith("apps/api/src/"))
-        .map((path) => [path, undefined]),
-    );
-    const failures = violationsWithBypass(repo(withoutApiSource)).filter(bypassFailure);
-    expect(failures).toEqual([]);
-  });
-});
-
-describe("ADR 0029: withTables is called in infrastructure/ only, and has a fixture in each other place", () => {
-  const viteConfig = String(base["vite.config.ts"]);
-  const file = (dir: string) => `packages/module-fixtures/${dir}/__fixtures__/with-tables.ts`;
-  const missing = (dir: string) =>
-    `vite.config.ts stops withTables outside infrastructure/, but no packages/*/${dir}/__fixtures__/with-tables.ts has \`oxlint-disable-next-line no-restricted-properties\` on the line above a call of it. Add one, so that an override that stops reaching ${dir}/ fails \`vp check\` (docs/adr/0029).`;
-  const allowedMissing =
-    "No packages/*/src/infrastructure/__fixtures__/with-tables.ts has a call of withTables with no disable comment, so nothing shows that infrastructure/ may call it (docs/adr/0029).";
-  const withTablesFailures = (repository: Repo) =>
-    violationsWithBypass(repository).filter((failure) => failure.includes("withTables"));
-  const withInfrastructure = viteConfig.replace(
-    'http: ["domain"],',
-    'http: ["domain"],\n  infrastructure: ["domain"],',
-  );
-
-  it("passes when src, domain and http each have a call under the disable comment", () => {
-    expect(withTablesFailures(repo())).toEqual([]);
-  });
-
-  it("names each place without such a fixture", () => {
-    expect(
-      withTablesFailures(
-        repo({
-          [file("src")]: undefined,
-          [file("src/domain")]: undefined,
-          [file("src/http")]: undefined,
-        }),
-      ),
-    ).toEqual([missing("src"), missing("src/domain"), missing("src/http")]);
-  });
-
-  it("does not count a call with no disable comment, or the comment of another rule", () => {
-    expect(withTablesFailures(repo({ [file("src")]: withTablesAllowedFixture }))).toEqual([
-      missing("src"),
-    ]);
-    const other = withTablesFixture.replace("no-restricted-properties", "no-restricted-globals");
-    expect(withTablesFailures(repo({ [file("src")]: other }))).toEqual([missing("src")]);
-  });
-
-  it("asks infrastructure for a call with no disable comment", () => {
-    const layered = { "vite.config.ts": withInfrastructure };
-    expect(withTablesFailures(repo(layered))).toEqual([allowedMissing]);
-    expect(
-      withTablesFailures(repo({ ...layered, [file("src/infrastructure")]: withTablesFixture })),
-    ).toEqual([allowedMissing]);
-    expect(
-      withTablesFailures(
-        repo({ ...layered, [file("src/infrastructure")]: withTablesAllowedFixture }),
-      ),
-    ).toEqual([]);
-  });
-
-  it("asks nothing when vite.config.ts does not stop withTables, or there is no package", () => {
-    const without = viteConfig.replace("withTablesEntry", "other");
-    expect(
-      withTablesFailures(repo({ "vite.config.ts": without, [file("src")]: undefined })),
-    ).toEqual([]);
-    expect(
-      withTablesFailures(
-        repo({
-          ...noModules,
-          "packages/module-fixtures/package.json": undefined,
-          "packages/shared-kernel/package.json": undefined,
-          [file("src")]: undefined,
-        }),
-      ),
-    ).toEqual([]);
-  });
-
-  it("asks for src, and for no layer, when the only package is shared", () => {
-    expect(
-      withTablesFailures(
-        repo({
-          ...noModules,
-          "packages/module-fixtures/package.json": undefined,
-          [file("src")]: undefined,
-          [file("src/domain")]: undefined,
-          [file("src/http")]: undefined,
-        }),
-      ),
-    ).toEqual([missing("src")]);
-  });
-
-  it("does not take a text without a call of withTables for the call that infrastructure may make", () => {
-    const layered = { "vite.config.ts": withInfrastructure };
-    expect(
-      withTablesFailures(
-        repo({ ...layered, [file("src/infrastructure")]: "export const x = 1;\n" }),
-      ),
-    ).toEqual([allowedMissing]);
-  });
-
-  it.each([
-    [
-      "a comment after code",
-      "const a = 1; // oxlint-disable-next-line no-restricted-properties\n  trx.withTables();\n",
-      false,
-    ],
-    [
-      "an indented comment",
-      "  // oxlint-disable-next-line no-restricted-properties\n  trx.withTables();\n",
-      true,
-    ],
-    [
-      "a comment with no space after //",
-      "//oxlint-disable-next-line no-restricted-properties\ntrx.withTables();\n",
-      true,
-    ],
-    [
-      "two spaces before the rule",
-      "// oxlint-disable-next-line  no-restricted-properties\ntrx.withTables();\n",
-      true,
-    ],
-    [
-      "a tab before the rule",
-      "// oxlint-disable-next-line\tno-restricted-properties\ntrx.withTables();\n",
-      true,
-    ],
-    [
-      "a space after //",
-      "//  oxlint-disable-next-line no-restricted-properties\ntrx.withTables();\n",
-      true,
-    ],
-  ])("disable comment: %s", (_name, text, counts) => {
-    expect(withTablesFailures(repo({ [file("src")]: text }))).toEqual(
-      counts ? [] : [missing("src")],
-    );
-  });
-
-  it("does not ask for layers when there is no module", () => {
-    expect(withTablesFailures(repo({ ...noModules, [file("src")]: undefined }))).toEqual([
-      missing("src"),
-    ]);
-  });
-});
-
-describe("ADR 0029: SQL that sets the role or the tenant has a fixture in shared-kernel and apps/api", () => {
-  const viteConfig = String(base["vite.config.ts"]);
-  const shared = "packages/shared-kernel/src/__fixtures__/session-setting.ts";
-  const api = "apps/api/src/__fixtures__/session-setting.ts";
-  const missing = (place: string) =>
-    `vite.config.ts turns on tenant-sql/no-session-setting for ${place}, but no fixture there has \`oxlint-disable-next-line tenant-sql/no-session-setting\`. Add a SET ROLE or set_config in a sql template to ${place}/__fixtures__/session-setting.ts, so that an override that stops reaching ${place} fails \`vp check\` (docs/adr/0029).`;
-  const sessionFailures = (repository: Repo) =>
-    violationsWithBypass(repository).filter((failure) => failure.includes("no-session-setting"));
-
-  it("passes when both places have a fixture", () => {
-    expect(sessionFailures(repo())).toEqual([]);
-  });
-
-  it("names a place without a fixture", () => {
-    expect(sessionFailures(repo({ [shared]: undefined }))).toEqual([
-      missing("packages/shared-kernel/src"),
-    ]);
-    expect(sessionFailures(repo({ [api]: undefined }))).toEqual([missing("apps/api/src")]);
-  });
-
-  it("does not count a fixture without the disable comment", () => {
-    const plain = sessionSettingFixture.replace("oxlint-disable-next-line", "other-comment");
-    expect(sessionFailures(repo({ [shared]: plain }))).toEqual([
-      missing("packages/shared-kernel/src"),
-    ]);
-  });
-
-  it("asks nothing when the rule is not on, or the place does not exist", () => {
-    const off = viteConfig.replace("tenant-sql/no-session-setting", "tenant-sql/other");
-    expect(
-      sessionFailures(repo({ "vite.config.ts": off, [shared]: undefined, [api]: undefined })),
-    ).toEqual([]);
-    const noShared = repo({
-      "packages/shared-kernel/package.json": undefined,
-      [shared]: undefined,
+    it("reads a /* */ comment and an indented one", () => {
+      const block = outboxFixture.replace(
+        "// oxlint-disable-next-line no-restricted-imports -- fixture",
+        "  /* oxlint-disable-next-line no-restricted-imports */",
+      );
+      expect(failures({ [outbox]: block })).toEqual([]);
     });
-    expect(sessionFailures(noShared)).toEqual([]);
-    const noApi = Object.fromEntries(
-      Object.keys(base)
-        .filter((path) => path.startsWith("apps/api/src/"))
-        .map((path) => [path, undefined]),
-    );
-    expect(sessionFailures(repo(noApi))).toEqual([]);
+
+    it("does not tell a type import from a value import: a disable comment above a type import fails `vp check`", () => {
+      const typeOnly = outboxFixture.replace('import "@x/sqs"', 'import type { X } from "@x/sqs"');
+      expect(failures({ [outbox]: typeOnly })).toEqual([]);
+    });
+
+    it("asks every file of the row", () => {
+      expect(failures({ [outbox]: undefined, [outboxTest]: undefined })).toEqual([
+        sqsMissing,
+        noStop(outboxTest, "no-restricted-imports", '"@x/sqs"', "Outbox を通す", "docs/adr/0029"),
+      ]);
+    });
+  });
+
+  describe("a line of a fixture of the table", () => {
+    it("is refused when the table drops the row that stops it", () => {
+      const dropped = table((copy) => {
+        copy.console.rows.pop();
+      });
+      expect(failures({ [tablePath]: dropped })).toEqual([
+        unlistedStop(consoleFile, 4, "no-restricted-properties", "console"),
+      ]);
+    });
+
+    it("is refused when the table drops the row that lets it through", () => {
+      const dropped = table((copy) => {
+        copy.connection.rows.pop();
+      });
+      expect(failures({ [tablePath]: dropped })).toEqual([
+        unlistedPass(connectionTest, 1, "connection"),
+      ]);
+    });
+
+    it("is read in any file named after a key of the table, also one that no row names", () => {
+      const other = "apps/api/src/routes/__fixtures__/connection.ts";
+      expect(failures({ [other]: connectionStopFixture })).toEqual([
+        unlistedStop(other, 2, "no-restricted-imports", "connection"),
+      ]);
+      expect(failures({ [other.replace(".ts", ".test.ts")]: connectionPassFixture })).toEqual([
+        unlistedPass(other.replace(".ts", ".test.ts"), 1, "connection"),
+      ]);
+    });
+
+    it("is not read in a file of another name, outside __fixtures__/, or in the fixtures of the checks", () => {
+      expect(
+        failures({
+          "apps/api/src/__fixtures__/connections.ts": connectionStopFixture,
+          "apps/api/src/connection.ts": connectionStopFixture,
+          "apps/api/src/__fixtures__/connection.md": connectionStopFixture,
+          "tools/scripts/src/checks/other/__fixtures__/connection.ts": connectionStopFixture,
+        }),
+      ).toEqual([]);
+    });
+
+    it("passes a line of a fixture that has no text of the restriction", () => {
+      expect(
+        failures({
+          [connectionTest]: `${connectionPassFixture}export const x = 1;\n// a note on "pg"\n`,
+        }),
+      ).toEqual([]);
+    });
+  });
+
+  describe("the values of a restriction", () => {
+    it("asks each file that stops the restriction for a row of each value", () => {
+      const added = table((copy) => {
+        copy.outbox.values.push("@x/ses");
+      });
+      const missing = (file: string) =>
+        `${tablePath} の outbox は \`@x/ses\` を止めるが、\`${file}\` に、それを書いて止める行が表にない。表と fixture に止める行を足す (${howTo})。`;
+      expect(failures({ [tablePath]: added })).toEqual([missing(outbox), missing(outboxTest)]);
+    });
+
+    it("counts a value only as a whole name in the text of a row", () => {
+      const longer = table((copy) => {
+        copy.outbox.values = ["@x/sq"];
+      });
+      expect(failures({ [tablePath]: longer })).toHaveLength(2);
+      const inProperty = table((copy) => {
+        copy.console.values = ["globalThis"];
+      });
+      expect(failures({ [tablePath]: inProperty })).toEqual([]);
+    });
+  });
+
+  describe("the message of a restriction", () => {
+    const noMention = (key: string, mention: string) =>
+      `${tablePath} の ${key} の message に \`${mention}\` がない。止められた人が、代わりに書くものと ADR を知るため (${howTo})。`;
+
+    it("names what to write instead, and the ADR", () => {
+      const without = table((copy) => {
+        copy.outbox.message = "Do not send from here.";
+      });
+      expect(failures({ [tablePath]: without })).toEqual([
+        noMention("outbox", "enqueueOutbox"),
+        noMention("outbox", "docs/adr/0029"),
+      ]);
+    });
+
+    it("is not asked of a restriction without a message", () => {
+      const without = table((copy) => {
+        copy.console.mentions = ["Logger"];
+      });
+      expect(failures({ [tablePath]: without })).toEqual([]);
+    });
+  });
+
+  describe("the files of a row", () => {
+    it("are named after the key, in a __fixtures__/ directory", () => {
+      const renamed = table((copy) => {
+        copy.connection.rows[0]?.files.push(
+          "apps/api/src/__fixtures__/bypass.ts",
+          "apps/api/src/connection.ts",
+        );
+      });
+      const wrong = (file: string) =>
+        `${tablePath} の connection の行が \`${file}\` を挙げるが、fixture のファイルは __fixtures__/connection.ts か __fixtures__/connection.test.ts にする (${howTo})。`;
+      expect(failures({ [tablePath]: renamed })).toEqual([
+        wrong("apps/api/src/__fixtures__/bypass.ts"),
+        wrong("apps/api/src/connection.ts"),
+      ]);
+    });
+  });
+
+  describe("the table itself", () => {
+    it("is asked for", () => {
+      expect(failures({ [tablePath]: undefined })).toEqual([
+        `${tablePath} がない。lint で止める import と呼び出しと、その fixture の行を並べる表で、vite.config.ts と repo-policy が読む (${howTo})。`,
+      ]);
+    });
+
+    it("is reported once when it is not JSON, and asks for nothing", () => {
+      expect(allViolations(repo({ [tablePath]: "{" }))).toEqual([
+        expect.stringMatching(/^lint-restrictions\.json is not valid JSON/),
+      ]);
+    });
+
+    it.each([
+      ["a restriction that is not an object", { outbox: [] }, "outbox", "オブジェクト"],
+      [
+        "an adr that is not text",
+        { outbox: { ...lintRestrictions.outbox, adr: 1 } },
+        "outbox.adr",
+        "文字列",
+      ],
+      [
+        "values with one that is not text",
+        { outbox: { ...lintRestrictions.outbox, values: ["@x/sqs", 1] } },
+        "outbox.values",
+        "文字列の配列",
+      ],
+      [
+        "mentions that are missing",
+        { outbox: { ...lintRestrictions.outbox, mentions: undefined } },
+        "outbox.mentions",
+        "文字列の配列",
+      ],
+      [
+        "mentions that are one text",
+        { outbox: { ...lintRestrictions.outbox, mentions: "enqueueOutbox" } },
+        "outbox.mentions",
+        "文字列の配列",
+      ],
+      [
+        "a message that is not text",
+        { outbox: { ...lintRestrictions.outbox, message: 1 } },
+        "outbox.message",
+        "文字列",
+      ],
+      [
+        "rows that are not an array",
+        { outbox: { ...lintRestrictions.outbox, rows: {} } },
+        "outbox.rows",
+        "配列",
+      ],
+    ])("refuses %s, and leaves the restriction out", (_, value, where, what) => {
+      expect(failures({ [tablePath]: JSON.stringify(value) })).toEqual([
+        `${tablePath} の ${where} が${what}でない (${howTo})。`,
+      ]);
+    });
+
+    const [row] = lintRestrictions.outbox.rows;
+    it.each([
+      ["a row that is not an object", 1, "", "オブジェクト"],
+      ["a row without files", { ...row, files: undefined }, ".files", "空でない文字列の配列"],
+      ["a row with no file", { ...row, files: [] }, ".files", "空でない文字列の配列"],
+      [
+        "a row with a blank file",
+        { ...row, files: [outbox, " "] },
+        ".files",
+        "空でない文字列の配列",
+      ],
+      ["a row with an empty text", { ...row, text: "" }, ".text", "空でない文字列"],
+      ["a row without a rule", { ...row, rule: undefined }, ".rule", "空でない文字列"],
+      ["a row with a blank reason", { ...row, reason: " " }, ".reason", "空でない文字列"],
+      [
+        "a row whose expect is neither stop nor pass",
+        { ...row, expect: "allow" },
+        ".expect",
+        '"stop" か "pass"',
+      ],
+    ])("refuses %s, and leaves the row out", (_, wrong, field, what) => {
+      const value = { outbox: { ...lintRestrictions.outbox, rows: [row, wrong] } };
+      expect(failures({ [tablePath]: JSON.stringify(value) })).toEqual([
+        `${tablePath} の outbox.rows[1]${field} が${what}でない (${howTo})。`,
+      ]);
+    });
+
+    it("refuses a table that is not an object", () => {
+      expect(failures({ [tablePath]: "[]" })).toEqual([
+        `${tablePath} の最上位がオブジェクトでない (${howTo})。`,
+      ]);
+    });
+  });
+
+  describe("the lines of a fixture", () => {
+    it.each([
+      ["no space after //", "//oxlint-disable-next-line no-restricted-imports"],
+      ["two spaces before the rule", "// oxlint-disable-next-line  no-restricted-imports"],
+      [
+        "a /* */ comment closed with no space",
+        "/* oxlint-disable-next-line no-restricted-imports*/",
+      ],
+      ["a comment with a reason", "// oxlint-disable-next-line no-restricted-imports -- why"],
+      [
+        "a reason that is only the separator",
+        "// oxlint-disable-next-line no-restricted-imports --",
+      ],
+    ])("reads a disable comment with %s", (_, comment) => {
+      expect(failures({ [outbox]: `${comment}\nimport "@x/sqs";\n` })).toEqual([]);
+    });
+
+    it("does not read an empty rule after a comma", () => {
+      const comma =
+        '// oxlint-disable-next-line no-restricted-imports, -- fixture\nimport "@x/sqs";\n';
+      expect(failures({ [outbox]: comma })).toEqual([]);
+    });
+
+    it("does not read a disable comment after code", () => {
+      const after =
+        'const a = 1; // oxlint-disable-next-line no-restricted-imports\nimport "@x/sqs";\n';
+      expect(failures({ [outbox]: after })).toEqual([
+        sqsMissing,
+        unlistedPass(outbox, 2, "outbox"),
+      ]);
+    });
+
+    it("skips a line of blanks between the comment and the line", () => {
+      const apart = outboxFixture.replace("\nimport", "\n  \nimport");
+      expect(failures({ [outbox]: apart })).toEqual([
+        sqsMissing,
+        unlistedPass(outbox, 3, "outbox"),
+      ]);
+    });
+
+    it("skips the comments, and reads a comment after code as code", () => {
+      const commented = [
+        '// a note on "@x/sqs"',
+        '  // an indented note on "@x/sqs"',
+        "/*",
+        ' * a block on "@x/sqs"',
+        " */",
+        "// oxlint-disable-next-line no-restricted-imports -- fixture",
+        'import "@x/sqs"; // the client',
+        "",
+      ].join("\n");
+      expect(failures({ [outbox]: commented })).toEqual([]);
+    });
+
+    it("asks for a row of a line that lets through any text of the restriction", () => {
+      const bare = `${consoleFixture}export const c: unknown = console;\n`;
+      expect(failures({ [consoleFile]: bare })).toEqual([unlistedPass(consoleFile, 5, "console")]);
+    });
+
+    it("reads a fixture at the root, and not one with another extension", () => {
+      expect(
+        failures({
+          "__fixtures__/connection.ts": connectionStopFixture,
+          "apps/api/src/__fixtures__/connection.ts.bak": connectionStopFixture,
+        }),
+      ).toEqual([
+        unlistedStop("__fixtures__/connection.ts", 2, "no-restricted-imports", "connection"),
+      ]);
+    });
+
+    it.each([
+      ["an import of a module for its effects", 'import "node:fs";'],
+      ["an import of names", 'import { a } from "node:fs";'],
+      ["a type import", '  import type { A } from "node:fs";'],
+      ["a re-export", 'export { a } from "node:fs";'],
+    ])("asks for a row of %s that is let through, even when no row has its text", (_, line) => {
+      expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([
+        unlistedPass(connectionTest, 2, "connection"),
+      ]);
+    });
+
+    it.each([
+      ["a constant that holds a text", 'export const a = "node:fs";'],
+      ["a name that starts with import", 'const imported = from("node:fs");'],
+      ["a call with from in its name", 'exportFrom("node:fs");'],
+    ])("does not take %s for an import", (_, line) => {
+      expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([]);
+    });
+
+    it("passes an import that a row lets through, though no other row has its text", () => {
+      const withRow = table((copy) => {
+        copy.connection.rows.push({
+          files: [connectionTest],
+          rule: "no-restricted-imports",
+          text: '"node:fs"',
+          expect: "pass",
+          reason: "x",
+        });
+      });
+      expect(
+        failures({
+          [tablePath]: withRow,
+          [connectionTest]: `${connectionPassFixture}import "node:fs";\n`,
+        }),
+      ).toEqual([]);
+    });
+
+    it("asks the values only of the files that stop them, not of those that let a line through", () => {
+      const other = "apps/api/src/__fixtures__/connection.ts";
+      const passOnly = table((copy) => {
+        copy.connection.rows.push({
+          files: [other],
+          rule: "no-restricted-imports",
+          text: "export const x",
+          expect: "pass",
+          reason: "x",
+        });
+      });
+      expect(failures({ [tablePath]: passOnly, [other]: "export const x = 1;\n" })).toEqual([]);
+    });
   });
 });
 

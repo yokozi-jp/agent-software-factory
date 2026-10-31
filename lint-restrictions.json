@@ -1,0 +1,459 @@
+{
+  "outbox": {
+    "adr": "docs/adr/0029",
+    "values": [
+      "@aws-sdk/client-sqs",
+      "@aws-sdk/client-ses",
+      "@aws-sdk/client-sesv2",
+      "@aws-sdk/client-sns",
+      "@aws-sdk/client-eventbridge",
+      "@aws-sdk/client-lambda",
+      "@aws-sdk/client-sfn"
+    ],
+    "message": "Do not send to SQS, SES, SNS, EventBridge, Lambda or Step Functions from a module or a request: put the event in the Outbox with enqueueOutbox, in the same transaction as the update, and let the relay or a consumer send it (docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.",
+    "mentions": ["enqueueOutbox"],
+    "rows": [
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-sqs\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-ses\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-sesv2\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-sns\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-eventbridge\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-lambda\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/application/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+          "packages/db/src/__fixtures__/outbox.ts",
+          "packages/telemetry/src/__fixtures__/outbox.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@aws-sdk/client-sfn\"",
+        "expect": "stop",
+        "reason": "SDK のクライアントで直接送ると、commit の前に送るか再試行で 2 回送るので、Outbox を通す"
+      }
+    ]
+  },
+  "connection": {
+    "adr": "docs/adr/0029",
+    "values": ["pg"],
+    "message": "Do not open a connection of your own: it skips the tenant setting and the module role. Open a transaction with inTenantTransaction (docs/adr/0011, docs/adr/0029 rule 2). A type import is fine; the pool is made in the entry file.",
+    "mentions": ["inTenantTransaction"],
+    "rows": [
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/connection.ts",
+          "packages/module-fixtures/src/application/__fixtures__/connection.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/connection.ts",
+          "packages/module-fixtures/src/http/__fixtures__/connection.ts",
+          "apps/api/src/__fixtures__/connection.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"pg\"",
+        "expect": "stop",
+        "reason": "自分で接続を開くと、テナントの設定とモジュールのロールを飛ばすので、inTenantTransaction でトランザクションを開く"
+      },
+      {
+        "files": ["apps/api/src/__fixtures__/connection.ts"],
+        "rule": "no-restricted-imports",
+        "text": "import type { Pool } from \"pg\"",
+        "expect": "pass",
+        "reason": "型の import は接続を開かないので、apps/api の databases.ts と auth.ts が使う"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/connection.test.ts",
+          "packages/db/src/__fixtures__/connection.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"pg\"",
+        "expect": "pass",
+        "reason": "入口のファイルとテスト、packages/db は pool を作るので、pg を import する"
+      }
+    ]
+  },
+  "raw-sql": {
+    "adr": "docs/adr/0029",
+    "values": ["sql", "CompiledQuery"],
+    "message": "Do not write raw SQL in a module: `sql` and `CompiledQuery` skip the types of the Kysely builder, so a query can reach a table of another module. Use the builder on your own tables, and read another module's data through its public API function (docs/adr/0029). If a query truly needs raw SQL, put the reason on the disable comment.",
+    "mentions": ["public API function"],
+    "rows": [
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/application/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/http/__fixtures__/raw-sql.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "{ sql } from \"kysely\"",
+        "expect": "stop",
+        "reason": "sql のタグは Kysely の型を飛ばし、ほかのモジュールの表に届くので、モジュールは自分の表を builder で読む"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/application/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/raw-sql.ts",
+          "packages/module-fixtures/src/http/__fixtures__/raw-sql.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "{ CompiledQuery } from \"kysely\"",
+        "expect": "stop",
+        "reason": "CompiledQuery は Kysely の型を飛ばし、ほかのモジュールの表に届くので、モジュールは自分の表を builder で読む"
+      }
+    ]
+  },
+  "with-tables": {
+    "adr": "docs/adr/0029",
+    "values": ["withTables"],
+    "message": "Call withTables only in infrastructure/, in the public API function that reads your own tables with the transaction of the caller. Elsewhere, read another module's data through its public API function (docs/adr/0029).",
+    "mentions": ["public API function"],
+    "rows": [
+      {
+        "files": [
+          "packages/module-fixtures/src/__fixtures__/with-tables.ts",
+          "packages/module-fixtures/src/domain/__fixtures__/with-tables.ts",
+          "packages/module-fixtures/src/application/__fixtures__/with-tables.ts",
+          "packages/module-fixtures/src/http/__fixtures__/with-tables.ts"
+        ],
+        "rule": "no-restricted-properties",
+        "text": ".withTables(",
+        "expect": "stop",
+        "reason": "withTables はトランザクションにほかのデータベースの型を与えるので、infrastructure/ の公開 API の関数でだけ呼ぶ"
+      },
+      {
+        "files": ["packages/module-fixtures/src/infrastructure/__fixtures__/with-tables.ts"],
+        "rule": "no-restricted-properties",
+        "text": ".withTables(",
+        "expect": "pass",
+        "reason": "infrastructure/ の公開 API の関数は、呼び出し側のトランザクションで自分の表を読むために withTables を呼ぶ"
+      }
+    ]
+  },
+  "session-setting": {
+    "adr": "docs/adr/0029",
+    "values": [],
+    "mentions": [],
+    "rows": [
+      {
+        "files": [
+          "packages/shared-kernel/src/__fixtures__/session-setting.ts",
+          "apps/api/src/__fixtures__/session-setting.ts"
+        ],
+        "rule": "tenant-sql/no-session-setting",
+        "text": "SET LOCAL ROLE",
+        "expect": "stop",
+        "reason": "接続のロールを変える SQL は、トランザクションの補助関数でだけ書く"
+      },
+      {
+        "files": [
+          "packages/shared-kernel/src/__fixtures__/session-setting.ts",
+          "apps/api/src/__fixtures__/session-setting.ts"
+        ],
+        "rule": "tenant-sql/no-session-setting",
+        "text": "set_config(",
+        "expect": "stop",
+        "reason": "テナントを変える SQL は、トランザクションの補助関数でだけ書く"
+      },
+      {
+        "files": [
+          "packages/shared-kernel/src/__fixtures__/session-setting.ts",
+          "apps/api/src/__fixtures__/session-setting.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "import { sql } from \"kysely\"",
+        "expect": "pass",
+        "reason": "shared-kernel と apps/api はトランザクションの補助関数と組み立てで sql を使うので、raw-sql の禁止の外にある"
+      }
+    ]
+  },
+  "otel-sdk": {
+    "adr": "docs/adr/0048",
+    "values": [
+      "@opentelemetry/sdk-",
+      "@opentelemetry/exporter-",
+      "@opentelemetry/instrumentation",
+      "@opentelemetry/resources\"",
+      "@opentelemetry/auto-instrumentations"
+    ],
+    "message": "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in packages/telemetry/src/node.ts and the entry file of the app (docs/adr/0048).",
+    "mentions": ["@opentelemetry/api"],
+    "rows": [
+      {
+        "files": [
+          "apps/api/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/sdk-",
+        "expect": "stop",
+        "reason": "SDK は packages/telemetry とアプリの入口で 1 回だけ始める"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/exporter-",
+        "expect": "stop",
+        "reason": "exporter は packages/telemetry とアプリの入口で SDK と一緒に作る"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/instrumentation",
+        "expect": "stop",
+        "reason": "計装は packages/telemetry とアプリの入口で SDK に渡す"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/resources\"",
+        "expect": "stop",
+        "reason": "SDK の resource は packages/telemetry とアプリの入口で作る"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/auto-instrumentations",
+        "expect": "stop",
+        "reason": "計装は一括のパッケージでなく、packages/telemetry で明示して入れる"
+      },
+      {
+        "files": ["packages/telemetry/src/__fixtures__/otel-sdk.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@opentelemetry/sdk-",
+        "expect": "pass",
+        "reason": "packages/telemetry の Node 専用の入口は SDK を始める"
+      }
+    ]
+  },
+  "telemetry-node": {
+    "adr": "docs/adr/0048",
+    "values": ["@agent-software-factory/telemetry/node"],
+    "message": "apps/web does not start OpenTelemetry: the Node-only entry of packages/telemetry is for the entry files of apps/api (docs/adr/0048).",
+    "mentions": ["packages/telemetry"],
+    "rows": [
+      {
+        "files": ["apps/web/src/__fixtures__/telemetry-node.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/telemetry/node\"",
+        "expect": "stop",
+        "reason": "apps/web は OpenTelemetry を始めないので、Node 専用の入口を import しない"
+      },
+      {
+        "files": ["apps/api/src/__fixtures__/telemetry-node.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/telemetry/node\"",
+        "expect": "stop",
+        "reason": "Node 専用の入口を import するのは、apps/api の入口のファイル (server.ts、telemetry.ts) とテストだけ"
+      }
+    ]
+  },
+  "pino": {
+    "adr": "docs/adr/0049",
+    "values": ["pino"],
+    "message": "Take a Logger from @agent-software-factory/logging as an argument. pino is created in packages/logging/src/node.ts (docs/adr/0049).",
+    "mentions": ["Logger"],
+    "rows": [
+      {
+        "files": [
+          "apps/api/src/__fixtures__/pino.ts",
+          "packages/module-fixtures/src/__fixtures__/pino.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"pino\"",
+        "expect": "stop",
+        "reason": "コードは Logger のインターフェースに依存し、pino を作るのは packages/logging/src/node.ts だけ"
+      }
+    ]
+  },
+  "console": {
+    "adr": "docs/adr/0049",
+    "values": ["console"],
+    "message": "Do not write to the console. Take a Logger (@agent-software-factory/logging) as an argument and log through it (docs/adr/0049, docs/logging/format.md).",
+    "mentions": ["Logger"],
+    "rows": [
+      {
+        "files": [
+          "apps/api/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/__fixtures__/console.ts"
+        ],
+        "rule": "no-restricted-globals",
+        "text": "= console;",
+        "expect": "stop",
+        "reason": "ログは引数で受け取った Logger を通すので、裸の console と、その別名に書かない"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/__fixtures__/console.ts"
+        ],
+        "rule": "no-restricted-properties",
+        "text": "globalThis.console",
+        "expect": "stop",
+        "reason": "ログは引数で受け取った Logger を通すので、globalThis から読んだ console に書かない"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/__fixtures__/console.ts"
+        ],
+        "rule": "no-restricted-properties",
+        "text": "globalThis[\"console\"]",
+        "expect": "stop",
+        "reason": "ログは引数で受け取った Logger を通すので、globalThis から文字列で読んだ console に書かない"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/__fixtures__/console.ts"
+        ],
+        "rule": "no-restricted-properties",
+        "text": "{ console:",
+        "expect": "stop",
+        "reason": "ログは引数で受け取った Logger を通すので、globalThis から分割代入した console に書かない"
+      },
+      {
+        "files": ["apps/web/src/__fixtures__/console.ts"],
+        "rule": "no-console",
+        "text": "console.log(",
+        "expect": "stop",
+        "reason": "フロントエンドはブラウザの console に何も出さず、エラーはエラー追跡のサービスで集める (docs/logging/frontend.md)"
+      }
+    ]
+  },
+  "db-imports": {
+    "adr": "docs/adr/0038",
+    "values": [],
+    "message": "db imports the packages of the workspace by `import type` only: it knows the database types of the modules, not their code. Use `import type`, or move the code to apps/api (docs/adr/0038).",
+    "mentions": ["import type"],
+    "rows": [
+      {
+        "files": ["packages/db/src/__fixtures__/db-imports.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/claim\"",
+        "expect": "stop",
+        "reason": "db はモジュールの型を知り、コードを知らないので、workspace の package を値で import しない"
+      },
+      {
+        "files": ["packages/db/src/__fixtures__/db-imports.ts"],
+        "rule": "no-restricted-imports",
+        "text": "import type { ClaimDatabase } from \"@agent-software-factory/claim\"",
+        "expect": "pass",
+        "reason": "db はモジュールのデータベースの型を import type で読む"
+      },
+      {
+        "files": ["packages/db/src/__fixtures__/db-imports.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"node:child_process\"",
+        "expect": "pass",
+        "reason": "db は migration を流すので、Node.js のモジュールを使う"
+      }
+    ]
+  }
+}

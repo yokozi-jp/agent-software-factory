@@ -21,24 +21,3 @@ export const { process: destructured }: { process: unknown } = globalThis;
 // @ts-expect-error -- fixture: the package has no Node.js types
 // oxlint-disable-next-line import/no-nodejs-modules -- fixture: a Node.js built-in module
 import "node:fs";
-
-// Detection-power fixture (#327) for the ban on `console` (docs/adr/0049, root vite.config.ts). The ban is
-// `no-restricted-globals` (a bare name, an alias, a destructuring) and `no-restricted-properties` (`globalThis.console`),
-// both from `runtimeGlobals`; `no-console` is not used because it lets an alias and `globalThis.console` through.
-// Each line below is one that must be reported.
-// @ts-expect-error -- fixture: the package has no Node.js types
-// oxlint-disable-next-line no-restricted-globals -- fixture: a bare console
-export const consoleBare: unknown = console;
-// @ts-expect-error -- fixture: the package has no Node.js types
-// oxlint-disable-next-line no-restricted-globals -- fixture: an alias of console
-const alias: unknown = console;
-export const consoleAlias = alias;
-// @ts-expect-error -- fixture: the package has no Node.js types
-// oxlint-disable-next-line no-restricted-properties -- fixture: console read from globalThis
-export const consoleViaGlobalThis: unknown = globalThis.console;
-// @ts-expect-error -- fixture: the package has no Node.js types
-// oxlint-disable-next-line no-restricted-properties -- fixture: console read from globalThis by a string
-export const consoleViaString: unknown = globalThis["console"];
-// @ts-expect-error -- fixture: the package has no Node.js types
-// oxlint-disable-next-line no-restricted-properties -- fixture: destructuring console from globalThis
-export const { console: consoleDestructured }: { console: unknown } = globalThis;
