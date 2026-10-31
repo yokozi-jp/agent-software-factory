@@ -47,6 +47,12 @@ export {
   type IdempotentResponse,
 } from "./idempotency.ts";
 export {
+  DEFAULT_PURGE_BATCH_SIZE,
+  purgeExpiredIdempotencyKeys,
+  type PurgeOptions,
+  type PurgeResult,
+} from "./idempotency-purge.ts";
+export {
   idempotencyInProgressResponse,
   idempotencyKeyHeaderSchema,
   idempotencyPayloadMismatchResponse,

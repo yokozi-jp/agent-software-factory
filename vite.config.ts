@@ -547,6 +547,8 @@ export default defineConfig({
         files: [
           "apps/worker/src/server.ts",
           "apps/worker/src/lambda.ts",
+          // 期限切れの冪等キーを消すバッチの入口 (Issue #325)。
+          "apps/worker/src/purge-idempotency-keys.ts",
           // 手で動かすための入口 (docs/tooling/local-worker.md)。
           "apps/worker/src/local/*.ts",
         ],

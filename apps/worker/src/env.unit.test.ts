@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ecsEnvSchema, loadEnv, workerEnvSchema } from "./env.ts";
+import { ecsEnvSchema, loadEnv, purgeEnvSchema, workerEnvSchema } from "./env.ts";
 
 const base = {
   APP_DATABASE_URL: "postgres://app_user@db/app",
@@ -52,5 +52,37 @@ describe("ワーカーの環境変数", () => {
 
     expect(load).toThrow(/MAIL_FROM/);
     expect(load).not.toThrow(/hidden-value/);
+  });
+});
+
+describe("冪等キーの掃除の環境変数", () => {
+  const purge = {
+    APP_DATABASE_URL: "postgres://app_user@db/app",
+    TENANT_ID: "00000000-0000-4000-8000-00000000000a",
+    TX_ID: "exec-1",
+  };
+
+  it("テナントと実行名を読み、上限と接続の数は省けること", () => {
+    const env = loadEnv(purgeEnvSchema, purge);
+
+    expect(env).toMatchObject({ TENANT_ID: purge.TENANT_ID, TX_ID: "exec-1" });
+    expect(env).not.toHaveProperty("PURGE_BATCH_SIZE");
+  });
+
+  it("上限は数字だけの 1 以上の文字列を数値で読むこと", () => {
+    expect(loadEnv(purgeEnvSchema, { ...purge, PURGE_BATCH_SIZE: "500" })).toMatchObject({
+      PURGE_BATCH_SIZE: 500,
+    });
+    expect(() => loadEnv(purgeEnvSchema, { ...purge, PURGE_BATCH_SIZE: "0" })).toThrow(
+      /PURGE_BATCH_SIZE/,
+    );
+    expect(() => loadEnv(purgeEnvSchema, { ...purge, PURGE_BATCH_SIZE: "" })).toThrow(
+      /PURGE_BATCH_SIZE/,
+    );
+  });
+
+  it("テナントが UUID でない、実行名がないときは例外にすること", () => {
+    expect(() => loadEnv(purgeEnvSchema, { ...purge, TENANT_ID: "tenant-a" })).toThrow(/TENANT_ID/);
+    expect(() => loadEnv(purgeEnvSchema, { ...purge, TX_ID: undefined })).toThrow(/TX_ID/);
   });
 });

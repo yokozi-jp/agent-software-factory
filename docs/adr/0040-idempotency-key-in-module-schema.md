@@ -17,7 +17,10 @@ tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 - **一意キーと行**: 主キーは `(tenant_id, user_id, idempotency_key)` です。行に `request_hash`、状態コード、本文、`expires_at` を持ちます。表は [ADR 0011](0011-tenant-id-and-rls-from-the-start.md) のとおり `ENABLE` と `FORCE ROW LEVEL SECURITY` を付け、`app.current_tenant` で比べるポリシーを置きます。
 - **ペイロードの比較**: `request_hash` は、method、経路、クエリ文字列、本文のバイト列の SHA-256 です。同じキーでハッシュが違えば 400 です。JSON は正規化しません。draft の 422 は使わず、`type` で区別します (「標準との違い」)。
 - **処理中の重複**: 待たせます。同じキーの 2 つ目の要求は、1 つ目のトランザクションの終わりまで、キーの `INSERT` の中で待ちます。待ちを `SET LOCAL lock_timeout = '5s'` で切り、切れたら (`55P03`) 409 と `Retry-After` を返します。`lock_timeout` は `INSERT` の文にだけ効かせ、`INSERT` の直後に `SET LOCAL lock_timeout = 0` で戻します。戻さないと、同じトランザクションの後続の文である業務の `UPDATE` のロック待ちも `55P03` になり、409 に誤って変換します。
-- **保存期間**: 24 時間 (`expires_at`)。docs に公開します。期限切れの行の掃除は [Issue #325](https://github.com/yokozi-jp/agent-software-factory/issues/325) です。
+- **保存期間**: 24 時間 (`expires_at`)。docs に公開します。期限切れの行の掃除は [Issue #325](https://github.com/yokozi-jp/agent-software-factory/issues/325) で実装し、次の形です。
+  - 1 日 1 回、ECS のタスクとして、締めのバッチと同じ入口 (EventBridge Scheduler → Step Functions → RunTask、テナントの一覧と Map は [ADR 0042](0042-closing-batch-catches-up-daily-without-locks.md) と共有) で動かします。1 回の実行が 1 つのテナントを受け持ち、`BYPASSRLS` のロールは使わず、モジュールのロールで `app.current_tenant` を設定して消します ([ADR 0011](0011-tenant-id-and-rls-from-the-start.md))。
+  - `shared-kernel` の `purgeExpiredIdempotencyKeys` が、1 トランザクションで最大 `batchSize` 件 (既定 1000) を消して commit し、件数が上限に満たなくなるまで繰り返します。選ぶ行は `expires_at` の索引の順で、`FOR UPDATE SKIP LOCKED` により、実行中の要求が持つ行を待たずに飛ばします。
+  - 入口は `apps/worker/src/purge-idempotency-keys.ts`、対象のモジュールの一覧は `idempotencyKeyModules` です。モジュールが `idempotency_key` の migration を足すときに、同じ変更でこの一覧へ足します。食い違いは結合テストが止めます。
 - **共通カラム**: 冪等キーの表にも、[共通カラム](../db/postgresql-keys.md#このリポジトリでは) を原則として付けます ([Issue #345](https://github.com/yokozi-jp/agent-software-factory/issues/345))。
 - **保存する応答**: 2xx だけです。2xx 以外は rollback し、キーの行も残しません。そのため、業務の失敗 (422 など) を直して同じキーで再試行すると、業務の処理をもう一度実行します。
 - **再試行への応答**: 完了後の再試行には、保存した状態コードと本文をそのまま返します。返し直しの印 (`Idempotent-Replayed` など) は付けません。ヘッダーは保存しません。
