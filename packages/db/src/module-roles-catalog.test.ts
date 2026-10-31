@@ -319,6 +319,7 @@ describe("checkModuleRoles", () => {
   it("outbox_relay のロールか Outbox の表がなければ、その失敗だけを返すこと", async () => {
     await db.superuser.query(`ALTER ROLE outbox_relay RENAME TO outbox_relay_moved`);
     expect(await checkModuleRoles(db.superuser, reads)).toContain("ロール outbox_relay がない");
+    // 次の確かめはロールがある前提なので、同じトランザクションの中で名前を戻す (ROLLBACK を待たない)。
     await db.superuser.query(`ALTER ROLE outbox_relay_moved RENAME TO outbox_relay`);
 
     await db.migrator.query(`DROP TABLE messaging.outbox`);

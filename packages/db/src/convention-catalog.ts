@@ -63,8 +63,7 @@ export const conventionExceptions: readonly ConventionException[] = [
 
 /** DDL を実行できてはいけないロール (docs/adr/0025)。 */
 // outbox_relay はここに入れない。その属性 (SUPERUSER、CREATEROLE、CREATEDB) と権限は、モジュールの検査
-// (module-roles-catalog.ts) が確かめる。ロールの属性はクラスタ全体のもので、そのテストが壊した間、この検査が
-// 並行して失敗するのを避ける。
+// (module-roles-catalog.ts) が確かめる。
 const restrictedRoles = ["app_user", "auth_service"];
 
 interface Violation {
@@ -394,8 +393,7 @@ async function privileges(pool: Queryable): Promise<Violation[]> {
       [restrictedRoles],
     ),
     // モジュールのロールへの INHERIT は、ここでは見ない。app_user が INHERIT FALSE、SET TRUE で入っていることは、
-    // モジュールの検査 (module-roles-catalog.ts) が確かめる。ロールのメンバーシップはクラスタ全体のもので、
-    // そのテストが INHERIT TRUE にした間、この検査が並行して失敗するのを避ける。
+    // モジュールの検査 (module-roles-catalog.ts) が確かめる。
     pool.query<{ rolname: string; roleName: string }>(
       `SELECT mr.rolname, gr.rolname AS "roleName"
          FROM pg_auth_members m
@@ -426,7 +424,8 @@ async function privileges(pool: Queryable): Promise<Violation[]> {
        SELECT r.rolname, n.nspname, p.proname
          FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
          JOIN pg_roles r ON r.oid = p.proowner
-        WHERE r.rolname = ANY($1) AND ${userSchema("n.nspname")}`,
+        WHERE r.rolname = ANY($1) AND ${userSchema("n.nspname")}
+        ORDER BY 1, 2, 3`,
       [restrictedRoles],
     ),
     pool.query<{ schema: string; name: string | null; label: string; privilege: string }>(

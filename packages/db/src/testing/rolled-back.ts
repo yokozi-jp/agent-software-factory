@@ -30,7 +30,11 @@ export interface RolledBackSession extends RolledBackQueries {
  * (Issue #448)。コミットしない変更は、ほかの接続 (並行して流れる別のテストファイル) から見えない。そのため、
  * 規則を壊す検出力のテストは、ここで壊して検査を呼ぶ。壊した状態を戻す後始末を、テストごとに書かなくてよい。
  *
- * 注意: 失敗した文があるとトランザクションは中止され、その後の文は流れない。壊し方の文が失敗すれば、テストが落ちる。
+ * 注意:
+ * - 失敗した文があるとトランザクションは中止され、その後の文は流れない。壊し方の文が失敗すれば、テストが落ちる。
+ * - ALTER ROLE と GRANT は、変えた行のロックを ROLLBACK まで持つ。ほかの接続が同じロールを書き換える (コミットする)
+ *   と、ROLLBACK まで待たされる。ロールを書き換えるのは、この口の中だけにする。コミットされた変更は、globalSetup の
+ *   終了時の確かめ (test/global-setup.ts) が見つける。
  */
 export async function openRolledBack(db: TestDatabase): Promise<RolledBackSession> {
   const client = await db.superuser.connect();
