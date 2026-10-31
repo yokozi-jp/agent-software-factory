@@ -30,8 +30,13 @@ describe("processed_message の雛形", () => {
   });
 
   it("3 つのモジュールに作った表が、DB の規約とモジュールのロールの検査を通ること", async () => {
-    for (const module of ["claim", "approval", "closing"])
-      await db.migrator.query(processedMessageTableSql(module));
+    // migration が表をもう作ったモジュール (approval) には作らない。表の定義は雛形と同じ。
+    for (const module of ["claim", "approval", "closing"]) {
+      const { rows } = await db.superuser.query<{ found: string | null }>(
+        `SELECT to_regclass('${module}.processed_message')::text AS found`,
+      );
+      if (rows[0]?.found === null) await db.migrator.query(processedMessageTableSql(module));
+    }
 
     expect(await checkConventions(db.superuser)).toEqual([]);
     expect(

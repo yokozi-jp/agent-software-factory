@@ -3,4 +3,29 @@
  * Please do not edit it manually.
  */
 
-export interface DB {}
+import type { ColumnType } from "kysely";
+
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
+
+export interface ApprovalProcessedMessage {
+  created_at: ColumnType<Temporal.Instant, string, string>;
+  created_by: string;
+  created_pgm_cd: string;
+  created_tx_id: string;
+  lock_no: Generated<number>;
+  message_id: string;
+  patched_at: ColumnType<Temporal.Instant, string, string> | null;
+  patched_by: string | null;
+  patched_id: string | null;
+  tenant_id: string;
+  updated_at: ColumnType<Temporal.Instant, string, string>;
+  updated_by: string;
+  updated_pgm_cd: string;
+  updated_tx_id: string;
+}
+
+export interface DB {
+  "approval.processed_message": ApprovalProcessedMessage;
+}

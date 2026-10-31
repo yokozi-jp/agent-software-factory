@@ -1,0 +1,35 @@
+{
+  "name": "@agent-software-factory/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.ts",
+    "test": "vp test run --coverage",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@agent-software-factory/approval": "workspace:*",
+    "@agent-software-factory/db": "workspace:*",
+    "@agent-software-factory/shared-kernel": "workspace:*",
+    "@aws-sdk/client-sesv2": "catalog:",
+    "@aws-sdk/client-sqs": "catalog:",
+    "effect": "catalog:",
+    "kysely": "catalog:",
+    "nodemailer": "catalog:",
+    "temporal-polyfill": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "catalog:",
+    "@types/node": "catalog:",
+    "@types/nodemailer": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "testcontainers": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "nx": {
+    "name": "worker"
+  }
+}

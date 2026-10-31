@@ -11,6 +11,8 @@
     "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure"
   },
   "dependencies": {
+    "@agent-software-factory/approval-events": "workspace:*",
+    "@agent-software-factory/shared-kernel": "workspace:*",
     "effect": "catalog:",
     "kysely": "catalog:"
   },
