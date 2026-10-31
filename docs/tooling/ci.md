@@ -118,9 +118,9 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 既存の repo-policy に規則を 1 つ足すだけなら、上の 1 から 3 と 7 は済んでいます。直す場所は次の 5 つです (PR #538 が例です)。
 
 - `tools/scripts/src/checks/repo-policy/` の、主題に合う `*.ts` (規則の置き場は `rules.ts` の先頭のコメント) に規則を書き、`rules.ts` の `violations` に並べます。
-- 規則が名前で読むファイル (`tree.read("…")`、`tree.parsed("…")`、`tree.named("…")`) を、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。足し忘れは `lefthook-inputs.test.ts` が止めます。
+- 規則が読むファイルを、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。`Tree` の `read`、`maybe`、`parsed`、`named` は、規則が読もうとした path を記録します (ファイルがなくても記録します)。`lefthook-inputs.tools.test.ts` が、`passing-repo` に対して記録した path を `glob` と突き合わせて、足し忘れを止めます。path を変数で作っても記録されます。ファイルの内容は `Tree` を通して読みます (`tree.repo.read` は使いません)。
 - `fixtures/passing-repo.ts` に、規則を通す最小のファイルを足します。
-- `rules.test.ts` に、止める入力と通す入力のテストを足します。
+- 主題に合う `<主題>.test.ts` (`tooling.test.ts`、`modules.test.ts` など。`*.ts` と同じ名前) に、止める入力と通す入力のテストを足します。`fixtures/repo.ts` の `failuresOf(規則)` でその規則だけを呼び、期待する message は、その規則の失敗だけを並べます。`violations` を通すテストは、`rules.test.ts` の「`passing-repo` では失敗がない」だけです。
 - この文書の repo-policy の項に、確かめる内容を足します。
 
 ## lint の規則と tsconfig のフラグの fixture

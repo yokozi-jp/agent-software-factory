@@ -178,7 +178,7 @@ function catalogRows(markdown: string): Row[] | undefined {
 // The catalog and the configs have the same names: none without a row, no row for a name that is gone, each
 // name once, and every row says how its detection is verified (docs/tooling/ci.md ("検査を足すとき")).
 export function catalogMatchesConfigs(tree: Tree): string[] {
-  const markdown = tree.repo.read(catalog);
+  const markdown = tree.maybe(catalog);
   if (markdown === undefined)
     return [
       `${catalog} does not exist. It lists every sensor of the gates, and repo-policy compares it with the configs.`,
@@ -208,7 +208,7 @@ export function catalogMatchesConfigs(tree: Tree): string[] {
         `${catalog} names \`${span}\` more than once. Each sensor has one row, and each local copy is named in one row.`,
       );
   // Without ci.yml, mainNeedsEveryJob reports it; its rows are not compared.
-  const hasCi = tree.repo.read(sources["ci.yml"]) !== undefined;
+  const hasCi = tree.maybe(sources["ci.yml"]) !== undefined;
   for (const [source, where] of Object.entries(sources)) {
     if (source === "ci.yml" && !hasCi) continue;
     for (const span of named)

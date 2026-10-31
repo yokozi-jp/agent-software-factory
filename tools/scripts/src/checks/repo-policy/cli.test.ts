@@ -1,5 +1,5 @@
 // Process tests for the repo-policy entry point: a real git repository in the sandbox, built from the
-// passing fixture, to exit code and output. Which files fail and what the messages say is in rules.test.ts.
+// passing fixture, to exit code and output. Which files fail and what the messages say is in the test file of each rule (tooling.test.ts, modules.test.ts ...).
 import { appendFileSync, chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";

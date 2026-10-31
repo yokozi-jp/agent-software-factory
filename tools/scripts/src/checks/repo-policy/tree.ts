@@ -58,28 +58,42 @@ export class Tree {
   readonly paths: readonly string[];
   readonly parseErrors: string[] = [];
   readonly #parsed = new Map<string, unknown>();
+  readonly #reads = new Set<string>();
 
   constructor(repo: Repo) {
     this.repo = repo;
     this.paths = [...repo.tracked.keys()].sort();
   }
 
+  // Every path a rule asked for through `read`, `maybe`, `parsed` and `named` (the name, for `named`), whether or
+  // not the tree has the file. The pre-commit job `repo-policy` of lefthook.yml must glob each of them.
+  get readPaths(): string[] {
+    return [...this.#reads].sort();
+  }
+
+  // The text of a file, or undefined when the tree has no such file.
+  maybe(path: string): string | undefined {
+    this.#reads.add(path);
+    return this.repo.read(path);
+  }
+
   // A file the tree does not have reads as empty. No rule matches an empty text or any other text
   // without the pattern, so the fallback text is not tested.
   read(path: string): string {
     // Stryker disable next-line StringLiteral: equivalent, see above.
-    return this.repo.read(path) ?? "";
+    return this.maybe(path) ?? "";
   }
 
   // The tracked files with this name, at the root or at any depth.
   named(name: string): string[] {
+    this.#reads.add(name);
     return this.paths.filter((path) => path === name || path.endsWith(`/${name}`));
   }
 
   // The parsed JSON, TOML or YAML file; undefined when the tree has no such file or it does not parse.
   parsed(path: string): unknown {
     if (this.#parsed.has(path)) return this.#parsed.get(path);
-    const text = this.repo.read(path);
+    const text = this.maybe(path);
     const [format, parse] = parser(path);
     let value: unknown;
     try {
