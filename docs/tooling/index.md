@@ -12,4 +12,5 @@
 - [外部ドキュメントの読み方](external-docs.md)：外部の道具 (AWS、Hono、Vite+、Nx、mise、pnpm、lefthook、Oxlint、betterleaks、GitHub、Effect、Kiro、Codex) や仕様 (RFC、OpenTelemetry、MDN) の一次情報を調べるとき
 - [並行作業と worktree](worktrees.md)：別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree から PR を出すとき
 - [ローカルでトレースを見る](local-telemetry.md)：API のトレースをローカルで見るとき、トレースが出ないとき、otel-lgtm の版を上げるとき
+- [ローカルで通知メールのワーカーを動かす](local-worker.md)：通知メールのワーカーを手元で動かすとき、Mailpit でメールを目で確かめるとき、ElasticMQ や Mailpit の版を上げるとき
 - [通知メールの DLQ のメッセージを元のキューに戻す](dlq-redrive.md)：通知メールのメッセージが DLQ に移ったとき、DLQ のメッセージを SQS の redrive で戻すとき、戻すと 2 通目が出る理由を確かめるとき

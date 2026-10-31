@@ -544,7 +544,12 @@ export default defineConfig({
         },
       },
       {
-        files: ["apps/worker/src/server.ts", "apps/worker/src/lambda.ts"],
+        files: [
+          "apps/worker/src/server.ts",
+          "apps/worker/src/lambda.ts",
+          // 手で動かすための入口 (docs/tooling/local-worker.md)。
+          "apps/worker/src/local/*.ts",
+        ],
         plugins: ["import"],
         rules: runtimeRulesOff,
       },

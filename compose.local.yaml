@@ -1,0 +1,44 @@
+# 通知メールのワーカーを手元で動かす環境 (docs/tooling/local-worker.md)。PostgreSQL、ElasticMQ (SQS の代わり)、
+# Mailpit (メールの受け口と画面) を起動する。本番の構成ではない (docs/adr/0013)。
+# ElasticMQ と Mailpit のイメージは、結合テスト (apps/worker/test/containers.ts) もこのファイルから読むので、版はここ 1 か所で
+# 上げる。更新は Renovate に任せる。PostgreSQL は packages/db/src/testing/connection.ts の postgresImage と同じ版にする。
+name: agent-software-factory-local
+services:
+  postgres:
+    image: postgres:17@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f
+    environment:
+      POSTGRES_DB: app
+      # superuser のパスワード。ローカルの 127.0.0.1 にだけ開く使い捨ての DB で、本物の秘密ではない。
+      POSTGRES_PASSWORD: postgres # betterleaks:allow
+    volumes:
+      # データは名前付きボリュームに置く。`down` では残り、`down -v` で消える (docs/tooling/local-worker.md)。
+      - postgres-data:/var/lib/postgresql/data
+      # 初回の起動 (データのディレクトリが空のとき) だけ、名前の順に流れる。ロールは本番と同じ bootstrap.sql で作る。
+      - ./packages/db/bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./docker/postgres-local-roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  elasticmq:
+    image: softwaremill/elasticmq:1.7.1@sha256:f1de391a9b8c18fd3f2ce37b4f7d1b8989857e8a8e18bb01284fff899e69da82
+    volumes:
+      - ./docker/elasticmq.conf:/opt/elasticmq.conf:ro
+    ports:
+      - "127.0.0.1:9324:9324" # SQS の API。SQS_ENDPOINT はここ
+    healthcheck:
+      # イメージに healthcheck はない。ないと `up --wait` が、JVM が受け付ける前に戻る。
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:9324/?Action=ListQueues"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:v1.33.0@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP。SMTP_PORT はここ
+      - "127.0.0.1:8025:8025" # 画面と HTTP の API
+volumes:
+  postgres-data:

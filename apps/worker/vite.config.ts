@@ -44,6 +44,8 @@ export default defineConfig({
         // createLambdaHandler を通す。
         "src/server.ts",
         "src/lambda.ts",
+        // 手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS を 1 回呼ぶだけ。
+        "src/local/**",
         // SES を呼ぶ Layer。SES のモックは作らない (docs/adr/0041)。検証環境の試験で本物の SES を通す。
         "src/mail/ses.ts",
       ],
