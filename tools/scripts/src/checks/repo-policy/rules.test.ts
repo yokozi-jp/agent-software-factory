@@ -1248,6 +1248,36 @@ describe("ADR 0013: one Node.js major version", () => {
   });
 });
 
+describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)", () => {
+  const connection = "packages/db/src/testing/connection.ts";
+  const compose = (image: string): string => `services:\n  postgres:\n    image: ${image}\n`;
+
+  // The passing repo's compose has a digest after the tag; this case has none.
+  it("passes a compose tag without a digest", () => {
+    expect(violations(repo({ "compose.local.yaml": compose("postgres:18") }))).toEqual([]);
+  });
+
+  it("refuses a compose that moves alone, and a postgresImage that moves alone", () => {
+    expect(violations(repo({ "compose.local.yaml": compose("postgres:19@sha256:abc") }))).toEqual([
+      `compose.local.yaml postgres image (postgres:19) must be the tag of postgresImage in ${connection} (postgres:18) (docs/tooling/local-worker.md).`,
+    ]);
+    expect(
+      violations(repo({ [connection]: 'export const postgresImage = "postgres:17";\n' })),
+    ).toEqual([
+      `compose.local.yaml postgres image (postgres:18) must be the tag of postgresImage in ${connection} (postgres:17) (docs/tooling/local-worker.md).`,
+    ]);
+  });
+
+  it("names a compose without the postgres image, and a postgresImage that is not a literal", () => {
+    expect(violations(repo({ "compose.local.yaml": "services: {}\n" }))).toEqual([
+      "compose.local.yaml must set services.postgres.image (docs/tooling/local-worker.md).",
+    ]);
+    expect(violations(repo({ [connection]: "export const postgresImage = image;\n" }))).toEqual([
+      `${connection} must set postgresImage to a string literal (docs/tooling/local-worker.md).`,
+    ]);
+  });
+});
+
 describe("ADR numbers are unique", () => {
   it("refuses two ADRs with the same number", () => {
     expect(violations(repo({ "docs/adr/0001-duplicate.md": "# x\n" }))).toEqual([
@@ -2259,7 +2289,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
     packageFiles(name, fields);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("passes each module with the modules it may depend on, and shared", () => {
@@ -2503,8 +2533,8 @@ describe("ADR 0026: the events package of each module", () => {
     expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
   });
 
-  it("leaves shared-kernel, ui, i18n, telemetry and db out of the module packages", () => {
-    const names = ["shared-kernel", "ui", "i18n", "telemetry", "db"];
+  it("leaves shared-kernel, ui, i18n, telemetry, logging and db out of the module packages", () => {
+    const names = ["shared-kernel", "ui", "i18n", "telemetry", "logging", "db"];
     const tree = new Tree(
       repo(Object.fromEntries(names.map((name) => [`packages/${name}/package.json`, "{}"]))),
     );
@@ -2617,8 +2647,8 @@ describe("ADR 0026: the events package of each module", () => {
         }),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026).`,
-      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 
@@ -2632,7 +2662,7 @@ describe("ADR 0026: the events package of each module", () => {
         ),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026).`,
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026).`,
     ]);
   });
 });
@@ -3016,7 +3046,7 @@ describe("ADR 0048: packages/telemetry", () => {
         }),
       ),
     ).toEqual([
-      "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026).",
+      "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026).",
     ]);
   });
 
@@ -3106,6 +3136,77 @@ describe("ADR 0048: packages/telemetry", () => {
   });
 
   it("asks for nothing when there is no telemetry", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+});
+
+describe("ADR 0049: packages/logging", () => {
+  const exports = {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./testing": "./src/testing.ts",
+  };
+  const stops = (name: string) =>
+    `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
+  const runtimeApis = [
+    "const alias: unknown = console;",
+    "export const a: unknown = globalThis.console;",
+    'export const b: unknown = globalThis["console"];',
+    "export const { console: c }: { console: unknown } = globalThis;",
+    "export const d: unknown = console;",
+  ].join("\n");
+  const withLogging = (files: Record<string, string | undefined> = {}) =>
+    repo({
+      ...packageFiles("logging", { exports }),
+      "apps/api/src/__fixtures__/logger-imports.ts": stops("pino"),
+      "packages/module-fixtures/src/__fixtures__/logger-imports.ts": stops("pino"),
+      // The files already carry the annotations of docs/adr/0007 in the passing repository; the lines of console come after them.
+      "apps/api/src/__fixtures__/runtime-apis.ts": `${base["apps/api/src/__fixtures__/runtime-apis.ts"] ?? ""}\n${runtimeApis}`,
+      "packages/module-fixtures/src/__fixtures__/runtime-apis.ts": `${base["packages/module-fixtures/src/__fixtures__/runtime-apis.ts"] ?? ""}\n${runtimeApis}`,
+      ...files,
+    });
+
+  it("passes logging with its two exports and the fixtures of console and pino", () => {
+    expect(violations(withLogging())).toEqual([]);
+    expect(modulePackageNames(new Tree(withLogging()))).not.toContain("logging");
+  });
+
+  it("refuses logging with an export other than the two entries", () => {
+    expect(
+      violations(withLogging(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
+    ).toEqual([
+      `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049).`,
+    ]);
+  });
+
+  it.each(["apps/api/src/__fixtures__", "packages/module-fixtures/src/__fixtures__"])(
+    "asks for the pino import below the disable comment in %s",
+    (dir) => {
+      const file = `${dir}/logger-imports.ts`;
+      const missing = `${file} must import pino below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban outside packages/logging/src/node.ts fails \`vp check\` (docs/adr/0049).`;
+      expect(violations(withLogging({ [file]: undefined }))).toEqual([missing]);
+      expect(violations(withLogging({ [file]: 'import "pino";\n' }))).toEqual([missing]);
+    },
+  );
+
+  it.each([
+    ["= console;", "a bare console and an alias of it"],
+    ["globalThis.console", "console read from globalThis"],
+    ['globalThis["console"]', "console read from globalThis by a string"],
+    ["{ console:", "console destructured from globalThis"],
+  ])("asks for the line with %s in the runtime-apis fixture", (line, what) => {
+    const file = "apps/api/src/__fixtures__/runtime-apis.ts";
+    const without = runtimeApis
+      .split("\n")
+      .filter((text) => !text.includes(line))
+      .join("\n");
+    const existing = base[file] ?? "";
+    expect(violations(withLogging({ [file]: `${existing}\n${without}` }))).toEqual([
+      `${file} has no line with \`${line}\` (${what}), so nothing shows that the ban on console reaches it. Put it below \`oxlint-disable-next-line no-restricted-globals\` or \`no-restricted-properties\` (docs/adr/0049).`,
+    ]);
+  });
+
+  it("asks for nothing when there is no logging", () => {
     expect(violations(repo())).toEqual([]);
   });
 });

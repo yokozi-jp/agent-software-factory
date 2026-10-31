@@ -8,7 +8,7 @@ import { users } from "./credentials.ts";
 
 export const clientId = "api";
 export const clientSecret = "test-client-secret"; // betterleaks:allow
-const appOrigin = "https://app.example.test";
+const defaultAppOrigin = "https://app.example.test";
 
 /** Keycloak の realm と同じ 2 人。sub は固定の UUID。 */
 const accounts = {
@@ -26,14 +26,22 @@ export interface TestIdp {
   stop(): Promise<void>;
 }
 
-export async function startTestIdp(): Promise<TestIdp> {
+interface TestIdpOptions {
+  /** 待ち受けるポート。省略すると空きポート (テスト)。手で動かすときは固定する (test/dev-idp.ts)。 */
+  readonly port?: number;
+  /** ログイン後に戻る、アプリの公開のオリジン。省略するとテスト用の値。 */
+  readonly appOrigin?: string;
+}
+
+export async function startTestIdp(options: TestIdpOptions = {}): Promise<TestIdp> {
+  const appOrigin = options.appOrigin ?? defaultAppOrigin;
   // issuer にポートが要るので、先に待ち受けて、provider ができてから要求を渡す。
   let handler = (_req: IncomingMessage, res: ServerResponse): void => {
     res.statusCode = 503;
     res.end();
   };
   const server = createServer((req, res) => handler(req, res));
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => server.listen(options.port ?? 0, "127.0.0.1", resolve));
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("IdP のポートが分からない");
   const issuer = `http://127.0.0.1:${address.port}`;

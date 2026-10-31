@@ -362,6 +362,40 @@ export function telemetryBoundaries(tree: Tree): string[] {
   return failures;
 }
 
+// ADR 0049: `console` is stopped by `no-restricted-globals` and `no-restricted-properties` (the `console` entry of `runtimeGlobals`
+// in vite.config.ts), because `no-console` lets an alias and `globalThis.console` through, and `pino` is stopped by
+// `no-restricted-imports` outside packages/logging/src/node.ts, the entry files of the apps and the tests. Two places have a
+// fixture (#43): apps/api/src and packages/*/src (module-fixtures). `runtime-apis.ts` has a line for each way of reaching
+// `console` that the rule must stop, and `logger-imports.ts` has the `pino` import below the disable comment. A rule that is
+// turned off, or an override that stops reaching the directory, leaves the comment unused and fails `vp check`.
+const consoleFixtureLines: readonly (readonly [string, string])[] = [
+  ["= console;", "a bare console and an alias of it"],
+  ["globalThis.console", "console read from globalThis"],
+  ['globalThis["console"]', "console read from globalThis by a string"],
+  ["{ console:", "console destructured from globalThis"],
+];
+
+export function loggingBoundaries(tree: Tree): string[] {
+  if (!packageNames(tree).includes("logging")) return [];
+  const failures: string[] = [];
+  const read = (file: string) => (tree.paths.includes(file) ? tree.read(file) : "");
+  for (const dir of ["apps/api/src/__fixtures__", "packages/module-fixtures/src/__fixtures__"]) {
+    const imports = `${dir}/logger-imports.ts`;
+    if (!stopsImport(read(imports), "pino"))
+      failures.push(
+        `${imports} must import pino below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban outside packages/logging/src/node.ts fails \`vp check\` (docs/adr/0049).`,
+      );
+    const runtime = `${dir}/runtime-apis.ts`;
+    const text = read(runtime);
+    for (const [line, what] of consoleFixtureLines)
+      if (!text.includes(line))
+        failures.push(
+          `${runtime} has no line with \`${line}\` (${what}), so nothing shows that the ban on console reaches it. Put it below \`oxlint-disable-next-line no-restricted-globals\` or \`no-restricted-properties\` (docs/adr/0049).`,
+        );
+  }
+  return failures;
+}
+
 // ADR 0029: the imports that bypass the Outbox (`outboxPackages`: the SDK clients of SQS, SES and the like) and the
 // transaction (`connectionPackages`: `pg`, which opens a connection of its own). vite.config.ts stops them with
 // no-restricted-imports `paths`, and Oxlint keeps only the last override that sets the rule for a file, so each

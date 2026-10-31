@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { LoginScreen } from "@/components/login-screen.tsx";
+import { selectLoginMessage } from "@/lib/login-message.ts";
 import { parseLoginReason, safeRedirect, type LoginSearch } from "@/lib/login-redirect.ts";
 import type { SessionState } from "@/lib/session.ts";
 
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/login")({
   validateSearch: (search): LoginSearch => ({
     redirect: typeof search["redirect"] === "string" ? safeRedirect(search["redirect"]) : undefined,
     reason: parseLoginReason(search["reason"]),
+    error: typeof search["error"] === "string" ? search["error"] : undefined,
   }),
   // ログイン済みで来たら、戻り先 (なければ /) に移す。
   // /api/me が答えないとき (障害) も、ログイン画面は開く。画面まで失敗にすると、復旧した後に入る道もなくなる。
@@ -24,6 +26,11 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { signIn } = Route.useRouteContext();
-  const { redirect: returnTo, reason } = Route.useSearch();
-  return <LoginScreen reason={reason} onSignIn={() => signIn(returnTo ?? "/")} />;
+  const { redirect: returnTo, reason, error } = Route.useSearch();
+  return (
+    <LoginScreen
+      kind={selectLoginMessage(error, reason)}
+      onSignIn={() => signIn(returnTo ?? "/")}
+    />
+  );
 }

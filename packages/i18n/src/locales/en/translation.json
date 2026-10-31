@@ -18,16 +18,19 @@
       "sessionExpired": "Your session has expired. Please sign in again.",
       "loggedOut": "You have signed out."
     },
-    "failed": "Sign-in failed. Please try again."
+    "failed": "Sign-in failed. Please try again.",
+    "accountUnavailable": "This account cannot be used. If you do not recognize it, contact your administrator.",
+    "temporarilyUnavailable": "Currently unavailable. Please try again in a while."
   },
   "notFound": {
-    "title": "Page not found."
+    "title": "The page you are looking for was not found. Check the URL or go back to home."
   },
   "forbidden": {
-    "title": "You do not have permission to open this page."
+    "title": "You do not have permission to view this page."
   },
   "errorScreen": {
-    "toHome": "Back to home"
+    "toHome": "Back to home",
+    "toLogin": "Go to sign in"
   },
   "nav": {
     "label": "Main menu",

@@ -10,14 +10,22 @@ import {
   problemNotFoundHandler,
   problemResponse,
 } from "@agent-software-factory/shared-kernel";
+import { noopLogger, type Logger } from "@agent-software-factory/logging";
 import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { contextStorage } from "hono/context-storage";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
-import { sessionGuard, type SessionVariables } from "./auth/session.ts";
+import { sessionGuard } from "./auth/session.ts";
 import type { ModuleDatabases } from "./db/databases.ts";
+import {
+  accessLog,
+  logUnexpectedError,
+  requestContext,
+  type ApiVariables,
+} from "./http/logging.ts";
 import { validationHook } from "./http/validation-hook.ts";
 import { csrfProtection } from "./security/csrf.ts";
 
@@ -36,6 +44,8 @@ export interface AppDependencies {
    * モジュールはまだ route を持たないので、今は受け取るだけ。
    */
   readonly databases?: ModuleDatabases;
+  /** ロガー (docs/adr/0049)。入口が作って渡す。渡さないと何も出さない。 */
+  readonly logger?: Logger;
 }
 
 // route は createRoute で書く。ここから OpenAPI 3.1 の spec (apps/api/openapi.json) を生成し、web が hc で同じ型を使う
@@ -105,13 +115,18 @@ async function activeRoles(auth: Auth, headers: Headers): Promise<string[]> {
   return role.split(",").filter((name) => name !== "");
 }
 
-export function createApp({ auth }: AppDependencies = {}) {
-  const base = new OpenAPIHono<{ Variables: SessionVariables }>({
+export function createApp({ auth, logger = noopLogger }: AppDependencies = {}) {
+  const base = new OpenAPIHono<{ Variables: ApiVariables }>({
     defaultHook: validationHook,
   });
   // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
   // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
+  // ログの順序 (docs/adr/0049): contextStorage() → @hono/otel → リクエストの文脈 → アクセスログ。logger が今のリクエストと
+  // 今の span を読めるようにし、otel の後ろに置いて trace_id を付ける。
+  base.use(contextStorage());
   base.use(tracingMiddleware);
+  base.use(requestContext());
+  base.use(accessLog(logger));
   base.use(
     secureHeaders({
       contentSecurityPolicy: { defaultSrc: ["'none'"] },
@@ -122,19 +137,8 @@ export function createApp({ auth }: AppDependencies = {}) {
     }),
   );
   // エラー応答の変換 4 か所のうちの 2 つ (docs/adr/0035)。残りは defaultHook と route の _tag の switch。
-  // 5xx のログはここで書く。キーとレベルは Hono のロギング (Issue #327) が決めるまで、console.error に最小限を出す。
-  base.onError(
-    problemErrorHandler((error, c) => {
-      console.error(
-        JSON.stringify({
-          message: "unhandled error",
-          "exception.type": error.name,
-          "url.path": c.req.path,
-          "http.request.method": c.req.method,
-        }),
-      );
-    }),
-  );
+  // 5xx のログはここで書く (docs/adr/0049)。401、403、400 の検証失敗の記録は accessLog にある。
+  base.onError(problemErrorHandler(logUnexpectedError(logger)));
   base.notFound(problemNotFoundHandler);
   // middleware は route より前に登録する (Hono は登録順に実行する)。route の型は `openapi` の chain で受ける。
   if (auth !== undefined) {

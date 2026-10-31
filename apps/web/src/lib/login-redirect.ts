@@ -29,6 +29,8 @@ export function parseLoginReason(value: unknown): LoginReason | undefined {
 export interface LoginSearch {
   readonly redirect?: string | undefined;
   readonly reason?: LoginReason | undefined;
+  /** 認証の失敗の識別子 (Better Auth の `?error=`)。文字は見せず、`selectLoginMessage` が種類を選ぶ。 */
+  readonly error?: string | undefined;
 }
 
 /** 未ログインの利用者を `/login` に移す search。戻り先が `/` なら省く。 */

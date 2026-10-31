@@ -11,7 +11,8 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { RouteError } from "./components/route-error.tsx";
 import { ForbiddenError } from "./lib/forbidden.ts";
-import { EmbeddedNotFound, ForbiddenScreen, RouteNotFound } from "./components/error-screens.tsx";
+import { EmbeddedNotFound, ForbiddenScreen } from "./components/error-screens.tsx";
+import { LoginScreen as LoginScreenView } from "./components/login-screen.tsx";
 import {
   withSessionExpiry,
   type AppContext,
@@ -42,7 +43,10 @@ interface AppProps {
   apiStatus?: number;
 }
 
-const forbiddenTitle = "この画面を開く権限がありません。";
+const accountUnavailable =
+  "このアカウントでは利用できません。心当たりがない場合は、管理者に連絡してください。";
+const notFoundTitle = "お探しのページは見つかりません。URL を確認するか、トップへ戻ってください。";
+const forbiddenTitle = "このページを表示する権限がありません。";
 
 let latest: ReadyApp | undefined;
 
@@ -179,6 +183,41 @@ export const LoginAfterLogout: Story = {
   },
 };
 
+export const LoginWithAccountUnavailable: Story = {
+  args: { path: "/login?error=account_unavailable" },
+  play: async ({ args, canvas }) => {
+    const alert = await canvas.findByRole("alert");
+    await expect(alert).toHaveTextContent(accountUnavailable);
+    // 識別子の文字は見せない。
+    await expect(alert).not.toHaveTextContent("account_unavailable");
+    await userEvent.click(canvas.getByRole("button", { name: "IdP でログイン" }));
+    await expect(args.signIn).toHaveBeenCalledWith("/");
+  },
+};
+
+export const LoginWithAnUnknownError: Story = {
+  args: { path: "/login?error=state_mismatch" },
+  play: async ({ canvas }) => {
+    const alert = await canvas.findByRole("alert");
+    await expect(alert).toHaveTextContent("ログインできませんでした。もう一度お試しください。");
+    await expect(alert).not.toHaveTextContent("state_mismatch");
+    await expect(canvas.getByRole("button", { name: "IdP でログイン" })).toBeVisible();
+  },
+};
+
+// 「一時的に使えない」の識別子は人事システムの確認 (Issue #156) が決める。それまでは URL から出せないので、画面だけを確かめる。
+export const LoginTemporarilyUnavailable: Story = {
+  render: () => (
+    <LoginScreenView kind="temporarilyUnavailable" onSignIn={() => Promise.resolve()} />
+  ),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "ただいま利用できません。しばらくしてから、もう一度お試しください。",
+    );
+    await expect(canvas.getByRole("button", { name: "IdP でログイン" })).toBeVisible();
+  },
+};
+
 export const LoginWithAnUnknownReason: Story = {
   args: { path: "/login?reason=%3Cscript%3E" },
   play: async ({ canvas }) => {
@@ -235,10 +274,11 @@ export const SignedInLoginIgnoresAnExternalReturnPath: Story = {
 export const NotFoundWhenSignedIn: Story = {
   args: { path: "/no-such-page", session: member },
   play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
-    ).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "トップへ戻る" })).toHaveAttribute("href", "/");
+    await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
+    await expect(await canvas.findByRole("link", { name: "トップへ戻る" })).toHaveAttribute(
+      "href",
+      "/",
+    );
     await expect(locationOf().pathname).toBe("/no-such-page");
   },
 };
@@ -246,20 +286,24 @@ export const NotFoundWhenSignedIn: Story = {
 export const NotFoundWhenSignedOut: Story = {
   args: { path: "/no-such-page", session: "unauthenticated" },
   play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
+    await expect(await canvas.findByRole("link", { name: "ログインへ" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    await expect(canvas.queryByRole("link", { name: "トップへ戻る" })).toBeNull();
     await expect(locationOf().pathname).toBe("/no-such-page");
   },
 };
 
+// 確かめられない (障害) ときは未ログインとして扱い、ログイン画面への道を残す。
 export const NotFoundWhenTheSessionCheckIsUnavailable: Story = {
   args: { path: "/no-such-page", session: "unavailable" },
   play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
-    ).toBeVisible();
-    await expect(canvas.queryByRole("navigation", { name: "メインメニュー" })).toBeNull();
+    await expect(await canvas.findByRole("link", { name: "ログインへ" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
   },
 };
 
@@ -314,7 +358,7 @@ export const Forbidden: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByRole("heading", { name: "この画面を開く権限がありません。" }),
+      await canvas.findByRole("heading", { name: "このページを表示する権限がありません。" }),
     ).toBeVisible();
     await expect(canvas.getByRole("link", { name: "トップへ戻る" })).toHaveAttribute("href", "/");
   },
@@ -420,7 +464,7 @@ export const ForbiddenForNonAccountingUser: Story = {
   },
 };
 
-// route の中で notFound() を投げたときの 404。投げる route はまだないので、画面だけを最小の router で確かめる。
+// route の中で notFound() を投げたときの 404 (ログイン済みはメニューの中)。投げる route はまだないので、画面だけを最小の router で確かめる。
 function inMinimalRouter(screen: () => React.JSX.Element) {
   return () => {
     const root = createRootRoute({ component: screen });
@@ -432,22 +476,10 @@ function inMinimalRouter(screen: () => React.JSX.Element) {
   };
 }
 
-export const NotFoundThrownInARouteWithoutTheMenu: Story = {
-  render: inMinimalRouter(RouteNotFound),
-  play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
-    ).toBeVisible();
-    await expect(canvas.getByRole("main")).toBeVisible();
-  },
-};
-
 export const NotFoundThrownInAProtectedRouteIsEmbedded: Story = {
   render: inMinimalRouter(EmbeddedNotFound),
   play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
     await expect(canvas.queryByRole("main")).toBeNull();
   },
 };
@@ -464,7 +496,7 @@ export const MenuIsNotShownOnTheLoginScreen: Story = {
 export const MenuIsNotShownOnTheNotFoundScreenWhenSignedOut: Story = {
   args: { path: "/no-such-page", session: "unauthenticated" },
   play: async ({ canvas }) => {
-    await canvas.findByRole("heading", { name: "ページが見つかりません。" });
+    await canvas.findByRole("heading", { name: notFoundTitle });
     await expect(canvas.queryByRole("navigation", { name: "メインメニュー" })).toBeNull();
   },
 };
@@ -472,7 +504,7 @@ export const MenuIsNotShownOnTheNotFoundScreenWhenSignedOut: Story = {
 export const MenuIsShownOnTheNotFoundScreenWhenSignedIn: Story = {
   args: { path: "/no-such-page", session: member },
   play: async ({ canvas }) => {
-    await canvas.findByRole("heading", { name: "ページが見つかりません。" });
+    await canvas.findByRole("heading", { name: notFoundTitle });
     await expect(canvas.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
   },
 };

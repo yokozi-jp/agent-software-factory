@@ -97,9 +97,9 @@ jobs:
 
       # Installs the tools in mise.lock (checksum verified). `mise exec` in the scripts picks the pinned ones,
       # not the runner image's. No cache: a restored cache is not checked against the lock.
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          version: 2026.10.24
+          version: 2026.10.25
           cache: false
 
       # The pypi:semgrep sidecar lock (.mise/locks/pypi-semgrep) must be deterministic: regenerating it from
@@ -160,9 +160,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          version: 2026.10.24
+          version: 2026.10.25
           cache: false
 
       - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
@@ -217,14 +217,11 @@ jobs:
           pnpm exec nx affected -t check test build
 
       # The isolation test runs the unit project a second time under Git hook variables (about 50 s). It runs only
-      # when the files that make the isolation (src/test/, the Vitest config) change (docs/adr/0024, "隔離").
+      # when the files that make the isolation change (docs/adr/0024, "隔離"). The files are the inputs of the
+      # test-isolation target (tools/scripts/package.json), the only place that lists them; nx affected selects the
+      # target only when one of them changed. The pre-push hook runs the same command.
       - name: Test isolation of the scripts tests
-        run: |
-          if git diff --quiet "$NX_BASE" "$NX_HEAD" -- tools/scripts/src/test tools/scripts/vite.config.ts; then
-            echo "The isolation setup is unchanged. Skipped."
-          else
-            pnpm exec nx test-isolation scripts
-          fi
+        run: pnpm exec nx affected -t test-isolation
 
       # The Kysely types of the module schemas (packages/*/src/infrastructure/db.gen.ts) are generated from the
       # migrations and committed. Runs the migrations on a fresh PostgreSQL, generates the types again and fails if

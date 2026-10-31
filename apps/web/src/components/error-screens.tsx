@@ -1,21 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-// 文言は Issue #399、#415 で決める。ここでは、画面の置き場所と「トップへ戻る」だけを置く。
-// 「トップへ戻る」は `/` へ向かう。未ログインの利用者は、`/` の guard で `/login` に移る。
+// 文言は Issue #399、#415 の決定。必要な役割や、他人の画面が存在するかどうかは書かない。
+
+interface ErrorLink {
+  readonly to: "/" | "/login";
+  readonly label: string;
+}
 
 interface ErrorScreenProps {
   readonly title: string;
+  readonly link: ErrorLink;
   /** グローバルメニューの外枠の中に出すとき。外枠が `<main>` を持つので、全画面の `<main>` は作らない。 */
   readonly embedded: boolean;
 }
 
-function ErrorScreen({ title, embedded }: ErrorScreenProps) {
-  const { t } = useTranslation();
+function ErrorScreen({ title, link, embedded }: ErrorScreenProps) {
   const content = (
     <>
       <h1 className="text-lg font-semibold">{title}</h1>
-      <Link to="/">{t("errorScreen.toHome")}</Link>
+      <Link to={link.to}>{link.label}</Link>
     </>
   );
   return embedded ? (
@@ -25,24 +29,46 @@ function ErrorScreen({ title, embedded }: ErrorScreenProps) {
   );
 }
 
-/** 存在しない URL。URL は変えない。 */
-export function NotFoundScreen({ embedded = false }: { readonly embedded?: boolean }) {
+/**
+ * 存在しない URL (他人の申請も同じ)。URL は変えない。メニューの外に出す。
+ * ログイン済みの利用者には `$` route と `_authenticated` が、メニューの中の `EmbeddedNotFound` を出すので、
+ * ここに来るのは未ログイン、または /api/me が答えない (障害) 利用者だけ。ログイン画面には誰でも入れるので、
+ * 「ログインへ」を出す。
+ */
+export function NotFoundScreen() {
   const { t } = useTranslation();
-  return <ErrorScreen title={t("notFound.title")} embedded={embedded} />;
+  return (
+    <ErrorScreen
+      title={t("notFound.title")}
+      link={{ to: "/login", label: t("errorScreen.toLogin") }}
+      embedded={false}
+    />
+  );
 }
 
-/** 権限のない画面。URL は変えず、権限のない route の中に出す。 */
+/**
+ * 存在しない URL を、グローバルメニューの中に出す。ログイン済みの利用者だけが来るので、確かめずに
+ * 「トップへ戻る」を出す。`_authenticated` の notFoundComponent と、`$` route (ログイン済み) が使う。
+ */
+export function EmbeddedNotFound() {
+  const { t } = useTranslation();
+  return (
+    <ErrorScreen
+      title={t("notFound.title")}
+      link={{ to: "/", label: t("errorScreen.toHome") }}
+      embedded
+    />
+  );
+}
+
+/** 権限のない画面。URL は変えず、権限のない route の中に出す。ログイン済みの利用者だけが来る。 */
 export function ForbiddenScreen({ embedded = false }: { readonly embedded?: boolean }) {
   const { t } = useTranslation();
-  return <ErrorScreen title={t("forbidden.title")} embedded={embedded} />;
-}
-
-/** root の notFoundComponent。route の中で投げた notFound() を、メニューなしで受ける。 */
-export function RouteNotFound() {
-  return <NotFoundScreen />;
-}
-
-/** `_authenticated` の notFoundComponent。route の中で投げた notFound() (他人の申請など) を、メニューの中に出す。 */
-export function EmbeddedNotFound() {
-  return <NotFoundScreen embedded />;
+  return (
+    <ErrorScreen
+      title={t("forbidden.title")}
+      link={{ to: "/", label: t("errorScreen.toHome") }}
+      embedded={embedded}
+    />
+  );
 }

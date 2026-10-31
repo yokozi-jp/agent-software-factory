@@ -30,6 +30,9 @@ docker compose -f compose.local.yaml up -d --wait
 ## データベースを用意する
 
 初回の起動で、PostgreSQL に本番と同じ `packages/db/bootstrap.sql` が流れ、ロールができます。パスワードは `docker/postgres-local-roles.sql` が設定します (すべて `local-password`)。この初期化は、データのディレクトリが空のときだけ流れます ([Docker Official Image の postgres](https://hub.docker.com/_/postgres) の Initialization scripts)。データは名前付きボリューム `postgres-data` にあり、`down` では残ります。ロールの作り方を変えたら `down -v` でやり直します。
+
+PostgreSQL 18 のイメージは、`PGDATA` が `/var/lib/postgresql/18/docker` に変わり、ボリュームを `/var/lib/postgresql` に mount する形です ([Docker Official Image の postgres](https://hub.docker.com/_/postgres) の PGDATA、[docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259))。`/var/lib/postgresql/data` に mount すると、起動時に止まります ([Issue #531](https://github.com/yokozi-jp/agent-software-factory/issues/531))。16 以前の形で作った `agent-software-factory-local_postgres-data` も、18 は「`/var/lib/postgresql` にデータがある」とエラーを出して起動しません (postgres:16 で作ったボリュームを postgres:18 に mount して確かめた)。一度 `down -v` で消してから起動し直し、migration をやり直します。
+
 migration は `migrator` で流します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。
 
 ```sh
@@ -65,10 +68,10 @@ pnpm --filter @agent-software-factory/worker send-sample [宛先のメールア�
 ## 版を上げるとき
 
 ElasticMQ と Mailpit のイメージは `compose.local.yaml` が持ち、結合テスト (`apps/worker/test/containers.ts`) もそこから読みます。ElasticMQ の設定は `docker/elasticmq.conf` です。`compose.local.yaml` は、Renovate の docker-compose manager の既定の対象 (`compose` で始まる `.yaml`) なので、版の更新の PR が出ます ([Renovate の docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/))。
-PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage` (テストと型の生成) と、`compose.local.yaml` の 2 か所にあります。上げるときは両方を同じ版にします。ずれを止める検査は [Issue #515](https://github.com/yokozi-jp/agent-software-factory/issues/515) で扱います。
+PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage` (テストと型の生成) と、`compose.local.yaml` の 2 か所にあります。上げるときは両方を同じ版にします。compose は digest を付け (`postgres:18@sha256:...`)、`postgresImage` は付けないので、repo-policy (`onePostgresVersion`) は `@` の前のタグ部分 (`postgres:18`) が同じことを確かめ、ずれていれば止めます ([Issue #515](https://github.com/yokozi-jp/agent-software-factory/issues/515))。Renovate が compose の digest だけを上げるのは、タグが同じなので通ります。
 
 ## この環境に入っていないもの
 
-- OIDC の IdP。ワーカーは OIDC を使いません。API と web を手で動かす作業は [Issue #512](https://github.com/yokozi-jp/agent-software-factory/issues/512) で扱います。
+- OIDC の IdP。ワーカーは OIDC を使いません。API と web を認証つきで動かす手順は[ローカルで API と web を認証つきで動かす](local-api.md)にあります。
 - 保持期間 (`MessageRetentionPeriod`)。ElasticMQ では効きません ([ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md))。
 - SES。ローカルは SMTP で Mailpit に送ります。
