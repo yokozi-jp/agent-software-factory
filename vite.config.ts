@@ -409,9 +409,7 @@ function sharedKernelEntryOverride(
     files:
       entry === "."
         ? [
-            "packages/shared-kernel/src/index.ts",
-            "packages/shared-kernel/src/event.ts",
-            "packages/shared-kernel/src/event.test.ts",
+            "packages/shared-kernel/src/*.ts",
             "packages/shared-kernel/src/__fixtures__/root-entry.ts",
           ]
         : [`packages/shared-kernel/src/${entry}/**`],

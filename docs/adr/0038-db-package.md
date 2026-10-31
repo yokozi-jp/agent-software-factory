@@ -18,7 +18,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
   - `src/seed/`: seed の入口 `seed(databaseUrl)` (`index.ts`)、モジュールごとのファイル (今は `claim.ts`)、テナントなどの固定の値 (`context.ts`)。[ADR 0036](0036-seed-in-typescript-through-rls.md)。
   - `src/testing/postgres-container.ts`: `startPostgres()` が、テスト用の PostgreSQL を `fsync`、`synchronous_commit`、`full_page_writes` を off にして起動します。`apps/api` と `db` の globalSetup が使います。使い捨ての DB なので、ディスクへの同期書き込みを待たないためです ([PostgreSQL 公式の Non-Durable Settings](https://www.postgresql.org/docs/17/non-durability.html))。OS が落ちたときにデータが壊れるだけで、ロックとトランザクションの分離、実行計画は変わりません。`packages/db` のテストの所要時間は、負荷が高いマシンで 2 回の測定で 15〜25% 短くなりました。tmpfs と `shared_buffers` の増量は、同じ測定で上乗せがなかったので使いません。本番に近い既定のまま起動するのは、型の生成 (`src/types.ts`) と migration のテスト (`migrate.test.ts`) です。
   - `apps/api/test/` には、`apps/api` のコードを試す道具 (テスト用 IdP の `oidc-provider.ts`、`auth-fixtures.ts`、`browser.ts`、`server-process.ts`、IdP のユーザー) を残します。`apps/api/test/global-setup.ts` は `@agent-software-factory/db/testing` の `prepareSeededDatabase` (`prepareDatabase` に続けて seed を流す) を呼びます。型の生成は seed を流さないので `prepareDatabase` を使います。
-- **exports**: `"."` (`migrate` と `bootstrapSql`)、`"./seed"`、`"./testing"` の 3 つ。faker、testcontainers、Vitest を、本番のコードが import する `"."` に持ち込まないために分けます。repo-policy が形を確かめます。
+- **exports**: `"./node"` (`migrate`、`bootstrapSql`、`createPool`)、`"./seed"`、`"./testing"` の 3 つで、`"."` は持ちません ([ADR 0051](0051-shared-package-entries-by-feature.md))。faker、testcontainers、Vitest を、本番のコードが import する `"./node"` に持ち込まないために分けます。repo-policy が形を確かめます。
 - **依存**:
   - `db` はモジュール (`claim`、`approval`、`closing`) に `import type` だけで依存し、`devDependencies` に書きます。`dependencies` に書いた module、`shared-kernel` や `ui`、`apps/*` への依存は repo-policy が止めます。
   - 実行時に要る `dbmate` と `pg` は `db` の `dependencies`、`kysely-codegen` と testcontainers は `devDependencies` に置きます。
@@ -40,7 +40,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 ## Consequences
 
 - migration を足すときは `packages/db/migrations/` に書き、`pnpm exec nx db-types db` で型を生成し直します ([PostgreSQL のマイグレーション](../db/postgresql-migration.md))。
-- ワーカー、バッチ、migrate のタスクは `@agent-software-factory/db` の `migrate` を import できます。本番の入口の形 (rds-signer、bootstrap、dbmate の 2 段、イメージへの入れ方) は、サンプル機能とインフラの spec で決めます。
+- ワーカー、バッチ、migrate のタスクは `@agent-software-factory/db/node` の `migrate` を import できます。本番の入口の形 (rds-signer、bootstrap、dbmate の 2 段、イメージへの入れ方) は、サンプル機能とインフラの spec で決めます。
 - `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。 手順は [module ではない package を足す手順](../domain-model/add-package.md) にあります。
 - `db:seed` は `packages/db/package.json` の script (`node src/seed/index.ts`) で、`db:migrate` と同じ形です。`DATABASE_URL` に `migrator` の接続 URL を渡します。
 - `knip.jsonc` の `packages/db` の `ignoreDependencies` には、seed がまだ import していないモジュール (`approval`、`closing`) が残っています。そのモジュールの seed を足すときに外します。
