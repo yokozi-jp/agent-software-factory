@@ -49,3 +49,18 @@ export function loadEnv<S extends z.ZodType>(
   const lines = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
   throw new Error(["環境変数が正しくない:", ...lines].join("\n"));
 }
+
+// 期限切れの冪等キーを消すバッチの環境変数 (Issue #325)。Step Functions の RunTask が、タスク定義の環境変数の上書きで渡す
+// (docs/adr/0042 と同じ形)。メールとキューは使わないので、ワーカーの schema とは別にする。
+export const purgeEnvSchema = z.object({
+  /** 業務の処理は app_user で接続する。RLS を迂回しない (docs/adr/0011)。 */
+  APP_DATABASE_URL: z.string().min(1),
+  /** 接続は 1 本で足りる。トランザクションを順に開くだけ。 */
+  DATABASE_POOL_MAX: digits.pipe(z.number().int().min(1)).optional(),
+  /** 掃除するテナント。Map の 1 回の実行が 1 つのテナントを受け持つ。 */
+  TENANT_ID: z.uuid(),
+  /** Step Functions の実行名。共通カラムの tx_id に入る。 */
+  TX_ID: z.string().min(1).max(64),
+  /** 1 つのトランザクションで消す件数の上限。省くと shared-kernel の既定 (1000)。 */
+  PURGE_BATCH_SIZE: digits.pipe(z.number().int().min(1)).optional(),
+});

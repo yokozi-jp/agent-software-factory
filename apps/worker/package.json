@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.ts",
+    "purge-idempotency-keys": "node --env-file-if-exists=.env src/purge-idempotency-keys.ts",
     "setup-queues": "node --env-file-if-exists=.env src/local/setup-queues.ts",
     "send-sample": "node --env-file-if-exists=.env src/local/send-sample.ts",
     "test": "vp test run --coverage",
@@ -23,6 +24,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@agent-software-factory/claim": "workspace:*",
     "@types/aws-lambda": "catalog:",
     "@types/node": "catalog:",
     "@types/nodemailer": "catalog:",
