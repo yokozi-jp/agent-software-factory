@@ -53,9 +53,11 @@ tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 | web が操作ごとにキーを採り、再試行のあいだ同じ値を送る                                                                                    | 単体テスト (hook)                                                                                                                                                                 | `vp test`               | [Issue #324](https://github.com/yokozi-jp/agent-software-factory/issues/324) |
 | 期限切れの行の掃除                                                                                                                        | 実際の PostgreSQL に対する結合テスト                                                                                                                                              | 結合テスト              | [Issue #325](https://github.com/yokozi-jp/agent-software-factory/issues/325) |
 
-[保証カタログ](../tooling/assurance-catalog.md) には、「冪等キー」の行を足します。検査の実装がそろうまで、行は「これから足す行」の節に置き、ゲートは「なし」です。
+書き込みの use case の検査は、Oxlint の `no-restricted-imports` でなく repo-policy に置きました ([Issue #324](https://github.com/yokozi-jp/agent-software-factory/issues/324))。`no-restricted-imports` は import を 1 つずつ禁じる規則で、「`inTenantTransaction` を import するファイルは `withIdempotencyKey` も import する」という、同じファイルの 2 つの import の組を書けないためです。キューのコンシューマーのような HTTP の要求でない書き手は、ファイルに `// idempotency-exempt: <理由>` の行を書いて外します (判断)。
 
-web が使う `crypto.randomUUID()` は secure context (HTTPS) でしか使えません。`http://localhost` は使えますが、それ以外の HTTP では動きません。web が再試行のあいだ同じキーを保つ書き方 (キーは `mutationFn` の外で作って変数に入れる) は、Issue #324 の hook に置きます。
+[保証カタログ](../tooling/assurance-catalog.md) の「冪等キー」の行と「冪等キーの契約と呼び出し」の行が、この検査を表します。
+
+web が使う `crypto.randomUUID()` は secure context (HTTPS) でしか使えません。`http://localhost` は使えますが、それ以外の HTTP では動きません。web が再試行のあいだ同じキーを保つ書き方 (キーは `mutationFn` の外で作って変数に入れる) は、`apps/web/src/lib/use-idempotent-mutation.ts` の hook にあります。
 
 ## Considered Options
 

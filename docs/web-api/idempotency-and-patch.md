@@ -47,7 +47,11 @@ Idempotency-Keyヘッダーという[IETF Draft（2026年10月時点ではDraft 
 >
 > `crypto.randomUUID()` は secure context でしか使えない。HTTPS と `http://localhost` は使えるが、それ以外の HTTP では動かない（[MDN: Crypto.randomUUID()](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)、[MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts)）。
 
-検査は [ADR 0040 の検査](../adr/0040-idempotency-key-in-module-schema.md#検査) にある。契約のゲート、共有の関数、web の hook は、実装の Issue で足す。
+検査は [ADR 0040 の検査](../adr/0040-idempotency-key-in-module-schema.md#検査) にある。
+
+- **契約**: POST と PATCH の route は、`request.headers` に `idempotencyKeyHeaderSchema` を渡し、`requireIdempotencyKey` を middleware にする（`packages/shared-kernel`）。付け忘れると、`.spectral.yaml` の `idempotency-key-required` が契約の lint で止める
+- **use case**: 書き込みの use case（`application` と `infrastructure` で `inTenantTransaction` を使うファイル）は `withIdempotencyKey` を通る。キューのコンシューマーのように HTTP の要求でない書き手は、ファイルに `// idempotency-exempt: <理由>` の行を書く。repo-policy が止める
+- **web**: mutation は `apps/web/src/lib/use-idempotent-mutation.ts` の `useIdempotentMutation` で包む。`mutate` を呼ぶたびに新しいキーを採り、`mutationFn` の第 2 引数の `headers` を `hc` の呼び出しにそのまま渡す。TanStack Query の再試行では同じキーを送る。利用者がボタンをもう一度押す操作は、新しい操作なので新しいキーになる
 
 > [!TIP]
 > **業務アプリケーションで伝統的に行われていた設計パターン**
