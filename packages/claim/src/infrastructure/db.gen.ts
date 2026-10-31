@@ -17,7 +17,6 @@ export interface ClaimTClaim {
   created_by: string;
   created_pgm_cd: string;
   created_tx_id: string;
-  lock_no: Generated<number>;
   patched_at: ColumnType<Temporal.Instant, string, string> | null;
   patched_by: string | null;
   patched_id: string | null;
