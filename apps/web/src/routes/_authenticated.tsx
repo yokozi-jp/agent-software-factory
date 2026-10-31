@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated")({
     return { user: session };
   },
   component: Layout,
-  notFoundComponent: EmbeddedNotFound,
+  notFoundComponent: NotFoundInLayout,
 });
 
 function Layout() {
@@ -24,6 +24,17 @@ function Layout() {
   return (
     <AppLayout user={user} onSignOut={signOut}>
       <Outlet />
+    </AppLayout>
+  );
+}
+
+// 子の route が notFound() を投げると、この route の notFoundComponent が layout の component の代わりに出る
+// (メニューの外枠は出ない)。メニューの中に出すため、外枠を自分で付ける。
+function NotFoundInLayout() {
+  const { user, signOut } = Route.useRouteContext();
+  return (
+    <AppLayout user={user} onSignOut={signOut}>
+      <EmbeddedNotFound />
     </AppLayout>
   );
 }
