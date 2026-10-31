@@ -485,6 +485,9 @@ importers:
       '@hono/vite-dev-server':
         specifier: 'catalog:'
         version: 0.26.1(hono@4.13.14)
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.10.0
       '@opentelemetry/sdk-trace':
         specifier: 'catalog:'
         version: 3.0.0(@opentelemetry/api@1.10.0)

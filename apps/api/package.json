@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@hono/vite-dev-server": "catalog:",
+    "@opentelemetry/api": "catalog:",
     "@opentelemetry/sdk-trace": "catalog:",
     "@types/node": "catalog:",
     "@types/oidc-provider": "catalog:",

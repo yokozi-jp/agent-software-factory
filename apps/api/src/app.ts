@@ -3,6 +3,7 @@
 import "@agent-software-factory/approval";
 import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
+import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
@@ -32,16 +33,13 @@ export interface AppDependencies {
 // 受信のトレースが取る属性 (docs/adr/0047)。ヘッダーは取らない (captureRequestHeaders を書かない)。
 // url.full の既定はクエリ文字列を含み、OIDC の callback の code や state が載るので、クエリを落とす。
 // SDK が起動していなければ、この middleware は何もしない。
-const tracing = httpInstrumentationMiddleware({
-  getUrlFull: (c) => {
-    const url = new URL(c.req.url);
-    return `${url.origin}${url.pathname}`;
-  },
+const tracingMiddleware = httpInstrumentationMiddleware({
+  getUrlFull: (c) => urlWithoutQuery(c.req.url),
 });
 
 export function createApp({ auth }: AppDependencies = {}) {
   const app = new Hono<{ Variables: SessionVariables }>()
-    .use(tracing)
+    .use(tracingMiddleware)
     .use(
       secureHeaders({
         contentSecurityPolicy: { defaultSrc: ["'none'"] },

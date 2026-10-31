@@ -5,6 +5,7 @@ import { startTelemetry } from "./node.ts";
 describe("startTelemetry: 起動しない条件", () => {
   it("送り先の環境変数がなければ何も始めず、止めても例外にならない", async () => {
     const telemetry = startTelemetry({ env: {}, serviceName: "api" });
+    expect(telemetry.enabled).toBe(false);
     await expect(telemetry.shutdown()).resolves.toBeUndefined();
   });
 
@@ -26,6 +27,7 @@ describe("startTelemetry: 起動しない条件", () => {
       serviceName: "api",
     });
     expect(trace.getTracerProvider()).toBe(before);
+    expect(telemetry.enabled).toBe(false);
     await telemetry.shutdown();
   });
 });

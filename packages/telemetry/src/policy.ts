@@ -4,11 +4,14 @@ import type { AwsSdkInstrumentationConfig } from "@opentelemetry/instrumentation
 import type { PgInstrumentationConfig } from "@opentelemetry/instrumentation-pg";
 import type { UndiciInstrumentationConfig } from "@opentelemetry/instrumentation-undici";
 
+import { urlWithoutQuery } from "./index.ts";
+
 /** `pg`: クエリは `$1` のままの文だけを載せる。値 (`db.postgresql.values`) は載せず、接続の span も切る。 */
-export const pgPolicy = {
+export const pgInstrumentationConfig = {
   enhancedDatabaseReporting: false,
   // pg-pool.connect の span は、リクエストの span の中でほとんど時間を持たず、数だけ増える。
   ignoreConnectSpans: true,
+  // 次の 2 つは計装の既定でも false。既定が変わっても、文へのコメントと、DB への traceparent の送信が入らないよう明示する。
   // 文にトレースの情報をコメントで足さない。DB のログと突き合わせたくなったら、そのとき決める。
   addSqlCommenterCommentToQueries: false,
   enableTraceContextPropagation: false,
@@ -21,16 +24,15 @@ export const pgPolicy = {
  * `url.full` と `url.query` の既定はクエリ文字列を含み、`api_key` や `code` のような値が載る。span の開始後に
  * クエリを落とし、送り先のオリジンとパスだけにする。
  */
-export const undiciPolicy = {
+export const undiciInstrumentationConfig = {
   requestHook: (span, request) => {
-    const url = new URL(request.path, request.origin);
-    span.setAttribute("url.full", `${url.origin}${url.pathname}`);
+    span.setAttribute("url.full", urlWithoutQuery(request.path, request.origin));
     span.setAttribute("url.query", "");
   },
 } satisfies UndiciInstrumentationConfig;
 
 /** AWS SDK: 呼び出した操作とリクエスト ID だけ。入力と応答を属性にする hook は書かない。 */
-export const awsSdkPolicy = {
+export const awsSdkInstrumentationConfig = {
   // SDK の内部の HTTP の span を、操作の span の下に重ねない。
   suppressInternalInstrumentation: true,
 } satisfies AwsSdkInstrumentationConfig;

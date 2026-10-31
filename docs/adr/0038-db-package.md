@@ -41,7 +41,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 
 - migration を足すときは `packages/db/migrations/` に書き、`pnpm exec nx db-types db` で型を生成し直します ([PostgreSQL のマイグレーション](../db/postgresql-migration.md))。
 - ワーカー、バッチ、migrate のタスクは `@agent-software-factory/db` の `migrate` を import できます。本番の入口の形 (rds-signer、bootstrap、dbmate の 2 段、イメージへの入れ方) は、サンプル機能とインフラの spec で決めます。
-- `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。
+- `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。 手順は [module ではない package を足す手順](../domain-model/add-package.md) にあります。
 - `db:seed` は `packages/db/package.json` の script (`node src/seed/index.ts`) で、`db:migrate` と同じ形です。`DATABASE_URL` に `migrator` の接続 URL を渡します。
 - `knip.jsonc` の `packages/db` の `ignoreDependencies` には、seed がまだ import していないモジュール (`approval`、`closing`) が残っています。そのモジュールの seed を足すときに外します。
 

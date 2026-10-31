@@ -43,6 +43,12 @@ serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);
 });
 
+// 送り先がないと SDK は始まらない。設定し忘れに気づけるよう、起動のときに知らせる (docs/adr/0047)。
+if (!telemetry.enabled)
+  console.log(
+    "telemetry disabled: OTEL_EXPORTER_OTLP_ENDPOINT is not set, or OTEL_SDK_DISABLED is true",
+  );
+
 // 止める前に、送っていない span を送り切る。
 for (const signal of ["SIGTERM", "SIGINT"] as const)
   process.once(signal, () => {

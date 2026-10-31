@@ -2943,6 +2943,9 @@ describe("ADR 0047: packages/telemetry", () => {
       "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
       "apps/api/src/__fixtures__/otel-sdk.ts": banned,
       "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
+      "apps/web/src/__fixtures__/telemetry-node.ts": stops(
+        "@agent-software-factory/telemetry/node",
+      ),
       ...files,
     });
   const noImport = (file: string, name: string, what: string) =>
@@ -2965,6 +2968,9 @@ describe("ADR 0047: packages/telemetry", () => {
           "packages/telemetry/src/__fixtures__/otel-sdk.ts": ownFixture,
           "apps/api/src/__fixtures__/otel-sdk.ts": banned,
           "packages/module-fixtures/src/__fixtures__/otel-sdk.ts": banned,
+          "apps/web/src/__fixtures__/telemetry-node.ts": stops(
+            "@agent-software-factory/telemetry/node",
+          ),
         }),
       ),
     ).toEqual([
@@ -3016,6 +3022,15 @@ describe("ADR 0047: packages/telemetry", () => {
     ).toEqual([
       `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
     ]);
+  });
+
+  it("asks for the import of the Node-only entry in the fixture of apps/web", () => {
+    const web = "apps/web/src/__fixtures__/telemetry-node.ts";
+    const missing = `${web} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0047).`;
+    expect(violations(withTelemetry({ [web]: undefined }))).toEqual([missing]);
+    expect(
+      violations(withTelemetry({ [web]: 'import "@agent-software-factory/telemetry/node";\n' })),
+    ).toEqual([missing]);
   });
 
   it("asks for nothing when there is no telemetry", () => {

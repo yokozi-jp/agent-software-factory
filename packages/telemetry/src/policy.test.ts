@@ -6,23 +6,27 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-tr
 import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
 import { startTelemetry, type Telemetry } from "./node.ts";
-import { awsSdkPolicy, pgPolicy, undiciPolicy } from "./policy.ts";
+import {
+  awsSdkInstrumentationConfig,
+  pgInstrumentationConfig,
+  undiciInstrumentationConfig,
+} from "./policy.ts";
 
 const secret = "s3cret-value-that-must-not-reach-a-trace";
 
 describe("取る属性の方針", () => {
   it("pg は SQL の値を取らず、接続の span を切る", () => {
-    expect(pgPolicy.enhancedDatabaseReporting).toBe(false);
-    expect(pgPolicy.ignoreConnectSpans).toBe(true);
-    expect(pgPolicy.addSqlCommenterCommentToQueries).toBe(false);
+    expect(pgInstrumentationConfig.enhancedDatabaseReporting).toBe(false);
+    expect(pgInstrumentationConfig.ignoreConnectSpans).toBe(true);
+    expect(pgInstrumentationConfig.addSqlCommenterCommentToQueries).toBe(false);
   });
 
   it("fetch の計装は、ヘッダーを属性にする設定を持たず、hook はクエリを落とす 1 つだけ", () => {
-    expect(Object.keys(undiciPolicy)).toEqual(["requestHook"]);
+    expect(Object.keys(undiciInstrumentationConfig)).toEqual(["requestHook"]);
   });
 
   it("AWS SDK の計装は、入力と応答を属性にする hook を持たない", () => {
-    expect(Object.keys(awsSdkPolicy)).toEqual(["suppressInternalInstrumentation"]);
+    expect(Object.keys(awsSdkInstrumentationConfig)).toEqual(["suppressInternalInstrumentation"]);
   });
 });
 

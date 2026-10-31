@@ -719,6 +719,12 @@ export default defineConfig({
                   message:
                     "Import a file in another directory with `@/` (apps/web/src), not `../`.",
                 },
+                // The Node-only entry of packages/telemetry starts the SDK; the browser does not (docs/adr/0047).
+                {
+                  regex: `^${scope}/telemetry/node$`,
+                  message:
+                    "apps/web does not start OpenTelemetry: the Node-only entry of packages/telemetry is for the entry files of apps/api (docs/adr/0047).",
+                },
               ],
             },
           ],

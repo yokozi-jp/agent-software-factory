@@ -5,7 +5,11 @@ import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
 import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 
-import { awsSdkPolicy, pgPolicy, undiciPolicy } from "./policy.ts";
+import {
+  awsSdkInstrumentationConfig,
+  pgInstrumentationConfig,
+  undiciInstrumentationConfig,
+} from "./policy.ts";
 
 export interface StartTelemetryOptions {
   /** 入口が読んだ環境変数 (docs/adr/0032)。 */
@@ -17,11 +21,13 @@ export interface StartTelemetryOptions {
 }
 
 export interface Telemetry {
+  /** SDK を始めたか。送り先がない、または無効にしたときは false。入口が知らせるために使う。 */
+  readonly enabled: boolean;
   /** 送っていない span を送り切って止める。プロセスを終えるときに呼ぶ。 */
   readonly shutdown: () => Promise<void>;
 }
 
-const stopped: Telemetry = { shutdown: () => Promise.resolve() };
+const stopped: Telemetry = { enabled: false, shutdown: () => Promise.resolve() };
 
 function hasEndpoint(env: StartTelemetryOptions["env"]): boolean {
   return [env.OTEL_EXPORTER_OTLP_ENDPOINT, env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT].some(
@@ -53,11 +59,11 @@ export function startTelemetry({
     metricReaders: [],
     logRecordProcessors: [],
     instrumentations: [
-      new PgInstrumentation(pgPolicy),
-      new UndiciInstrumentation(undiciPolicy),
-      new AwsInstrumentation(awsSdkPolicy),
+      new PgInstrumentation(pgInstrumentationConfig),
+      new UndiciInstrumentation(undiciInstrumentationConfig),
+      new AwsInstrumentation(awsSdkInstrumentationConfig),
     ],
   });
   sdk.start();
-  return { shutdown: () => sdk.shutdown() };
+  return { enabled: true, shutdown: () => sdk.shutdown() };
 }

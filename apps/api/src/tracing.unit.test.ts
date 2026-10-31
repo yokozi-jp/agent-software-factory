@@ -1,3 +1,4 @@
+import { SpanKind } from "@opentelemetry/api";
 import { startTelemetry, type Telemetry } from "@agent-software-factory/telemetry/node";
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
@@ -25,6 +26,10 @@ describe("受信のトレース", () => {
     await vi.waitFor(() =>
       expect(exporter.getFinishedSpans().map((span) => span.name)).toContain("GET /health"),
     );
+    // 受信の span は @hono/otel だけが作る。instrumentation-http を入れていれば、ここが 2 本になる (docs/adr/0047)。
+    expect(
+      exporter.getFinishedSpans().filter((span) => span.kind === SpanKind.SERVER),
+    ).toHaveLength(1);
   });
 
   it("クエリ文字列、リクエストのヘッダー、Cookie は span に載らない", async () => {
