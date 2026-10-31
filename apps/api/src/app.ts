@@ -96,7 +96,12 @@ const tracingMiddleware = httpInstrumentationMiddleware({
 
 // member の role は、複数の役割をコンマで区切って持つ (Better Auth の organization plugin)。
 async function activeRoles(auth: Auth, headers: Headers): Promise<string[]> {
-  const { role } = await auth.betterAuth.api.getActiveMemberRole({ headers });
+  // active organization のメンバーでなくなった (退職など) 利用者は、Better Auth が 403 を投げる。役割はなく、
+  // ログインは続けられる。ほかの失敗でも、メニューが減るだけで (空の roles)、操作の認可は API の application 層が行う。
+  const role = await auth.betterAuth.api
+    .getActiveMemberRole({ headers })
+    .then((member) => member.role)
+    .catch(() => "");
   return role.split(",").filter((name) => name !== "");
 }
 

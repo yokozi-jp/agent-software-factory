@@ -483,6 +483,18 @@ export const UserMenuShowsTheNameAndSignsOut: Story = {
   },
 };
 
+export const SignOutFailureIsShown: Story = {
+  args: {
+    path: "/",
+    session: member,
+    signOut: fn<AppContext["signOut"]>(() => Promise.reject(new Error("idp down"))),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(await canvas.findByRole("button", { name: "ログアウト" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent("ログアウトできませんでした");
+  },
+};
+
 export const ThemeIsChosenAndRemembered: Story = {
   args: { path: "/", session: member },
   play: async ({ canvas }) => {

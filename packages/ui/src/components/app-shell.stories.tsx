@@ -59,6 +59,23 @@ export const Default: Story = {
   },
 };
 
+export const MarksTheItemOfASubPage: Story = {
+  args: { currentHref: "/approvals/123" },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("link", { name: "承認" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  },
+};
+
+export const DoesNotMarkAnItemWithTheSamePrefix: Story = {
+  args: { currentHref: "/approvals-archive" },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("link", { name: "承認" })).not.toHaveAttribute("aria-current");
+  },
+};
+
 export const WithoutTitle: Story = {
   args: { title: "" },
   play: async ({ canvas }) => {

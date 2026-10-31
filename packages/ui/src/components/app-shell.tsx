@@ -54,6 +54,11 @@ export function groupItems(items: readonly NavItem[]): { group: string; items: N
   return [...groups].map(([group, members]) => ({ group, items: members }));
 }
 
+/** 項目の行き先か、その下の画面 (`/approvals/123`) なら、今の項目。 */
+function isCurrent(href: string, currentHref: string): boolean {
+  return currentHref === href || currentHref.startsWith(`${href}/`);
+}
+
 const mainId = "main-content";
 
 export function AppShell({
@@ -84,7 +89,7 @@ export function AppShell({
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {members.map((item) => {
-                      const active = item.href === currentHref;
+                      const active = isCurrent(item.href, currentHref);
                       return (
                         <SidebarMenuItem key={item.href}>
                           <SidebarMenuButton

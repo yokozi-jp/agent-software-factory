@@ -43,7 +43,8 @@
   },
   "userMenu": {
     "theme": "Theme",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "signOutFailed": "Sign-out failed. Please try again."
   },
   "theme": {
     "light": "Light",

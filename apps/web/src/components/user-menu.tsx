@@ -26,6 +26,7 @@ interface UserMenuProps {
 // SidebarFooter に置く、氏名、テーマの 3 択、ログアウト。ログアウトは確認なし (Issue #407)。
 export function UserMenu({ name, onSignOut }: UserMenuProps) {
   const { t } = useTranslation();
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const [theme, setTheme] = useState<ThemePreference>(() => readThemePreference(localStorage));
 
   const choose = (preference: ThemePreference) => {
@@ -58,11 +59,19 @@ export function UserMenu({ name, onSignOut }: UserMenuProps) {
         variant="outline"
         size="sm"
         onClick={() => {
-          void onSignOut();
+          setSignOutFailed(false);
+          onSignOut().catch(() => {
+            setSignOutFailed(true);
+          });
         }}
       >
         {t("userMenu.signOut")}
       </Button>
+      {signOutFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("userMenu.signOutFailed")}
+        </p>
+      )}
     </div>
   );
 }

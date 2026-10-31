@@ -43,7 +43,8 @@
   },
   "userMenu": {
     "theme": "テーマ",
-    "signOut": "ログアウト"
+    "signOut": "ログアウト",
+    "signOutFailed": "ログアウトできませんでした。もう一度お試しください。"
   },
   "theme": {
     "light": "ライト",

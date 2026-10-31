@@ -7,9 +7,9 @@ import { I18nextProvider } from "react-i18next";
 
 import "temporal-polyfill/global";
 import "./index.css";
-import { applyStoredTheme, darkSchemeQuery } from "./lib/theme.ts";
 import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
+import { applyStoredTheme, darkSchemeQuery } from "./lib/theme.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
 
 // 認証は同じオリジンの /api/auth/* に向く (Better Auth の既定。docs/adr/0022)。
@@ -17,6 +17,9 @@ const authClient = createAuthClient();
 
 // IdP の ID。apps/api の oidcProviderId と同じ値にする (apps/web は apps/api を import しない)。
 const oidcProviderId = "oidc";
+
+// ログアウト後の戻り先。/login が「ログアウトしました」を出す (lib/login-redirect.ts の reason)。
+const loggedOutUrl = "/login?reason=logged-out";
 
 const context: AppContext = {
   apiFetch: withSessionExpiry(
@@ -40,9 +43,6 @@ const context: AppContext = {
     location.assign(typeof data?.url === "string" ? data.url : loggedOutUrl);
   },
 };
-
-// ログアウト後の戻り先。/login が「ログアウトしました」を出す (lib/login-redirect.ts の reason)。
-const loggedOutUrl = "/login?reason=logged-out";
 
 const router = createAppRouter(context, createBrowserHistory());
 
