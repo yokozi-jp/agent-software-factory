@@ -34,6 +34,12 @@ sources:
 - web-api.md、keys.md、messages.md、startup.md のタイムスタンプを、UTC か JST の許容と JST の例 (`+09:00`)、ナノ秒の例から、UTC (`Z`) のミリ秒3桁だけにした。環境によって `Z` と `+09:00` が混ざると、並べて読むときに比べ間違える。OpenTelemetry のログのデータモデルの `Timestamp` も、UNIX エポックからの値でタイムゾーンを持たない。OpenTelemetry Logs Data Model、ADR 0043。
 - keys.md と messages.md の例外属性キーを、`exception.stack_trace` から `exception.stacktrace` にした。OpenTelemetry Semantic Conventions レジストリ (exception 属性、Stable)。
 - フロントエンドのログ出力 (`frontend.md`) に「Web Vitals の送信はログではない。`console` は引き続き禁止する」の 1 行を足した。Web Vitals はブラウザのパフォーマンス指標で、ログではないため ([ADR 0048](../adr/0048-opentelemetry-traces-only-with-explicit-instrumentation.md))。
+- keys.md のログレベルのキーを `severity.text` に決め、Lambda の絞り込みのために `level` を併記することにした。併記の費用は Lambda に置く前に実測して見直す。ADR 0049。
+- keys.md と web-api.md の `request.id` を `http.request.id`、`user_id` を `user.id` にした。標準のキーに揃えるため (ECS の `http.request.id`、OpenTelemetry の `user.id`)。ADR 0049。
+- keys.md に `trace_flags`、`tenant_id`、`event.code`、`error.type` を足し、`event.category` の例を `error` から `web` にした。`trace_flags` は OpenTelemetry の Non-OTLP Log Formats、`event.code` と `event.category` の値は ECS。`tenant_id` は標準がなく、このリポジトリの拡張。ADR 0049。
+- web-api.md に、401、403、400 の検証失敗を理由つきで `info` に記録する節を足した。OWASP Logging Cheat Sheet が認証、認可、入力の検証の失敗の記録を求めるため。ADR 0049。
+- message-codes.md に、メッセージ定義を TypeScript の定数で管理し、`warn` と `error` がその定義のキーだけを型で受け取る節を足した。表とコードの食い違いを検査するため。ADR 0049。
+- security.md に、発生源、ロガーの `redact`、保存先の三層のマスクの節を足した。ADR 0049。
 
 ## 適用範囲と前提条件
 

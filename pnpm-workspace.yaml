@@ -66,6 +66,8 @@ catalog:
   "@opentelemetry/instrumentation-undici": ^0.34.0
   "@opentelemetry/instrumentation-aws-sdk": ^0.79.0
   "@hono/otel": ^1.3.0
+  # Logging (docs/adr/0049): only packages/logging/src/node.ts and the entry files of the apps import pino; the rest depend on the Logger interface.
+  pino: ^10.4.0
   # The Temporal global for Node.js 24 and the browsers without it. Node.js 26 has it built in.
   temporal-polyfill: 1.0.6
   # apps/worker: the workers of the queues (docs/adr/0013, docs/adr/0041). The SQS and SES clients are for the ECS and Lambda

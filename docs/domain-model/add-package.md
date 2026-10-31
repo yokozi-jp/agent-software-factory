@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: module ではない package を足す手順
-description: packages/ の直下に、サンプル機能のモジュールではない package (shared-kernel、ui、i18n、db、telemetry のような共有の道具) を足すときに、直す場所を一覧にした手順。packages/ に module ではない package を足すとき、その package の exports を index.ts 以外にしたくなったとき、repo-policy が「moduleOrder にない」と止めたときに読む。
+description: packages/ の直下に、サンプル機能のモジュールではない package (shared-kernel、ui、i18n、db、telemetry、logging のような共有の道具) を足すときに、直す場所を一覧にした手順。packages/ に module ではない package を足すとき、その package の exports を index.ts 以外にしたくなったとき、repo-policy が「moduleOrder にない」と止めたときに読む。
 tags: [domain-model, runbook, packages, repo-policy, lint]
 ---
 
@@ -11,7 +11,7 @@ module ではない package は、業務の層 (`domain` など) を持たず、
 
 ## 手順
 
-1. **決めて ADR に書く**: `moduleOrder` に入れない理由、`exports`、層の規則と `lint-effect` をどうするか、何に依存してよいかを決めます。例は [ADR 0034](../adr/0034-shared-ui-package.md) (ui)、[ADR 0038](../adr/0038-db-package.md) (db)、[ADR 0044](../adr/0044-i18next-for-texts.md) (i18n)、[ADR 0048](../adr/0048-opentelemetry-traces-only-with-explicit-instrumentation.md) (telemetry) です。
+1. **決めて ADR に書く**: `moduleOrder` に入れない理由、`exports`、層の規則と `lint-effect` をどうするか、何に依存してよいかを決めます。例は [ADR 0034](../adr/0034-shared-ui-package.md) (ui)、[ADR 0038](../adr/0038-db-package.md) (db)、[ADR 0044](../adr/0044-i18next-for-texts.md) (i18n)、[ADR 0048](../adr/0048-opentelemetry-traces-only-with-explicit-instrumentation.md) (telemetry)、[ADR 0049](../adr/0049-logging-with-pino-behind-a-logger-interface.md) (logging) です。
 2. **package を作る**: `packages/<name>/` に `package.json` (`name` は `@agent-software-factory/<name>`、`nx.name` は `<name>`、`check` の script は `vp check`)、`tsconfig.json`、`vite.config.ts`、`src/` を置きます。`pnpm-workspace.yaml` の `catalog` に無い依存は、先に catalog に足します。
 3. **`modules.ts` に足す**:
    - `notModules` に名前を足します。足さないと、module として `moduleOrder` に無いと止まります。

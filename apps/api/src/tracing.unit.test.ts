@@ -1,9 +1,12 @@
+import { createNodeLogger } from "@agent-software-factory/logging/node";
+import { memoryDestination } from "@agent-software-factory/logging/testing";
 import { SpanKind } from "@opentelemetry/api";
 import { startTelemetry, type Telemetry } from "@agent-software-factory/telemetry/node";
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
 import { createApp } from "./app.ts";
+import { requestLogContext } from "./http/logging.ts";
 
 // 受信の span (docs/adr/0048)。SDK を起動してから createApp を呼ぶ。
 describe("受信のトレース", () => {
@@ -55,5 +58,29 @@ describe("受信のトレース", () => {
     expect(span).toBeDefined();
     expect(JSON.stringify(span?.attributes)).toContain("/health");
     expect(JSON.stringify(span?.attributes)).not.toContain(secret);
+  });
+
+  it("ログの trace_id、span_id、trace_flags は、@hono/otel の受信の span と同じ (docs/adr/0049)", async () => {
+    exporter.reset();
+    const { lines, write } = memoryDestination();
+    const logger = createNodeLogger({
+      destination: { write },
+      level: "debug",
+      service: { name: "api-test", version: "0", environment: "test" },
+      context: requestLogContext,
+    });
+
+    await createApp({ logger }).request("/not-found");
+
+    await vi.waitFor(() => expect(exporter.getFinishedSpans()).not.toHaveLength(0));
+    const span = exporter.getFinishedSpans()[0]?.spanContext();
+    // アクセスログの 2 行と、onError を通らない 404 だけ。どの行も同じ span を指す。
+    expect(lines()).toHaveLength(2);
+    for (const line of lines())
+      expect(line).toMatchObject({
+        trace_id: span?.traceId,
+        span_id: span?.spanId,
+        trace_flags: "01",
+      });
   });
 });
