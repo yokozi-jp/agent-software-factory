@@ -1,0 +1,13 @@
+{
+  "id": "0198f6e0-0000-7000-8000-000000000007",
+  "tenantId": "0198f6e0-0000-7000-8000-000000000090",
+  "kind": "approval.notification_requested",
+  "version": 1,
+  "occurredAt": "2026-10-30T01:02:03.000Z",
+  "to": "manager@example.com",
+  "template": "review_requested",
+  "values": {
+    "applicantName": "山田 太郎",
+    "claimTitle": "10月の交通費"
+  }
+}

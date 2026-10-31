@@ -2,11 +2,26 @@
   "openapi": "3.1.0",
   "info": {
     "title": "agent-software-factory API",
-    "version": "0.0.0"
+    "version": "0.0.0",
+    "description": "The HTTP API of agent-software-factory, served on the same origin as the web app.",
+    "contact": {
+      "name": "agent-software-factory",
+      "url": "https://github.com/yokozi-jp/agent-software-factory"
+    }
   },
   "servers": [
     {
       "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "auth",
+      "description": "The signed-in user and the session."
+    },
+    {
+      "name": "health",
+      "description": "Whether the API process is running."
     }
   ],
   "components": {
@@ -16,7 +31,9 @@
   "paths": {
     "/health": {
       "get": {
+        "operationId": "getHealth",
         "summary": "Health check",
+        "description": "Reports that the API process is running. It does not check the database.",
         "tags": [
           "health"
         ],
@@ -47,7 +64,9 @@
     },
     "/api/me": {
       "get": {
+        "operationId": "getCurrentUser",
         "summary": "Current user",
+        "description": "Returns the user of the current session. Responds 401 when there is no valid session.",
         "tags": [
           "auth"
         ],
@@ -80,18 +99,36 @@
             }
           },
           "401": {
-            "description": "Not signed in.",
+            "description": "There is no valid session.",
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "error": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/unauthenticated",
+                        "/problems/session-expired"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
                       "type": "string"
                     }
                   },
                   "required": [
-                    "error"
+                    "type",
+                    "title",
+                    "status"
                   ]
                 }
               }

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
-import { app } from "./app.ts";
+import { app, createApp } from "./app.ts";
 
 describe("ヘルスチェック (GET /health)", () => {
   it("ok を返すこと", async () => {
@@ -48,5 +48,35 @@ describe("CORS の設定 (docs/web-api/security.md)", () => {
     const res = await app.request("/health", { headers: { Origin: "https://evil.example" } });
 
     expect(res.headers.has("Access-Control-Allow-Origin")).toBe(false);
+  });
+});
+
+describe("エラー応答 (docs/adr/0035)", () => {
+  async function expectBlankProblem(res: Response, status: number, title: string) {
+    expect(res.status).toBe(status);
+    expect(res.headers.get("Content-Type")).toBe("application/problem+json");
+    expect(JSON.parse(await res.text())).toEqual({ type: "about:blank", title, status });
+  }
+
+  it("未定義の path は about:blank の 404 の Problem Details にすること", async () => {
+    const res = await app.request("/not-found");
+
+    expect(res.status).toBe(404);
+    await expectBlankProblem(res, 404, "Not Found");
+  });
+
+  it("予期しない例外は、メッセージを出さない about:blank の 500 にすること", async () => {
+    const failing = createApp();
+    failing.get("/boom", () => {
+      throw new Error("password=hunter2");
+    });
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await failing.request("/boom");
+
+    expect(await res.clone().text()).not.toContain("hunter2");
+    await expectBlankProblem(res, 500, "Internal Server Error");
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
   });
 });

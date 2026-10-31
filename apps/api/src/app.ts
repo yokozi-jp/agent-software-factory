@@ -3,6 +3,13 @@
 import "@agent-software-factory/approval";
 import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
+import {
+  commonProblemResponses,
+  commonProblemTypes,
+  problemErrorHandler,
+  problemNotFoundHandler,
+  problemResponse,
+} from "@agent-software-factory/shared-kernel";
 import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
@@ -36,7 +43,9 @@ export interface AppDependencies {
 const healthRoute = createRoute({
   method: "get",
   path: "/health",
+  operationId: "getHealth",
   summary: "Health check",
+  description: "Reports that the API process is running. It does not check the database.",
   tags: ["health"],
   responses: {
     200: {
@@ -47,12 +56,14 @@ const healthRoute = createRoute({
 });
 
 // `/api/me` は auth の有無で route の型を変えない (spec と AppType に常に入る)。auth がなければ session が入らないので 401。
-// 401 の本文は今の `{ error }` のまま。ADR 0035 の Problem Details にするのは、共有の関数ができる Issue #307 の後 (Issue #486)。
 // `/api/auth/*` は Better Auth が扱う経路で、契約の外に置く (docs/adr/0035)。
 const meRoute = createRoute({
   method: "get",
   path: "/api/me",
+  operationId: "getCurrentUser",
   summary: "Current user",
+  description:
+    "Returns the user of the current session. Responds 401 when there is no valid session.",
   tags: ["auth"],
   responses: {
     200: {
@@ -63,10 +74,7 @@ const meRoute = createRoute({
         },
       },
     },
-    401: {
-      description: "Not signed in.",
-      content: { "application/json": { schema: z.object({ error: z.string() }) } },
-    },
+    401: commonProblemResponses[401],
   },
 });
 
@@ -93,6 +101,21 @@ export function createApp({ auth }: AppDependencies = {}) {
       xFrameOptions: false,
     }),
   );
+  // エラー応答の変換 4 か所のうちの 2 つ (docs/adr/0035)。残りは defaultHook と route の _tag の switch。
+  // 5xx のログはここで書く。キーとレベルは Hono のロギング (Issue #327) が決めるまで、console.error に最小限を出す。
+  base.onError(
+    problemErrorHandler((error, c) => {
+      console.error(
+        JSON.stringify({
+          message: "unhandled error",
+          "exception.type": error.name,
+          "url.path": c.req.path,
+          "http.request.method": c.req.method,
+        }),
+      );
+    }),
+  );
+  base.notFound(problemNotFoundHandler);
   // middleware は route より前に登録する (Hono は登録順に実行する)。route の型は `openapi` の chain で受ける。
   if (auth !== undefined) {
     base.use("/api/*", csrfProtection(auth.origin));
@@ -109,7 +132,13 @@ export function createApp({ auth }: AppDependencies = {}) {
     .openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200))
     .openapi(meRoute, (c) => {
       const user = c.get("session")?.user;
-      if (user === undefined) return c.json({ error: "unauthenticated" }, 401);
+      if (user === undefined) {
+        return problemResponse(c, {
+          type: commonProblemTypes.unauthenticated,
+          title: "Authentication is required.",
+          status: 401,
+        });
+      }
       return c.json({ id: user.id, email: user.email, name: user.name }, 200);
     });
 

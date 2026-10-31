@@ -5,6 +5,7 @@
 import { Kysely, PostgresDialect, sql, type Transaction } from "kysely";
 import { Pool } from "pg";
 
+import { seedApproval } from "./approval.ts";
 import { seedClaim } from "./claim.ts";
 import { tenants, type SeedTables } from "./context.ts";
 import { seedMessaging } from "./messaging.ts";
@@ -32,6 +33,7 @@ export async function seed(databaseUrl: string): Promise<void> {
       for (const tenant of tenants) {
         await selectTenant(trx, tenant.tenantId);
         await seedClaim(trx, tenant);
+        await seedApproval(trx, tenant);
         await seedMessaging(trx, tenant);
       }
     });

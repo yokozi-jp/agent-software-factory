@@ -64,7 +64,10 @@ describe("モジュールの型の生成 (src/types.ts)", () => {
     const types = await generateTypes(db.url());
 
     expect(tableNames(typesOf(types, "claim"))).toEqual(["claim.t_claim"]);
-    expect(tableNames(typesOf(types, "approval"))).toEqual(["approval.t_example"]);
+    expect(tableNames(typesOf(types, "approval"))).toEqual([
+      "approval.processed_message",
+      "approval.t_example",
+    ]);
     expect(tableNames(typesOf(types, "closing"))).toEqual(["closing.t_example"]);
     expect(tableNames(typesOf(types, "messaging"))).toEqual(["messaging.outbox"]);
   });

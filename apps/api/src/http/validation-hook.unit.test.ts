@@ -1,3 +1,4 @@
+import { validationProblemSchema } from "@agent-software-factory/shared-kernel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -29,6 +30,12 @@ describe("検証エラーの応答 (defaultHook)", () => {
       status: 400,
       errors: [{ pointer: "/limit", code: "too_small" }],
     });
+  });
+
+  it("結果を validationProblemSchema で parse できること", async () => {
+    const res = await app.request("/items/a?limit=0");
+
+    expect(validationProblemSchema.parse(await res.json()).errors).toHaveLength(1);
   });
 
   it("入力が正しければ route の handler に渡すこと", async () => {

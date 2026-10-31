@@ -50,6 +50,7 @@
           "{workspaceRoot}/.jscpd.json",
           "{workspaceRoot}/.kiro/settings/mcp.json",
           "{workspaceRoot}/.markdownlint-cli2.yaml",
+          "{workspaceRoot}/.spectral.yaml",
           "{workspaceRoot}/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}",
           "{workspaceRoot}/knip.jsonc",
           "{workspaceRoot}/lefthook.yml",

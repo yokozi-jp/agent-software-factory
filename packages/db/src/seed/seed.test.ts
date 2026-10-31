@@ -39,7 +39,9 @@ describe("seed", () => {
   });
 
   it("行を消した DB には流せて、テナントごとに申請と、データパッチで直した申請が入ること", async () => {
-    await db.superuser.query("TRUNCATE claim.t_claim, messaging.outbox");
+    await db.superuser.query(
+      "TRUNCATE claim.t_claim, approval.processed_message, messaging.outbox",
+    );
 
     await seed(db.url("migrator"));
 

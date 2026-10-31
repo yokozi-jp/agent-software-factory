@@ -227,6 +227,22 @@ export function executableScripts(tree: Tree): string[] {
     );
 }
 
+// Every shell wrapper has a process test with stub tools: tools/scripts/sh/<name>.sh and
+// tools/scripts/src/sh/<name>.test.ts (docs/tooling/ci.md ("検査を足すとき" の 5)). A wrapper without one is not checked
+// for the files it hands to its tool or for its exit code, and the real tool in <name>.tools.test.ts is too slow to cover that.
+export function shellScriptsHaveTests(tree: Tree): string[] {
+  return shellScripts(tree)
+    .map((path) => ({
+      path,
+      test: path.replace(/^tools\/scripts\/sh\/(.+)\.sh$/, "tools/scripts/src/sh/$1.test.ts"),
+    }))
+    .filter(({ test }) => !tree.paths.includes(test))
+    .map(
+      ({ path, test }) =>
+        `${path} has no process test. Write ${test}, with a stub tool from src/test/stubs.ts that checks what the script hands to the tool and its exit code (docs/tooling/ci.md, "検査を足すとき" の 5).`,
+    );
+}
+
 // The pnpm catalog holds versions of registry packages. With catalogMode: prefer, `pnpm add <package>@workspace:*`
 // writes the workspace package into the catalog and `catalog:` into the package.json, instead of `workspace:*`.
 export function noWorkspaceInCatalog(tree: Tree): string[] {

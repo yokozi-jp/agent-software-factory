@@ -85,6 +85,21 @@ const apps: Record<string, string> = {
   "apps/api/src/index.ts": 'import { app } from "./app.ts";\n\nexport default app;\n',
   "apps/api/src/server.ts":
     'import { serve } from "@hono/node-server";\nimport { app } from "./app.ts";\n\nserve({ fetch: app.fetch });\n',
+  // knip.jsonc names src/lambda.ts as the entry of apps/worker; src/server.ts is run by its start script (docs/adr/0013).
+  "apps/worker/package.json": JSON.stringify(
+    {
+      name: "@agent-software-factory/worker",
+      private: true,
+      type: "module",
+      scripts: { check: "vp check", start: "node src/server.ts" },
+      devDependencies: { "vite-plus": "catalog:" },
+      nx: { name: "worker" },
+    },
+    undefined,
+    2,
+  ),
+  "apps/worker/src/server.ts": "export {};\n",
+  "apps/worker/src/lambda.ts": "export const handler = () => undefined;\n",
   "apps/web/package.json": JSON.stringify(
     {
       name: "@agent-software-factory/web",
@@ -172,8 +187,8 @@ for (const name of modules.filter((module) => module !== "module-fixtures")) {
 }
 
 // packages/db and the modules knip.jsonc lists in its ignoreDependencies (docs/adr/0038): db depends on them for types, and
-// only its fixtures import them, which Knip does not read. claim is the exception: a test of db imports it (the type
-// test of the generated types), so knip.jsonc does not list it, and the fixture imports it from a file that Knip reads.
+// only its fixtures import them, which Knip does not read. claim and approval are the exceptions: a test of db imports claim (the type
+// test of the generated types) and the seed imports both, so knip.jsonc does not list them, and the fixture imports them from a file that Knip reads.
 apps["packages/db/package.json"] = JSON.stringify(
   {
     name: "@agent-software-factory/db",
@@ -196,7 +211,7 @@ apps["packages/db/package.json"] = JSON.stringify(
   2,
 );
 apps["packages/db/src/index.ts"] =
-  'import type {} from "@agent-software-factory/claim";\nexport {};\n';
+  'import type {} from "@agent-software-factory/claim";\nimport type {} from "@agent-software-factory/approval";\nexport {};\n';
 // packages/i18n and the config of i18next-cli that knip.jsonc names as its entry (docs/adr/0044). Nothing imports the
 // config; the i18n-keys script runs it with --config.
 apps["packages/i18n/package.json"] = JSON.stringify(

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
-  "plugins": ["effecttsgo"],
+  "plugins": ["typescript", "effecttsgo"],
   "options": {
     "typeAware": true,
     "reportUnusedDisableDirectives": "error"
@@ -9,9 +9,36 @@
     "effecttsgo/floating-effect": "error",
     "effecttsgo/outdated-api": "error",
     "effecttsgo/unstable-api-usage": "error",
-    "effecttsgo/experimental-api-usage": "error"
+    "effecttsgo/experimental-api-usage": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description"
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-enum-comparison": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/require-await": "error",
+    "typescript/restrict-plus-operands": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unsafe-type-assertion": "error"
   },
-  "ignorePatterns": ["**/__fixtures__/*", "!**/__fixtures__/effect-tsgo.ts"],
+  "ignorePatterns": ["**/*.gen.ts", "**/__fixtures__/*", "!**/__fixtures__/effect-tsgo.ts"],
   "categories": {
     "correctness": "off"
   }

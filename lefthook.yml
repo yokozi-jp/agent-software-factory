@@ -102,6 +102,15 @@ pre-commit:
               - "mise.toml"
               - "mise.lock"
             run: tools/scripts/sh/lint-workflows.sh
+          # The breaking-change check (openapi-breaking.sh) compares with origin/main, so only CI runs it.
+          - name: openapi-lint
+            glob:
+              - "apps/api/openapi.json"
+              - ".spectral.yaml"
+              - "tools/scripts/sh/openapi-lint.sh"
+              - "mise.toml"
+              - "mise.lock"
+            run: tools/scripts/sh/openapi-lint.sh
           # Knip reads every workspace project and the root. Besides code, it reads what names dependencies and entries:
           # package.json scripts, workflows, lefthook.yml, the configs of the tools it has plugins for (nx.json, mise.toml,
           # .markdownlint-cli2.yaml ...), and the files behind the exceptions in knip.jsonc.

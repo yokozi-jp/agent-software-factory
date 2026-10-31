@@ -63,7 +63,7 @@ tags: [adr, async, sqs, dlq, idempotency, mail, ses, lambda, ecs]
 
 - ElasticMQ の振る舞いは、[ElasticMQ が SQS の FIFO と DLQ を本物と同じに動かすかを調べる](https://github.com/yokozi-jp/agent-software-factory/issues/347) の調査 (ElasticMQ 1.7.1) によります。可視性タイムアウトでの再配送と `maxReceiveCount` での DLQ 行きは、SQS の記述どおりに動きました。`MessageRetentionPeriod` は効かないので、保持期間はローカルでは試せません。`StartMessageMoveTask` は FIFO で何も移さないことが分かっていますが、標準キューで移すかは確かめていません。endpoint を上書きした SDK は `AWS_USE_DUALSTACK_ENDPOINT=true` をエラーにするので、ローカルと CI ではこの変数を渡せません。
 - SES の 1 回の呼び出しにかかる時間 (数百ミリ秒の見込み) は、測っていません。
-- ワーカーのコードは書いていません。
+- ワーカーのコードは [Issue #366](https://github.com/yokozi-jp/agent-software-factory/issues/366) で書きました（`apps/worker`、`approval` の `handleNotification`）。ElasticMQ 1.7.1 と testcontainers の PostgreSQL、Mailpit で、重複（同じメッセージを 2 回渡すと 1 通）、再配送（1 回目に失敗させると 2 回目で 1 通）、順序の逆転（差戻しを先に処理しても両方届く）、DLQ（可視性タイムアウト 1 秒で 5 回失敗すると DLQ に移る）、`batchItemFailures`（失敗した 1 件だけ）が通りました。SES の呼び出し、Lambda の event source mapping、`StartMessageMoveTask` は、検証環境で確かめます。手順は [通知メールの DLQ のメッセージを元のキューに戻す](../tooling/dlq-redrive.md) にあります。
 
 ## 出典
 

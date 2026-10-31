@@ -13,6 +13,16 @@ url = "https://github.com/jdx/jactionlint/releases/download/v2.4.0/jactionlint_2
 url_api = "https://api.github.com/repos/jdx/jactionlint/releases/assets/688130108"
 provenance = "github-attestations"
 
+[[tools."aqua:stoplightio/spectral"]]
+version = "6.17.0"
+backend = "aqua:stoplightio/spectral"
+specifiers = ["6.17.0"]
+
+[tools."aqua:stoplightio/spectral"."platforms.linux-x64"]
+checksum = "sha256:e6244baecff57dfb89ba8379a09563270fbb4ac7f73fb8692510a6160059ec53"
+url = "https://github.com/stoplightio/spectral/releases/download/v6.17.0/spectral-linux-x64"
+url_api = "https://api.github.com/repos/stoplightio/spectral/releases/assets/604961338"
+
 [[tools.betterleaks]]
 version = "1.9.0"
 backend = "aqua:betterleaks/betterleaks"
@@ -23,6 +33,16 @@ checksum = "sha256:f8b185a39ffcece2a1ca82bf3a4e7435cd81963ffd16b7a9128daf75f35f6
 url = "https://github.com/betterleaks/betterleaks/releases/download/v1.9.0/betterleaks_1.9.0_linux_x64.tar.gz"
 url_api = "https://api.github.com/repos/betterleaks/betterleaks/releases/assets/599108929"
 provenance = "cosign"
+
+[[tools."github:oasdiff/oasdiff"]]
+version = "1.35.0"
+backend = "github:oasdiff/oasdiff"
+specifiers = ["1.35.0"]
+
+[tools."github:oasdiff/oasdiff"."platforms.linux-x64"]
+checksum = "sha256:a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140"
+url = "https://github.com/oasdiff/oasdiff/releases/download/v1.35.0/oasdiff_1.35.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/685622252"
 
 [[tools.osv-scanner]]
 version = "2.7.0"

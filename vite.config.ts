@@ -529,6 +529,33 @@ export default defineConfig({
           "no-restricted-imports": ["error", { paths: outboxPaths, patterns: testDeepImports }],
         },
       },
+      // apps/worker (docs/adr/0013, docs/adr/0041): the workers of the queues, written for Node.js (ECS and Lambda). They are
+      // where the SQS and SES clients are used, so they leave the Web-standard restrictions of apps/api (docs/adr/0007:
+      // Node.js modules, outboxPaths). They keep the rest: `process` and the clock are stopped (docs/adr/0032, docs/adr/0043),
+      // and the packages are imported by their names only (docs/adr/0026). The entry files read `process.env`, and the tests
+      // may use the tools of the tests of packages/db (testDeepImports). The fixture is apps/worker/src/__fixtures__/runtime-apis.ts.
+      {
+        files: ["apps/worker/src/**"],
+        plugins: ["import"],
+        rules: {
+          "import/no-nodejs-modules": "off",
+          "no-restricted-imports": ["error", { patterns: deepImports }],
+          ...runtimeGlobalLintRules,
+        },
+      },
+      {
+        files: ["apps/worker/src/server.ts", "apps/worker/src/lambda.ts"],
+        plugins: ["import"],
+        rules: runtimeRulesOff,
+      },
+      {
+        files: ["apps/worker/src/**/*.test.ts"],
+        plugins: ["import"],
+        rules: {
+          ...runtimeRulesOff,
+          "no-restricted-imports": ["error", { patterns: testDeepImports }],
+        },
+      },
       // Tests of the packages. They leave the runtime restrictions of the override above, but not the import
       // restrictions of the modules, which are set in the overrides below (docs/adr/0026).
       {

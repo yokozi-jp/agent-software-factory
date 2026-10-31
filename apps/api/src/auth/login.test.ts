@@ -19,6 +19,7 @@ describe("OIDC でのログイン (ADR 0022)", () => {
     const res = await fixture.app.request("/api/me");
 
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ type: "/problems/unauthenticated" });
   });
 
   it("IdP でログインするとセッションが始まること", async () => {
