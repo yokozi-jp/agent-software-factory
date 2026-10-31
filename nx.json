@@ -10,6 +10,7 @@
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "sharedGlobals": [
       "{workspaceRoot}/vite.config.ts",
+      "{workspaceRoot}/lint-restrictions.json",
       "{workspaceRoot}/tsconfig.json",
       "{workspaceRoot}/pnpm-workspace.yaml",
       "{workspaceRoot}/.node-version"

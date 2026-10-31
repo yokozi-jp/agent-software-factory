@@ -3,6 +3,7 @@
 // This file lists the checks; each lives in a file of its own theme:
 //   tooling.ts           tool settings and repository files (Nx, lefthook, betterleaks, Node.js, steering ...)
 //   lint-fixtures.ts     fixtures that show a lint rule, a tsconfig flag, a layer or an Effect rule is on
+//   lint-restrictions.ts the table of lint restrictions (lint-restrictions.json) and its fixtures agree
 //   ci.ts                CI workflows and the ruleset of main
 //   assurance-catalog.ts the assurance catalog and the configs
 //   agent-permissions.ts the permission rules of the agents
@@ -12,8 +13,9 @@
 //   idempotency.ts       the writers of the modules go through withIdempotencyKey
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
-// vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
-// fixtures planned in #43 are to check its lint rules.
+// vite.config.ts is read as text, for the names of its rules and its layers only (#136, item 8). What it stops, and
+// the fixtures that show it, are in lint-restrictions.json, which vite.config.ts imports and the checks parse
+// (docs/adr/0050).
 import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
@@ -29,12 +31,6 @@ import {
   packageManifests,
 } from "./modules.ts";
 import {
-  bypassGuards,
-  withTablesGuards,
-  sessionSettingGuards,
-  dbBoundaries,
-  loggingBoundaries,
-  telemetryBoundaries,
   domainPurity,
   effectBoundaries,
   lintRulesHaveFixtures,
@@ -42,6 +38,7 @@ import {
   projectTsconfigs,
   tsconfigFlagsHaveFixtures,
 } from "./lint-fixtures.ts";
+import { lintRestrictionsAgree } from "./lint-restrictions.ts";
 import {
   executableScripts,
   gitOnOtherRepositories,
@@ -74,12 +71,7 @@ export function violations(repo: Repo): string[] {
     ...moduleBoundaries(tree),
     ...domainPurity(tree),
     ...effectBoundaries(tree),
-    ...dbBoundaries(tree),
-    ...telemetryBoundaries(tree),
-    ...loggingBoundaries(tree),
-    ...bypassGuards(tree),
-    ...withTablesGuards(tree),
-    ...sessionSettingGuards(tree),
+    ...lintRestrictionsAgree(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
     ...eventsPackages(tree),

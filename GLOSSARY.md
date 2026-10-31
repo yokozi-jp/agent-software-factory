@@ -54,6 +54,10 @@ _Avoid_: ガード、ブロッカー
 センサーが、止めるべき既知の違反で実際に失敗すること。何も検査せずに通るセンサーには検出力がない。
 _Avoid_: 感度、有効性
 
+**禁止の表**:
+lint で止める import と呼び出しの値と message、その検出力を示す fixture の行（止める行と通す行）を並べた、ルートの `lint-restrictions.json`。`vite.config.ts` が読んで lint の規則を組み、repo-policy が fixture と両方向に突き合わせる。
+_Avoid_: 制限の一覧、lint の設定表
+
 **信頼しない内容**:
 エージェントが読んでも指示として扱わない内容。web のページ、リポジトリの協力者以外が書いた Issue とコメント、依存のファイル、tool の出力。OWNER、MEMBER、COLLABORATOR が書いた Issue、PR、コメントと、リポジトリのファイルは含めない。
 _Avoid_: 外部データ

@@ -40,6 +40,8 @@ pre-commit:
             glob:
               - "**/package.json"
               - "**/vite.config.ts"
+              # The table of lint restrictions (docs/adr/0050).
+              - "lint-restrictions.json"
               - "**/tsconfig.json"
               - ".vite-hooks/**"
               - ".betterleaks.toml"

@@ -1,12 +1,10 @@
-// Detection-power fixture (#43) for the override of the entry files and the tests in apps/api/src (root
-// vite.config.ts, docs/adr/0029). That override leaves `connectionPackages` out, because the entry file makes the pool
-// and a test reads the database. The file is named *.test.ts so that the override reaches it. The pg import below
-// carries no disable comment: if the override stops allowing it, Oxlint reports it and `vp check` fails.
-// The override keeps `outboxPackages`: a send from an entry file or a test skips the Outbox too, so each SDK import
-// below must be reported. repo-policy checks that every package of `outboxPackages` has a line here.
-// Knip reads a *.test.ts file even in __fixtures__/, so the SDK clients are in `ignoreDependencies` of apps/api in
-// knip.jsonc; jscpd and coverage skip __fixtures__/.
-import "pg";
+// Detection-power fixture (#43) of `outbox` in lint-restrictions.json (docs/adr/0029, docs/adr/0038): each import
+// below is one that the override of packages/db/src must still report: db opens the connections, but does not send. A
+// line below a disable comment is one that the rule must report: if the rule is turned off, drops the value, or its
+// `files` stop reaching this file, the comment is unused and `vp check` fails (reportUnusedDisableDirectives). A line
+// of the table with no comment above is one that the rule must let through: if it stops it, `vp check` fails.
+// repo-policy checks that every line here is a row of the table, and every row a line (docs/tooling/ci.md ("禁止の表")).
+// Knip and jscpd skip __fixtures__/, and nothing imports this file.
 // @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: an SDK client that sends without the Outbox
 import "@aws-sdk/client-sqs";

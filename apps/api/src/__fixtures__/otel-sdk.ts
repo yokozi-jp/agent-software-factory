@@ -1,9 +1,10 @@
-// Detection-power fixture (#43) for the ban on the OpenTelemetry SDK (apps/api/src, root vite.config.ts,
-// docs/adr/0048). Outside packages/telemetry and the entry files of the apps, only @opentelemetry/api may be
-// imported: the SDK, the exporters and the instrumentations are started in one place. Each line below is one that
-// no-restricted-imports must report. If the rule is turned off, or its `files` stop reaching this directory, the disable
-// comment is unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy checks that every kind of
-// `otelSdkKinds` (vite.config.ts) has a line. Knip skips __fixtures__/, and nothing imports this file.
+// Detection-power fixture (#43) of `otel-sdk` in lint-restrictions.json (docs/adr/0048): each import below, one of
+// each start of a package name of the table, is one that no-restricted-imports must report in apps/api/src. Only
+// @opentelemetry/api may be imported there. A line below a disable comment is one that the rule must report: if the
+// rule is turned off, drops the value, or its `files` stop reaching this file, the comment is unused and `vp check`
+// fails (reportUnusedDisableDirectives). A line of the table with no comment above is one that the rule must let
+// through: if it stops it, `vp check` fails. repo-policy checks that every line here is a row of the table, and every
+// row a line (docs/tooling/ci.md ("禁止の表")). Knip and jscpd skip __fixtures__/, and nothing imports this file.
 // @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: the SDK
 import "@opentelemetry/sdk-node";
@@ -19,6 +20,3 @@ import "@opentelemetry/resources";
 // @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: the bundle of instrumentations
 import "@opentelemetry/auto-instrumentations-node";
-// The Node-only entry of packages/telemetry is for the entry files (server.ts, telemetry.ts) and the tests.
-// oxlint-disable-next-line no-restricted-imports -- fixture: a deep import of a package, from a file that is not an entry file
-import "@agent-software-factory/telemetry/node";

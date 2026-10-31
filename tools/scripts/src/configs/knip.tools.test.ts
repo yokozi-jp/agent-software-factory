@@ -142,7 +142,7 @@ const apps: Record<string, string> = {
   // The fixture of the entry files and the tests: a *.test.ts file, which Knip reads even in __fixtures__/, and which
   // imports the SDK clients that no-restricted-imports stops. The app depends on none of them, so knip.jsonc keeps
   // them in ignoreDependencies of apps/api; without the file, Knip would report those entries as unused.
-  "apps/api/src/__fixtures__/bypass.test.ts": sdkClients
+  "apps/api/src/__fixtures__/outbox.test.ts": sdkClients
     .map((name) => `import "${name}";\n`)
     .join(""),
 };

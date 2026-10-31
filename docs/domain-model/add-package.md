@@ -18,7 +18,7 @@ module ではない package は、業務の層 (`domain` など) を持たず、
    - 他の workspace の package に依存しないなら `dependOnNone` にも足します。
    - `exports` が `"."` の `./src/index.ts` だけでないなら `ownExports` に 1 エントリ足します (`exports` と、メッセージに書く理由)。
 4. **`vite.config.ts` の Oxlint の override を決める**: 実行環境の制限 (`process`、`node:*`) を外す必要があるか、SDK のように module に import させたくないものがあるかを決め、`files` を必要なファイルに絞って override を足します。`packages/*/src/**` の制限を丸ごと外さず、外すファイルを名前で挙げます。
-5. **fixture を足す**: override が制限を外す、または新しく制限するときは、その効きを示す fixture を `src/__fixtures__/` に置き、repo-policy (`lint-fixtures.ts`) に欠けを止める検査を足します ([CI](../tooling/ci.md) の「lint の規則と tsconfig のフラグの fixture」)。
+5. **fixture を足す**: override が制限を外す、または新しく制限するときは、その効きを示す fixture を `src/__fixtures__/` に置きます。禁止の表 (`lint-restrictions.json`) にある禁止 (Outbox の迂回、`pg` など) なら、fixture の名前を欄のキー (`src/__fixtures__/outbox.ts` など) にし、表の行の `files` に足します。override が届くかは fixture の `vp check` が、表と fixture が合うかは repo-policy が確かめます ([CI](../tooling/ci.md) の「禁止の表」)。表にない制限は、`src/__fixtures__/` の fixture に disable のコメントの行を置きます ([CI](../tooling/ci.md) の「lint の規則と tsconfig のフラグの fixture」)。
 6. **Knip と coverage を直す**: 入口のファイルが `package.json` の `exports` から読めないなら `knip.jsonc` の `entry` に足します。テストのない入口は `vite.config.ts` の `coverage.exclude` に理由つきで書きます。
 7. **docs を直す**: [ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md) の「モジュールの印」の一覧と [CI](../tooling/ci.md) の `exports` の例外の一覧に名前を足します。
 8. **`pnpm install` を実行し、`git add` してから repo-policy を実行する**: repo-policy は git の追跡ファイルを読むので、新しいファイルは `git add` するまで「存在しない」と言われます。

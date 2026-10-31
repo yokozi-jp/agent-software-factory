@@ -15,41 +15,87 @@ export const domainFixture = [
   "",
 ].join("\n");
 
-// The fixtures of the imports that bypass the Outbox and the transaction (docs/adr/0029): one import per package of
-// `outboxPackages` and `connectionPackages` in vite.config.ts, each under the disable comment that the rule must
-// make used. The entry files and the tests may open a connection but not send, so their fixture has the SDK only.
-export const bypassOutboxFixture = [
-  "// oxlint-disable-next-line no-restricted-imports -- fixture: sqs",
-  'import "@x/sqs";',
+// The table of lint restrictions (lint-restrictions.json, docs/adr/0050) of the passing repository, and the fixtures
+// its rows name: an import that the rule stops in the packages and lets through in the tests of apps/api, and a
+// global that two rules stop.
+export const outboxFixture =
+  '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/sqs";\n';
+export const connectionStopFixture =
+  '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "pg";\n';
+export const connectionPassFixture = 'import "pg";\n';
+export const consoleFixture = [
+  "// oxlint-disable-next-line no-restricted-globals -- fixture",
+  "export const a: unknown = console;",
+  "// oxlint-disable-next-line no-restricted-properties -- fixture",
+  "export const b: unknown = globalThis.console;",
   "",
 ].join("\n");
-export const bypassFixture = [
-  bypassOutboxFixture.trimEnd(),
-  "// oxlint-disable-next-line no-restricted-imports -- fixture: pg",
-  'import "pg";',
-  "",
-].join("\n");
-
-// The fixture of the raw SQL of Kysely that a module may not import (`sqlImportNames`): the places of the packages ask
-// for it on top of bypassFixture.
-export const bypassModuleFixture = [
-  bypassFixture.trimEnd(),
-  "// oxlint-disable-next-line no-restricted-imports -- fixture: sql",
-  'export { sql } from "kysely";',
-  "",
-].join("\n");
-
-// The fixture of withTables outside infrastructure/ (docs/adr/0029): a call that the rule must report.
-export const withTablesFixture = [
-  "// oxlint-disable-next-line no-restricted-properties -- fixture: withTables",
-  "export const tables = trx.withTables();",
-  "",
-].join("\n");
-// The call that infrastructure/ may make: no disable comment.
-export const withTablesAllowedFixture = "export const tables = trx.withTables();\n";
+export const lintRestrictions = {
+  outbox: {
+    adr: "docs/adr/0029",
+    values: ["@x/sqs"],
+    message: "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).",
+    mentions: ["enqueueOutbox"],
+    rows: [
+      {
+        files: [
+          "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "apps/api/src/__fixtures__/outbox.test.ts",
+        ],
+        rule: "no-restricted-imports",
+        text: '"@x/sqs"',
+        expect: "stop",
+        reason: "Outbox を通す",
+      },
+    ],
+  },
+  connection: {
+    adr: "docs/adr/0029",
+    values: ["pg"],
+    message: "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).",
+    mentions: ["inTenantTransaction"],
+    rows: [
+      {
+        files: ["packages/module-fixtures/src/__fixtures__/connection.ts"],
+        rule: "no-restricted-imports",
+        text: '"pg"',
+        expect: "stop",
+        reason: "inTenantTransaction でトランザクションを開く",
+      },
+      {
+        files: ["apps/api/src/__fixtures__/connection.test.ts"],
+        rule: "no-restricted-imports",
+        text: '"pg"',
+        expect: "pass",
+        reason: "テストは pool を作る",
+      },
+    ],
+  },
+  console: {
+    adr: "docs/adr/0049",
+    values: ["console"],
+    mentions: [] as string[],
+    rows: [
+      {
+        files: ["packages/module-fixtures/src/__fixtures__/console.ts"],
+        rule: "no-restricted-globals",
+        text: "= console;",
+        expect: "stop",
+        reason: "Logger を通す",
+      },
+      {
+        files: ["packages/module-fixtures/src/__fixtures__/console.ts"],
+        rule: "no-restricted-properties",
+        text: "globalThis.console",
+        expect: "stop",
+        reason: "Logger を通す",
+      },
+    ],
+  },
+};
 
 // The fixture of SQL that sets the role or the tenant outside the helper of the transaction (docs/adr/0029).
-export const sessionSettingFixture = [
+const sessionSettingFixture = [
   "// oxlint-disable-next-line tenant-sql/no-session-setting -- fixture: set role",
   "export const setRole = sql`SET LOCAL ROLE x`;",
   "",
@@ -189,15 +235,6 @@ const rootTsconfig = [
   "",
 ].join("\n");
 
-// The kinds of OpenTelemetry import that the ban stops (`otelSdkKinds` of vite.config.ts), a name or a start of a name.
-export const otelSdkKinds = [
-  "sdk-",
-  "exporter-",
-  "instrumentation",
-  "resources$",
-  "auto-instrumentations",
-];
-
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "compose.local.yaml":
@@ -242,39 +279,18 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/domain/__fixtures__/boundaries.ts": moduleFixture,
   "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
-  // Each override that stops the imports that bypass the Outbox and the transaction has a fixture: src/ and the
-  // layers of the packages (domain stops every library already), the files of apps/api/src, and its entry files and
-  // tests.
-  "packages/module-fixtures/src/__fixtures__/bypass.ts": bypassModuleFixture,
-  "packages/module-fixtures/src/http/__fixtures__/bypass.ts": bypassModuleFixture,
-  "apps/api/src/__fixtures__/bypass.ts": bypassFixture,
-  "apps/api/src/__fixtures__/bypass.test.ts": bypassOutboxFixture,
-  // withTables is called in infrastructure/ only: each other place has a fixture that the rule must report.
-  "packages/module-fixtures/src/__fixtures__/with-tables.ts": withTablesFixture,
-  "packages/module-fixtures/src/domain/__fixtures__/with-tables.ts": withTablesFixture,
-  "packages/module-fixtures/src/http/__fixtures__/with-tables.ts": withTablesFixture,
-  // The rule that stops SQL that sets the role or the tenant reaches packages/shared-kernel/src and apps/api/src.
-  "packages/shared-kernel/src/__fixtures__/session-setting.ts": sessionSettingFixture,
+  // The fixtures that the rows of the table name (lint-restrictions.json).
+  "lint-restrictions.json": JSON.stringify(lintRestrictions, undefined, 2),
+  "packages/module-fixtures/src/__fixtures__/outbox.ts": outboxFixture,
+  "apps/api/src/__fixtures__/outbox.test.ts": outboxFixture,
+  "packages/module-fixtures/src/__fixtures__/connection.ts": connectionStopFixture,
+  "apps/api/src/__fixtures__/connection.test.ts": connectionPassFixture,
+  "packages/module-fixtures/src/__fixtures__/console.ts": consoleFixture,
+  // The fixture of the rule that stops SQL that sets the role or the tenant (vite.config.ts below turns it on).
   "apps/api/src/__fixtures__/session-setting.ts": sessionSettingFixture,
   "vite.config.ts": [
     // An object before layers, so that a check reads layers by its name.
     'const scope = { name: "@x" };',
-    // The packages that bypass the Outbox and the transaction (docs/adr/0029), one fixture each.
-    "const outboxPackages = [",
-    '  "@x/sqs",',
-    "];",
-    'const connectionPackages = ["pg"];',
-    // The raw SQL of Kysely, which a module may not import.
-    'const sqlImportNames = ["sql"];',
-    // The kinds of OpenTelemetry import that the ban stops (docs/adr/0048), one fixture each.
-    `const otelSdkKinds = ${JSON.stringify(otelSdkKinds)};`,
-    'const otelSdkPattern = { regex: `^@opentelemetry/(?:${otelSdkKinds.join("|")})` };',
-    // The messages of those imports say what to write instead, and name the ADR.
-    'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
-    'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',
-    'const sqlMessage = "Read it through the public API function (docs/adr/0029).";',
-    'const withTablesMessage = "Call it in infrastructure, in the public API function (docs/adr/0029).";',
-    'const withTablesEntry = { property: "withTables" };',
     'const tenantRule = { "tenant-sql/no-session-setting": "error" };',
     "const layers: Record<string, readonly string[]> = {",
     "  domain: [],",
@@ -306,6 +322,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "docs/adr/0001-lefthook.md": "# ADR 0001\n",
   "docs/adr/0002-nx.md": "# ADR 0002\n",
   "docs/adr/0029-outbox.md": "# ADR 0029\n",
+  "docs/adr/0049-logging.md": "# ADR 0049\n",
   "docs/local-env-setup/setup.md": "# Setup\n\n## 3. Ubuntu の初期セットアップ\n",
   "tools/scripts/sh/guard-push.sh": "#!/bin/sh\ngit push --dry-run\n",
   "tools/scripts/src/sh/guard-push.test.ts": "// process test of guard-push.sh\n",
