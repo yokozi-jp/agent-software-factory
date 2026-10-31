@@ -99,7 +99,7 @@ jobs:
       # not the runner image's. No cache: a restored cache is not checked against the lock.
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          version: 2026.10.24
+          version: 2026.10.25
           cache: false
 
       # The pypi:semgrep sidecar lock (.mise/locks/pypi-semgrep) must be deterministic: regenerating it from
@@ -162,7 +162,7 @@ jobs:
 
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          version: 2026.10.24
+          version: 2026.10.25
           cache: false
 
       - name: Known vulnerabilities in dependencies (OSV-Scanner, warning only)
