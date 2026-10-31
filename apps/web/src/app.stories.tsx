@@ -10,6 +10,7 @@ import { useState } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { RouteError } from "./components/route-error.tsx";
+import { throwOnForbiddenOrNotFound } from "./lib/api-error.ts";
 import { ForbiddenError } from "./lib/forbidden.ts";
 import { EmbeddedNotFound, ForbiddenScreen } from "./components/error-screens.tsx";
 import { LoginScreen as LoginScreenView } from "./components/login-screen.tsx";
@@ -481,6 +482,46 @@ export const NotFoundThrownInAProtectedRouteIsEmbedded: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
     await expect(canvas.queryByRole("main")).toBeNull();
+  },
+};
+
+// API が 403 と 404 を返したとき、loader が応答を画面の失敗に変える。本物の route の木には API を呼ぶ loader がまだないので、
+// 本物の layout と同じ errorComponent と notFoundComponent を持つ最小の router に、応答を返す loader を置く。
+function loadingFromApi(status: number, path: string) {
+  return () => {
+    const root = createRootRoute({ notFoundComponent: EmbeddedNotFound });
+    const layout = createRoute({
+      getParentRoute: () => root,
+      id: "_accounting",
+      errorComponent: RouteError,
+    });
+    const page = createRoute({
+      getParentRoute: () => layout,
+      path,
+      loader: () => throwOnForbiddenOrNotFound(new Response(null, { status })),
+      component: () => <p>ready</p>,
+    });
+    const router = createRouter({
+      routeTree: root.addChildren([layout.addChildren([page])]),
+      history: createMemoryHistory({ initialEntries: [path] }),
+    });
+    return <RouterProvider router={router} />;
+  };
+}
+
+export const ApiForbiddenShowsTheForbiddenScreen: Story = {
+  render: loadingFromApi(403, "/closing"),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: forbiddenTitle })).toBeVisible();
+    await expect(canvas.queryByText("ready")).toBeNull();
+  },
+};
+
+export const ApiNotFoundShowsTheEmbeddedNotFoundScreen: Story = {
+  render: loadingFromApi(404, "/claims/other-user"),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
+    await expect(canvas.queryByText("ready")).toBeNull();
   },
 };
 
