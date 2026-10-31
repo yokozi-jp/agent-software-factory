@@ -33,6 +33,6 @@ export const SesMailSenderLayer = (config: {
               }),
             ),
           catch: (cause) => new MailSendFailed({ cause }),
-        }).pipe(Effect.asVoid),
+        }).pipe(Effect.orDie, Effect.asVoid),
     }),
   );

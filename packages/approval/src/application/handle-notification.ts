@@ -29,9 +29,12 @@ export type NotificationResult = { readonly _tag: "Sent" } | { readonly _tag: "D
  *
  * The delivery is at least once. If the process stops after step 2 and before step 3, or two workers handle the same
  * message at once, two mails go out; SES `SendEmail` has no idempotency key. The row is written last on purpose: written
- * first, a stop before the send would lose the mail. A failed send is the typed failure `MailSendFailed` and writes no
+ * first, a stop before the send would lose the mail. A failed send is a defect (`MailSendFailed`, the layer dies with it) and writes no
  * row, so the next delivery sends again. A message that does not parse, or lacks an item of its template, is a defect:
  * it can never succeed, so it goes on to the DLQ after `maxReceiveCount` deliveries.
+ *
+ * `now` is the one moment of this message; `inTenantTransaction` reads the clock again for the common columns of each of
+ * its transactions (Issue #506). How this receiver relates to the registry of `defineConsumer` is Issue #505.
  *
  * It does not use `defineConsumer`: that function writes the row first and calls its handler in the same transaction,
  * which holds a transaction open for the whole send.

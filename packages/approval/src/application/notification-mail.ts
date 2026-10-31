@@ -14,7 +14,11 @@ export class MissingTemplateValue extends Data.TaggedError("MissingTemplateValue
   }
 }
 
-/** A moment as the mail writes it: in the time zone of the business, never in the `TZ` of the process (docs/adr/0043). */
+/**
+ * A moment as the mail writes it: in the time zone of the business, never in the `TZ` of the process (docs/adr/0043).
+ * The format and the text of the mail are Japanese only. Whether they follow the language of i18next, as ADR 0043 says
+ * of mails, is not decided yet (Issue #504).
+ */
 const formatBusinessInstant = (instant: Temporal.Instant): string =>
   instant.toLocaleString("ja-JP", {
     timeZone: BUSINESS_TIME_ZONE,
@@ -27,7 +31,7 @@ const formatBusinessInstant = (instant: Temporal.Instant): string =>
   });
 
 /** Reads one item of the message's `values`. The caller has checked that the template's items are there. */
-type Value = (name: string) => string;
+type TemplateValue = (name: string) => string;
 
 const templates = {
   review_requested: {
@@ -51,8 +55,8 @@ const templates = {
   NotificationRequested["template"],
   {
     readonly names: readonly string[];
-    readonly subject: (value: Value) => string;
-    readonly lines: (value: Value) => string[];
+    readonly subject: (value: TemplateValue) => string;
+    readonly lines: (value: TemplateValue) => string[];
   }
 >;
 
@@ -71,7 +75,7 @@ export const renderNotificationMail = (
   if (missing !== undefined)
     return Effect.die(new MissingTemplateValue({ template: message.template, name: missing }));
   // `noUncheckedIndexedAccess` types a lookup as possibly missing; the check above made sure it is not.
-  const value: Value = (name) => message.values[name] ?? "";
+  const value: TemplateValue = (name) => message.values[name] ?? "";
   const body = [
     ...template.lines(value),
     "",

@@ -8,8 +8,10 @@ export interface OutgoingMail {
 }
 
 /**
- * A mail that could not be sent (the server refused it, or could not be reached). It is a typed failure, not a defect:
- * the message goes back to the queue and is delivered again (docs/adr/0041). `cause` is what the transport threw.
+ * A mail that could not be sent (the server refused it, or could not be reached). No caller branches on it: nothing in
+ * `application` answers differently for a refusal, so it is a defect, not a typed failure (docs/domain-model/application-effect.md,
+ * "失敗の扱い"). The layers die with it, the worker rejects, and the message goes back to the queue and is delivered again
+ * (docs/adr/0041). `cause` is what the transport threw.
  */
 export class MailSendFailed extends Data.TaggedError("MailSendFailed")<{
   readonly cause: unknown;
@@ -36,5 +38,5 @@ export class MailSendFailed extends Data.TaggedError("MailSendFailed")<{
  */
 export class MailSender extends Context.Service<
   MailSender,
-  { readonly send: (mail: OutgoingMail) => Effect.Effect<void, MailSendFailed> }
+  { readonly send: (mail: OutgoingMail) => Effect.Effect<void> }
 >()("approval/MailSender") {}

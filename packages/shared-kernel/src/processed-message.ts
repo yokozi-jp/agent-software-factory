@@ -12,7 +12,7 @@ export interface ConsumedMessage {
   readonly tenantId: string;
 }
 
-type Instant = ColumnType<Temporal.Instant, string, string>;
+type InstantColumn = ColumnType<Temporal.Instant, string, string>;
 
 /**
  * `processed_message` of a module's schema, with the columns that `recordProcessedMessage` writes (the template is
@@ -22,11 +22,11 @@ type Instant = ColumnType<Temporal.Instant, string, string>;
 interface ProcessedMessageTable {
   tenant_id: string;
   message_id: string;
-  created_at: Instant;
+  created_at: InstantColumn;
   created_by: string;
   created_pgm_cd: string;
   created_tx_id: string;
-  updated_at: Instant;
+  updated_at: InstantColumn;
   updated_by: string;
   updated_pgm_cd: string;
   updated_tx_id: string;

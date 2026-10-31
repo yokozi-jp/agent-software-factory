@@ -32,7 +32,7 @@ export const failFirst = (times: number, inner: Layer.Layer<MailSender>): Layer.
         send: (mail) => {
           if (remaining <= 0) return real.send(mail);
           remaining -= 1;
-          return Effect.fail(new MailSendFailed({ cause: "injected failure" }));
+          return Effect.die(new MailSendFailed({ cause: "injected failure" }));
         },
       });
     }),

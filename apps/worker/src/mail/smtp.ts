@@ -32,7 +32,7 @@ export const SmtpMailSenderLayer = (config: {
                 text: mail.text,
               }),
             catch: (cause) => new MailSendFailed({ cause }),
-          }).pipe(Effect.asVoid),
+          }).pipe(Effect.orDie, Effect.asVoid),
       });
     }),
   );

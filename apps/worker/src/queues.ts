@@ -38,35 +38,36 @@ export async function createNotificationQueues(
   const visibilityTimeout = String(
     options.visibilityTimeoutSeconds ?? settings.visibilityTimeoutSeconds,
   );
-  const dlq = await sqs.send(
-    new CreateQueueCommand({
-      QueueName: `${options.name}-dlq`,
-      Attributes: {
-        VisibilityTimeout: visibilityTimeout,
-        MessageRetentionPeriod: String(settings.dlqRetentionSeconds),
-      },
-    }),
-  );
-  const dlqUrl = expectReturned(dlq.QueueUrl, "QueueUrl of the DLQ");
+  const dlq = await createQueue(sqs, `${options.name}-dlq`, "the DLQ", {
+    VisibilityTimeout: visibilityTimeout,
+    MessageRetentionPeriod: String(settings.dlqRetentionSeconds),
+  });
   const attributes = await sqs.send(
-    new GetQueueAttributesCommand({ QueueUrl: dlqUrl, AttributeNames: ["QueueArn"] }),
+    new GetQueueAttributesCommand({ QueueUrl: dlq, AttributeNames: ["QueueArn"] }),
   );
   const dlqArn = expectReturned(attributes.Attributes?.["QueueArn"], "QueueArn of the DLQ");
 
-  const queue = await sqs.send(
-    new CreateQueueCommand({
-      QueueName: options.name,
-      Attributes: {
-        VisibilityTimeout: visibilityTimeout,
-        MessageRetentionPeriod: String(settings.retentionSeconds),
-        RedrivePolicy: JSON.stringify({
-          deadLetterTargetArn: dlqArn,
-          maxReceiveCount: settings.maxReceiveCount,
-        }),
-      },
+  const queueUrl = await createQueue(sqs, options.name, "the queue", {
+    VisibilityTimeout: visibilityTimeout,
+    MessageRetentionPeriod: String(settings.retentionSeconds),
+    RedrivePolicy: JSON.stringify({
+      deadLetterTargetArn: dlqArn,
+      maxReceiveCount: settings.maxReceiveCount,
     }),
+  });
+  return { queueUrl, dlqUrl: dlq };
+}
+
+async function createQueue(
+  sqs: SQSClient,
+  name: string,
+  what: string,
+  attributes: Record<string, string>,
+): Promise<string> {
+  const created = await sqs.send(
+    new CreateQueueCommand({ QueueName: name, Attributes: attributes }),
   );
-  return { queueUrl: expectReturned(queue.QueueUrl, "QueueUrl"), dlqUrl };
+  return expectReturned(created.QueueUrl, `QueueUrl of ${what}`);
 }
 
 function expectReturned(value: string | undefined, what: string): string {
