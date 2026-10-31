@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { envSchema, loadEnv } from "./env.ts";
+import { envSchema, loadEnv, loadLoggerSettings } from "./env.ts";
 
 const validEnv = {
   AUTH_DATABASE_URL: "postgres://auth_service:pw@localhost:5432/app", // betterleaks:allow
@@ -25,7 +25,20 @@ function messageOf(env: Record<string, string | undefined>): string {
 
 describe("環境変数の読み込み (ADR 0032)", () => {
   it("そろっていれば、検査済みの設定を返すこと。PORT がなければ 3000 にすること", () => {
-    expect(loadEnv(validEnv)).toEqual({ ...validEnv, PORT: 3000 });
+    expect(loadEnv(validEnv)).toEqual({
+      ...validEnv,
+      PORT: 3000,
+      LOG_LEVEL: "info",
+      SERVICE_VERSION: "unknown",
+      DEPLOYMENT_ENVIRONMENT: "local",
+    });
+  });
+
+  it("LOG_LEVEL は debug、info、warn、error だけを受け付けること", () => {
+    expect(loadEnv({ ...validEnv, LOG_LEVEL: "debug" }).LOG_LEVEL).toBe("debug");
+    // fatal は入口が起動の失敗に使うので、設定では選べない。
+    for (const level of ["fatal", "trace", "INFO", ""])
+      expect(() => loadEnv({ ...validEnv, LOG_LEVEL: level })).toThrow("LOG_LEVEL");
   });
 
   it("PORT は数値にして返すこと", () => {
@@ -52,6 +65,34 @@ describe("環境変数の読み込み (ADR 0032)", () => {
     const message = messageOf({ ...validEnv, PUBLIC_ORIGIN: "leaky-value" });
     expect(message).toContain("PUBLIC_ORIGIN");
     expect(message).not.toContain("leaky-value");
+  });
+});
+
+describe("ロガーの設定 (loadLoggerSettings)", () => {
+  it("そろっていれば、その値を返すこと", () => {
+    expect(
+      loadLoggerSettings({
+        LOG_LEVEL: "warn",
+        SERVICE_VERSION: "1.2.3",
+        DEPLOYMENT_ENVIRONMENT: "production",
+      }),
+    ).toEqual({
+      LOG_LEVEL: "warn",
+      SERVICE_VERSION: "1.2.3",
+      DEPLOYMENT_ENVIRONMENT: "production",
+    });
+  });
+
+  it("欠けても、正しくなくても例外にせず、既定にすること (起動の失敗を fatal で出すため)", () => {
+    const defaults = {
+      LOG_LEVEL: "info",
+      SERVICE_VERSION: "unknown",
+      DEPLOYMENT_ENVIRONMENT: "local",
+    };
+    expect(loadLoggerSettings({})).toEqual(defaults);
+    expect(
+      loadLoggerSettings({ LOG_LEVEL: "verbose", SERVICE_VERSION: "", DEPLOYMENT_ENVIRONMENT: "" }),
+    ).toEqual(defaults);
   });
 });
 

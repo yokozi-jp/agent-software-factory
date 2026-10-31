@@ -42,3 +42,14 @@ sources:
 |          | 通知フラグ                   |      | ログレベルとは別に通知有無を制御したい場合に設定する | true / false                                                                                      |
 | 運用定義 | 発生原因                     | ✅️   | この事象が発生する主な原因や発生条件を列挙           | 1\. パスワードの入力ミス 2\. 存在しないユーザーIDの指定                                           |
 |          | アクション                   | ✅️   | 運用者が取るべき対応や調査を記載                     | ・関連ログからリクエスト元のIPアドレスを確認 ・短時間での多発はブルートフォース攻撃の可能性を疑う |
+
+## このリポジトリでの管理
+
+メッセージ定義は Markdown の表ではなく、TypeScript の定数 (`packages/logging/src/index.ts` の `messageCodes`) に置く ([ADR 0049](../adr/0049-logging-with-pino-behind-a-logger-interface.md))。表とコードが食い違っても検査できないため。
+
+- キーがメッセージコードで、形は `<領域>-<3桁>` (例: `API-001`)。ログの `event.code` に出る。
+- 値は `level` (`warn`、`error`、`fatal`)、`message` (ログの `message` になる)、`cause` (発生原因)、`action` (運用者の対応) を持つ。
+- `Logger` の `warn` と `error` は、その `level` のコードのキーだけを型で受け取る。未定義のコードと、別のレベルのコードは型検査で落ちる。`fatal` は入口だけが出す。
+- `cause` と `action` が空でないこと、キーの形、`message` が重複しないことは `packages/logging/src/index.test.ts` が確かめる。同じキーを 2 回書くことは TypeScript が止める。
+- 想定外の例外は、領域ごとに固定のコードにする (API は `API-001`)。例外の型やメッセージでコードを分けない。
+- 通知フラグは持たない。`warn` 以上は一律に通知の対象とする ([ログレベルと通知](levels-and-notification.md))。

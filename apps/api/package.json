@@ -21,6 +21,7 @@
     "@agent-software-factory/claim": "workspace:*",
     "@agent-software-factory/closing": "workspace:*",
     "@agent-software-factory/db": "workspace:*",
+    "@agent-software-factory/logging": "workspace:*",
     "@agent-software-factory/shared-kernel": "workspace:*",
     "@agent-software-factory/telemetry": "workspace:*",
     "@hono/node-server": "catalog:",
