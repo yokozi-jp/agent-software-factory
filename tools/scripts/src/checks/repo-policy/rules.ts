@@ -9,6 +9,7 @@
 //   docs-references.ts   references to docs/ from outside docs/, and to the code from docs/
 //   modules.ts           the dependencies between the modules, and how each resolves and lints them
 //   ui-stories.ts        a story next to each part of packages/ui
+//   idempotency.ts       the writers of the modules go through withIdempotencyKey
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
 // vite.config.ts is read as text: #136 (item 8) decided it needs no parser, since the
@@ -17,6 +18,7 @@ import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
+import { headerNamesAgree, writersUseIdempotencyKey } from "./idempotency.ts";
 import {
   dbDependencies,
   eventsPackages,
@@ -98,6 +100,8 @@ export function violations(repo: Repo): string[] {
     ...ciTargetsHaveCommands(tree),
     ...noWorkspaceInCatalog(tree),
     ...uiComponentsHaveStories(tree),
+    ...writersUseIdempotencyKey(tree),
+    ...headerNamesAgree(tree),
   ];
   return [...tree.parseErrors, ...failures];
 }

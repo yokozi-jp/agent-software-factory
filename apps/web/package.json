@@ -17,6 +17,7 @@
     "@agent-software-factory/i18n": "workspace:*",
     "@agent-software-factory/ui": "workspace:*",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
