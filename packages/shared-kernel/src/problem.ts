@@ -43,21 +43,13 @@ export function problemTypes<const Module extends string, Tag extends string>(
   module: Module,
   tags: { readonly [K in Tag]: true },
 ): { readonly [K in Tag]: `/problems/${Module}/${Kebab<K>}` } {
-  const types: Record<string, string> = Object.fromEntries(
+  const types = Object.fromEntries(
     Object.keys(tags).map((tag) => [tag, `/problems/${module}/${toKebab(tag)}`]),
   );
-  if (!isTypesOf<Module, Tag>(types)) throw new Error("unreachable");
-  return types;
-}
-
-/**
- * `types` was built from the keys of `tags`, which the signature of `problemTypes` limits to `Tag`, so it has one
- * entry per `Tag` and the template literal type of each is what `toKebab` computes. TypeScript cannot follow that.
- */
-function isTypesOf<Module extends string, Tag extends string>(
-  _types: Record<string, string>,
-): _types is { readonly [K in Tag]: `/problems/${Module}/${Kebab<K>}` } {
-  return true;
+  // `types` has one entry per `Tag` (the keys of `tags`, which the signature limits to `Tag`) and the template literal
+  // type of each is what `toKebab` computes. TypeScript cannot follow that.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see above
+  return types as { readonly [K in Tag]: `/problems/${Module}/${Kebab<K>}` };
 }
 
 const problemBase = {
