@@ -22,6 +22,17 @@ const effectOnlyFixtures = ["packages/*/src/*/__fixtures__/effect-tsgo.ts"];
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
+// The OpenTelemetry SDK, its exporters and the instrumentations (docs/adr/0048). Code outside packages/telemetry and the entry
+// files of the apps imports @opentelemetry/api only: the SDK is started once, in the entry, and a module that starts
+// its own would send spans nobody configured. The same list is in the fixtures (otel-sdk.ts), and repo-policy checks them.
+const otelSdkMessage =
+  "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in " +
+  "packages/telemetry/src/node.ts and the entry file of the app (docs/adr/0048).";
+const otelSdkPattern = {
+  regex: "^@opentelemetry/(?:sdk-|exporter-|instrumentation|resources$|auto-instrumentations)",
+  message: otelSdkMessage,
+};
+
 const runtimeImports = {
   paths: [
     { name: "bun", message: runtimeImportMessage },
@@ -29,7 +40,7 @@ const runtimeImports = {
     { name: "@hono/aws-lambda", message: runtimeImportMessage },
     { name: "@hono/node-ws", message: runtimeImportMessage },
   ],
-  patterns: [{ group: ["bun:*"], message: runtimeImportMessage }],
+  patterns: [{ group: ["bun:*"], message: runtimeImportMessage }, otelSdkPattern],
 };
 
 // Imports that bypass the Outbox and the transaction (docs/adr/0029). A request or a module that calls SQS, SES and the
@@ -260,9 +271,14 @@ const deepImports = [subpathImport, relativeDeepImport];
 // What the tests of apps/api may import past the index.ts of a package: the tools of the tests and the seed of
 // packages/db (docs/adr/0038). Production code in apps/api/src does not, so it stays under deepImports.
 const dbSubpaths = ["testing", "seed"];
+// The entry files of apps/api import the Node-only entry of packages/telemetry too (docs/adr/0048).
 const testDeepImports = [
   {
-    group: [`${scope}/*/**`, ...dbSubpaths.map((path) => `!${scope}/db/${path}`)],
+    group: [
+      `${scope}/*/**`,
+      ...dbSubpaths.map((path) => `!${scope}/db/${path}`),
+      `!${scope}/telemetry/node`,
+    ],
     message: deepMessage,
   },
   relativeDeepImport,
@@ -479,7 +495,7 @@ export default defineConfig({
       // Runtime-specific entry files and tests. Add new entry files (Lambda, Workers, ...) here.
       // They still import the modules by their package names only (docs/adr/0026).
       {
-        files: ["apps/api/src/server.ts", "apps/api/src/**/*.test.ts"],
+        files: ["apps/api/src/server.ts", "apps/api/src/telemetry.ts", "apps/api/src/**/*.test.ts"],
         // A plugin rule can only be turned off in an override that also lists the plugin.
         plugins: ["import"],
         rules: {
@@ -525,6 +541,24 @@ export default defineConfig({
               ],
             },
           ],
+        },
+      },
+      // packages/telemetry is not a module (docs/adr/0048). Its Node-only entry (src/node.ts) starts the OpenTelemetry SDK,
+      // so it, the policy it passes to the instrumentations (policy.ts), the tests and the fixture of this override may
+      // import the SDK and leave the runtime restrictions as an entry file does (docs/adr/0007). index.ts, the entry that
+      // any code may import, stays under the restrictions of packages/*/src above, so it cannot pull the SDK in. These
+      // files have no layers, keep the ban on deep imports, and do not send (outboxPaths).
+      {
+        files: [
+          "packages/telemetry/src/node.ts",
+          "packages/telemetry/src/policy.ts",
+          "packages/telemetry/src/**/*.test.ts",
+          "packages/telemetry/src/__fixtures__/otel-sdk.ts",
+        ],
+        plugins: ["import"],
+        rules: {
+          ...runtimeRulesOff,
+          "no-restricted-imports": ["error", { paths: outboxPaths, patterns: deepImports }],
         },
       },
       // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
@@ -684,6 +718,12 @@ export default defineConfig({
                   regex: "^\\.\\./",
                   message:
                     "Import a file in another directory with `@/` (apps/web/src), not `../`.",
+                },
+                // The Node-only entry of packages/telemetry starts the SDK; the browser does not (docs/adr/0048).
+                {
+                  regex: `^${scope}/telemetry/node$`,
+                  message:
+                    "apps/web does not start OpenTelemetry: the Node-only entry of packages/telemetry is for the entry files of apps/api (docs/adr/0048).",
                 },
               ],
             },

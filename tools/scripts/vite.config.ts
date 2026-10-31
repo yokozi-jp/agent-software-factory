@@ -5,10 +5,6 @@ const exclude = ["**/node_modules/**", "**/fixtures/**"];
 
 const isolationTest = "src/test/isolation.test.ts";
 
-// The `test-unit` target (pre-commit) runs the unit project without isolation. src/test/isolation.ts is run only
-// by the isolation project, so that run leaves it out of coverage; the `test` target counts it.
-const withoutIsolation = process.env.SCRIPTS_TEST_WITHOUT_ISOLATION === "1";
-
 // Stryker runs the tests that import the files it mutates, whatever their project, in a copy of this project
 // where the paths up to the workspace root lead nowhere. The tools project reads the real workspace, so it
 // stay out of its runs (it sets STRYKER_MUTATOR_WORKER in the processes that run the tests).
@@ -16,8 +12,9 @@ const underStryker = process.env.STRYKER_MUTATOR_WORKER !== undefined;
 
 // Tests for the scripts and hooks in src/ (docs/tooling/ci.md ("スクリプトのテスト")), in three projects:
 //   unit             `test` target: reads only the files of this project (fixtures), so Nx can cache it.
-//   isolation        `test` target: runs the unit project in a child process under Git hook variables. Its
-//                    own project, so that the child, which runs only `unit`, cannot start it again.
+//   isolation        `test-isolation` target: runs the unit project in a child process under Git hook variables.
+//                    Its own project, so that the child, which runs only `unit`, cannot start it again. CI and
+//                    pre-push run it only when src/test/ or this file changes (docs/adr/0024, "隔離").
 //   tools            `test-tools` target (*.tools.test.ts): runs a real tool on a real config of this
 //                    repository. Each file it reads is an input of the target in package.json; CI runs it
 //                    where mise is.
@@ -59,7 +56,8 @@ export default defineConfig({
         // Entry points: they only read argv, stdin and the environment, run git and print.
         // The process tests (cli.test.ts) run them as child processes, which coverage does not see.
         "src/**/cli.ts",
-        ...(withoutIsolation ? ["src/test/isolation.ts"] : []),
+        // Run by the isolation project, which has no coverage: the unit run does not execute it.
+        "src/test/isolation.ts",
       ],
       thresholds: {
         // A fixed minimum for every file (#30).
