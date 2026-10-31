@@ -25,7 +25,7 @@ PR は squash merge だけを使い、破壊的変更は PR タイトルの `!` 
   - `ci`: `.github/` の workflow と ruleset
   - `hooks`: Git hook (`lefthook.yml`、`tools/scripts/sh/`) と Kiro の hook (`.kiro/hooks/`、`tools/scripts/src/hooks/`)
   - `deps`: 依存の追加と更新 (`package.json`、`pnpm-workspace.yaml` の catalog、lockfile)
-- **subject**: 日本語でも英語でも構いません。先頭は大文字の英単語にしません (`subject-case`)。ファイル名や略語 (`CODEOWNERS`、`README`、`API`) で始めると拒否されるので、日本語の語を前に置きます (例: `docs: コミュニティの文書 (CODEOWNERS …) を置く`)。
+- **subject**: 日本語でも英語でも構いません。先頭は大文字の英単語にしません (`subject-case`)。ファイル名、略語、固有名詞 (`CODEOWNERS`、`README`、`API`、`OpenTelemetry`、`PostgreSQL`) で始めると拒否されるので、日本語の語を前に置きます (例: `docs: コミュニティの文書 (CODEOWNERS …) を置く`、`refactor: import 禁止の OpenTelemetry の種類を 1 か所にする`)。commit-msg hook は pre-commit の検査 (約 1 分) のあとに動くので、件名は commit の前に確かめます。
 - **本文と footer**: 1行は 100 文字以内にします (`body-max-line-length`、`footer-max-line-length`)。最初の段落以外で、`PR #96` のように行頭の語に続けて `#番号` を書くと、その行は footer として検査されます。どちらの規則でも、長い行は拒否されるので、短い行に折り返します。
 - 破壊的変更は `feat(api)!: ...` のように `!` を付けます。
 

@@ -1,3 +1,4 @@
+import { z } from "@hono/zod-openapi";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import { createAuthFixture, type AuthFixture } from "../../test/auth-fixtures.ts";
@@ -18,6 +19,7 @@ describe("OIDC でのログイン (ADR 0022)", () => {
     const res = await fixture.app.request("/api/me");
 
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ type: "/problems/unauthenticated" });
   });
 
   it("IdP でログインするとセッションが始まること", async () => {
@@ -27,7 +29,11 @@ describe("OIDC でのログイン (ADR 0022)", () => {
     const res = await browser.request("/api/me");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ email: users.yamada.email });
+    // 200 の本文は route の応答 schema (`{ id, email, name }`) の形であること (ADR 0047)。
+    const body = z
+      .strictObject({ id: z.string(), email: z.email(), name: z.string() })
+      .parse(await res.json());
+    expect(body.email).toBe(users.yamada.email);
   });
 
   it("利用者の ID が UUID であること (テナント ID に使うため。ADR 0011)", async () => {

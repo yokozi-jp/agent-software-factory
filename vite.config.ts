@@ -26,12 +26,20 @@ const runtimeImportMessage =
 
 // The OpenTelemetry SDK, its exporters and the instrumentations (docs/adr/0048). Code outside packages/telemetry and the entry
 // files of the apps imports @opentelemetry/api only: the SDK is started once, in the entry, and a module that starts
-// its own would send spans nobody configured. The same list is in the fixtures (otel-sdk.ts), and repo-policy checks them.
+// its own would send spans nobody configured. `otelSdkKinds` is the one list of the kinds (each is the start of a package
+// name after @opentelemetry/, and `$` ends it): repo-policy reads it and names the kind that a fixture (otel-sdk.ts) leaves out.
+const otelSdkKinds = [
+  "sdk-",
+  "exporter-",
+  "instrumentation",
+  "resources$",
+  "auto-instrumentations",
+];
 const otelSdkMessage =
   "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in " +
   "packages/telemetry/src/node.ts and the entry file of the app (docs/adr/0048).";
 const otelSdkPattern = {
-  regex: "^@opentelemetry/(?:sdk-|exporter-|instrumentation|resources$|auto-instrumentations)",
+  regex: `^@opentelemetry/(?:${otelSdkKinds.join("|")})`,
   message: otelSdkMessage,
 };
 

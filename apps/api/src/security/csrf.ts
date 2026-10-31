@@ -1,3 +1,9 @@
+import {
+  ABOUT_BLANK,
+  commonProblemTypes,
+  problemResponse,
+  statusTitle,
+} from "@agent-software-factory/shared-kernel";
 import type { MiddlewareHandler } from "hono";
 
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -17,17 +23,30 @@ export function csrfProtection(origin: string): MiddlewareHandler {
 
     const requestOrigin = c.req.header("origin");
     if (requestOrigin !== undefined && requestOrigin !== origin) {
-      return c.json({ error: "forbidden origin" }, 403);
+      return problemResponse(c, {
+        type: commonProblemTypes.forbiddenOrigin,
+        title: "The origin of the request is not allowed.",
+        status: 403,
+      });
     }
 
     const fetchSite = c.req.header("sec-fetch-site");
     if (fetchSite !== undefined && fetchSite !== "same-origin") {
-      return c.json({ error: "forbidden cross-site request" }, 403);
+      return problemResponse(c, {
+        type: commonProblemTypes.forbiddenCrossSiteRequest,
+        title: "Cross-site requests are not allowed.",
+        status: 403,
+      });
     }
 
     const contentType = c.req.header("content-type")?.split(";")[0]?.trim().toLowerCase();
     if (contentType !== "application/json") {
-      return c.json({ error: "content type must be application/json" }, 415);
+      return problemResponse(c, {
+        type: ABOUT_BLANK,
+        title: statusTitle(415),
+        status: 415,
+        detail: "The Content-Type must be application/json.",
+      });
     }
 
     return next();

@@ -11,7 +11,7 @@ tags: [domain-model, convention, authorization, security]
 役割と操作の表、操作する人の 7 種類、HTTP の応答の表、理由と採らなかった案は [ADR 0045](../adr/0045-authorization-policy-in-application-with-permit-token.md) にあります。この文書には、コードを書くときの規則だけを書きます。
 
 > [!NOTE]
-> `authorize`、`Permit`、網羅のテスト、BOLA のテストはまだ実装がありません。サンプル機能の仕様で書きます。BOLA のテストは [#420](https://github.com/yokozi-jp/agent-software-factory/issues/420) で実装します。この文書は実装の指針で、書いた後に実装と食い違えば、この文書を直します。
+> `authorize`、`Permit`、網羅のテストはまだ実装がありません。サンプル機能の仕様で書きます。BOLA のテストの仕組みは実装済みです (「BOLA のテスト」)。この文書は実装の指針で、書いた後に実装と食い違えば、この文書を直します。
 
 ## 線引き
 
@@ -40,3 +40,16 @@ tags: [domain-model, convention, authorization, security]
 
 見えなければ 404、見えるが許されなければ 403、状態の不一致と楽観排他の衝突は 409、業務のルールを満たさなければ 422、人事システムが応答しなければ 503 です。表は ADR 0045、ステータスコード全体の規約は [Web API の HTTP ステータスコード](../web-api/status-codes.md) にあります。
 パスに id を持つ操作で他人のリソースが 404 になることは、`apps/api` の結合テストが OpenAPI の spec から確かめます。
+
+## BOLA のテスト
+
+他人のリソースの id で読めないことは、route ごとの手書きのテストでなく、`apps/api/src/bola.test.ts` が commit した `apps/api/openapi.json` から確かめます。パスに `{id}` を持つ操作はすべて対象になります。
+
+route (パスに id を持つ操作) を足したとき:
+
+1. `pnpm --filter @agent-software-factory/api openapi` で spec を更新します。
+2. `bola.test.ts` の `factories` の型が操作の名前 (`GET /api/claims/{id}`) を要求して、型の検査が止まります。その操作について、持ち主のリソースを作る関数を足します。関数は `ResourceContext` (`owner`、`other`、`superuser`) を受け取り、`superuser` の接続で持ち主の行を作り、パスの値 (`params`) と、書き込みの操作なら検証を通る本文 (`body`) を返します。
+3. 404 でなくてよい操作 (公開のリソースなど) は、関数の代わりに、理由を付けて `exceptions` に書きます。理由が空だと失敗します。spec から消えた操作が `exceptions` に残っていても失敗します。
+
+判定は、持ち主でない社員が持ち主のリソースの id で叩いたときに、404 の Problem Details が返ることです。書き込みの操作では、DB の全表の行 (`auth` を除く) が変わらないことも見ます。2 人は、今は `signedIn` で作った別々のセッションで、同じテナントのメンバーとしては用意していません ([#487](https://github.com/yokozi-jp/agent-software-factory/issues/487))。別のテナントの行が見えないことは、RLS のテストで確かめます ([ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md))。
+仕組みの検出力は、`apps/api/test/bola-fixtures.ts` の fixture の route (`leak` で絞り込みをわざと外す) で確かめます。

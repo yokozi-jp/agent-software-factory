@@ -208,21 +208,23 @@ pre-push:
     # Exit 1 (number taken) stops the push. Exit 2 (gh could not list the PRs) only prints its message, so being offline does not block a push.
     adr-number:
       run: node tools/scripts/src/checks/check-adr-number/cli.ts || [ $? -ne 1 ]
+    # The three nx-affected jobs run through tee-log.sh, which keeps their output in hook-logs/<job>.log in the git
+    # directory of the worktree (docs/tooling/worktrees.md ("PR を出す")). A failure after minutes is then read, not run again.
     # The `test` target of every project that the branch affects, as CI runs it (coverage thresholds included).
     # pre-commit runs only the tests of tools/scripts, so a coverage failure in apps/api first showed up in CI
     # (#178). Nx skips the projects whose cached result still holds. NX_BASE is what CI sets for the same command.
     nx-affected-test:
-      run: pnpm exec nx affected -t test --base=origin/main --head=HEAD
+      run: tools/scripts/sh/tee-log.sh nx-affected-test pnpm exec nx affected -t test --base=origin/main --head=HEAD
     # The keys of the texts match the code, as CI runs it (packages/i18n, docs/adr/0044). Nx skips the projects whose
     # cached result still holds.
     nx-affected-i18n-keys:
-      run: pnpm exec nx affected -t i18n-keys --base=origin/main --head=HEAD
+      run: tools/scripts/sh/tee-log.sh nx-affected-i18n-keys pnpm exec nx affected -t i18n-keys --base=origin/main --head=HEAD
     # The tests that run a real tool from mise.lock on a real config (*.tools.test.ts), for the projects the branch
     # affects, as CI runs them. They take minutes, so they run here and not in pre-commit. Nx decides from the
     # inputs of the test-tools target (tools/scripts/package.json) and skips the projects whose cached result still
     # holds. Needs the tools of mise.lock (`mise install --locked`).
     nx-affected-test-tools:
-      run: pnpm exec nx affected -t test-tools --base=origin/main --head=HEAD
+      run: tools/scripts/sh/tee-log.sh nx-affected-test-tools pnpm exec nx affected -t test-tools --base=origin/main --head=HEAD
     # The isolation test (docs/adr/0024, "隔離") takes about 50 s, so it runs only when what it checks changes, as CI does.
     nx-test-isolation:
       glob:
