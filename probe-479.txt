@@ -1,0 +1,1 @@
+probe (Issue #479): migration を足さない PR の実行時間を測る。merge しない。
