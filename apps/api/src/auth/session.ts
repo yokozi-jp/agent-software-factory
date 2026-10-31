@@ -56,12 +56,13 @@ export function sessionGuard(auth: Auth): MiddlewareHandler<{ Variables: Session
 /** セッションがなければ 401 を返す。`sessionGuard` のあとに置く。 */
 export function requireSession(): MiddlewareHandler<{ Variables: SessionVariables }> {
   return async (c, next) => {
-    if (c.get("session") === null)
+    if (c.get("session") === null) {
       return problemResponse(c, {
         type: commonProblemTypes.unauthenticated,
         title: "Authentication is required.",
         status: 401,
       });
+    }
     return next();
   };
 }

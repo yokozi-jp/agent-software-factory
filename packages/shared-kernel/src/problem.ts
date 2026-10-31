@@ -137,12 +137,22 @@ export const commonProblemResponses = {
 /** Every `type` a problem can have: `about:blank`, a common one, or a module one (`/problems/<module>/<kebab-tag>`). */
 export type ProblemType = typeof ABOUT_BLANK | CommonProblemType | `/problems/${string}/${string}`;
 
-export interface ProblemInput {
-  readonly type: ProblemType;
+export interface ProblemInput<Type extends ProblemType, Status extends ContentfulStatusCode> {
+  readonly type: Type;
   readonly title: string;
-  readonly status: ContentfulStatusCode;
+  readonly status: Status;
   readonly detail?: string;
   readonly errors?: readonly object[];
+}
+
+/** The body of a problem. `type` and `status` keep their literal types, so a route handler can return it as declared. */
+interface ProblemBody<Type extends ProblemType, Status extends ContentfulStatusCode> {
+  readonly type: Type;
+  readonly title: string;
+  readonly status: Status;
+  readonly detail?: string;
+  readonly errors?: readonly object[];
+  readonly trace_id?: string;
 }
 
 /** The trace id of the current span, if there is one. */
@@ -157,10 +167,13 @@ function currentTraceId(): string | undefined {
  * The only function that builds an error response. A 5xx carries `type`, `title`, `status` and `trace_id` only: no
  * `detail`, no `errors`, whatever the caller passes.
  */
-export function problemResponse(c: Context, input: ProblemInput) {
+export function problemResponse<Type extends ProblemType, Status extends ContentfulStatusCode>(
+  c: Context,
+  input: ProblemInput<Type, Status>,
+) {
   const isServerError = input.status >= 500;
   const traceId = currentTraceId();
-  const body = {
+  const body: ProblemBody<Type, Status> = {
     type: input.type,
     title: input.title,
     status: input.status,
@@ -168,7 +181,8 @@ export function problemResponse(c: Context, input: ProblemInput) {
     ...(!isServerError && input.errors !== undefined ? { errors: input.errors } : {}),
     ...(traceId !== undefined ? { trace_id: traceId } : {}),
   };
-  return c.body(JSON.stringify(body), input.status, { "Content-Type": PROBLEM_CONTENT_TYPE });
+  // `c.json` keeps the body and status types, so a route handler can return this for a response it declared.
+  return c.json(body, input.status, { "Content-Type": PROBLEM_CONTENT_TYPE });
 }
 
 const statusTitles: Readonly<Record<number, string>> = {

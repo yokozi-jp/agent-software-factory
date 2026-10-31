@@ -27,7 +27,7 @@ tags: [adr, web-api, error, problem-details, rfc9457, hono, openapi, i18n]
   - `app.notFound`: 404。
   - route の失敗の `_tag` の `switch`: 422 と 409。
 
-  `sessionGuard`、`requireSession`、`csrfProtection` の middleware は、4 か所の外に応答を作らず、`shared-kernel` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
+  `sessionGuard`、`csrfProtection` の middleware は、4 か所の外に応答を作らず、`shared-kernel` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
 
 - **置き場所**: Problem の schema と関数は `shared-kernel` の公開 API に置きます。`shared-kernel` が `@hono/zod-openapi` に依存します。各モジュールの `http` の層が使うので、`apps/api` には置けません ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。`domain` は `import type` のままで、HTTP を知りません。
 - **Better Auth**: `/api/auth/*` は Better Auth の `{ code, message }` のまま、契約の外に置きます。その前に掛かる自前の middleware は Problem Details です ([ADR 0022](0022-better-auth-cookie-bff.md))。
