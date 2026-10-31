@@ -302,36 +302,42 @@ export function dbBoundaries(tree: Tree): string[] {
 // ADR 0048: the OpenTelemetry SDK, the exporters and the instrumentations are imported by packages/telemetry and the
 // entry files of the apps only. vite.config.ts stops them in every other file with the `otelSdkPattern` of
 // `runtimeImports`, and the override of packages/telemetry/src leaves them out. Three places have a fixture (#43):
-//   apps/api/src and packages/*/src  one import of each kind of the pattern, below `oxlint-disable-next-line
+//   apps/api/src and packages/*/src  one import of each kind of `otelSdkKinds`, below `oxlint-disable-next-line
 //                                    no-restricted-imports`. A kind dropped from the pattern, or an override that stops
 //                                    reaching the directory, leaves the comment unused and fails `vp check`.
 //   apps/web/src                     the import of the Node-only entry of packages/telemetry, below the comment
 //   packages/telemetry/src           the SDK import with no comment, which Oxlint must not report, and the import of
 //                                    an SQS client with the comment, which the override must still report.
-const otelKinds: readonly (readonly [string, string])[] = [
-  ["@opentelemetry/sdk-node", "the SDK"],
-  ["@opentelemetry/exporter-trace-otlp-http", "an exporter"],
-  ["@opentelemetry/instrumentation-pg", "an instrumentation"],
-  ["@opentelemetry/resources", "the resource of the SDK"],
-  ["@opentelemetry/auto-instrumentations-node", "the bundle of instrumentations"],
-];
-const stopsImport = (text: string, name: string): boolean =>
-  new RegExp(
-    `oxlint-disable-next-line no-restricted-imports[^\\n]*\\n[^\\n]*"${name.replaceAll("/", "\\/")}"`,
-  ).test(text);
+// The names imported on the line below `oxlint-disable-next-line no-restricted-imports`.
+const stoppedImports = (text: string): string[] =>
+  Array.from(
+    text.matchAll(/oxlint-disable-next-line no-restricted-imports[^\n]*\n[^\n"]*"([^"\n]+)"/g),
+    (match) => String(match[1]),
+  );
+const stopsImport = (text: string, name: string): boolean => stoppedImports(text).includes(name);
 
 export function telemetryBoundaries(tree: Tree): string[] {
   if (!packageNames(tree).includes("telemetry")) return [];
+  const kinds = stringArray(tree.read("vite.config.ts"), "otelSdkKinds");
+  if (kinds === undefined)
+    return [
+      "vite.config.ts has no otelSdkKinds array. It lists the kinds of OpenTelemetry import that the ban stops, and repo-policy asks for a fixture of each (docs/adr/0048).",
+    ];
   const failures: string[] = [];
+  if (!/\botelSdkKinds\.join\(/.test(tree.read("vite.config.ts").replace(/\/\/[^\n]*/g, "")))
+    failures.push(
+      'vite.config.ts does not build the regex of otelSdkPattern from otelSdkKinds (`otelSdkKinds.join("|")`): a second list of the kinds would let the ban and the fixtures disagree (docs/adr/0048).',
+    );
   for (const file of [
     "apps/api/src/__fixtures__/otel-sdk.ts",
     "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
   ]) {
     const text = tree.paths.includes(file) ? tree.read(file) : "";
-    for (const [name, what] of otelKinds)
-      if (!stopsImport(text, name))
+    const stopped = stoppedImports(text);
+    for (const kind of kinds)
+      if (!stopped.some((name) => new RegExp(`^@opentelemetry/(?:${kind})`).test(name)))
         failures.push(
-          `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`,
+          `${file} has no import of a package whose name matches the regular expression ^@opentelemetry/(?:${kind}) below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists \`${kind}\` in otelSdkKinds (\`$\` ends the name), so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`,
         );
   }
   const telemetryFixture = "packages/telemetry/src/__fixtures__/otel-sdk.ts";

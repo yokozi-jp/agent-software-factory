@@ -2,8 +2,8 @@
 // docs/adr/0048). Outside packages/telemetry and the entry files of the apps, only @opentelemetry/api may be
 // imported: the SDK, the exporters and the instrumentations are started in one place. Each line below is one that
 // no-restricted-imports must report. If the rule is turned off, or its `files` stop reaching this directory, the disable
-// comment is unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy checks that every pattern of
-// the rule has a line. Knip skips __fixtures__/, and nothing imports this file.
+// comment is unused and `vp check` fails (reportUnusedDisableDirectives). repo-policy checks that every kind of
+// `otelSdkKinds` (vite.config.ts) has a line. Knip skips __fixtures__/, and nothing imports this file.
 // @ts-expect-error -- fixture: not a dependency of this package, so the import does not resolve
 // oxlint-disable-next-line no-restricted-imports -- fixture: the SDK
 import "@opentelemetry/sdk-node";
