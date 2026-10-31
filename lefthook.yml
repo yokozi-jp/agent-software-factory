@@ -144,10 +144,9 @@ pre-commit:
           # no-restricted-imports override the fixture checks, and tsconfig.json and .node-version set the
           # compiler and the runtime. Keep this list in step with `sharedGlobals`, and with the inputs of the
           # `test` target in tools/scripts/package.json (.kiro/hooks/*.json, which kiro-hooks.test.ts reads).
-          # It runs `test-unit`, the `test` target without the isolation project: that project runs the whole unit
-          # project a second time in a decoy repository (about as long as the unit project itself), and it cannot
-          # stop a test that touches this repository, because the unit project runs here in the same hook. It only
-          # reports one, which CI does as well, before the test is merged (docs/adr/0024, "隔離").
+          # The isolation project is not part of `test`: it runs the whole unit project a second time in a decoy
+          # repository, and it cannot stop a test that touches this repository, because the unit project runs here
+          # in the same hook. pre-push and CI run it when the isolation setup changes (docs/adr/0024, "隔離").
           - name: scripts-test
             glob:
               - "tools/scripts/**"
@@ -156,7 +155,7 @@ pre-commit:
               - "tsconfig.json"
               - ".node-version"
               - ".kiro/hooks/*.json"
-            run: pnpm exec nx test-unit scripts
+            run: pnpm exec nx test scripts
           # The Kysely types of the module schemas match the migrations (packages/db/src/types.ts, docs/adr/0025). It starts a
           # PostgreSQL container (about 10 s), so it runs only when a migration, a generated type file, the generator or the
           # version of kysely-codegen (pnpm-workspace.yaml) changes. Nx skips the run when the cached result still holds.
@@ -224,6 +223,12 @@ pre-push:
     # holds. Needs the tools of mise.lock (`mise install --locked`).
     nx-affected-test-tools:
       run: pnpm exec nx affected -t test-tools --base=origin/main --head=HEAD
+    # The isolation test (docs/adr/0024, "隔離") takes about 50 s, so it runs only when what it checks changes, as CI does.
+    nx-test-isolation:
+      glob:
+        - "tools/scripts/src/test/**"
+        - "tools/scripts/vite.config.ts"
+      run: pnpm exec nx test-isolation scripts
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
