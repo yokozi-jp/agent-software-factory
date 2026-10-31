@@ -46,9 +46,7 @@ export function problemTypes<const Module extends string, Tag extends string>(
   const types = Object.fromEntries(
     Object.keys(tags).map((tag) => [tag, `/problems/${module}/${toKebab(tag)}`]),
   );
-  // `types` has one entry per `Tag` (the keys of `tags`, which the signature limits to `Tag`) and the template literal
-  // type of each is what `toKebab` computes. TypeScript cannot follow that.
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see above
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `types` has one entry per `Tag` (the keys of `tags`, which the signature limits to `Tag`) and the template literal type of each is what `toKebab` computes; TypeScript cannot follow that
   return types as { readonly [K in Tag]: `/problems/${Module}/${Kebab<K>}` };
 }
 

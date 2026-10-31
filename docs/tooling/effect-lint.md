@@ -26,7 +26,8 @@ pnpm exec nx run claim:lint-effect          # 1 つの package
 `lint-effect` は各 package の `package.json` の script で、`effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure` を実行します (`shared-kernel` は `src` 全体)。CI の `nx` の job (`nx affected -t lint-effect`) と、pre-commit の `lint-effect` が実行します。
 
 - `effect-tsgo oxlint` は、入れた Oxlint (Vite+ が持つもの) と oxlint-tsgolint に、`effecttsgo` の plugin を足して実行します。`effect-tsgo patch` は `node_modules` を書き換えるので使いません。
-- `oxlint.effect.json` は、`effecttsgo` の 4 つの規則と、`typescript/no-unsafe-type-assertion` を error にします。後者は `vp check` と同じ規則で、`as` の前に書く `oxlint-disable-next-line typescript/no-unsafe-type-assertion` を、`lint-effect` が「使われない disable」と報告しないために有効にしています。`vp check` が型を読む別の規則 (`typedRules`) の disable を application や infrastructure に書くときも、同じ規則を `oxlint.effect.json` に足します。`categories.correctness` を `off` にするのは、plugin の他の correctness の規則が warning で入るためです。規則を足すときは、`rules` に 1 行足します。
+- `oxlint.effect.json` は、`effecttsgo` の 4 つの規則と、`vite.config.ts` の `typedRules` の `typescript/*` の規則 ([ADR 0020](../adr/0020-typescript-strictness.md)) を error にします。`categories.correctness` を `off` にするのは、plugin の他の correctness の規則が warning で入るためです。規則を足すときは、`rules` に 1 行足します。
+- `typedRules` の規則を入れるのは、`vp check` が要求する `oxlint-disable-next-line typescript/no-unsafe-type-assertion` などを、`lint-effect` が「使われない disable」と報告しないためです。`typedRules` に規則を足したら、同じ規則と同じ option を `oxlint.effect.json` にも足します。`tools/scripts/src/checks/effect-lint/config.tools.test.ts` が食い違いを止めます。生成したファイル (`*.gen.ts`) は、`vite.config.ts` の `ignorePatterns` と同じく対象から外します。
 - `reportUnusedDisableDirectives` を error にしているので、使われない `oxlint-disable` のコメントでも失敗します。
 
 ## 止まったとき
