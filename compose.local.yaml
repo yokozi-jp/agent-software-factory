@@ -42,5 +42,18 @@ services:
     ports:
       - "127.0.0.1:1025:1025" # SMTP。SMTP_PORT はここ
       - "127.0.0.1:8025:8025" # 画面と HTTP の API
+  # 人事システムのフェイク (packages/hr-system、docs/adr/0023)。スタブは packages/hr-system/fake/mappings にあり、
+  # 結合テスト (packages/hr-system/test/containers.ts) も同じイメージとスタブを読む。
+  hr-system-fake:
+    image: wiremock/wiremock:3.13.2@sha256:0d4ecb3e4dc8213fd7a4d37d6a78f6e6b553a6d2e15bd51b0999781282ac61b3
+    volumes:
+      - ./packages/hr-system/fake:/home/wiremock:ro
+    ports:
+      - "127.0.0.1:9080:8080" # フェイクの API。テナントは /<tenant_id>/ の接頭辞
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://127.0.0.1:8080/__admin/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 volumes:
   postgres-data:

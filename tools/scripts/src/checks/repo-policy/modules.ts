@@ -43,6 +43,9 @@ const telemetry = "telemetry";
 // logging holds the Logger interface that the app depends on, and the pino implementation in a Node-only entry
 // (docs/adr/0049). It has no layers, and no module depends on it: the entry files and the middleware of apps/api do.
 const logging = "logging";
+// hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0023). It has no layers, and no module depends on it yet:
+// the login and the claim of the sample feature will call it.
+const hrSystem = "hr-system";
 const dependOnNone: readonly string[] = [
   sharedKernel,
   moduleFixtures,
@@ -50,6 +53,7 @@ const dependOnNone: readonly string[] = [
   i18n,
   telemetry,
   logging,
+  hrSystem,
 ];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
 // has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api and apps/worker
@@ -67,7 +71,7 @@ const eventsSuffix = "-events";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
 // and module-fixtures. Every package under packages/ but the ones in `notModules`.
-const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, logging, db];
+const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, logging, hrSystem, db];
 export const modulePackageNames = (tree: Tree): string[] =>
   packageNames(tree).filter((name) => !notModules.includes(name));
 
