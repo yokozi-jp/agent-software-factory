@@ -9,8 +9,8 @@ rules:
   openapi-tags-alphabetical: true
   # info-license、license-url、contact-properties は有効にしない。社内向けで、公開する契約ではない。
 
-  # 独自の rule は 1 つだけ。4xx と 5xx の応答は application/problem+json で、type、title、status を持つ
-  # (docs/adr/0035、Issue #221 の決定 14)。
+  # 独自の rule は 2 つ。1 つ目は、4xx と 5xx の応答は application/problem+json で、type、title、status を持つ
+  # (docs/adr/0035、Issue #221 の決定 14)。2 つ目は、下の idempotency-key-required。
   problem-details-error-response:
     description: Every 4xx and 5xx response is application/problem+json with type, title and status.
     message: >-
@@ -46,3 +46,31 @@ rules:
                             - contains: { const: type }
                             - contains: { const: title }
                             - contains: { const: status }
+
+  # すべての POST と PATCH の operation は Idempotency-Key を必須の header に持つ (docs/adr/0040、Issue #324)。
+  # `/api/auth/*` (Better Auth) は契約の外にあり、spec に出ないので対象にならない。名前は大文字小文字を区別しない
+  # (HTTP の header 名)。path 全体の `parameters` ではなく operation の `parameters` に書く
+  # (createRoute の `request.headers` が operation に出す。packages/shared-kernel の `idempotencyKeyHeaderSchema`)。
+  idempotency-key-required:
+    description: Every POST and PATCH operation has the Idempotency-Key header as a required header parameter.
+    message: >-
+      {{error}}. Add `request: { headers: idempotencyKeyHeaderSchema }` to the route and `requireIdempotencyKey` as its
+      middleware (packages/shared-kernel/src/idempotency-http.ts), as docs/adr/0040 says.
+    severity: error
+    given: $.paths[*][?(@property === 'post' || @property === 'patch')]
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [parameters]
+          properties:
+            parameters:
+              type: array
+              contains:
+                type: object
+                required: [name, in, required]
+                properties:
+                  name: { type: string, pattern: "^[Ii]dempotency-[Kk]ey$" }
+                  in: { const: header }
+                  required: { const: true }

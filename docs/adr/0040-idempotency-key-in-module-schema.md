@@ -53,9 +53,9 @@ tags: [adr, web-api, idempotency, db, postgresql, rls, hono, modules]
 | web が操作ごとにキーを採り、再試行のあいだ同じ値を送る                                                                                    | 単体テスト (hook)                                                                                                                                                                 | `vp test`               | [Issue #324](https://github.com/yokozi-jp/agent-software-factory/issues/324) |
 | 期限切れの行の掃除                                                                                                                        | 実際の PostgreSQL に対する結合テスト                                                                                                                                              | 結合テスト              | [Issue #325](https://github.com/yokozi-jp/agent-software-factory/issues/325) |
 
-[保証カタログ](../tooling/assurance-catalog.md) には、「冪等キー」の行を足します。検査の実装がそろうまで、行は「これから足す行」の節に置き、ゲートは「なし」です。
+[保証カタログ](../tooling/assurance-catalog.md) の「冪等キー」の行と「冪等キーの契約と呼び出し」の行が、この検査を表します。
 
-web が使う `crypto.randomUUID()` は secure context (HTTPS) でしか使えません。`http://localhost` は使えますが、それ以外の HTTP では動きません。web が再試行のあいだ同じキーを保つ書き方 (キーは `mutationFn` の外で作って変数に入れる) は、Issue #324 の hook に置きます。
+web が使う `crypto.randomUUID()` は secure context (HTTPS) でしか使えません。`http://localhost` は使えますが、それ以外の HTTP では動きません。web が再試行のあいだ同じキーを保つ書き方 (キーは `mutationFn` の外で作って変数に入れる) は、`apps/web/src/lib/use-idempotent-mutation.ts` の hook にあります。
 
 ## Considered Options
 

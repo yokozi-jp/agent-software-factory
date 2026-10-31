@@ -16,6 +16,7 @@ catalog:
   # apps/api: the routes are written with createRoute and the OpenAPI 3.1 spec is generated from them (docs/adr/0047). Zod only.
   "@hono/zod-openapi": ^1.6.3
   "@hono/vite-dev-server": ^0.26.1
+  "@tanstack/react-query": ^5.105.0
   "@tanstack/react-router": ^1.170.45
   "@tanstack/router-plugin": ^1.168.47
   "@types/node": ^24
