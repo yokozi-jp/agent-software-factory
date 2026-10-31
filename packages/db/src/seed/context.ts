@@ -1,3 +1,4 @@
+import type { ApprovalDatabase } from "@agent-software-factory/approval";
 import type { ClaimDatabase } from "@agent-software-factory/claim";
 import { base, en, Faker, ja } from "@faker-js/faker";
 import type { ColumnType, Kysely } from "kysely";
@@ -47,7 +48,7 @@ export type TablesOf<Database> = Database extends Kysely<infer Tables> ? Tables 
  * runs in one transaction on this type, and a `Transaction<A & B>` is not a `Kysely<A>`, so every writer takes a
  * `Kysely<SeedTables>` (the `Db` of `TableSeeds`).
  */
-export type SeedTables = TablesOf<ClaimDatabase> & MessagingTables;
+export type SeedTables = TablesOf<ClaimDatabase> & TablesOf<ApprovalDatabase> & MessagingTables;
 
 type Instant = ColumnType<Temporal.Instant, string, string>;
 

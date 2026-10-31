@@ -27,10 +27,32 @@ export const sentBack = defineEvent("approval.sent_back", 1, {
   reason: z.string().min(1),
 });
 
+/** The templates of a notification mail. Both take the same message; only the template differs (docs/adr/0041). */
+export const notificationTemplates = ["review_requested", "sent_back"] as const;
+
+/**
+ * A request to send a notification mail: the address, the template and the values the template fills in. A review
+ * request (to the manager) and a send-back (to the applicant) have this one shape, so they share one queue. The
+ * receiver sends the mail and keeps `id` in `processed_message`, so a message that arrives twice sends one mail.
+ */
+export const notificationRequested = defineEvent("approval.notification_requested", 1, {
+  to: z.email(),
+  template: z.enum(notificationTemplates),
+  values: z.record(z.string().min(1), z.string()),
+});
+
 export type ReviewStarted = z.infer<typeof reviewStarted.schema>;
 export type Approved = z.infer<typeof approved.schema>;
 export type Confirmed = z.infer<typeof confirmed.schema>;
 export type Withdrawn = z.infer<typeof withdrawn.schema>;
 export type SentBack = z.infer<typeof sentBack.schema>;
+export type NotificationRequested = z.infer<typeof notificationRequested.schema>;
 
-export const approvalEvents = [reviewStarted, approved, confirmed, withdrawn, sentBack] as const;
+export const approvalEvents = [
+  reviewStarted,
+  approved,
+  confirmed,
+  withdrawn,
+  sentBack,
+  notificationRequested,
+] as const;

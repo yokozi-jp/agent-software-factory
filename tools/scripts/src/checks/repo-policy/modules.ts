@@ -42,10 +42,11 @@ const i18n = "i18n";
 const telemetry = "telemetry";
 const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n, telemetry];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
-// has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api depends on it
+// has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api and apps/worker
+// (the pool and the tools of the tests) depend on it
 // (docs/adr/0038). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
 const db = "db";
-const dbApp = "apps/api";
+const dbApps = ["apps/api", "apps/worker"];
 
 // The events package of a module is packages/<module>/events (docs/adr/0026): nested in the module, as a project of
 // its own. The modules whose directory has one.
@@ -296,8 +297,8 @@ export function modulesAreRegistered(tree: Tree): string[] {
 }
 
 // db depends on the modules, in devDependencies and for their types, and on no other package of the workspace. Only
-// apps/api depends on db: the modules and shared-kernel have no use for the tools of the database, and apps/web and the
-// tools must not reach them (docs/adr/0038).
+// apps/api and apps/worker depend on db: the modules and shared-kernel have no use for the tools of the database, and
+// apps/web and the tools must not reach them (docs/adr/0038).
 export function dbDependencies(tree: Tree): string[] {
   if (!packageNames(tree).includes(db)) return [];
   const failures: string[] = [];
@@ -312,12 +313,12 @@ export function dbDependencies(tree: Tree): string[] {
       );
     }
   for (const path of tree.named("package.json")) {
-    if (path === manifest(db) || path === `${dbApp}/package.json`) continue;
+    if (path === manifest(db) || dbApps.some((app) => path === `${app}/package.json`)) continue;
     const json = record(tree.parsed(path));
     for (const field of dependencyFields)
       if (`${scope}/${db}` in record(json[field]))
         failures.push(
-          `${path} has ${scope}/${db} in ${field}. Only ${dbApp} depends on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`,
+          `${path} has ${scope}/${db} in ${field}. Only ${dbApps.join(" and ")} depend on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`,
         );
   }
   return failures;

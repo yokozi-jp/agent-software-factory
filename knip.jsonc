@@ -63,11 +63,16 @@
       // nothing imports it (docs/adr/0044).
       "entry": ["i18next.config.ts"],
     },
-    // db depends on the modules by `import type` only (docs/adr/0038). The seed imports the type of
-    // the claim module. Nothing imports approval and closing yet except fixtures, which Knip does not read; their seeds
-    // will. Remove an entry when a file other than a fixture imports the module.
+    // db depends on the modules by `import type` only (docs/adr/0038). The seed imports the types of the claim and approval
+    // modules. Nothing imports closing yet except fixtures, which Knip does not read; its seed will. Remove the entry
+    // when a file other than a fixture imports the module.
     "packages/db": {
-      "ignoreDependencies": ["@agent-software-factory/approval", "@agent-software-factory/closing"],
+      "ignoreDependencies": ["@agent-software-factory/closing"],
+    },
+    "apps/worker": {
+      // The Lambda handler: the function names src/lambda.ts (docs/adr/0013), and nothing imports it. src/server.ts is run
+      // by the start script (ECS), which Knip reads.
+      "entry": ["src/lambda.ts"],
     },
     "apps/api": {
       // The SDK clients that no-restricted-imports stops (docs/adr/0029, outboxPackages in vite.config.ts). The fixture

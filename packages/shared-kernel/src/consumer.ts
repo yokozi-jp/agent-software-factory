@@ -1,22 +1,14 @@
 import { Effect } from "effect";
-import { sql, type ColumnType, type Insertable } from "kysely";
 import type { z } from "zod";
 
-import { createdColumns, CurrentWrite, type WriteActor } from "./common-columns.ts";
-import { dbCall } from "./db-call.ts";
-import { insertRow } from "./insert-row.ts";
+import { CurrentWrite, type WriteActor } from "./common-columns.ts";
+import { recordProcessedMessage, type ConsumedMessage } from "./processed-message.ts";
 import {
   inTenantTransaction,
   type Database,
   type ModuleName,
   type ModuleTx,
 } from "./tenant-transaction.ts";
-
-/** What a consumer needs of a message: the `id` (the key of `processed_message`) and the `tenantId`. */
-export interface ConsumedMessage {
-  readonly id: string;
-  readonly tenantId: string;
-}
 
 /**
  * The result of a consumer. `Processed` carries what `handle` returned. `Duplicate` means the message was processed
@@ -25,26 +17,6 @@ export interface ConsumedMessage {
 export type ConsumeResult<A> =
   | { readonly _tag: "Processed"; readonly value: A }
   | { readonly _tag: "Duplicate" };
-
-type Instant = ColumnType<Temporal.Instant, string, string>;
-
-/**
- * `processed_message` of a module's schema, with the columns that `defineConsumer` writes (the template is
- * packages/db/templates/processed_message.sql). It is written here by hand: the generated types of a module are
- * not visible to shared-kernel (docs/adr/0026), and the table is the same in every module.
- */
-interface ProcessedMessageTable {
-  tenant_id: string;
-  message_id: string;
-  created_at: Instant;
-  created_by: string;
-  created_pgm_cd: string;
-  created_tx_id: string;
-  updated_at: Instant;
-  updated_by: string;
-  updated_pgm_cd: string;
-  updated_tx_id: string;
-}
 
 /** A consumer as the registry lists it: the message is `unknown`, which the consumer parses. */
 export interface RegisteredConsumer {
@@ -108,22 +80,8 @@ export function defineConsumer<
         tx,
         { tenantId: parsed.tenantId, ...write },
         Effect.gen(function* () {
-          const current = yield* CurrentWrite;
-          const row: Insertable<ProcessedMessageTable> = {
-            tenant_id: parsed.tenantId,
-            message_id: parsed.id,
-            ...createdColumns(current),
-          };
-          const inserted = yield* dbCall(tx, (trx) =>
-            insertRow(
-              trx,
-              // The module name is one of `ModuleName`; it is quoted as an identifier all the same.
-              sql.id(tx.module, "processed_message"),
-              row,
-              sql`ON CONFLICT (tenant_id, message_id) DO NOTHING RETURNING message_id`,
-            ),
-          );
-          if (inserted.rows.length === 0) return { _tag: "Duplicate" } as const;
+          const inserted = yield* recordProcessedMessage(tx, parsed);
+          if (!inserted) return { _tag: "Duplicate" } as const;
           const value = yield* handle(parsed);
           return { _tag: "Processed", value } as const;
         }),

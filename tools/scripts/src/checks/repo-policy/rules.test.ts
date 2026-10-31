@@ -2694,7 +2694,7 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
   });
 });
 
-describe("ADR 0038: db depends on the modules by type only, and only apps/api depends on db", () => {
+describe("ADR 0038: db depends on the modules by type only, and only apps/api and apps/worker depend on db", () => {
   const dbExports = {
     ".": "./src/index.ts",
     "./seed": "./src/seed/index.ts",
@@ -2714,7 +2714,7 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
   const dbHas = (dependency: string, field: string) =>
     `packages/db/package.json has @agent-software-factory/${dependency} in ${field}. db depends on the modules by \`import type\` only, so it lists them in devDependencies and no other package of the workspace: move the code that needs ${dependency} out of db (docs/adr/0038).`;
   const refused = (path: string, field: string) =>
-    `${path} has @agent-software-factory/db in ${field}. Only apps/api depends on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
+    `${path} has @agent-software-factory/db in ${field}. Only apps/api and apps/worker depend on db: the modules, shared-kernel, ui and the other apps and tools have no use for the tools of the database (docs/adr/0038).`;
 
   it("passes db with the modules in devDependencies, without a place in moduleOrder or a lint-effect script", () => {
     expect(
@@ -2729,6 +2729,19 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api de
           ...db(),
           "apps/api/package.json": apiManifest({
             dependencies: { ...apiDependencies, ...dbDependency },
+          }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("passes apps/worker that depends on db", () => {
+    expect(
+      violations(
+        repo({
+          ...db(),
+          "apps/worker/package.json": packageJson("worker", {
+            dependencies: dbDependency,
           }),
         }),
       ),
