@@ -3,16 +3,28 @@
 
 import type { createApiClient } from "./api-client.ts";
 
-export type SessionState = "authenticated" | "unauthenticated";
+/** ログイン済みの利用者。`roles` は画面の出し分けに使う (経理は "accounting")。認可の正は API。 */
+export interface SignedInUser {
+  readonly name: string;
+  readonly roles: readonly string[];
+}
+
+export type SessionState = SignedInUser | "unauthenticated";
+
+/** 経理の役割。`GET /api/me` の `roles` に入る。 */
+export const accountingRole = "accounting";
 
 /** 200 はログイン済み、401 は未ログイン。ほかの応答は判断できないので投げる (未ログインとして扱わない)。 */
 export async function fetchSession(
   client: ReturnType<typeof createApiClient>,
 ): Promise<SessionState> {
   const response = await client.api.me.$get();
+  if (response.status === 200) {
+    const { name, roles } = await response.json();
+    return { name, roles };
+  }
   // 型は 200 と 401 だけだが、実行時はほかの status も来る。広げた型で比べて、契約の外の応答は投げる。
   const status: number = response.status;
-  if (status === 200) return "authenticated";
   if (status === 401) return "unauthenticated";
   throw new Error(`GET /api/me returned ${status}`);
 }
@@ -39,4 +51,9 @@ export interface AppContext {
   getSession(): Promise<SessionState>;
   /** IdP のログインを始める。ログインしたら `callbackURL` (検証済みの相対パス) に戻る。 */
   signIn(callbackURL: string): Promise<void>;
+  /**
+   * ログアウトして、IdP のログアウト画面か `/login` に移る (確認はしない)。移り先へはページごと遷移するので、
+   * 戻る操作で保護された画面が見えないよう、Cookie と HTTP cache はサーバーが `Clear-Site-Data` で捨てる。
+   */
+  signOut(): Promise<void>;
 }

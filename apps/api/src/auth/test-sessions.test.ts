@@ -22,6 +22,20 @@ describe("IdP を通さない認証済みの browser (ADR 0022)", () => {
     expect(await res.json()).toMatchObject({ email: "tanaka@example.com" });
   });
 
+  it("役割を渡さなければ、/api/me の roles は空であること", async () => {
+    const browser = await fixture.signedIn();
+
+    expect(await (await browser.request("/api/me")).json()).toMatchObject({ roles: [] });
+  });
+
+  it("渡した役割が、/api/me の roles に入ること", async () => {
+    const browser = await fixture.signedIn({ roles: ["accounting"] });
+
+    expect(await (await browser.request("/api/me")).json()).toMatchObject({
+      roles: ["accounting"],
+    });
+  });
+
   it("本物のログインと同じ検査を通ること (ログアウトが効く)", async () => {
     const browser = await fixture.signedIn();
     await browser.request("/api/auth/sign-out", {

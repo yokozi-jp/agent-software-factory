@@ -70,7 +70,16 @@ const meRoute = createRoute({
       description: "The signed-in user.",
       content: {
         "application/json": {
-          schema: z.object({ id: z.string(), email: z.email(), name: z.string() }),
+          schema: z.object({
+            id: z.string(),
+            email: z.email(),
+            name: z.string(),
+            roles: z
+              .array(z.string())
+              .describe(
+                "Roles of the user in the active tenant, such as accounting. Empty when there is none.",
+              ),
+          }),
         },
       },
     },
@@ -84,6 +93,12 @@ const meRoute = createRoute({
 const tracingMiddleware = httpInstrumentationMiddleware({
   getUrlFull: (c) => urlWithoutQuery(c.req.url),
 });
+
+// member の role は、複数の役割をコンマで区切って持つ (Better Auth の organization plugin)。
+async function activeRoles(auth: Auth, headers: Headers): Promise<string[]> {
+  const { role } = await auth.betterAuth.api.getActiveMemberRole({ headers });
+  return role.split(",").filter((name) => name !== "");
+}
 
 export function createApp({ auth }: AppDependencies = {}) {
   const base = new OpenAPIHono<{ Variables: SessionVariables }>({
@@ -130,8 +145,9 @@ export function createApp({ auth }: AppDependencies = {}) {
 
   const app = base
     .openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200))
-    .openapi(meRoute, (c) => {
-      const user = c.get("session")?.user;
+    .openapi(meRoute, async (c) => {
+      const session = c.get("session");
+      const user = session?.user;
       if (user === undefined) {
         return problemResponse(c, {
           type: commonProblemTypes.unauthenticated,
@@ -139,7 +155,13 @@ export function createApp({ auth }: AppDependencies = {}) {
           status: 401,
         });
       }
-      return c.json({ id: user.id, email: user.email, name: user.name }, 200);
+      // 役割はアプリの DB (member の行) にあり、セッションの active organization で引く (docs/adr/0022)。
+      // 画面の出し分けのための値で、操作の認可は API の application 層が行う (docs/adr/0045)。
+      const roles =
+        auth !== undefined && session?.session.activeOrganizationId
+          ? await activeRoles(auth, c.req.raw.headers)
+          : [];
+      return c.json({ id: user.id, email: user.email, name: user.name, roles }, 200);
     });
 
   return app;

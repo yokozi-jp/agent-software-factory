@@ -9,10 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAccountingRouteImport } from './routes/_authenticated/_accounting'
+import { Route as AuthenticatedApprovalsRouteImport } from './routes/_authenticated/approvals'
+import { Route as AuthenticatedAccountingClosingRouteImport } from './routes/_authenticated/_accounting/closing'
+import { Route as AuthenticatedAccountingReviewRouteImport } from './routes/_authenticated/_accounting/review'
 
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -27,36 +37,87 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAccountingRoute = AuthenticatedAccountingRouteImport.update({
+  id: '/_accounting',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedApprovalsRoute = AuthenticatedApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAccountingClosingRoute =
+  AuthenticatedAccountingClosingRouteImport.update({
+    id: '/closing',
+    path: '/closing',
+    getParentRoute: () => AuthenticatedAccountingRoute,
+  } as any)
+const AuthenticatedAccountingReviewRoute =
+  AuthenticatedAccountingReviewRouteImport.update({
+    id: '/review',
+    path: '/review',
+    getParentRoute: () => AuthenticatedAccountingRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
+  '/$': typeof SplatRoute
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
+  '/approvals': typeof AuthenticatedApprovalsRoute
+  '/closing': typeof AuthenticatedAccountingClosingRoute
+  '/review': typeof AuthenticatedAccountingReviewRoute
 }
 export interface FileRoutesByTo {
+  '/$': typeof SplatRoute
   '/login': typeof LoginRoute
   '/': typeof AuthenticatedIndexRoute
+  '/approvals': typeof AuthenticatedApprovalsRoute
+  '/closing': typeof AuthenticatedAccountingClosingRoute
+  '/review': typeof AuthenticatedAccountingReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/$': typeof SplatRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/_accounting': typeof AuthenticatedAccountingRouteWithChildren
+  '/_authenticated/approvals': typeof AuthenticatedApprovalsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/_accounting/closing': typeof AuthenticatedAccountingClosingRoute
+  '/_authenticated/_accounting/review': typeof AuthenticatedAccountingReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login'
+  fullPaths: '/$' | '/' | '/login' | '/approvals' | '/closing' | '/review'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/'
-  id: '__root__' | '/_authenticated' | '/login' | '/_authenticated/'
+  to: '/$' | '/login' | '/' | '/approvals' | '/closing' | '/review'
+  id:
+    | '__root__'
+    | '/$'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/_accounting'
+    | '/_authenticated/approvals'
+    | '/_authenticated/'
+    | '/_authenticated/_accounting/closing'
+    | '/_authenticated/_accounting/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  SplatRoute: typeof SplatRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -78,14 +139,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/_accounting': {
+      id: '/_authenticated/_accounting'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAccountingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/approvals': {
+      id: '/_authenticated/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AuthenticatedApprovalsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/_accounting/closing': {
+      id: '/_authenticated/_accounting/closing'
+      path: '/closing'
+      fullPath: '/closing'
+      preLoaderRoute: typeof AuthenticatedAccountingClosingRouteImport
+      parentRoute: typeof AuthenticatedAccountingRoute
+    }
+    '/_authenticated/_accounting/review': {
+      id: '/_authenticated/_accounting/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof AuthenticatedAccountingReviewRouteImport
+      parentRoute: typeof AuthenticatedAccountingRoute
+    }
   }
 }
 
+interface AuthenticatedAccountingRouteChildren {
+  AuthenticatedAccountingClosingRoute: typeof AuthenticatedAccountingClosingRoute
+  AuthenticatedAccountingReviewRoute: typeof AuthenticatedAccountingReviewRoute
+}
+
+const AuthenticatedAccountingRouteChildren: AuthenticatedAccountingRouteChildren =
+  {
+    AuthenticatedAccountingClosingRoute: AuthenticatedAccountingClosingRoute,
+    AuthenticatedAccountingReviewRoute: AuthenticatedAccountingReviewRoute,
+  }
+
+const AuthenticatedAccountingRouteWithChildren =
+  AuthenticatedAccountingRoute._addFileChildren(
+    AuthenticatedAccountingRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
+  AuthenticatedAccountingRoute: typeof AuthenticatedAccountingRouteWithChildren
+  AuthenticatedApprovalsRoute: typeof AuthenticatedApprovalsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAccountingRoute: AuthenticatedAccountingRouteWithChildren,
+  AuthenticatedApprovalsRoute: AuthenticatedApprovalsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -94,6 +203,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  SplatRoute: SplatRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
 }

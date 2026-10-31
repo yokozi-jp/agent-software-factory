@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 
 import "temporal-polyfill/global";
 import "./index.css";
+import { applyStoredTheme, darkMediaQuery } from "./lib/theme.ts";
 import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
@@ -29,9 +30,24 @@ const context: AppContext = {
     const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
     if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);
   },
+  signOut: async () => {
+    // IdP が end_session_endpoint を持てば、その URL が返る。持たなければ /login に移る。
+    const { data, error } = await authClient.signOut({
+      disableRedirect: true,
+      callbackURL: loggedOutUrl,
+    });
+    if (error) throw new Error(`Sign out failed: ${error.message ?? error.statusText}`);
+    location.assign(typeof data?.url === "string" ? data.url : loggedOutUrl);
+  },
 };
 
+// ログアウト後の戻り先。/login が「ログアウトしました」を出す (lib/login-redirect.ts の reason)。
+const loggedOutUrl = "/login?reason=logged-out";
+
 const router = createAppRouter(context, createBrowserHistory());
+
+// 保存したテーマは、最初の描画の前に反映する (ちらつき防止。inline script は CSP で使えない)。
+applyStoredTheme(localStorage, document.documentElement, darkMediaQuery());
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root not found");

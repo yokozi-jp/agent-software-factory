@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { createRouter, type RouterHistory } from "@tanstack/react-router";
 
 import { loginSearchFor } from "./lib/login-redirect.ts";
@@ -24,5 +25,9 @@ export function goToSessionExpired(router: AppRouter): void {
 declare module "@tanstack/react-router" {
   interface Register {
     router: AppRouter;
+  }
+  interface StaticDataRouteOption {
+    /** 上部バーに出す画面の名前。各 route が渡す (`t` のキーは文字列のリテラルで書く規則のため、関数にする)。 */
+    title?: (t: TFunction) => string;
   }
 }

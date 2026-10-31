@@ -71,6 +71,7 @@ const publicApi = { ".": "./src/index.ts" };
 const uiPublicApi = {
   "./globals.css": "./src/styles/globals.css",
   "./components/*": "./src/components/*.tsx",
+  "./hooks/*": "./src/hooks/*.ts",
   "./lib/*": "./src/lib/*.ts",
 };
 
