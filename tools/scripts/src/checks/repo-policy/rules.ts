@@ -18,7 +18,7 @@ import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
 import { docsCodePaths, docsReferences } from "./docs-references.ts";
-import { writersUseIdempotencyKey } from "./idempotency.ts";
+import { headerNamesAgree, writersUseIdempotencyKey } from "./idempotency.ts";
 import {
   dbDependencies,
   eventsPackages,
@@ -101,6 +101,7 @@ export function violations(repo: Repo): string[] {
     ...noWorkspaceInCatalog(tree),
     ...uiComponentsHaveStories(tree),
     ...writersUseIdempotencyKey(tree),
+    ...headerNamesAgree(tree),
   ];
   return [...tree.parseErrors, ...failures];
 }

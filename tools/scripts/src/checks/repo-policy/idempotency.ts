@@ -34,3 +34,20 @@ export function writersUseIdempotencyKey(tree: Tree): string[] {
         `${path} opens a transaction but does not use withIdempotencyKey. A write of an HTTP request goes through withIdempotencyKey of @agent-software-factory/shared-kernel; a writer that is not one (a consumer, a batch) says why with a line \`// idempotency-exempt: <reason>\` (docs/adr/0040).`,
     );
 }
+
+const apiHeaderFile = "packages/shared-kernel/src/idempotency-http.ts";
+const webHeaderFile = "apps/web/src/lib/use-idempotent-mutation.ts";
+const headerName = /export const IDEMPOTENCY_KEY_HEADER\s*=\s*"([^"]*)"/;
+
+// apps/web does not import shared-kernel, so it declares the header name again. The two have to be the same text: a
+// web that sends another name gets 400 from every write, and nothing else compares them.
+export function headerNamesAgree(tree: Tree): string[] {
+  if (!tree.paths.includes(webHeaderFile)) return [];
+  const api = headerName.exec(tree.read(apiHeaderFile))?.[1];
+  const web = headerName.exec(tree.read(webHeaderFile))?.[1];
+  return api !== undefined && api === web
+    ? []
+    : [
+        `${webHeaderFile} has IDEMPOTENCY_KEY_HEADER ${JSON.stringify(web)}, but ${apiHeaderFile} has ${JSON.stringify(api)}. apps/web does not import shared-kernel, so keep the two the same (docs/adr/0040).`,
+      ];
+}

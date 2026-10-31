@@ -4465,4 +4465,32 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
       ),
     ).toEqual([]);
   });
+
+  describe("the header name of apps/web is the one of shared-kernel", () => {
+    const api = "packages/shared-kernel/src/idempotency-http.ts";
+    const web = "apps/web/src/lib/use-idempotent-mutation.ts";
+    const declare = (name: string): string => `export const IDEMPOTENCY_KEY_HEADER = "${name}";\n`;
+    const mismatch = (webName: string, apiName: string): string =>
+      `${web} has IDEMPOTENCY_KEY_HEADER ${JSON.stringify(webName)}, but ${api} has ${JSON.stringify(apiName)}. apps/web does not import shared-kernel, so keep the two the same (docs/adr/0040).`;
+
+    it("passes the same name", () => {
+      expect(
+        violations(repo({ [api]: declare("Idempotency-Key"), [web]: declare("Idempotency-Key") })),
+      ).toEqual([]);
+    });
+
+    it("names a web that declares another name", () => {
+      expect(
+        violations(repo({ [api]: declare("Idempotency-Key"), [web]: declare("X-Key") })),
+      ).toEqual([mismatch("X-Key", "Idempotency-Key")]);
+    });
+
+    it("names a web whose declaration is gone", () => {
+      expect(
+        violations(repo({ [api]: declare("Idempotency-Key"), [web]: "export {};\n" })),
+      ).toEqual([
+        `${web} has IDEMPOTENCY_KEY_HEADER undefined, but ${api} has "Idempotency-Key". apps/web does not import shared-kernel, so keep the two the same (docs/adr/0040).`,
+      ]);
+    });
+  });
 });
