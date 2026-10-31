@@ -29,10 +29,18 @@ const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
 // The entries of no-restricted-imports `paths` (and the like) for the values of a restriction of the table, with its message.
-const restrictedNames = ({ values, message }: { values: readonly string[]; message: string }) =>
-  values.map((name) => ({ name, message }));
+// Each value of a restriction of the table is a name to stop (no-restricted-imports `paths`, no-restricted-globals) or a
+// property (no-restricted-properties), with the message of the restriction. raw-sql and otel-sdk use their values in
+// other shapes: the `importNames` of one path, and the starts of a regular expression.
+interface TableRestriction {
+  readonly values: readonly string[];
+  readonly message: string;
+}
+const restrictedNames = <T extends object>({ values, message }: TableRestriction, extra?: T) =>
+  values.map((name) => ({ name, message, ...extra }));
+const restrictedProperties = ({ values, message }: TableRestriction) =>
+  values.map((property) => ({ property, message }));
 
-// hasName in tools/scripts/src/checks/repo-policy/lint-restrictions.ts escapes the same characters; keep the two alike.
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 // The OpenTelemetry SDK, its exporters and the instrumentations (docs/adr/0048). Code outside packages/telemetry and the entry
@@ -76,10 +84,9 @@ const runtimeImports = {
 // of Pool), is an entry file: add it to the override of the entry files below. This is a guardrail: a `fetch` to an AWS
 // endpoint and a dynamic import are not stopped.
 const outboxPaths: RestrictedPath[] = restrictedNames(restrictions.outbox);
-const connectionPaths: RestrictedPath[] = restrictedNames(restrictions.connection).map((path) => ({
-  ...path,
+const connectionPaths: RestrictedPath[] = restrictedNames(restrictions.connection, {
   allowTypeImports: true,
-}));
+});
 const bypassPaths = [...outboxPaths, ...connectionPaths];
 
 // Raw SQL and the way around the module's types (docs/adr/0029). A module reads and writes its own tables through the
@@ -97,10 +104,7 @@ const sqlPaths: RestrictedPath[] = [
 
 // `withTables` gives a transaction the types of another database. It is called in infrastructure/ only, inside a public
 // API function that takes the caller's transaction to read its own tables (docs/adr/0029).
-const withTablesEntries = restrictedNames(restrictions["with-tables"]).map(({ name, message }) => ({
-  property: name,
-  message,
-}));
+const withTablesEntries = restrictedProperties(restrictions["with-tables"]);
 
 // Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
 // into rules: no-restricted-globals stops the bare name, and no-restricted-properties stops the same name read

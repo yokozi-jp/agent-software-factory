@@ -248,6 +248,16 @@
         "text": "set_config(",
         "expect": "stop",
         "reason": "テナントを変える SQL は、トランザクションの補助関数でだけ書く"
+      },
+      {
+        "files": [
+          "packages/shared-kernel/src/__fixtures__/session-setting.ts",
+          "apps/api/src/__fixtures__/session-setting.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "import { sql } from \"kysely\"",
+        "expect": "pass",
+        "reason": "shared-kernel と apps/api はトランザクションの補助関数と組み立てで sql を使うので、raw-sql の禁止の外にある"
       }
     ]
   },

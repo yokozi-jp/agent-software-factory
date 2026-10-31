@@ -33,38 +33,47 @@ const isStrings = (value: unknown): value is string[] =>
 const shapeFailure = (where: string, what: string): string =>
   `${tablePath} の ${where} が${what}でない (${howTo})。`;
 
-// The fields of a row that do not have their shape, each with what it should be.
-function rowProblems(row: Fields): (readonly [string, string])[] {
+// A field of the table that does not have its shape, and what it should be.
+interface Problem {
+  readonly field: string;
+  readonly expected: string;
+}
+
+const problem = (field: string, expected: string): Problem => ({ field, expected });
+
+// The fields of a row that do not have their shape.
+function rowProblems(row: Fields): Problem[] {
   const files = row.files;
   return [
     ...(isStrings(files) && files.length > 0 && files.every((file) => text(file) !== undefined)
       ? []
-      : [["files", "空でない文字列の配列"] as const]),
+      : [problem("files", "空でない文字列の配列")]),
     ...["rule", "text", "reason"]
-      .filter((name) => text(row[name]) === undefined)
-      .map((name) => [name, "空でない文字列"] as const),
+      .filter((field) => text(row[field]) === undefined)
+      .map((field) => problem(field, "空でない文字列")),
     ...(row.expect === "stop" || row.expect === "pass"
       ? []
-      : [["expect", '"stop" か "pass"'] as const]),
+      : [problem("expect", '"stop" か "pass"')]),
   ];
 }
 
 // The fields of a restriction, other than its rows, that do not have their shape.
-function restrictionProblems(restriction: Fields): (readonly [string, string])[] {
+function restrictionProblems(restriction: Fields): Problem[] {
   return [
-    ...(typeof restriction.adr === "string" ? [] : [["adr", "文字列"] as const]),
+    ...(typeof restriction.adr === "string" ? [] : [problem("adr", "文字列")]),
     ...["values", "mentions"]
-      .filter((name) => !isStrings(restriction[name]))
-      .map((name) => [name, "文字列の配列"] as const),
+      .filter((field) => !isStrings(restriction[field]))
+      .map((field) => problem(field, "文字列の配列")),
     ...(restriction.message === undefined || typeof restriction.message === "string"
       ? []
-      : [["message", "文字列"] as const]),
-    ...(Array.isArray(restriction.rows) ? [] : [["rows", "配列"] as const]),
+      : [problem("message", "文字列")]),
+    ...(Array.isArray(restriction.rows) ? [] : [problem("rows", "配列")]),
   ];
 }
 
-// rowProblems and restrictionProblems check the fields one by one; a value with no problems has the shape `T`.
-const hasNoProblems = <T>(value: Fields, problems: readonly unknown[]): value is Fields & T =>
+// A type guard that reads the problems, not the value: rowProblems and restrictionProblems checked the fields of the
+// value one by one, so a value with no problems has the shape `T`.
+const passedShapeCheck = <T>(value: Fields, problems: readonly Problem[]): value is Fields & T =>
   problems.length === 0;
 
 // A restriction of the table, under its key, with the rows that have their shape.
@@ -94,8 +103,10 @@ function readTable(table: unknown): Table {
       continue;
     }
     const problems = restrictionProblems(value);
-    failures.push(...problems.map(([name, what]) => shapeFailure(`${key}.${name}`, what)));
-    if (!hasNoProblems<Restriction & { rows: unknown[] }>(value, problems)) continue;
+    failures.push(
+      ...problems.map(({ field, expected }) => shapeFailure(`${key}.${field}`, expected)),
+    );
+    if (!passedShapeCheck<Restriction & { rows: unknown[] }>(value, problems)) continue;
     const rows: Row[] = [];
     for (const [index, row] of value.rows.entries()) {
       const where = `${key}.rows[${index}]`;
@@ -104,8 +115,10 @@ function readTable(table: unknown): Table {
         continue;
       }
       const wrong = rowProblems(row);
-      failures.push(...wrong.map(([name, what]) => shapeFailure(`${where}.${name}`, what)));
-      if (hasNoProblems<Row>(row, wrong)) rows.push(row);
+      failures.push(
+        ...wrong.map(({ field, expected }) => shapeFailure(`${where}.${field}`, expected)),
+      );
+      if (passedShapeCheck<Row>(row, wrong)) rows.push(row);
     }
     entries.push({ key, restriction: value, rows });
   }
@@ -167,16 +180,23 @@ const fixtureKey = (path: string): string | undefined =>
     ? undefined
     : /(?:^|\/)__fixtures__\/([^/]+?)(?:\.test)?\.tsx?$/.exec(path)?.[1];
 
-// Whether `value` is in `text` as a whole name: not as a part of a longer name.
-const hasName = (text: string, value: string): boolean =>
-  new RegExp(`(?<![\\w-])${value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\w-])`).test(text);
+// Whether `value` is in `text` as a whole name: not as a part of a longer name, so that no letter, digit, `_` or `-`
+// is next to it.
+const isNameCharacter = (character: string | undefined): boolean =>
+  character !== undefined && /[\w-]/.test(character);
+
+function hasName(text: string, value: string): boolean {
+  for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + 1))
+    if (!isNameCharacter(text[at - 1]) && !isNameCharacter(text[at + value.length])) return true;
+  return false;
+}
 
 function restrictionFailures(tree: Tree, { key, restriction, rows }: Entry): string[] {
   const { adr } = restriction;
   const failures: string[] = [];
   const namedAfterKey = (file: string) => fixtureKey(file) === key;
   for (const file of [...new Set(rows.flatMap((row) => row.files))].filter(
-    (f) => !namedAfterKey(f),
+    (file) => !namedAfterKey(file),
   ))
     failures.push(
       `${tablePath} の ${key} の行が \`${file}\` を挙げるが、fixture のファイルは __fixtures__/${key}.ts か __fixtures__/${key}.test.ts にする (${howTo})。`,
@@ -206,8 +226,14 @@ function restrictionFailures(tree: Tree, { key, restriction, rows }: Entry): str
   return failures;
 }
 
-// Every line of a fixture of the table that the rule stops, or that has a text of the restriction and is let through,
-// has its row: a row removed from the table fails here.
+// An import or a re-export: `import "x"`, `import ... from "x"`, `export ... from "x"`.
+const isImport = (line: string): boolean =>
+  /^\s*(?:import\s*["']|(?:import|export)\b.*\sfrom\s*["'])/.test(line);
+
+// Every line of a fixture of the table that the rule stops has its row, and so does every line that is let through
+// and is an import or has a text of the restriction: a row removed from the table fails here. An import counts even
+// when its text is in no other row, so that a row of an import that is let through (`"node:child_process"`) cannot be
+// removed alone.
 function unlistedLines(tree: Tree, { key, rows: allRows }: Entry, file: string): string[] {
   const rows = allRows.filter((row) => row.files.includes(file));
   const failures: string[] = [];
@@ -219,24 +245,27 @@ function unlistedLines(tree: Tree, { key, rows: allRows }: Entry, file: string):
         );
     if (
       line.disabled === undefined &&
-      allRows.some((row) => line.text.includes(row.text)) &&
+      (isImport(line.text) || allRows.some((row) => line.text.includes(row.text))) &&
       !rows.some((row) => matches(row, line))
     )
       failures.push(
-        `\`${file}\` の ${line.number} 行目は ${key} の文字列を書いて通す行だが、${tablePath} の ${key} に、このファイルでこの行を通す行がない。表に行を足すか、fixture から行を消す (${howTo})。`,
+        `\`${file}\` の ${line.number} 行目は通す行 (前の行に disable のコメントがなく、import か ${key} の文字列を書いた行) だが、${tablePath} の ${key} に、このファイルでこの行を通す行がない。表に行を足すか、fixture から行を消す (${howTo})。`,
       );
   }
   return failures;
 }
 
+// The parsed table. The path is written out here, the one place that reads it, so that lefthook-inputs.test.ts finds
+// it among the files read by name.
+const parsedTable = (tree: Tree): unknown => tree.parsed("lint-restrictions.json");
+
 // Whether the path is a fixture of the table: one named after a key. It shows one restriction, and is not a fixture of
 // the overrides that lint-fixtures.ts asks of a directory.
 export const isRestrictionFixture = (tree: Tree, path: string): boolean =>
-  Object.keys(record(tree.parsed(tablePath))).some((key) => key === fixtureKey(path));
+  Object.keys(record(parsedTable(tree))).some((key) => key === fixtureKey(path));
 
 export function lintRestrictionsAgree(tree: Tree): string[] {
-  // The path is written out so that lefthook-inputs.test.ts finds it among the files read by name.
-  const table = tree.parsed("lint-restrictions.json");
+  const table = parsedTable(tree);
   if (table === undefined)
     return tree.paths.includes(tablePath)
       ? []

@@ -165,7 +165,7 @@ lint で止める import と呼び出しのうち、値ごとに確かめるも�
 repo-policy は次の欠けを止めます。どれも、表の行か fixture の行を消したとき、値を足したときに失敗するためです。
 
 - 表の行の `text` が、`files` のどれかの fixture にない。失敗の message は 1 つのひな形で、ファイル、規則、`text` を挙げ、行の `reason` と欄の `adr` を続けます。
-- 表の fixture (キーの名前のファイル) の、disable のコメントの次の行か、欄の `text` を書いた行に、表の行がない。
+- 表の fixture (キーの名前のファイル) の、disable のコメントの次の行、import と re-export の行、欄の `text` を書いた行に、表の行がない。import の行は、ほかの行と `text` を共有しない通す行 (`"node:child_process"`) でも、表の行を消せば失敗するように数えます。
 - 欄の `values` のどれかを書いた止める行が、止める行を持つファイルのどれかにない。
 - `message` が `mentions` の語か `adr` を書いていない。`files` がキーの名前でない。
 

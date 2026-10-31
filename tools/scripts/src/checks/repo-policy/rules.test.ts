@@ -3727,7 +3727,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
   const unlistedStop = (file: string, line: number, rule: string, key: string) =>
     `\`${file}\` の ${line} 行目は \`${rule}\` で止める行だが、${tablePath} の ${key} に、このファイルでこの行を止める行がない。表に行を足すか、fixture から行を消す (${howTo})。`;
   const unlistedPass = (file: string, line: number, key: string) =>
-    `\`${file}\` の ${line} 行目は ${key} の文字列を書いて通す行だが、${tablePath} の ${key} に、このファイルでこの行を通す行がない。表に行を足すか、fixture から行を消す (${howTo})。`;
+    `\`${file}\` の ${line} 行目は通す行 (前の行に disable のコメントがなく、import か ${key} の文字列を書いた行) だが、${tablePath} の ${key} に、このファイルでこの行を通す行がない。表に行を足すか、fixture から行を消す (${howTo})。`;
   const sqsMissing = noStop(
     outbox,
     "no-restricted-imports",
@@ -3743,7 +3743,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
   describe("a row of the table", () => {
     it("asks for the line it stops, below the disable comment of its rule", () => {
       expect(failures({ [outbox]: undefined })).toEqual([sqsMissing]);
-      expect(failures({ [outbox]: 'import "@x/other";\n' })).toEqual([sqsMissing]);
+      expect(failures({ [outbox]: "export const other = 1;\n" })).toEqual([sqsMissing]);
     });
 
     it("does not count a disable comment that is not on the line above", () => {
@@ -4077,6 +4077,43 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ).toEqual([
         unlistedStop("__fixtures__/connection.ts", 2, "no-restricted-imports", "connection"),
       ]);
+    });
+
+    it.each([
+      ["an import of a module for its effects", 'import "node:fs";'],
+      ["an import of names", 'import { a } from "node:fs";'],
+      ["a type import", '  import type { A } from "node:fs";'],
+      ["a re-export", 'export { a } from "node:fs";'],
+    ])("asks for a row of %s that is let through, even when no row has its text", (_, line) => {
+      expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([
+        unlistedPass(connectionTest, 2, "connection"),
+      ]);
+    });
+
+    it.each([
+      ["a constant that holds a text", 'export const a = "node:fs";'],
+      ["a name that starts with import", 'const imported = from("node:fs");'],
+      ["a call with from in its name", 'exportFrom("node:fs");'],
+    ])("does not take %s for an import", (_, line) => {
+      expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([]);
+    });
+
+    it("passes an import that a row lets through, though no other row has its text", () => {
+      const withRow = table((copy) => {
+        copy.connection.rows.push({
+          files: [connectionTest],
+          rule: "no-restricted-imports",
+          text: '"node:fs"',
+          expect: "pass",
+          reason: "x",
+        });
+      });
+      expect(
+        failures({
+          [tablePath]: withRow,
+          [connectionTest]: `${connectionPassFixture}import "node:fs";\n`,
+        }),
+      ).toEqual([]);
     });
 
     it("asks the values only of the files that stop them, not of those that let a line through", () => {
