@@ -49,10 +49,25 @@ describe(".kiro/hooks", () => {
           },
         ],
       },
+      {
+        version: "v1",
+        hooks: [
+          {
+            name: "stop",
+            trigger: "Stop",
+            description: expect.any(String) as unknown,
+            action: { type: "command", command: command("stop") },
+            timeout: 10,
+          },
+        ],
+      },
     ]);
   });
 
-  it.each(["pre-tool-use", "session-start"])("names an entry point that exists: %s", (name) => {
-    expect(existsSync(join(workspace, entry(name)))).toBe(true);
-  });
+  it.each(["pre-tool-use", "session-start", "stop"])(
+    "names an entry point that exists: %s",
+    (name) => {
+      expect(existsSync(join(workspace, entry(name)))).toBe(true);
+    },
+  );
 });

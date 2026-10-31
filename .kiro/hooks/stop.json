@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "stop",
+      "trigger": "Stop",
+      "description": "When the agent is about to end its turn with uncommitted changes or unpushed commits, send it back once to finish them or to say in its report what is left (docs/tooling/git-hooks.md).",
+      "action": {
+        "type": "command",
+        "command": "NODE_COMPILE_CACHE=\"${TMPDIR:-/tmp}/node-compile-cache\" node tools/scripts/src/hooks/stop/cli.ts"
+      },
+      "timeout": 10
+    }
+  ]
+}
