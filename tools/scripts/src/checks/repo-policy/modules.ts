@@ -37,7 +37,10 @@ const sharedKernel = "shared-kernel";
 const moduleFixtures = "module-fixtures";
 const ui = "ui";
 const i18n = "i18n";
-const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n];
+// telemetry starts the OpenTelemetry SDK in a Node-only entry, and holds the helper that drops the query string from
+// a URL before it becomes an attribute (docs/adr/0048). It has no layers, and no module depends on it: the entry files of apps/api do.
+const telemetry = "telemetry";
+const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n, telemetry];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
 // has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api depends on it
 // (docs/adr/0038). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
@@ -52,11 +55,10 @@ const eventsModuleNames = (tree: Tree): string[] =>
 const eventsSuffix = "-events";
 
 // The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but shared-kernel, ui, i18n and db.
+// and module-fixtures. Every package under packages/ but the ones in `notModules`.
+const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, db];
 export const modulePackageNames = (tree: Tree): string[] =>
-  packageNames(tree).filter(
-    (name) => name !== sharedKernel && name !== ui && name !== i18n && name !== db,
-  );
+  packageNames(tree).filter((name) => !notModules.includes(name));
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
 // exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
@@ -71,12 +73,32 @@ const uiPublicApi = {
   "./lib/*": "./src/lib/*.ts",
 };
 
-// db has the production entry, the seed and the tools of the tests as three entries, so that faker, testcontainers
-// and Vitest stay out of the entry that production code imports (docs/adr/0038).
-const dbPublicApi = {
-  ".": "./src/index.ts",
-  "./seed": "./src/seed/index.ts",
-  "./testing": "./src/testing/index.ts",
+// The packages that are not modules and export something other than src/index.ts: the exports they must have, and
+// what the message says about them. Adding a package of this kind is one entry here (docs/domain-model/add-package.md).
+//   ui         no index.ts: the folders of the parts and the CSS (docs/adr/0034).
+//   db         the production entry, the seed and the tools of the tests as three entries, so that faker,
+//              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
+//   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
+//              apps import (docs/adr/0048).
+const ownExports: Readonly<
+  Record<string, { readonly exports: Record<string, string>; readonly says: string }>
+> = {
+  [ui]: {
+    exports: uiPublicApi,
+    says: "the folders of the parts and the CSS and nothing else (docs/adr/0034)",
+  },
+  [db]: {
+    exports: {
+      ".": "./src/index.ts",
+      "./seed": "./src/seed/index.ts",
+      "./testing": "./src/testing/index.ts",
+    },
+    says: "the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038)",
+  },
+  [telemetry]: {
+    exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
+    says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
+  },
 };
 
 export function packageManifests(tree: Tree): string[] {
@@ -84,22 +106,17 @@ export function packageManifests(tree: Tree): string[] {
     const path = manifest(name);
     const json = record(tree.parsed(path));
     const failures: string[] = [];
-    const isUi = name === ui;
-    const isDb = name === db;
-    const exported = isUi ? uiPublicApi : isDb ? dbPublicApi : publicApi;
+    const own = ownExports[name];
+    const exported = own?.exports ?? publicApi;
     if (json.name !== `${scope}/${name}`)
       failures.push(
         `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
       );
     if (JSON.stringify(json.exports) !== JSON.stringify(exported))
       failures.push(
-        isUi
-          ? `${path} must have the exports ${JSON.stringify(exported)}, the folders of the parts and the CSS and nothing else (docs/adr/0034).`
-          : isDb
-            ? `${path} must have the exports ${JSON.stringify(exported)}, the entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038).`
-            : `${path} must have the exports ${JSON.stringify(exported)}, so that another package can import only its src/index.ts (docs/adr/0026).`,
+        `${path} must have the exports ${JSON.stringify(exported)}, ${own?.says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
       );
-    if (!isUi && !tree.paths.includes(`packages/${name}/src/index.ts`))
+    if (name !== ui && !tree.paths.includes(`packages/${name}/src/index.ts`))
       failures.push(
         `packages/${name}/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
       );
@@ -119,8 +136,8 @@ const isEventsPackage = (tree: Tree, name: string): boolean =>
   name.endsWith(eventsSuffix) &&
   eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
 
-// Every package under packages/ but shared-kernel, module-fixtures, ui and i18n is a module of moduleOrder, and depends on no
-// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui and i18n depend on none.
+// Every package under packages/ but shared-kernel, module-fixtures, ui, i18n and telemetry is a module of moduleOrder, and depends on no
+// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui, i18n and telemetry depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -146,7 +163,7 @@ export function modulesDependOneWay(tree: Tree): string[] {
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui and i18n on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n and telemetry on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
         );
       }
   }

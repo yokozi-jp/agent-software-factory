@@ -32,7 +32,7 @@ tags: [adr, web, ui, shadcn, tailwind, monorepo, repo-policy]
 - 部品を足すときは、`apps/web` で `pnpm dlx shadcn@latest add <部品>` を実行します。部品は `packages/ui/src/components/` に入り、テーマの変数は `packages/ui/src/styles/globals.css` に足されます (2026-10-28 に shadcn の `add separator` で確かめた)。生成されたファイルは、`vp check --fix` で整えてから commit します。
 - 2 つ目のアプリは、`workspace:*` で `@agent-software-factory/ui` に依存し、自分の `index.css` に上の 2 行を書き、`components.json` を `apps/web` のものに合わせます。
 - 取り込んだコードの更新は ADR 0033 のとおり人が確かめます (`add --diff`)。
-- `packages/` の直下に module ではない package を足すときは、この ADR のように、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。
+- `packages/` の直下に module ではない package を足すときは、この ADR のように、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。 手順は [module ではない package を足す手順](../domain-model/add-package.md) にあります。
 
 ## 出典
 

@@ -54,6 +54,9 @@ export default defineConfig({
         "src/__fixtures__/**",
         // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。
         "src/server.ts",
+        // トレースを始める入口 (server.ts が最初に import する)。環境変数を読んで startTelemetry を呼ぶだけで、
+        // 計装の試験は src/tracing.unit.test.ts と packages/telemetry にある。
+        "src/telemetry.ts",
         // vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。
         "src/index.ts",
       ],
