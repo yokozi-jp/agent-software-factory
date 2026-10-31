@@ -29,9 +29,14 @@ describe("OIDC でのログイン (ADR 0022)", () => {
     const res = await browser.request("/api/me");
 
     expect(res.status).toBe(200);
-    // 200 の本文は route の応答 schema (`{ id, email, name }`) の形であること (ADR 0047)。
+    // 200 の本文は route の応答 schema (`{ id, email, name, roles }`) の形であること (ADR 0047)。
     const body = z
-      .strictObject({ id: z.string(), email: z.email(), name: z.string() })
+      .strictObject({
+        id: z.string(),
+        email: z.email(),
+        name: z.string(),
+        roles: z.array(z.string()),
+      })
       .parse(await res.json());
     expect(body.email).toBe(users.yamada.email);
   });

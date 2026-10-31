@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
-import { ForbiddenScreen } from "@/components/error-screens.tsx";
+import { RouteError } from "@/components/route-error.tsx";
 import { ForbiddenError } from "@/lib/forbidden.ts";
 import { accountingRole } from "@/lib/session.ts";
 
@@ -11,8 +11,5 @@ export const Route = createFileRoute("/_authenticated/_accounting")({
     if (!context.user.roles.includes(accountingRole)) throw new ForbiddenError();
   },
   component: Outlet,
-  errorComponent: ({ error }) => {
-    if (error instanceof ForbiddenError) return <ForbiddenScreen embedded />;
-    throw error;
-  },
+  errorComponent: RouteError,
 });

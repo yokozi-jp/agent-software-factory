@@ -9,6 +9,8 @@ import {
 import { useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
+import { RouteError } from "./components/route-error.tsx";
+import { ForbiddenError } from "./lib/forbidden.ts";
 import { ForbiddenScreen } from "./components/error-screens.tsx";
 import {
   withSessionExpiry,
@@ -251,6 +253,16 @@ export const NotFoundWhenSignedOut: Story = {
   },
 };
 
+export const NotFoundWhenTheSessionCheckIsUnavailable: Story = {
+  args: { path: "/no-such-page", session: "unavailable" },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole("navigation", { name: "メインメニュー" })).toBeNull();
+  },
+};
+
 export const SessionExpiresDuringAnOperation: Story = {
   args: { path: "/?from=mail", session: member, apiStatus: 401 },
   play: async ({ canvas }) => {
@@ -362,6 +374,37 @@ export const AccountingScreenIsOpenToAccounting: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole("heading", { name: "締め" })).toBeVisible();
     await expect(canvas.queryByRole("heading", { name: forbiddenTitle })).toBeNull();
+  },
+};
+
+export const ReviewScreenIsOpenToAccounting: Story = {
+  args: { path: "/review", session: accounting },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: "確認" })).toBeVisible();
+  },
+};
+
+// 経理専用の route の errorComponent。権限のエラーは 403、ほかの失敗は一般のエラー。
+export const RouteErrorShowsForbiddenOrAGenericError: Story = {
+  render: () => {
+    // 403 の画面の link が router を要るので、最小の router の中に出す。
+    const root = createRootRoute({
+      component: () => (
+        <>
+          <RouteError error={new ForbiddenError()} />
+          <RouteError error={new Error("boom")} />
+        </>
+      ),
+    });
+    const router = createRouter({
+      routeTree: root,
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    return <RouterProvider router={router} />;
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: forbiddenTitle })).toBeVisible();
+    await expect(canvas.getByRole("alert")).toHaveTextContent("エラーが発生しました");
   },
 };
 

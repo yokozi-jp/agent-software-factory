@@ -7,7 +7,7 @@ import { I18nextProvider } from "react-i18next";
 
 import "temporal-polyfill/global";
 import "./index.css";
-import { applyStoredTheme, darkMediaQuery } from "./lib/theme.ts";
+import { applyStoredTheme, darkSchemeQuery } from "./lib/theme.ts";
 import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
@@ -47,7 +47,7 @@ const loggedOutUrl = "/login?reason=logged-out";
 const router = createAppRouter(context, createBrowserHistory());
 
 // 保存したテーマは、最初の描画の前に反映する (ちらつき防止。inline script は CSP で使えない)。
-applyStoredTheme(localStorage, document.documentElement, darkMediaQuery());
+applyStoredTheme(localStorage, document.documentElement, window.matchMedia(darkSchemeQuery));
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root not found");

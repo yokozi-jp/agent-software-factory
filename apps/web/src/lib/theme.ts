@@ -7,13 +7,19 @@ export interface ClassTarget {
   readonly classList: { toggle(token: string, force: boolean): unknown };
 }
 
+/** `matchMedia` の結果のうち、使う部分。 */
+export interface MediaTarget {
+  readonly matches: boolean;
+  addEventListener(type: "change", listener: () => void): void;
+}
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export const themePreferences: readonly ThemePreference[] = ["light", "dark", "system"];
 
 const themeStorageKey = "theme";
 
-const darkQuery = "(prefers-color-scheme: dark)";
+export const darkSchemeQuery = "(prefers-color-scheme: dark)";
 
 function isThemePreference(value: unknown): value is ThemePreference {
   return themePreferences.some((preference) => preference === value);
@@ -57,7 +63,7 @@ export function setThemePreference(
 export function applyStoredTheme(
   storage: Pick<Storage, "getItem">,
   root: ClassTarget,
-  media: Pick<MediaQueryList, "matches" | "addEventListener">,
+  media: MediaTarget,
 ): void {
   applyTheme(readThemePreference(storage), root, media.matches);
   media.addEventListener("change", () => {
@@ -66,9 +72,5 @@ export function applyStoredTheme(
 }
 
 export function systemPrefersDark(): boolean {
-  return window.matchMedia(darkQuery).matches;
-}
-
-export function darkMediaQuery(): MediaQueryList {
-  return window.matchMedia(darkQuery);
+  return window.matchMedia(darkSchemeQuery).matches;
 }

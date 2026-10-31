@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { applyTheme, readThemePreference, setThemePreference } from "./theme.ts";
+import { applyStoredTheme, applyTheme, readThemePreference, setThemePreference } from "./theme.ts";
 
 const storageOf = (value: string | null) => ({ getItem: () => value });
 const rootOf = (dark: boolean) => {
@@ -67,5 +67,32 @@ describe("テーマの選択 (docs/web-frontend/dark-mode.md)", () => {
       false,
     );
     expect(full.has("dark")).toBe(true);
+  });
+});
+
+describe("起動時のテーマ (applyStoredTheme)", () => {
+  it("保存した選択を反映し、system のときは OS の設定の変更に追従すること", () => {
+    const listeners: (() => void)[] = [];
+    const media = {
+      matches: false,
+      addEventListener: (_type: "change", listener: () => void) => void listeners.push(listener),
+    };
+    const root = rootOf(false);
+
+    applyStoredTheme(storageOf(null), root, media);
+    expect(root.has("dark")).toBe(false);
+
+    media.matches = true;
+    for (const listener of listeners) listener();
+    expect(root.has("dark")).toBe(true);
+  });
+
+  it("明示的に選んだ light は、OS がダークでも変えないこと", () => {
+    const root = rootOf(false);
+    applyStoredTheme(storageOf("light"), root, {
+      matches: true,
+      addEventListener: () => undefined,
+    });
+    expect(root.has("dark")).toBe(false);
   });
 });
