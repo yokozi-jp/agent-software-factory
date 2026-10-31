@@ -115,6 +115,14 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 6. docs: この文書の「ci.yml の検証」に実行のしかたを、[開発コマンド](commands.md) の構成とコマンドの表に、手で実行するコマンドを書きます。`ci.yml` の Nx の target がコマンドの表にないと、repo-policy が失敗します。
 7. 道具や設定を選んだ理由は ADR に書きます。番号は `node tools/scripts/src/checks/check-adr-number/cli.ts` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
+既存の repo-policy に規則を 1 つ足すだけなら、上の 1 から 3 と 7 は済んでいます。直す場所は次の 5 つです (PR #538 が例です)。
+
+- `tools/scripts/src/checks/repo-policy/` の、主題に合う `*.ts` (規則の置き場は `rules.ts` の先頭のコメント) に規則を書き、`rules.ts` の `violations` に並べます。
+- 規則が名前で読むファイル (`tree.read("…")`、`tree.parsed("…")`、`tree.named("…")`) を、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。足し忘れは `lefthook-inputs.test.ts` が止めます。
+- `fixtures/passing-repo.ts` に、規則を通す最小のファイルを足します。
+- `rules.test.ts` に、止める入力と通す入力のテストを足します。
+- この文書の repo-policy の項に、確かめる内容を足します。
+
 ## lint の規則と tsconfig のフラグの fixture
 
 lint の規則 (`vite.config.ts` で `"error"` にしたもの) か、tsconfig の検査のフラグ (ルートの `tsconfig.json`) を足したら、同じ PR で fixture に違反の行を 1 行足します。fixture が、その規則やフラグの検出力を確かめる仕組みです ([#43](https://github.com/yokozi-jp/agent-software-factory/issues/43)、[#230](https://github.com/yokozi-jp/agent-software-factory/issues/230))。
