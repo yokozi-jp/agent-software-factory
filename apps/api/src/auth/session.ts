@@ -47,11 +47,3 @@ export function sessionGuard(auth: Auth): MiddlewareHandler<{ Variables: Session
     return undefined;
   };
 }
-
-/** セッションがなければ 401 を返す。`sessionGuard` のあとに置く。 */
-export function requireSession(): MiddlewareHandler<{ Variables: SessionVariables }> {
-  return async (c, next) => {
-    if (c.get("session") === null) return c.json({ error: "unauthenticated" }, 401);
-    return next();
-  };
-}

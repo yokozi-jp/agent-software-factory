@@ -9,7 +9,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
-import { requireSession, sessionGuard, type SessionVariables } from "./auth/session.ts";
+import { sessionGuard, type SessionVariables } from "./auth/session.ts";
 import type { ModuleDatabases } from "./db/databases.ts";
 import { validationHook } from "./http/validation-hook.ts";
 import { csrfProtection } from "./security/csrf.ts";
@@ -22,7 +22,7 @@ import { csrfProtection } from "./security/csrf.ts";
 // 別のオリジンから呼ぶ構成にするときは、許可するオリジンを環境変数で明示した hono/cors を入れ、
 // ワイルドカードは使わない (docs/web-api/security.md「CORS」)。
 export interface AppDependencies {
-  /** 認証。渡さないと認証の経路 (`/api/auth/*`、`/api/me`) は付かない。 */
+  /** 認証。渡さないと認証の経路 (`/api/auth/*`) と session の guard は付かず、`/api/me` は常に 401 を返す。 */
   readonly auth?: Auth;
   /**
    * モジュールの DB。各モジュールの route には、そのモジュールの DB だけを渡す (docs/adr/0025、docs/adr/0029)。
@@ -42,6 +42,29 @@ const healthRoute = createRoute({
     200: {
       description: "The API is running.",
       content: { "application/json": { schema: z.object({ status: z.literal("ok") }) } },
+    },
+  },
+});
+
+// `/api/me` は auth の有無で route の型を変えない (spec と AppType に常に入る)。auth がなければ session が入らないので 401。
+// `/api/auth/*` は Better Auth が扱う経路で、契約の外に置く (docs/adr/0035)。
+const meRoute = createRoute({
+  method: "get",
+  path: "/api/me",
+  summary: "Current user",
+  tags: ["auth"],
+  responses: {
+    200: {
+      description: "The signed-in user.",
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), email: z.string(), name: z.string() }),
+        },
+      },
+    },
+    401: {
+      description: "Not signed in.",
+      content: { "application/json": { schema: z.object({ error: z.string() }) } },
     },
   },
 });
@@ -69,22 +92,25 @@ export function createApp({ auth }: AppDependencies = {}) {
       xFrameOptions: false,
     }),
   );
-  const app = withoutRoutes.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
-
+  // middleware は route より前に登録する (Hono は登録順に実行する)。route の型は `openapi` の chain で受ける。
   if (auth !== undefined) {
-    app.use("/api/*", csrfProtection(auth.origin));
-    app.use("/api/*", sessionGuard(auth));
+    withoutRoutes.use("/api/*", csrfProtection(auth.origin));
+    withoutRoutes.use("/api/*", sessionGuard(auth));
     // ログアウトのあと、ブラウザに HTTP cache と Cookie を捨てさせる (OWASP Session Management)。
-    app.use("/api/auth/sign-out", async (c, next) => {
+    withoutRoutes.use("/api/auth/sign-out", async (c, next) => {
       await next();
       if (c.res.ok) c.header("Clear-Site-Data", '"cache", "cookies"');
     });
-    app.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
-    app.get("/api/me", requireSession(), (c) => {
-      const user = c.get("session")?.user;
-      return c.json({ id: user?.id, email: user?.email, name: user?.name });
-    });
+    withoutRoutes.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
   }
+
+  const app = withoutRoutes
+    .openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200))
+    .openapi(meRoute, (c) => {
+      const user = c.get("session")?.user;
+      if (user === undefined) return c.json({ error: "unauthenticated" }, 401);
+      return c.json({ id: user.id, email: user.email, name: user.name }, 200);
+    });
 
   return app;
 }

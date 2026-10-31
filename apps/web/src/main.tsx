@@ -23,7 +23,7 @@ const context: AppContext = {
       goToSessionExpired(router);
     },
   ),
-  getSession: () => fetchSession((input) => fetch(input)),
+  getSession: () => fetchSession((input, init) => fetch(input, init), location.origin),
   signIn: async (callbackURL) => {
     const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
     if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);
