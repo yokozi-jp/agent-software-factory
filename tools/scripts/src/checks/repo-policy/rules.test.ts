@@ -1252,7 +1252,8 @@ describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)"
   const connection = "packages/db/src/testing/connection.ts";
   const compose = (image: string): string => `services:\n  postgres:\n    image: ${image}\n`;
 
-  it("passes a digest after the same tag, and a tag without a digest", () => {
+  // The passing repo's compose has a digest after the tag; this case has none.
+  it("passes a compose tag without a digest", () => {
     expect(violations(repo({ "compose.local.yaml": compose("postgres:18") }))).toEqual([]);
   });
 
