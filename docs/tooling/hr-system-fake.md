@@ -7,11 +7,11 @@ tags: [tooling, runbook, hr-system, wiremock, testcontainers, openapi, ky]
 
 # 人事システムのフェイク
 
-サンプル機能（経費精算）は、ログインと申請のときに人事システムを呼びます。本物にはつながず、リポジトリの中の WireMock のフェイクを相手にします。経緯は [Issue #171](https://github.com/yokozi-jp/agent-software-factory/issues/171)、タイムアウトと再試行の値は [ADR 0023](../adr/0023-ky-for-external-http-and-sdk-retries-for-aws.md) です。
+サンプル機能（経費精算）は、ログインと申請のときに人事システムを呼びます。本物にはつながず、リポジトリの中の WireMock のフェイクを相手にします。経緯は [Issue #171](https://github.com/yokozi-jp/agent-software-factory/issues/171)、置き場と起動方法は [ADR 0052](../adr/0052-hr-system-package-with-openapi-ky-and-wiremock.md)、タイムアウトと再試行の値は [ADR 0023](../adr/0023-ky-for-external-http-and-sdk-retries-for-aws.md) です。
 
 ## 置き場
 
-すべて `packages/hr-system` にあります。module ではない package で、他の workspace の package に依存せず、どの module も、まだ依存していません。
+すべて `packages/hr-system` にあります。module ではない package で、他の workspace の package に依存しません。呼ぶ側（ログインは [Issue #156](https://github.com/yokozi-jp/agent-software-factory/issues/156)、申請は承認の module）は、Issue #171 の範囲の外で、できたときに依存を足します。
 
 | 物                 | 場所                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,12 +53,12 @@ docker compose -f compose.local.yaml down
 
 起動の時間（2026-10-31、WSL、イメージは取得済み。1 つのテストだけを流した実行全体の時間）。
 
-| 場合                             | 実行全体  |
-| -------------------------------- | --------- |
-| コンテナがない（手元の初回、CI） | 約 3.9 秒 |
-| 使い回し（手元の 2 回目から）    | 約 0.9 秒 |
+| 場合                          | 実行全体  |
+| ----------------------------- | --------- |
+| コンテナがない（手元の初回）  | 約 3.9 秒 |
+| 使い回し（手元の 2 回目から） | 約 0.9 秒 |
 
-`docker compose up -d --wait` は約 3.8 秒です。CI の値は PR に書きます。
+`docker compose up -d --wait` は約 3.8 秒です。CI の値は、CI の実行で測って PR に書きます。
 
 ## スタブを足す・変える
 
@@ -72,7 +72,7 @@ docker compose -f compose.local.yaml down
 pnpm --filter @agent-software-factory/hr-system generate
 ```
 
-`openapi-typescript` は TypeScript 5 の JS API を呼びますが、このリポジトリの TypeScript 7 にはその API がありません。そこで `generate` は、`pnpm dlx` で `openapi-typescript@7.13.0` と `typescript@5.9.3` を一時的に入れて流します。`schema.gen.ts` の差分を commit します。`openapi-typescript` が TypeScript 7 に対応したら、catalog に入れて `dlx` をやめます。
+`openapi-typescript` は TypeScript 5 の JS API を呼びますが、このリポジトリの TypeScript 7 にはその API がありません。そこで `generate` は、`pnpm dlx` で `openapi-typescript@7.13.0` と `typescript@5.9.3` を一時的に入れて流します。`schema.gen.ts` の差分を commit します。`dlx` の版は lockfile の外にあり、生成した型が `openapi.yaml` と合うことを CI は確かめません。どちらも [Issue #562](https://github.com/yokozi-jp/agent-software-factory/issues/562) で扱います。
 
 ## 版を上げる
 

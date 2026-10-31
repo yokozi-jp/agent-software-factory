@@ -43,8 +43,8 @@ const telemetry = "telemetry";
 // logging holds the Logger interface that the app depends on, and the pino implementation in a Node-only entry
 // (docs/adr/0049). It has no layers, and no module depends on it: the entry files and the middleware of apps/api do.
 const logging = "logging";
-// hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0023). It has no layers, and no module depends on it yet:
-// the login and the claim of the sample feature will call it.
+// hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0052). It has no layers, and no module depends on it:
+// the callers are out of scope of Issue #171 and come with Issue #156 (login) and the approval module.
 const hrSystem = "hr-system";
 const dependOnNone: readonly string[] = [
   sharedKernel,
