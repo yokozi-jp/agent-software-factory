@@ -1,11 +1,12 @@
 import { MailSender, MailSendFailed } from "@agent-software-factory/approval";
+import { createDatabase } from "@agent-software-factory/db/node";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import { Effect, Layer } from "effect";
 import type { Kysely } from "kysely";
 import { afterEach, beforeEach, inject } from "vite-plus/test";
 
 import { createNotificationHandler, type NotificationRuntime } from "../src/notification-worker.ts";
-import { createDatabase, createNotificationRuntime } from "../src/runtime.ts";
+import { createNotificationRuntime } from "../src/runtime.ts";
 import { SmtpMailSenderLayer } from "../src/mail/smtp.ts";
 
 export const tenantId = "00000000-0000-4000-8000-00000000000a";

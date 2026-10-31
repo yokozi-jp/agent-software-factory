@@ -2665,7 +2665,7 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
   const order = "tools/scripts/src/checks/repo-policy/modules.ts";
   const guide = "Follow docs/domain-model/add-module.md.";
 
-  it("passes the modules of the passing repository, each in moduleOrder, the dependencies of apps/api and both files", () => {
+  it("passes the modules of the passing repository, each in moduleOrder, the dependencies of apps/api and app.ts", () => {
     expect(violations(repo())).toEqual([]);
   });
 
@@ -2677,7 +2677,6 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
       `packages/extra has the tag type:module but is not in moduleOrder in ${order}. ${guide}`,
       'apps/api/package.json must have @agent-software-factory/extra: "workspace:*" in dependencies, since packages/extra has the tag type:module. ' +
         guide,
-      `apps/api/src/db/databases.ts must import @agent-software-factory/extra, since packages/extra has the tag type:module. ${guide}`,
       `apps/api/src/app.ts must import @agent-software-factory/extra, since packages/extra has the tag type:module. ${guide}`,
     ]);
   });
@@ -2715,16 +2714,14 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
     ).toEqual([message]);
   });
 
-  it.each(["apps/api/src/db/databases.ts", "apps/api/src/app.ts"])(
-    "refuses %s that does not import a module",
-    (path) => {
-      expect(violations(repo({ [path]: 'import "@agent-software-factory/approval";\n' }))).toEqual([
-        expect.stringContaining(`${path} must import @agent-software-factory/claim,`),
-        expect.stringContaining(`${path} must import @agent-software-factory/closing,`),
-      ]);
-      expect(violations(repo({ [path]: undefined }))).toHaveLength(3);
-    },
-  );
+  it("refuses an apps/api/src/app.ts that does not import a module", () => {
+    const path = "apps/api/src/app.ts";
+    expect(violations(repo({ [path]: 'import "@agent-software-factory/approval";\n' }))).toEqual([
+      expect.stringContaining(`${path} must import @agent-software-factory/claim,`),
+      expect.stringContaining(`${path} must import @agent-software-factory/closing,`),
+    ]);
+    expect(violations(repo({ [path]: undefined }))).toHaveLength(3);
+  });
 
   it("takes a type import, a side-effect import and an import of several lines", () => {
     const imports = [
@@ -2732,9 +2729,7 @@ describe("ADR 0026: a module with the tag type:module is registered everywhere",
       'import "@agent-software-factory/approval";',
       'import {\n  Y,\n} from "@agent-software-factory/closing";',
     ].join("\n");
-    expect(
-      violations(repo({ "apps/api/src/app.ts": imports, "apps/api/src/db/databases.ts": imports })),
-    ).toEqual([]);
+    expect(violations(repo({ "apps/api/src/app.ts": imports }))).toEqual([]);
   });
 });
 

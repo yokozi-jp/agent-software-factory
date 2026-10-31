@@ -1,5 +1,6 @@
 // Node.js 24 には Temporal がない (Node.js 26 から組み込み、docs/adr/0043)。polyfill の global を入れる。
 import "temporal-polyfill/global";
+import { createDatabase } from "@agent-software-factory/db/node";
 import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 
@@ -10,7 +11,6 @@ import {
   runPurgeJob,
   type PurgeJobInput,
 } from "./purge-idempotency-keys-job.ts";
-import { createDatabase } from "./runtime.ts";
 
 // 期限切れの冪等キーを消すバッチの入口 (Issue #325、docs/adr/0013、docs/adr/0040)。ECS のタスクのコマンドとして動き、
 // 1 回で 1 つのテナントを受け持つ。入口だけが process.env を読む。検査に通らなければここで例外になり、起動しない (docs/adr/0032)。

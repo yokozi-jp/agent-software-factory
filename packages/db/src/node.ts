@@ -4,4 +4,4 @@
 // testcontainers and Vitest stay out of here.
 export { bootstrapSql } from "./bootstrap.ts";
 export { migrate } from "./migrate.ts";
-export { createPool, poolTimeouts } from "./pool.ts";
+export { createDatabase, createPool, poolTimeouts } from "./pool.ts";

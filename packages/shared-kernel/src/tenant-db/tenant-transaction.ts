@@ -7,6 +7,11 @@ import { currentInstant } from "../time/time.ts";
 /** The modules of the sample feature, by their schema names (GLOSSARY.md, docs/adr/0026). */
 export type ModuleName = "claim" | "approval" | "closing";
 
+// The allowlist of the names that reach the SQL: `moduleRole` puts the role into `SET LOCAL ROLE` with `sql.id`, and
+// processed-message.ts the schema into a table name. Kysely neither checks nor escapes what `sql.id` gets ("Using this with
+// unchecked inputs WILL lead to SQL injection", kysely's sql.d.ts), so keep this list even though shared-kernel then knows
+// the names of the modules: deriving the role from the name of a module's Tx alone would drop the check. A module whose Tx
+// has a name not here does not type-check (docs/domain-model/add-module.md).
 const moduleRoles: Readonly<Record<ModuleName, string>> = {
   claim: "claim_module",
   approval: "approval_module",

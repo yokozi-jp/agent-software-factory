@@ -266,10 +266,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
     engines: { node: "^24" },
   }),
   "apps/api/package.json": JSON.stringify({ dependencies: apiDependencies }),
-  // apps/api imports each module in the files that assemble them.
-  "apps/api/src/db/databases.ts": modules
-    .map((name) => `import type { X } from "@agent-software-factory/${name}";\n`)
-    .join(""),
+  // apps/api imports each module in the file that assembles them.
   "apps/api/src/app.ts": modules
     .map((name) => `import "@agent-software-factory/${name}";\n`)
     .join(""),

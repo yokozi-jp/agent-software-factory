@@ -1,5 +1,6 @@
 import { ApprovalTx } from "@agent-software-factory/approval";
 import { ClaimTx } from "@agent-software-factory/claim";
+import { createDatabase } from "@agent-software-factory/db/node";
 import {
   countIdempotencyKeys,
   createTestDatabase,
@@ -19,7 +20,6 @@ import {
   runPurgeJob,
   type PurgeJobInput,
 } from "./purge-idempotency-keys-job.ts";
-import { createDatabase } from "./runtime.ts";
 
 // 期限切れの冪等キーを消すバッチの本体 (Issue #325、docs/adr/0040): 本物の PostgreSQL で、入口と同じ pool (app_user) から動かす。
 // 消し方そのもの (期限、テナント、上限、ロック) は shared-kernel の purgeExpiredIdempotencyKeys を apps/api の結合テストが確かめる。

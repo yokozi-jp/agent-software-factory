@@ -80,9 +80,9 @@ const runtimeImports = {
 //   - the entry files and the tests of apps/api/src, and packages/db/src, may open a connection (they make the pool,
 //     docs/adr/0038) but not send, so they stop the SDK clients only. Add the entry file of the relay and of the
 //     consumers to the override of the entry files when they exist, and remove the SDK clients from it there.
-// A file that has to open a connection, such as a databases.ts that makes the pool (today it only imports the type
-// of Pool), is an entry file: add it to the override of the entry files below. This is a guardrail: a `fetch` to an AWS
-// endpoint and a dynamic import are not stopped.
+// A file that has to open a connection is an entry file: add it to the override of the entry files below (in apps/api,
+// server.ts makes the pools, and runtime.ts and auth.ts only import the types of Kysely and Pool). This is a guardrail:
+// a `fetch` to an AWS endpoint and a dynamic import are not stopped.
 const outboxPaths: RestrictedPath[] = restrictedNames(restrictions.outbox);
 const connectionPaths: RestrictedPath[] = restrictedNames(restrictions.connection, {
   allowTypeImports: true,

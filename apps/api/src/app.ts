@@ -19,7 +19,6 @@ import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
 import { sessionGuard } from "./auth/session.ts";
-import type { ModuleDatabases } from "./db/databases.ts";
 import {
   accessLog,
   logUnexpectedError,
@@ -27,6 +26,7 @@ import {
   type ApiVariables,
 } from "./http/logging.ts";
 import { validationHook } from "./http/validation-hook.ts";
+import { unusedRuntime, type ApiRuntime } from "./runtime.ts";
 import { csrfProtection } from "./security/csrf.ts";
 
 // セキュリティヘッダーの値は docs/web-api/security.md に従う。
@@ -40,10 +40,12 @@ export interface AppDependencies {
   /** 認証。渡さないと認証の経路 (`/api/auth/*`) と session の guard は付かず、`/api/me` は常に 401 を返す。 */
   readonly auth?: Auth;
   /**
-   * モジュールの DB。各モジュールの route には、そのモジュールの DB だけを渡す (docs/adr/0025、docs/adr/0029)。
+   * Effect の実行の環境 (docs/adr/0028)。入口が `createApiRuntime` で 1 つ作って渡す。モジュールの DB は、この runtime の
+   * `Database` と各モジュールの `Tx` から得る (docs/adr/0029)。必ず渡す: 渡し忘れを型の検査で止める。spec の生成と DB を使わない
+   * テストは `unusedRuntime()` を渡す。route は runtime によって変えない (spec と AppType は変わらない)。
    * モジュールはまだ route を持たないので、今は受け取るだけ。
    */
-  readonly databases?: ModuleDatabases;
+  readonly runtime: ApiRuntime;
   /** ロガー (docs/adr/0049)。入口が作って渡す。渡さないと何も出さない。 */
   readonly logger?: Logger;
 }
@@ -115,7 +117,7 @@ async function activeRoles(auth: Auth, headers: Headers): Promise<string[]> {
   return role.split(",").filter((name) => name !== "");
 }
 
-export function createApp({ auth, logger = noopLogger }: AppDependencies = {}) {
+export function createApp({ auth, logger = noopLogger }: AppDependencies) {
   const base = new OpenAPIHono<{ Variables: ApiVariables }>({
     defaultHook: validationHook,
   });
@@ -176,4 +178,5 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies = {}) {
   return app;
 }
 
-export const app = createApp();
+// spec の生成 (openapi.ts) と vp dev の入口 (index.ts) が使う app。どちらも DB を使わないので、DB のない runtime を渡す。
+export const app = createApp({ runtime: unusedRuntime() });
