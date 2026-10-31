@@ -52,7 +52,9 @@ docs/      ドキュメント (入口は docs/index.md)
 | モジュールの DB の型を migration から生成し直す ([PostgreSQL のクライアント管理](../db/postgresql-client.md))                                     | `pnpm exec nx db-types db`。確かめるだけなら `pnpm exec nx db-types-check db`                                                                       |
 | Effect の検査 (実行し忘れ、Effect 3、unstable の API。[Effect の検査](effect-lint.md))                                                            | `pnpm exec nx run-many -t lint-effect`                                                                                                              |
 | 文言のキーの検査 (キーの欠落、使われないキー。[ADR 0044](../adr/0044-i18next-for-texts.md))                                                       | `pnpm exec nx run web:i18n-keys`                                                                                                                    |
-| 全プロジェクトのテスト                                                                                                                            | `pnpm test`                                                                                                                                         |
+| 作業の途中のテスト (変更の影響を受けるプロジェクトだけ。pre-push と同じ範囲。[テストの流し方](#テストの流し方))                                   | `pnpm exec nx affected -t test --base=origin/main`                                                                                                  |
+| 1 つのプロジェクトのテスト (プロジェクトの名前は `pnpm exec nx show projects --with-target test`)                                                 | `pnpm exec nx test <project>`                                                                                                                       |
+| 全プロジェクトのテスト (全部を確かめたいとき)                                                                                                     | `pnpm test`                                                                                                                                         |
 | 全プロジェクトの build                                                                                                                            | `pnpm build`                                                                                                                                        |
 | 変更の影響を受けるプロジェクトだけ実行                                                                                                            | `pnpm exec nx affected -t check test build`                                                                                                         |
 | format と lint の自動修正                                                                                                                         | `pnpm exec vp check --fix`                                                                                                                          |
@@ -74,6 +76,20 @@ docs/      ドキュメント (入口は docs/index.md)
 | 工場の成果の指標の集計 (期間か、境目の PR の前後)                                                                                                 | `node tools/scripts/src/metrics/cli.ts --since <YYYY-MM-DD>` ([工場の成果の指標](../agents/factory-metrics.md))                                     |
 | agent の規則が各 tool の呼び出しにどう働いたかの確認 (最新のセッション)                                                                           | `node tools/scripts/src/agent-probe/cli.ts <workspace の絶対パス>` ([エージェントの権限](agent-permissions.md#規則を変えたときの手元の確認))        |
 | 依存の追加 (例: api)                                                                                                                              | `pnpm --filter @agent-software-factory/api add <pkg>`                                                                                               |
+
+## テストの流し方
+
+同じマシンで複数のセッションがテストを流すと CPU が足りなくなるので、作業の途中は変更に関係するテストだけを流します。
+
+1. 変えたファイルのテストは、ファイルを渡して流します (例: `pnpm --filter @agent-software-factory/api exec vp test run src/app.test.ts`)。Nx を通らないので cache されません。
+2. まとまったところで `pnpm exec nx affected -t test --base=origin/main` を流します。`--base` だけを渡すと、`nx affected` は base からの commit に加えて、commit していない変更と untracked のファイルも数えます (`nx affected --help`)。base に `origin/main` を渡すのは、worktree の手元の `main` が origin/main より古いと、取り込み済みの変更まで affected に数えるためです (`nx.json` の `defaultBase` は `main`)。
+3. `pnpm test` (`nx run-many -t test`) は、全部を確かめたいときに流します。変わっていないプロジェクトは cache から再生します。
+
+`test` の target は `cache: true` です (`nx.json` の `targetDefaults`)。Nx は cache を `~/.nx/<id>/cache` に置き、main の作業ツリーと全ての worktree で共有するので、入力が同じなら別の worktree で流した結果も再生します ([Change Cache Location](https://nx.dev/docs/guides/tasks--caching/change-cache-location))。再生した target には `[existing outputs match the cache, left as is]` と出ます。
+
+- `--skip-nx-cache` は、cache の結果を疑うときだけ付けます。作業の確認に付けると、変えていないプロジェクトのテストまで流し直します。
+- プロジェクトのディレクトリで `vp test run` や `pnpm test` を引数なしで流すと、Nx を通らないので、そのプロジェクトのテストを毎回全部流します。
+- 2026-10-31 に、全ての `test` の target を `--skip-nx-cache` で流し (3 分 56 秒。最長は `db:test` の 3 分 17 秒)、続けてもう一度流すと、11 の target の全部が cache から再生されました (38 ms)。テストは入力のファイルを書き換えません。例外は、coverage が上がって `apps/api/vite.config.ts` などの下限が書き換わったときで、次の 1 回は cache に当たりません。
 
 ## 補足
 
