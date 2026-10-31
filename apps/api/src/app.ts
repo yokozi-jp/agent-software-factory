@@ -9,7 +9,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
-import { requireSession, sessionGuard, type SessionVariables } from "./auth/session.ts";
+import { sessionGuard, type SessionVariables } from "./auth/session.ts";
 import type { ModuleDatabases } from "./db/databases.ts";
 import { validationHook } from "./http/validation-hook.ts";
 import { csrfProtection } from "./security/csrf.ts";
@@ -22,7 +22,7 @@ import { csrfProtection } from "./security/csrf.ts";
 // 別のオリジンから呼ぶ構成にするときは、許可するオリジンを環境変数で明示した hono/cors を入れ、
 // ワイルドカードは使わない (docs/web-api/security.md「CORS」)。
 export interface AppDependencies {
-  /** 認証。渡さないと認証の経路 (`/api/auth/*`、`/api/me`) は付かない。 */
+  /** 認証。渡さないと認証の経路 (`/api/auth/*`) と session の guard は付かず、`/api/me` は常に 401 を返す。 */
   readonly auth?: Auth;
   /**
    * モジュールの DB。各モジュールの route には、そのモジュールの DB だけを渡す (docs/adr/0025、docs/adr/0029)。
@@ -46,6 +46,30 @@ const healthRoute = createRoute({
   },
 });
 
+// `/api/me` は auth の有無で route の型を変えない (spec と AppType に常に入る)。auth がなければ session が入らないので 401。
+// 401 の本文は今の `{ error }` のまま。ADR 0035 の Problem Details にするのは、共有の関数ができる Issue #307 の後 (Issue #486)。
+// `/api/auth/*` は Better Auth が扱う経路で、契約の外に置く (docs/adr/0035)。
+const meRoute = createRoute({
+  method: "get",
+  path: "/api/me",
+  summary: "Current user",
+  tags: ["auth"],
+  responses: {
+    200: {
+      description: "The signed-in user.",
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), email: z.email(), name: z.string() }),
+        },
+      },
+    },
+    401: {
+      description: "Not signed in.",
+      content: { "application/json": { schema: z.object({ error: z.string() }) } },
+    },
+  },
+});
+
 // 受信のトレースが取る属性 (docs/adr/0048)。ヘッダーは取らない (captureRequestHeaders を書かない)。
 // url.full の既定はクエリ文字列を含み、OIDC の callback の code や state が載るので、クエリを落とす。
 // SDK が起動していなければ、この middleware は何もしない。
@@ -54,13 +78,13 @@ const tracingMiddleware = httpInstrumentationMiddleware({
 });
 
 export function createApp({ auth }: AppDependencies = {}) {
-  const withoutRoutes = new OpenAPIHono<{ Variables: SessionVariables }>({
+  const base = new OpenAPIHono<{ Variables: SessionVariables }>({
     defaultHook: validationHook,
   });
   // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
   // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
-  withoutRoutes.use(tracingMiddleware);
-  withoutRoutes.use(
+  base.use(tracingMiddleware);
+  base.use(
     secureHeaders({
       contentSecurityPolicy: { defaultSrc: ["'none'"] },
       strictTransportSecurity: "max-age=63072000; includeSubDomains",
@@ -69,22 +93,25 @@ export function createApp({ auth }: AppDependencies = {}) {
       xFrameOptions: false,
     }),
   );
-  const app = withoutRoutes.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
-
+  // middleware は route より前に登録する (Hono は登録順に実行する)。route の型は `openapi` の chain で受ける。
   if (auth !== undefined) {
-    app.use("/api/*", csrfProtection(auth.origin));
-    app.use("/api/*", sessionGuard(auth));
+    base.use("/api/*", csrfProtection(auth.origin));
+    base.use("/api/*", sessionGuard(auth));
     // ログアウトのあと、ブラウザに HTTP cache と Cookie を捨てさせる (OWASP Session Management)。
-    app.use("/api/auth/sign-out", async (c, next) => {
+    base.use("/api/auth/sign-out", async (c, next) => {
       await next();
       if (c.res.ok) c.header("Clear-Site-Data", '"cache", "cookies"');
     });
-    app.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
-    app.get("/api/me", requireSession(), (c) => {
-      const user = c.get("session")?.user;
-      return c.json({ id: user?.id, email: user?.email, name: user?.name });
-    });
+    base.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
   }
+
+  const app = base
+    .openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200))
+    .openapi(meRoute, (c) => {
+      const user = c.get("session")?.user;
+      if (user === undefined) return c.json({ error: "unauthenticated" }, 401);
+      return c.json({ id: user.id, email: user.email, name: user.name }, 200);
+    });
 
   return app;
 }

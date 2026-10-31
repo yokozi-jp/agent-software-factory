@@ -26,6 +26,18 @@ describe("OpenAPI の spec (docs/adr/0047)", () => {
   });
 });
 
+describe("GET /api/me の契約", () => {
+  it("auth がなくても spec に入り、200 と 401 を明示すること", () => {
+    const responses = generateOpenApi().paths?.["/api/me"]?.get?.responses ?? {};
+
+    expect(Object.keys(responses)).toEqual(["200", "401"]);
+  });
+
+  it("auth がなければ 401 を返すこと", async () => {
+    expect((await app.request("/api/me")).status).toBe(401);
+  });
+});
+
 describe("GET /health の応答", () => {
   it("応答が route の応答スキーマに通ること", async () => {
     const res = await app.request("/health");
