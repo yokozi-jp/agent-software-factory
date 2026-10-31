@@ -2,28 +2,29 @@ import { Button } from "@agent-software-factory/ui/components/button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { LoginReason } from "@/lib/login-redirect.ts";
+import type { LoginMessageKind } from "@/lib/login-message.ts";
 
 export interface LoginScreenProps {
-  readonly reason?: LoginReason | undefined;
+  /** URL の識別子から選んだメッセージの種類 (`selectLoginMessage`)。 */
+  readonly message?: LoginMessageKind | undefined;
   /** IdP のログインを始める。失敗したら投げる (画面が「ログインできなかった」を出す)。 */
   readonly onSignIn: () => Promise<void>;
 }
 
 // 中央のカードに「IdP でログイン」の 1 ボタン (画面案 B、Issue #402)。理由があれば、ボタンの上に alert で 1 枚出す。
-export function LoginScreen({ reason, onSignIn }: LoginScreenProps) {
+export function LoginScreen({ message: initialMessage, onSignIn }: LoginScreenProps) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
-  const reasonMessages = {
-    "session-expired": t("login.reason.sessionExpired"),
-    "logged-out": t("login.reason.loggedOut"),
-  } satisfies Record<LoginReason, string>;
-  // 失敗は、URL の理由より新しい出来事なので、先に出す。
-  const message = failed
-    ? t("login.failed")
-    : reason === undefined
-      ? undefined
-      : reasonMessages[reason];
+  const messages = {
+    failed: t("login.failed"),
+    accountUnavailable: t("login.accountUnavailable"),
+    temporarilyUnavailable: t("login.temporarilyUnavailable"),
+    sessionExpired: t("login.reason.sessionExpired"),
+    loggedOut: t("login.reason.loggedOut"),
+  } satisfies Record<LoginMessageKind, string>;
+  // ボタンを押して失敗したときは、URL の識別子より新しい出来事なので、先に出す。
+  const kind = failed ? "failed" : initialMessage;
+  const message = kind === undefined ? undefined : messages[kind];
 
   return (
     <main className="flex min-h-svh items-center justify-center p-4">
