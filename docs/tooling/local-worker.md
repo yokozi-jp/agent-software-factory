@@ -69,6 +69,6 @@ PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage`
 
 ## この環境に入っていないもの
 
-- OIDC の IdP。ワーカーは OIDC を使いません。API と web を手で動かす作業は [Issue #512](https://github.com/yokozi-jp/agent-software-factory/issues/512) で扱います。
+- OIDC の IdP。ワーカーは OIDC を使いません。API と web を認証つきで動かす手順は[ローカルで API と web を認証つきで動かす](local-api.md)にあります。
 - 保持期間 (`MessageRetentionPeriod`)。ElasticMQ では効きません ([ADR 0041](../adr/0041-standard-queue-per-task-with-dlq.md))。
 - SES。ローカルは SMTP で Mailpit に送ります。
