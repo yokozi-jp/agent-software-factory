@@ -1248,6 +1248,36 @@ describe("ADR 0013: one Node.js major version", () => {
   });
 });
 
+describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)", () => {
+  const connection = "packages/db/src/testing/connection.ts";
+  const compose = (image: string): string => `services:\n  postgres:\n    image: ${image}\n`;
+
+  // The passing repo's compose has a digest after the tag; this case has none.
+  it("passes a compose tag without a digest", () => {
+    expect(violations(repo({ "compose.local.yaml": compose("postgres:18") }))).toEqual([]);
+  });
+
+  it("refuses a compose that moves alone, and a postgresImage that moves alone", () => {
+    expect(violations(repo({ "compose.local.yaml": compose("postgres:19@sha256:abc") }))).toEqual([
+      `compose.local.yaml postgres image (postgres:19) must be the tag of postgresImage in ${connection} (postgres:18) (docs/tooling/local-worker.md).`,
+    ]);
+    expect(
+      violations(repo({ [connection]: 'export const postgresImage = "postgres:17";\n' })),
+    ).toEqual([
+      `compose.local.yaml postgres image (postgres:18) must be the tag of postgresImage in ${connection} (postgres:17) (docs/tooling/local-worker.md).`,
+    ]);
+  });
+
+  it("names a compose without the postgres image, and a postgresImage that is not a literal", () => {
+    expect(violations(repo({ "compose.local.yaml": "services: {}\n" }))).toEqual([
+      "compose.local.yaml must set services.postgres.image (docs/tooling/local-worker.md).",
+    ]);
+    expect(violations(repo({ [connection]: "export const postgresImage = image;\n" }))).toEqual([
+      `${connection} must set postgresImage to a string literal (docs/tooling/local-worker.md).`,
+    ]);
+  });
+});
+
 describe("ADR numbers are unique", () => {
   it("refuses two ADRs with the same number", () => {
     expect(violations(repo({ "docs/adr/0001-duplicate.md": "# x\n" }))).toEqual([
