@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -9,7 +10,9 @@ import {
 import { useState } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
+import { AppLayout } from "./components/app-layout.tsx";
 import { RouteError } from "./components/route-error.tsx";
+import { throwOnForbiddenOrNotFound } from "./lib/api-error.ts";
 import { ForbiddenError } from "./lib/forbidden.ts";
 import { EmbeddedNotFound, ForbiddenScreen } from "./components/error-screens.tsx";
 import { LoginScreen as LoginScreenView } from "./components/login-screen.tsx";
@@ -481,6 +484,81 @@ export const NotFoundThrownInAProtectedRouteIsEmbedded: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
     await expect(canvas.queryByRole("main")).toBeNull();
+  },
+};
+
+// API が 403 と 404 を返したとき、loader が応答を画面の失敗に変える。本物の route の木には API を呼ぶ loader がまだないので、
+// 本物と同じ作りの最小の木を使う: メニューの外枠 (`_authenticated` の `AppLayout` と `notFoundComponent`) の中に、
+// 経理専用の layout (`_accounting` の `errorComponent`) を置き、その下の route の loader が応答を返す。
+// 本物の木で確かめ直す作業は Issue #563。
+function routerWhoseLoaderGets(status: number, path: string) {
+  const root = createRootRoute();
+  const authenticated = createRoute({
+    getParentRoute: () => root,
+    id: "_authenticated",
+    component: () => (
+      <AppLayout user={accounting} onSignOut={() => Promise.resolve()}>
+        <Outlet />
+      </AppLayout>
+    ),
+    // 本物の `_authenticated` の `NotFoundInLayout` と同じ: notFoundComponent は layout の代わりに出るので、外枠を付ける。
+    notFoundComponent: () => (
+      <AppLayout user={accounting} onSignOut={() => Promise.resolve()}>
+        <EmbeddedNotFound />
+      </AppLayout>
+    ),
+  });
+  const accountingLayout = createRoute({
+    getParentRoute: () => authenticated,
+    id: "_accounting",
+    component: Outlet,
+    errorComponent: RouteError,
+  });
+  const page = createRoute({
+    getParentRoute: () => accountingLayout,
+    path,
+    loader: () => throwOnForbiddenOrNotFound(new Response(null, { status })),
+    component: () => <p>ready</p>,
+  });
+  return createRouter({
+    routeTree: root.addChildren([
+      authenticated.addChildren([accountingLayout.addChildren([page])]),
+    ]),
+    history: createMemoryHistory({ initialEntries: [path] }),
+  });
+}
+
+let apiRouter: ReturnType<typeof routerWhoseLoaderGets> | undefined;
+
+function showApiResponse(status: number, path: string): () => React.JSX.Element {
+  return () => {
+    const [router] = useState(() => routerWhoseLoaderGets(status, path));
+    apiRouter = router;
+    return <RouterProvider router={router} />;
+  };
+}
+
+function apiRouterPathname(): string | undefined {
+  return apiRouter?.state.location.pathname;
+}
+
+export const ApiForbiddenShowsTheForbiddenScreen: Story = {
+  render: showApiResponse(403, "/closing"),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: forbiddenTitle })).toBeVisible();
+    await expect(canvas.queryByText("ready")).toBeNull();
+    // URL は変えない。メニューは出す。
+    await expect(apiRouterPathname()).toBe("/closing");
+    await expect(canvas.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
+  },
+};
+
+export const ApiNotFoundShowsTheEmbeddedNotFoundScreen: Story = {
+  render: showApiResponse(404, "/claims/other-user"),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
+    await expect(canvas.queryByText("ready")).toBeNull();
+    await expect(canvas.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
   },
 };
 
