@@ -8,7 +8,7 @@ import {
   requireIdempotencyKey,
   type IdempotencyEnv,
 } from "./idempotency-http.ts";
-import { IdempotencyInProgress, IdempotencyPayloadMismatch } from "./idempotency.ts";
+import { IdempotencyInProgress } from "./idempotency.ts";
 
 const uuid = "9f1c1f6e-2f0e-4c3a-9c53-2a5c3e0d6b11";
 
@@ -16,6 +16,12 @@ describe("parseIdempotencyKey", () => {
   it("引用符付きの UUID を Valid にし、小文字にそろえること", () => {
     expect(parseIdempotencyKey(`"${uuid}"`)).toEqual({ _tag: "Valid", key: uuid });
     expect(parseIdempotencyKey(`"${uuid.toUpperCase()}"`)).toEqual({ _tag: "Valid", key: uuid });
+  });
+
+  it("nil UUID も UUID として受けること (RFC 9562)", () => {
+    const nil = "00000000-0000-0000-0000-000000000000";
+
+    expect(parseIdempotencyKey(`"${nil}"`)).toEqual({ _tag: "Valid", key: nil });
   });
 
   it("ヘッダーがなければ Missing にすること", () => {
@@ -27,7 +33,7 @@ describe("parseIdempotencyKey", () => {
     ["引用符のない UUID", uuid],
     ["空の String", '""'],
     ["UUID でない String", '"abc"'],
-    ["バージョンの桁が UUID でない値", '"9f1c1f6e-2f0e-0c3a-9c53-2a5c3e0d6b11"'],
+    ["桁数が UUID でない値", '"9f1c1f6e-2f0e-0c3a-9c53-2a5c3e0d6b1"'],
     ["パラメーター付き", `"${uuid}";a=1`],
     ["エスケープを含む String", `"\\"${uuid}"`],
     ["Token", "abc"],
@@ -76,7 +82,7 @@ describe("requireIdempotencyKey", () => {
 describe("失敗の応答", () => {
   it("ペイロードの不一致は 400 の idempotency-payload-mismatch にすること", async () => {
     const app = new Hono();
-    app.get("/", (c) => idempotencyPayloadMismatchResponse(c, new IdempotencyPayloadMismatch()));
+    app.get("/", (c) => idempotencyPayloadMismatchResponse(c));
 
     const response = await app.request("/");
 

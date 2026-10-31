@@ -13,7 +13,9 @@
 -- expires_at は、作ってから 24 時間後。期限切れの行の掃除は Issue #325。
 --
 -- 権限は、モジュールのスキーマの ALTER DEFAULT PRIVILEGES (20261028000000_grant_module_roles.sql) で、
--- {{module}}_module に付く。テナントを持つ表なので、RLS を有効にして所有者にも強制する (docs/adr/0011)。
+-- {{module}}_module に付く。同じ既定の権限が、依存の方向のモジュールにも SELECT を付けるが、この表には他人の
+-- user_id と保存した応答が入るので、他のモジュールのロールの権限は外し、自分のロールだけに付け直す (ADR 0029 の最小の権限)。
+-- テナントを持つ表なので、RLS を有効にして所有者にも強制する (docs/adr/0011)。
 
 -- migrate:up
 SET LOCAL lock_timeout = '5s';
@@ -22,7 +24,7 @@ CREATE TABLE {{module}}.idempotency_key (
   tenant_id uuid NOT NULL,
   user_id uuid NOT NULL,
   idempotency_key uuid NOT NULL,
-  request_hash char(64) NOT NULL,
+  request_hash varchar(64) NOT NULL,
   status_code smallint,
   response_body jsonb,
   expires_at timestamptz NOT NULL,
@@ -40,6 +42,10 @@ CREATE TABLE {{module}}.idempotency_key (
   patched_id varchar(64),
   CONSTRAINT pk_idempotency_key PRIMARY KEY (tenant_id, user_id, idempotency_key)
 );
+
+-- 他のモジュールは、この表を読まない。
+REVOKE ALL ON {{module}}.idempotency_key FROM claim_module, approval_module, closing_module;
+GRANT SELECT, INSERT, UPDATE, DELETE ON {{module}}.idempotency_key TO {{module}}_module;
 
 -- 期限切れの行を掃除する処理 (Issue #325) が、expires_at の範囲で探す。
 CREATE INDEX idx_idempotency_key_expires_at ON {{module}}.idempotency_key (expires_at);

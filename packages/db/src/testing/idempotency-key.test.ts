@@ -15,6 +15,13 @@ const key = "33333333-3333-4333-8333-333333333333";
 describe("idempotency_key の雛形", () => {
   let db: TestDatabase;
 
+  // ロールの属性はクラスタ全体のもので、並行して動く別のテストが壊している間は、この表と関係のない失敗も返る。
+  // この表の権限の失敗だけを見る (module-roles-catalog.ts の restrictedRoles のコメントと同じ事情)。
+  const tableProblems = async () =>
+    (await checkModuleRoles(db.superuser, reads)).filter((problem) =>
+      problem.includes(".idempotency_key"),
+    );
+
   beforeEach(async () => {
     db = await createTestDatabase();
     for (const module of Object.keys(reads)) {
@@ -43,6 +50,22 @@ describe("idempotency_key の雛形", () => {
     expect(await checkModuleRoles(db.superuser, reads)).toEqual([]);
   });
 
+  it("依存の方向のモジュールのロールに idempotency_key の SELECT を与えると、カタログの検査が失敗すること", async () => {
+    await db.migrator.query("GRANT SELECT ON claim.idempotency_key TO approval_module");
+
+    expect(await tableProblems()).toEqual([
+      "approval_module の claim.idempotency_key の SELECT がある",
+    ]);
+  });
+
+  it("自分のモジュールのロールから idempotency_key の SELECT を外すと、カタログの検査が失敗すること", async () => {
+    await db.migrator.query("REVOKE SELECT ON claim.idempotency_key FROM claim_module");
+
+    expect(await tableProblems()).toEqual([
+      "claim_module の claim.idempotency_key の SELECT がない",
+    ]);
+  });
+
   it("主キーが (tenant_id, user_id, idempotency_key) で、expires_at の索引があること", async () => {
     const { rows } = await db.superuser.query<{ key: string; indexes: string[] }>(
       `SELECT (SELECT string_agg(a.attname, ', ' ORDER BY k.ord)
@@ -57,6 +80,26 @@ describe("idempotency_key の雛形", () => {
 
     expect(rows[0]?.key).toBe("tenant_id, user_id, idempotency_key");
     expect(rows[0]?.indexes.some((definition) => definition.includes("(expires_at)"))).toBe(true);
+  });
+
+  it("表の権限が、自分のモジュールのロールだけにあり、依存の方向のモジュールのロールは読めないこと", async () => {
+    const { rows } = await db.superuser.query<{ role: string; table: string; select: boolean }>(
+      `SELECT r.role, t.name AS table,
+              has_table_privilege(r.role, t.name, 'SELECT') AS select
+         FROM unnest(ARRAY['claim_module', 'approval_module', 'closing_module', 'app_user']) AS r(role),
+              unnest(ARRAY['claim.idempotency_key', 'approval.idempotency_key', 'closing.idempotency_key']) AS t(name)`,
+    );
+
+    expect(
+      rows
+        .filter((row) => row.select)
+        .map((row) => `${row.role} ${row.table}`)
+        .toSorted(),
+    ).toEqual([
+      "approval_module approval.idempotency_key",
+      "claim_module claim.idempotency_key",
+      "closing_module closing.idempotency_key",
+    ]);
   });
 
   it("RLS が有効で、所有者にも強制され、テナントを設定した接続は自分のテナントの行しか見えないこと", async () => {

@@ -1,7 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import type { Context, MiddlewareHandler } from "hono";
 
-import type { IdempotencyInProgress, IdempotencyPayloadMismatch } from "./idempotency.ts";
+import type { IdempotencyInProgress } from "./idempotency.ts";
 import { commonProblemTypes, problemResponse, statusTitle } from "./problem.ts";
 
 // The HTTP side of Idempotency-Key (docs/adr/0040): the header is checked in the Hono layer, before anything runs.
@@ -13,7 +13,7 @@ export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
  * to a UUID, and the only escapes of a String (`\"` and `\\`) are not UUID characters, so this pattern accepts exactly
  * the Strings whose value is a UUID, and no parser library is needed. Parameters (`;a=1`) are not accepted.
  */
-const quotedUuid = /^"([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"$/i;
+const quotedUuid = /^"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"$/i;
 
 export type ParsedIdempotencyKey =
   | { readonly _tag: "Valid"; readonly key: string }
@@ -73,10 +73,7 @@ export const requireIdempotencyKey: MiddlewareHandler<IdempotencyEnv> = async (c
 };
 
 /** The 400 for a key used before with another request. */
-export function idempotencyPayloadMismatchResponse(
-  c: Context,
-  _failure: IdempotencyPayloadMismatch,
-) {
+export function idempotencyPayloadMismatchResponse(c: Context) {
   return problemResponse(c, {
     type: commonProblemTypes.idempotencyPayloadMismatch,
     title: statusTitle(400),

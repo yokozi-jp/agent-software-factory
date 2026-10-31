@@ -237,6 +237,32 @@ describe("withIdempotencyKey と idempotency_key", () => {
     expect(calls).toBe(2);
   });
 
+  it("本文のない 2xx (204) も保存し、再試行にも本文なしで同じ状態コードを返すこと", async () => {
+    const noContent = Effect.sync(() => {
+      calls += 1;
+      return { status: 204 };
+    });
+    await ctx.run(call(noContent));
+
+    const retried = await ctx.run(call(noContent));
+
+    expect(retried).toEqual({ status: 204, body: null });
+    expect(calls).toBe(1);
+  });
+
+  it("期限が切れて掃除されていない行は、もう記録ではなく、同じキーで業務の処理をもう一度呼ぶこと", async () => {
+    await ctx.run(call(createClaim(tenantA)));
+    await ctx.db.superuser.query(
+      "UPDATE claim.idempotency_key SET expires_at = now() - interval '1 second'",
+    );
+
+    const again = await ctx.run(call(createClaim(tenantA)));
+
+    expect(again).toEqual({ status: 201, body: { created: 2 } });
+    expect(calls).toBe(2);
+    expect(await keyRows()).toHaveLength(1);
+  });
+
   it("method、経路、クエリ文字列、本文のどれかが違う同じキーは IdempotencyPayloadMismatch で、業務の処理を呼ばないこと", async () => {
     await ctx.run(call(createClaim(tenantA)));
 

@@ -13,9 +13,9 @@ import type { ModuleTx } from "./tenant-transaction.ts";
 const RETENTION_HOURS = 24;
 
 /** How long the second request waits for the first one on the same key, before it answers 409. */
-const LOCK_WAIT = "5s";
+const LOCK_WAIT_SECONDS = 5;
 /** What `Retry-After` says when the wait ran out: the length of the wait. */
-export const IDEMPOTENCY_RETRY_AFTER_SECONDS = 5;
+export const IDEMPOTENCY_RETRY_AFTER_SECONDS = LOCK_WAIT_SECONDS;
 
 /** What the hash covers: method, path, query string and the body, exactly as they came. */
 export interface IdempotencyRequest {
@@ -61,24 +61,25 @@ const encoder = new TextEncoder();
 
 /**
  * The SHA-256 of the request, in hex: method, path, query string and the bytes of the body. Each part is
- * length-prefixed, so a boundary cannot move from one part to the next. The JSON is not normalised.
+ * length-prefixed, so a boundary cannot move from one part to the next. The method is upper-cased (HTTP methods are
+ * case-sensitive, but a proxy that changes the case must not change the key's meaning); the rest is taken as it came.
+ * The JSON is not normalised.
  */
 export async function requestHash(request: IdempotencyRequest): Promise<string> {
   const parts = [request.method.toUpperCase(), request.path, request.query, request.body].map(
-    (part) => encoder.encode(part),
+    (part) => {
+      const bytes = encoder.encode(part);
+      return [encoder.encode(`${bytes.length}:`), bytes];
+    },
   );
-  const prefix = (part: Uint8Array) => encoder.encode(`${part.length}:`);
-  const bytes = new Uint8Array(
-    parts.reduce((total, part) => total + prefix(part).length + part.length, 0),
-  );
+  const pieces = parts.flat();
+  const all = new Uint8Array(pieces.reduce((total, piece) => total + piece.length, 0));
   let offset = 0;
-  for (const part of parts) {
-    for (const piece of [prefix(part), part]) {
-      bytes.set(piece, offset);
-      offset += piece.length;
-    }
+  for (const piece of pieces) {
+    all.set(piece, offset);
+    offset += piece.length;
   }
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256", all);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -89,6 +90,7 @@ const isLockTimeout = (error: unknown): boolean =>
  * Runs `work` once per `(tenant, user, key)`, in the open transaction of the module `tx` (so call it inside
  * `inTenantTransaction`, from the application layer; docs/adr/0028).
  *
+ * 0. A row of the key past its `expires_at` is deleted first, so an expired key can be used again.
  * 1. `INSERT … ON CONFLICT DO NOTHING RETURNING` writes the row of the key. `lock_timeout` is 5 seconds for this
  *    statement only and 0 right after it, so a lock wait of the business writes that follow is not cut and
  *    mistaken for a duplicate. If another transaction holds the same key, the INSERT waits for its end.
@@ -113,15 +115,23 @@ export const withIdempotencyKey = <K extends ModuleTx, E, R>(
 > =>
   Effect.gen(function* () {
     const current = yield* CurrentWrite;
-    const trx = yield* tx;
+    const executor = yield* tx;
     const table = sql.id(tx.module, "idempotency_key");
     const hash = yield* Effect.promise(() => requestHash(request));
 
-    yield* dbCall(tx, (t) => sql`SET LOCAL lock_timeout = ${sql.lit(LOCK_WAIT)}`.execute(t));
+    // A row past `expires_at` that nobody has swept yet (Issue #325) is not a record any more: the key is new again.
+    yield* dbCall(tx, (t) =>
+      sql`DELETE FROM ${table} WHERE tenant_id = ${scope.tenantId} AND user_id = ${scope.userId}
+          AND idempotency_key = ${scope.key} AND expires_at <= ${current.at.toString()}`.execute(t),
+    );
+    yield* dbCall(tx, (t) =>
+      sql`SET LOCAL lock_timeout = ${sql.lit(`${LOCK_WAIT_SECONDS}s`)}`.execute(t),
+    );
+    // Not `dbCall`: a failure of the database is a defect there, and `55P03` has to become `IdempotencyInProgress`.
     const inserted = yield* Effect.tryPromise({
       try: () =>
         insertRow(
-          trx,
+          executor,
           table,
           {
             tenant_id: scope.tenantId,
