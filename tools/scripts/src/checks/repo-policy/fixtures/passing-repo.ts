@@ -305,6 +305,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "docs/adr/0029-outbox.md": "# ADR 0029\n",
   "docs/local-env-setup/setup.md": "# Setup\n\n## 3. Ubuntu の初期セットアップ\n",
   "tools/scripts/sh/guard-push.sh": "#!/bin/sh\ngit push --dry-run\n",
+  "tools/scripts/src/sh/guard-push.test.ts": "// process test of guard-push.sh\n",
   ".github/workflows/ci.yml": [
     "jobs:",
     "  checks:",

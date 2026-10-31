@@ -1106,7 +1106,7 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
 });
 
 describe("git on another repository, never from a shell wrapper", () => {
-  const wrapper = "tools/scripts/sh/other.sh";
+  const wrapper = "tools/scripts/sh/guard-push.sh";
   const anywhere = (path: string) =>
     `${path} runs git on another repository. A shell wrapper runs git only on the repository it runs in; write a test that needs another repository in TypeScript, with gitIn (docs/adr/0024).`;
 
@@ -1160,6 +1160,33 @@ describe("shell scripts are executable in git", () => {
     const files = Object.fromEntries(paths.map((path) => [path, "x\n"]));
     const modes = Object.fromEntries(paths.map((path) => [path, "100644"]));
     expect(violations(repo(files, { modes }))).toEqual([]);
+  });
+});
+
+describe("every shell wrapper has a process test", () => {
+  const path = "tools/scripts/sh/other.sh";
+  const test = "tools/scripts/src/sh/other.test.ts";
+  const missing = `${path} has no process test. Write ${test}, with a stub tool from src/test/stubs.ts that checks what the script hands to the tool and its exit code (docs/tooling/ci.md, "検査を足すとき" の 5).`;
+
+  it("refuses a wrapper with no src/sh/<name>.test.ts", () => {
+    expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n" }))).toEqual([missing]);
+  });
+
+  it("passes a wrapper with its test", () => {
+    expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n", [test]: "// test\n" }))).toEqual([]);
+  });
+
+  it("does not take the test of the real tool for the process test", () => {
+    const tools = "tools/scripts/src/sh/other.tools.test.ts";
+    expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n", [tools]: "// test\n" }))).toEqual([
+      missing,
+    ]);
+  });
+
+  it("checks only tools/scripts/sh/*.sh, so not the upstream skills", () => {
+    expect(violations(repo({ ".agents/skills/a/run.sh": "x\n", "other/run.sh": "x\n" }))).toEqual(
+      [],
+    );
   });
 });
 
@@ -3290,7 +3317,7 @@ describe("steering frontmatter: the edges", () => {
 });
 
 describe("git on another repository: the edges", () => {
-  const wrapper = "tools/scripts/sh/other.sh";
+  const wrapper = "tools/scripts/sh/guard-push.sh";
   const anywhere = (path: string) =>
     `${path} runs git on another repository. A shell wrapper runs git only on the repository it runs in; write a test that needs another repository in TypeScript, with gitIn (docs/adr/0024).`;
 

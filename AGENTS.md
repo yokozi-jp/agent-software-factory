@@ -2,7 +2,7 @@
 
 ## ドキュメント
 
-規約、ランブック、ADR は `docs/` にあります。まず `docs/index.md` から読み始めてください。各行に、その領域をいつ読むべきかが書かれています。ツール・プラグイン・タスクランナーを追加・変更する前に、`docs/adr/index.md` を読んでください。ADR を書くか迷ったら、`docs/knowledge/documentation-authoring.md` ("ADR を書くかどうか") を読んでください。commit メッセージと PR タイトルを書く前に、`docs/repository/commit-conventions.md` を読んでください (本文の 1 行は 100 文字以内で、超えると commitlint が止めます)。テストを流す前に、`docs/tooling/commands.md` の「テストの流し方」を読んでください (作業の途中は `nx affected`、全部を確かめるときだけ `pnpm test`)。
+規約、ランブック、ADR は `docs/` にあります。まず `docs/index.md` から読み始めてください。各行に、その領域をいつ読むべきかが書かれています。検査 (lint の規則、sh のラッパー、CI の step、hook) を足す前に、`docs/tooling/ci.md` の「検査を足すとき」を読んでください (直す場所が 7 つあります)。ツール・プラグイン・タスクランナーを追加・変更する前に、`docs/adr/index.md` を読んでください。ADR を書くか迷ったら、`docs/knowledge/documentation-authoring.md` ("ADR を書くかどうか") を読んでください。commit メッセージと PR タイトルを書く前に、`docs/repository/commit-conventions.md` を読んでください (本文の 1 行は 100 文字以内で、超えると commitlint が止めます)。テストを流す前に、`docs/tooling/commands.md` の「テストの流し方」を読んでください (作業の途中は `nx affected`、全部を確かめるときだけ `pnpm test`)。
 
 `docs/` は過去の調査の cache で、古くなっていることがある。作業する前に、今の一次情報 (仕様、公式ドキュメント) と、今のデファクトスタンダード、ベストプラクティス、アンチパターンを調べる。取り込んだガイドライン (`about.md` がある領域) は 2023〜2025 年に書かれている。一次情報と docs が食い違ったら一次情報に従い、同じ変更で docs を直す。取り込んだ領域なら、その `about.md` の「原文からの変更点」に書く。合意した範囲の外の修正になるなら、直さずに報告する。
 
