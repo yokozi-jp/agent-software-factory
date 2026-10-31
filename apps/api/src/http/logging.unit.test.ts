@@ -211,7 +211,7 @@ describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
   });
 
   it.each(["not json", "null", "[]", '{"status":401}', '{"type":1}'])(
-    "問題の本文が %s で、理由を読めない応答でも、アクセスログは出て rejected は出ない",
+    "問題の本文が %s で、理由を読めない 401 は、理由なしで rejected に残すこと",
     async (body) => {
       const { logger, lines } = memoryLogger();
       const app = new OpenAPIHono<{ Variables: ApiVariables }>();
@@ -225,12 +225,17 @@ describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
           }),
       );
       await app.request("/broken");
-      expect(lines().map((line) => line["message"])).toEqual([
-        "request received",
-        "request completed",
-      ]);
+      const rejected = lines().find((line) => line["message"] === "request rejected");
+      expect(rejected).toMatchObject({ "event.category": "authentication" });
+      expect(rejected).not.toHaveProperty("error.type");
     },
   );
+
+  it("User-Agent は 512 文字で切る", async () => {
+    const { logger, lines } = memoryLogger();
+    await createApp({ logger }).request("/a", { headers: { "user-agent": "x".repeat(2000) } });
+    expect(String(lines()[0]?.["user_agent.original"])).toHaveLength(512);
+  });
 });
 
 describe("user.id と tenant_id", () => {

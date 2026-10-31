@@ -64,7 +64,8 @@ function requestFields(c: Context): LogFields {
   return {
     "http.request.method": c.req.method,
     "url.path": c.req.path,
-    ...(userAgent === undefined ? {} : { "user_agent.original": userAgent }),
+    // クライアントが決める値なので、長さを切る (1 リクエストが 2 行に載せる)。
+    ...(userAgent === undefined ? {} : { "user_agent.original": userAgent.slice(0, 512) }),
   };
 }
 
@@ -119,12 +120,13 @@ export function accessLog(logger: Logger): MiddlewareHandler<ApiEnv> {
     });
     const type = await problemTypeOf(c.res);
     const reason = rejection(status, type);
-    if (reason !== undefined && type !== undefined)
+    // 理由 (Problem の type) が読めない 401 と 403 も、理由なしで残す。
+    if (reason !== undefined)
       logger.info("request rejected", {
         ...fields,
         ...reason,
         "http.response.status_code": status,
-        "error.type": type,
+        ...(type === undefined ? {} : { "error.type": type }),
         "event.kind": "event",
         "event.outcome": "failure",
       });
