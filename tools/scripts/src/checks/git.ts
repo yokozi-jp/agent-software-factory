@@ -1,5 +1,5 @@
-// git for the checks that warn and never fail (adr-check, test-weakening): a failed git command is an answer
-// ("cannot compare"), not an error.
+// git for the checks that read the repository (adr-check, test-weakening, migration-compat): a failed git command is an
+// answer ("cannot compare"), and the check says what it could not do. git's stderr is not kept.
 import { spawnSync } from "node:child_process";
 
 // git <args> in <cwd> (the current directory when undefined); undefined when git fails or cannot start. Reading

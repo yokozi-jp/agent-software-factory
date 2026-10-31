@@ -56,6 +56,15 @@ catalog:
   smol-toml: 1.9.1
   yaml: 2.9.1
   zod: ^4.6.7
+  # OpenTelemetry (docs/adr/0048). Only packages/telemetry and the entry files of the apps import the SDK; the rest import
+  # @opentelemetry/api. sdk-node is on the experimental 0.3xx line, so a minor update may change its options.
+  "@opentelemetry/api": ^1.10.0
+  "@opentelemetry/sdk-node": ^0.300.0
+  "@opentelemetry/sdk-trace": ^3.0.0
+  "@opentelemetry/instrumentation-pg": ^0.77.0
+  "@opentelemetry/instrumentation-undici": ^0.34.0
+  "@opentelemetry/instrumentation-aws-sdk": ^0.79.0
+  "@hono/otel": ^1.3.0
   # The Temporal global for Node.js 24 and the browsers without it. Node.js 26 has it built in.
   temporal-polyfill: 1.0.6
   # apps/web: Vitest browser mode with Playwright, to test display in a browser with a time zone of its own (docs/adr/0043).

@@ -7,3 +7,4 @@
 - [型述語の境界値のテスト](testing.md)：`domain` の型述語や遷移の関数のテストを書くとき
 - [英語の識別子と用語集の対応表](glossary-mapping.md)：`domain` や `application` の識別子を決めるとき、`GLOSSARY.md` の言葉を英語にするとき
 - [モジュールを足す手順](add-module.md)：サンプル機能のモジュールを足すとき、`moduleOrder`、`apps/api` への登録、migration、型の生成の足し忘れで repo-policy や `types.test.ts` が失敗したとき
+- [module ではない package を足す手順](add-package.md)：`packages/` の直下に shared-kernel、ui、db、telemetry のような module ではない package を足すとき、`exports` を `index.ts` 以外にしたいとき、repo-policy が `moduleOrder` にないと止めたとき

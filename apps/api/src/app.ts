@@ -3,6 +3,8 @@
 import "@agent-software-factory/approval";
 import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
+import { urlWithoutQuery } from "@agent-software-factory/telemetry";
+import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { secureHeaders } from "hono/secure-headers";
 
@@ -44,12 +46,20 @@ const healthRoute = createRoute({
   },
 });
 
+// 受信のトレースが取る属性 (docs/adr/0048)。ヘッダーは取らない (captureRequestHeaders を書かない)。
+// url.full の既定はクエリ文字列を含み、OIDC の callback の code や state が載るので、クエリを落とす。
+// SDK が起動していなければ、この middleware は何もしない。
+const tracingMiddleware = httpInstrumentationMiddleware({
+  getUrlFull: (c) => urlWithoutQuery(c.req.url),
+});
+
 export function createApp({ auth }: AppDependencies = {}) {
   const withoutRoutes = new OpenAPIHono<{ Variables: SessionVariables }>({
     defaultHook: validationHook,
   });
   // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
   // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
+  withoutRoutes.use(tracingMiddleware);
   withoutRoutes.use(
     secureHeaders({
       contentSecurityPolicy: { defaultSrc: ["'none'"] },

@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "pg";
 import { describe, expect, inject, it, vi } from "vite-plus/test";
 
@@ -79,6 +82,55 @@ describe("prepareSeededDatabase", () => {
 
     expect(await countClaims("prepared_seeded")).toBeGreaterThan(0);
     expect(await countClaims("prepared_empty")).toBe(0);
+  });
+});
+
+describe("prepareSeededDatabase の更新の試験の段 (docs/adr/0037)", () => {
+  const schemas = async (database: string): Promise<string[]> => {
+    const client = new Client({ connectionString: connectionUri(inject("postgresUri"), database) });
+    await client.connect();
+    try {
+      const { rows } = await client.query<{ nspname: string }>(
+        "SELECT nspname FROM pg_namespace WHERE nspname = 'compat_probe'",
+      );
+      return rows.map(({ nspname }) => nspname);
+    } finally {
+      await client.end();
+    }
+  };
+
+  it("MIGRATION_COMPAT_FILES のファイルの migration を、seed の後に流すこと", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "compat-test-"));
+    try {
+      const file = join(dir, "29991231000000_create_compat_probe.sql");
+      await writeFile(file, "-- migrate:up\nCREATE SCHEMA compat_probe;\n-- migrate:down\n");
+
+      await prepareSeededDatabase(inject("postgresUri"), "prepared_extra", {
+        MIGRATION_COMPAT_FILES: JSON.stringify([file]),
+      });
+
+      expect(await schemas("prepared_extra")).toEqual(["compat_probe"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("環境変数がない、または空なら、何も足さないこと", async () => {
+    await prepareSeededDatabase(inject("postgresUri"), "prepared_no_extra", {});
+    await prepareSeededDatabase(inject("postgresUri"), "prepared_empty_extra", {
+      MIGRATION_COMPAT_FILES: "",
+    });
+
+    expect(await schemas("prepared_no_extra")).toEqual([]);
+    expect(await schemas("prepared_empty_extra")).toEqual([]);
+  });
+
+  it("値が文字列の配列でなければ、データベースを作る前に投げること", async () => {
+    await expect(
+      prepareSeededDatabase(inject("postgresUri"), "prepared_bad_extra", {
+        MIGRATION_COMPAT_FILES: '{"a":1}',
+      }),
+    ).rejects.toThrow(/MIGRATION_COMPAT_FILES/);
   });
 });
 
