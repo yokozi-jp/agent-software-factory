@@ -47,6 +47,7 @@ const healthRoute = createRoute({
 });
 
 // `/api/me` は auth の有無で route の型を変えない (spec と AppType に常に入る)。auth がなければ session が入らないので 401。
+// 401 の本文は今の `{ error }` のまま。ADR 0035 の Problem Details にするのは、共有の関数ができる Issue #307 の後 (Issue #486)。
 // `/api/auth/*` は Better Auth が扱う経路で、契約の外に置く (docs/adr/0035)。
 const meRoute = createRoute({
   method: "get",
@@ -58,7 +59,7 @@ const meRoute = createRoute({
       description: "The signed-in user.",
       content: {
         "application/json": {
-          schema: z.object({ id: z.string(), email: z.string(), name: z.string() }),
+          schema: z.object({ id: z.string(), email: z.email(), name: z.string() }),
         },
       },
     },
@@ -77,13 +78,13 @@ const tracingMiddleware = httpInstrumentationMiddleware({
 });
 
 export function createApp({ auth }: AppDependencies = {}) {
-  const withoutRoutes = new OpenAPIHono<{ Variables: SessionVariables }>({
+  const base = new OpenAPIHono<{ Variables: SessionVariables }>({
     defaultHook: validationHook,
   });
   // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
   // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
-  withoutRoutes.use(tracingMiddleware);
-  withoutRoutes.use(
+  base.use(tracingMiddleware);
+  base.use(
     secureHeaders({
       contentSecurityPolicy: { defaultSrc: ["'none'"] },
       strictTransportSecurity: "max-age=63072000; includeSubDomains",
@@ -94,17 +95,17 @@ export function createApp({ auth }: AppDependencies = {}) {
   );
   // middleware は route より前に登録する (Hono は登録順に実行する)。route の型は `openapi` の chain で受ける。
   if (auth !== undefined) {
-    withoutRoutes.use("/api/*", csrfProtection(auth.origin));
-    withoutRoutes.use("/api/*", sessionGuard(auth));
+    base.use("/api/*", csrfProtection(auth.origin));
+    base.use("/api/*", sessionGuard(auth));
     // ログアウトのあと、ブラウザに HTTP cache と Cookie を捨てさせる (OWASP Session Management)。
-    withoutRoutes.use("/api/auth/sign-out", async (c, next) => {
+    base.use("/api/auth/sign-out", async (c, next) => {
       await next();
       if (c.res.ok) c.header("Clear-Site-Data", '"cache", "cookies"');
     });
-    withoutRoutes.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
+    base.on(["GET", "POST"], "/api/auth/*", (c) => auth.betterAuth.handler(c.req.raw));
   }
 
-  const app = withoutRoutes
+  const app = base
     .openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200))
     .openapi(meRoute, (c) => {
       const user = c.get("session")?.user;

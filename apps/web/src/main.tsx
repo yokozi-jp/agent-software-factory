@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 
 import "temporal-polyfill/global";
 import "./index.css";
+import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
 
@@ -23,7 +24,7 @@ const context: AppContext = {
       goToSessionExpired(router);
     },
   ),
-  getSession: () => fetchSession((input, init) => fetch(input, init), location.origin),
+  getSession: () => fetchSession(createApiClient(location.origin, fetch)),
   signIn: async (callbackURL) => {
     const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
     if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);

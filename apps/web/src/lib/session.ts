@@ -1,13 +1,15 @@
 // セッションの有無を API (`GET /api/me`) で確かめる (docs/adr/0022)。route の guard は UI の都合で、
 // データの認可の境界は API にある。
 
-import { createApiClient } from "./api-client.ts";
+import type { createApiClient } from "./api-client.ts";
 
 export type SessionState = "authenticated" | "unauthenticated";
 
 /** 200 はログイン済み、401 は未ログイン。ほかの応答は判断できないので投げる (未ログインとして扱わない)。 */
-export async function fetchSession(fetchApi: typeof fetch, baseUrl: string): Promise<SessionState> {
-  const response = await createApiClient(baseUrl, fetchApi).api.me.$get();
+export async function fetchSession(
+  client: ReturnType<typeof createApiClient>,
+): Promise<SessionState> {
+  const response = await client.api.me.$get();
   // 型は 200 と 401 だけだが、実行時はほかの status も来る。広げた型で比べて、契約の外の応答は投げる。
   const status: number = response.status;
   if (status === 200) return "authenticated";

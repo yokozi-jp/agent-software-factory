@@ -30,7 +30,7 @@ tags: [adr, web-api, openapi, hono, zod, rpc, contract]
 
 - API の route を変えたら `pnpm exec nx openapi api` を実行し、`openapi.json` を commit します。忘れると `api:test` が落ちます。
 - `apps/web` の依存に `apps/api` が増え、Nx の project graph にアプリ同士の依存が出ます。import が 1 か所に限られるので、API のコードが web の bundle に入ることはありません。
-- `createApp` の戻り値の型 (`AppType`) は、`createApp` の中で chain した route だけを含みます。`auth` を渡したときだけ付く `/api/auth/*` と `/api/me` は、まだ契約に入っていません。契約に足すのは [Issue #478](https://github.com/yokozi-jp/agent-software-factory/issues/478) です。`createApiClient` を web のコードが使うのも、そのときです。
+- `createApp` の戻り値の型 (`AppType`) は、`createApp` の中で chain した route だけを含みます。`/api/me` は `auth` の有無に関わらず chain するので契約に入り、web の `session.ts` が `createApiClient` で呼びます ([Issue #478](https://github.com/yokozi-jp/agent-software-factory/issues/478))。`/api/auth/*` は [ADR 0035](0035-problem-details-for-api-errors.md) のとおり契約の外です。
 - 検証エラーの 400 は、`/health` に入力がないので、まだ spec にも `hc` の型にも出ません。入力を持つ最初の route が、400 を応答に書きます ([Issue #307](https://github.com/yokozi-jp/agent-software-factory/issues/307))。
 - Spectral と oasdiff のゲートは [Issue #190](https://github.com/yokozi-jp/agent-software-factory/issues/190) で足します。
 
