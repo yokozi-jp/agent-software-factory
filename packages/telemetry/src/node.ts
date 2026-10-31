@@ -1,4 +1,4 @@
-// Node.js 専用の入口 (docs/adr/0007、docs/adr/0047)。OpenTelemetry の SDK と exporter を import してよい場所は、
+// Node.js 専用の入口 (docs/adr/0007、docs/adr/0048)。OpenTelemetry の SDK と exporter を import してよい場所は、
 // ここと、アプリの入口のファイル (apps/api/src/telemetry.ts) だけ。それ以外は @opentelemetry/api だけを import する。
 import { AwsInstrumentation } from "@opentelemetry/instrumentation-aws-sdk";
 import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
@@ -37,7 +37,7 @@ function hasEndpoint(env: StartTelemetryOptions["env"]): boolean {
 
 /**
  * トレースを始める。受信 HTTP の span は `@hono/otel` (apps/api の app.ts)、DB は `pg`、外向きの通信は `fetch`
- * (undici) と AWS SDK の計装が作る。ログは OTLP で送らない (docs/adr/0047)。
+ * (undici) と AWS SDK の計装が作る。ログは OTLP で送らない (docs/adr/0048)。
  *
  * 送り先は標準の `OTEL_EXPORTER_OTLP_ENDPOINT` で決める。ない、または `OTEL_SDK_DISABLED=true` のときは何も始めず、
  * 送り先のないまま localhost:4318 への失敗を出し続けない。
@@ -55,7 +55,7 @@ export function startTelemetry({
     serviceName: env.OTEL_SERVICE_NAME ?? serviceName,
     ...(spanProcessors === undefined ? {} : { spanProcessors }),
     // トレースだけを送る。sdk-node は OTEL_METRICS_EXPORTER と OTEL_LOGS_EXPORTER が空だと既定の otlp を有効にするので、
-    // 空の配列を渡して環境変数の読み取りを止める。ログは stdout の JSON Lines のままで OTLP では送らない (docs/adr/0047)。
+    // 空の配列を渡して環境変数の読み取りを止める。ログは stdout の JSON Lines のままで OTLP では送らない (docs/adr/0048)。
     metricReaders: [],
     logRecordProcessors: [],
     instrumentations: [

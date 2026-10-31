@@ -7,7 +7,7 @@ tags: [tooling, runbook, observability, opentelemetry, docker]
 
 # ローカルでトレースを見る
 
-API のトレースを、手元の `grafana/otel-lgtm` (Grafana、Tempo、Loki、Prometheus、Collector が 1 つのイメージに入ったもの) で見る手順です。本番の送り先ではありません。計装の範囲と理由は [ADR 0047](../adr/0047-opentelemetry-traces-only-with-explicit-instrumentation.md) にあります。
+API のトレースを、手元の `grafana/otel-lgtm` (Grafana、Tempo、Loki、Prometheus、Collector が 1 つのイメージに入ったもの) で見る手順です。本番の送り先ではありません。計装の範囲と理由は [ADR 0048](../adr/0048-opentelemetry-traces-only-with-explicit-instrumentation.md) にあります。
 
 ## 起動する
 

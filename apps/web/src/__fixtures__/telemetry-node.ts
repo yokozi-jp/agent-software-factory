@@ -1,5 +1,5 @@
 // Detection-power fixture (#43) for the ban on the Node-only entry of packages/telemetry in apps/web/src (root
-// vite.config.ts, docs/adr/0047). If the pattern is removed, or its `files` stop reaching apps/web/src/, the disable
+// vite.config.ts, docs/adr/0048). If the pattern is removed, or its `files` stop reaching apps/web/src/, the disable
 // comment is unused and `vp check` fails (reportUnusedDisableDirectives). Knip skips __fixtures__/, and nothing imports
 // this file.
 

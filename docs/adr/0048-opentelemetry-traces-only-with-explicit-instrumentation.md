@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0047: OpenTelemetry はトレースだけを OTLP で送り、計装は明示して入れ、SDK は packages/telemetry の Node 専用の入口とアプリの入口に閉じる"
+title: "ADR 0048: OpenTelemetry はトレースだけを OTLP で送り、計装は明示して入れ、SDK は packages/telemetry の Node 専用の入口とアプリの入口に閉じる"
 description: API の可観測性の決定。計装は @hono/otel、pg、fetch (undici)、AWS SDK を明示して入れ、一括パッケージは使わない。送るのはトレースだけで、ログは stdout の JSON Lines のまま trace_id と span_id で相関する。SDK と exporter は packages/telemetry の ./node とアプリの入口のファイルだけが import し、ほかは @opentelemetry/api だけを Oxlint で強制する。ヘッダー、body、SQL の値、クエリ文字列は属性に載せない。ローカルは grafana/otel-lgtm。計装やトレースの属性を足す、変えるとき、OpenTelemetry の SDK を import したくなったとき、ログを OTLP で送りたくなったとき、ブラウザに OpenTelemetry を入れたくなったときに読む。
 tags: [adr, observability, opentelemetry, logging, security, lint]
 ---
 
-# ADR 0047: OpenTelemetry はトレースだけを OTLP で送り、計装は明示して入れ、SDK は packages/telemetry の Node 専用の入口とアプリの入口に閉じる
+# ADR 0048: OpenTelemetry はトレースだけを OTLP で送り、計装は明示して入れ、SDK は packages/telemetry の Node 専用の入口とアプリの入口に閉じる
 
 `apps/api` にはロガーも OpenTelemetry もなく、リクエストの遅さや失敗の原因を、トレースとログをたどって調べられませんでした。API、ワーカー、バッチ、Lambda の入口が同じ初期化を書くと重複します。計装の範囲は [Issue #148](https://github.com/yokozi-jp/agent-software-factory/issues/148) で決め、[Issue #199](https://github.com/yokozi-jp/agent-software-factory/issues/199) で実装しました。
 

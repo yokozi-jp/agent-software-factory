@@ -30,7 +30,7 @@ export interface AppDependencies {
   readonly databases?: ModuleDatabases;
 }
 
-// 受信のトレースが取る属性 (docs/adr/0047)。ヘッダーは取らない (captureRequestHeaders を書かない)。
+// 受信のトレースが取る属性 (docs/adr/0048)。ヘッダーは取らない (captureRequestHeaders を書かない)。
 // url.full の既定はクエリ文字列を含み、OIDC の callback の code や state が載るので、クエリを落とす。
 // SDK が起動していなければ、この middleware は何もしない。
 const tracingMiddleware = httpInstrumentationMiddleware({

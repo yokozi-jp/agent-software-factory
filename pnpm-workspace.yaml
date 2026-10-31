@@ -54,7 +54,7 @@ catalog:
   smol-toml: 1.9.1
   yaml: 2.9.1
   zod: ^4.6.7
-  # OpenTelemetry (docs/adr/0047). Only packages/telemetry and the entry files of the apps import the SDK; the rest import
+  # OpenTelemetry (docs/adr/0048). Only packages/telemetry and the entry files of the apps import the SDK; the rest import
   # @opentelemetry/api. sdk-node is on the experimental 0.3xx line, so a minor update may change its options.
   "@opentelemetry/api": ^1.10.0
   "@opentelemetry/sdk-node": ^0.300.0

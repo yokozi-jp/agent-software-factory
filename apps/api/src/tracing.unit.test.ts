@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
 import { createApp } from "./app.ts";
 
-// 受信の span (docs/adr/0047)。SDK を起動してから createApp を呼ぶ。
+// 受信の span (docs/adr/0048)。SDK を起動してから createApp を呼ぶ。
 describe("受信のトレース", () => {
   const exporter = new InMemorySpanExporter();
   let telemetry: Telemetry;
@@ -26,7 +26,7 @@ describe("受信のトレース", () => {
     await vi.waitFor(() =>
       expect(exporter.getFinishedSpans().map((span) => span.name)).toContain("GET /health"),
     );
-    // 受信の span は @hono/otel だけが作る。instrumentation-http を入れていれば、ここが 2 本になる (docs/adr/0047)。
+    // 受信の span は @hono/otel だけが作る。instrumentation-http を入れていれば、ここが 2 本になる (docs/adr/0048)。
     expect(
       exporter.getFinishedSpans().filter((span) => span.kind === SpanKind.SERVER),
     ).toHaveLength(1);

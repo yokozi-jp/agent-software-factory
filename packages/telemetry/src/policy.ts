@@ -1,4 +1,4 @@
-// 計装が取る属性の方針 (docs/adr/0047)。startTelemetry がそのまま計装に渡し、policy.test.ts が確かめる。
+// 計装が取る属性の方針 (docs/adr/0048)。startTelemetry がそのまま計装に渡し、policy.test.ts が確かめる。
 // 機密になりうるもの (ヘッダー、body、SQL のパラメータ) は、既定で取らないだけでなく、取る設定を書かないことで守る。
 import type { AwsSdkInstrumentationConfig } from "@opentelemetry/instrumentation-aws-sdk";
 import type { PgInstrumentationConfig } from "@opentelemetry/instrumentation-pg";

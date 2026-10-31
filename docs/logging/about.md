@@ -33,7 +33,7 @@ sources:
 - web-api.md の処理時間の単位を、ミリ秒推奨から秒推奨にした。OpenTelemetry Semantic Conventions (HTTP メトリクス、単位は `s`)。
 - web-api.md、keys.md、messages.md、startup.md のタイムスタンプを、UTC か JST の許容と JST の例 (`+09:00`)、ナノ秒の例から、UTC (`Z`) のミリ秒3桁だけにした。環境によって `Z` と `+09:00` が混ざると、並べて読むときに比べ間違える。OpenTelemetry のログのデータモデルの `Timestamp` も、UNIX エポックからの値でタイムゾーンを持たない。OpenTelemetry Logs Data Model、ADR 0043。
 - keys.md と messages.md の例外属性キーを、`exception.stack_trace` から `exception.stacktrace` にした。OpenTelemetry Semantic Conventions レジストリ (exception 属性、Stable)。
-- フロントエンドのログ出力 (`frontend.md`) に「Web Vitals の送信はログではない。`console` は引き続き禁止する」の 1 行を足した。Web Vitals はブラウザのパフォーマンス指標で、ログではないため ([ADR 0047](../adr/0047-opentelemetry-traces-only-with-explicit-instrumentation.md))。
+- フロントエンドのログ出力 (`frontend.md`) に「Web Vitals の送信はログではない。`console` は引き続き禁止する」の 1 行を足した。Web Vitals はブラウザのパフォーマンス指標で、ログではないため ([ADR 0048](../adr/0048-opentelemetry-traces-only-with-explicit-instrumentation.md))。
 
 ## 適用範囲と前提条件
 

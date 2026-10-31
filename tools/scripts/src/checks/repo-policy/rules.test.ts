@@ -2924,7 +2924,7 @@ describe("ADR 0038: packages/db has the fixtures of its Oxlint override", () => 
   });
 });
 
-describe("ADR 0047: packages/telemetry", () => {
+describe("ADR 0048: packages/telemetry", () => {
   const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
   const stops = (name: string) =>
     `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
@@ -2949,7 +2949,7 @@ describe("ADR 0047: packages/telemetry", () => {
       ...files,
     });
   const noImport = (file: string, name: string, what: string) =>
-    `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0047).`;
+    `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`;
 
   it("passes telemetry with its two exports and the three fixtures", () => {
     expect(violationsWithoutOrder(withTelemetry())).toEqual([]);
@@ -2983,7 +2983,7 @@ describe("ADR 0047: packages/telemetry", () => {
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
   ])("refuses telemetry with %s", (_, wrong) => {
     expect(violations(withTelemetry(packageFiles("telemetry", { exports: wrong })))).toEqual([
-      `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0047).`,
+      `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048).`,
     ]);
   });
 
@@ -3007,8 +3007,8 @@ describe("ADR 0047: packages/telemetry", () => {
   it("asks for the SDK import with no comment and the SQS import with one, in the fixture of telemetry", () => {
     const own = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
     expect(violations(withTelemetry({ [own]: stops("@opentelemetry/sdk-node") }))).toEqual([
-      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
-      `${own} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0047).`,
+      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0048).`,
+      `${own} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0048).`,
     ]);
   });
 
@@ -3020,13 +3020,13 @@ describe("ADR 0047: packages/telemetry", () => {
     expect(
       failures({ [own]: `${stops("@opentelemetry/sdk-node")}${stops("@aws-sdk/client-sqs")}` }),
     ).toEqual([
-      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
+      `${own} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0048).`,
     ]);
   });
 
   it("asks for the import of the Node-only entry in the fixture of apps/web", () => {
     const web = "apps/web/src/__fixtures__/telemetry-node.ts";
-    const missing = `${web} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0047).`;
+    const missing = `${web} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0048).`;
     expect(violations(withTelemetry({ [web]: undefined }))).toEqual([missing]);
     expect(
       violations(withTelemetry({ [web]: 'import "@agent-software-factory/telemetry/node";\n' })),

@@ -1,5 +1,5 @@
 // 実行環境を選ばない入口。モジュールが import してよい OpenTelemetry は @opentelemetry/api だけで、SDK は
-// ./node (Node 専用の入口) に閉じる (docs/adr/0047)。
+// ./node (Node 専用の入口) に閉じる (docs/adr/0048)。
 
 /**
  * URL からクエリ文字列と userinfo とフラグメントを落とし、オリジンとパスだけにする。

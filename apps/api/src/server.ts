@@ -1,4 +1,4 @@
-// 計装は pg などを import する前に有効にする。最初に import する (docs/adr/0047)。
+// 計装は pg などを import する前に有効にする。最初に import する (docs/adr/0048)。
 import { telemetry } from "./telemetry.ts";
 // Node.js 24 には Temporal がないので、polyfill の global を入れる。Node.js 26 以降は何もしない。
 import "temporal-polyfill/global";
@@ -43,7 +43,7 @@ serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);
 });
 
-// 送り先がないと SDK は始まらない。設定し忘れに気づけるよう、起動のときに知らせる (docs/adr/0047)。
+// 送り先がないと SDK は始まらない。設定し忘れに気づけるよう、起動のときに知らせる (docs/adr/0048)。
 if (!telemetry.enabled)
   console.log(
     "telemetry disabled: OTEL_EXPORTER_OTLP_ENDPOINT is not set, or OTEL_SDK_DISABLED is true",

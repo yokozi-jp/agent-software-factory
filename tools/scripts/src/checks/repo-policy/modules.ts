@@ -38,7 +38,7 @@ const moduleFixtures = "module-fixtures";
 const ui = "ui";
 const i18n = "i18n";
 // telemetry starts the OpenTelemetry SDK in a Node-only entry, and holds the helper that drops the query string from
-// a URL before it becomes an attribute (docs/adr/0047). It has no layers, and no module depends on it: the entry files of apps/api do.
+// a URL before it becomes an attribute (docs/adr/0048). It has no layers, and no module depends on it: the entry files of apps/api do.
 const telemetry = "telemetry";
 const dependOnNone: readonly string[] = [sharedKernel, moduleFixtures, ui, i18n, telemetry];
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
@@ -79,7 +79,7 @@ const uiPublicApi = {
 //   db         the production entry, the seed and the tools of the tests as three entries, so that faker,
 //              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
 //   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
-//              apps import (docs/adr/0047).
+//              apps import (docs/adr/0048).
 const ownExports: Readonly<
   Record<string, { readonly exports: Record<string, string>; readonly says: string }>
 > = {
@@ -97,7 +97,7 @@ const ownExports: Readonly<
   },
   [telemetry]: {
     exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
-    says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0047)",
+    says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
   },
 };
 

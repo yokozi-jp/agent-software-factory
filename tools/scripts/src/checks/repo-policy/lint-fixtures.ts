@@ -299,7 +299,7 @@ export function dbBoundaries(tree: Tree): string[] {
     );
 }
 
-// ADR 0047: the OpenTelemetry SDK, the exporters and the instrumentations are imported by packages/telemetry and the
+// ADR 0048: the OpenTelemetry SDK, the exporters and the instrumentations are imported by packages/telemetry and the
 // entry files of the apps only. vite.config.ts stops them in every other file with the `otelSdkPattern` of
 // `runtimeImports`, and the override of packages/telemetry/src leaves them out. Three places have a fixture (#43):
 //   apps/api/src and packages/*/src  one import of each kind of the pattern, below `oxlint-disable-next-line
@@ -331,7 +331,7 @@ export function telemetryBoundaries(tree: Tree): string[] {
     for (const [name, what] of otelKinds)
       if (!stopsImport(text, name))
         failures.push(
-          `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0047).`,
+          `${file} has no import of ${name} below \`oxlint-disable-next-line no-restricted-imports\`: it needs ${what}, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`,
         );
   }
   const telemetryFixture = "packages/telemetry/src/__fixtures__/otel-sdk.ts";
@@ -341,17 +341,17 @@ export function telemetryBoundaries(tree: Tree): string[] {
     stopsImport(telemetryText, "@opentelemetry/sdk-node")
   )
     failures.push(
-      `${telemetryFixture} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0047).`,
+      `${telemetryFixture} must import @opentelemetry/sdk-node with no disable comment, so that an override of packages/telemetry/src that stops letting it through fails \`vp check\` (docs/adr/0048).`,
     );
   if (!stopsImport(telemetryText, "@aws-sdk/client-sqs"))
     failures.push(
-      `${telemetryFixture} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0047).`,
+      `${telemetryFixture} must import @aws-sdk/client-sqs below \`oxlint-disable-next-line no-restricted-imports\`, so that an override of packages/telemetry/src that drops the other restrictions fails \`vp check\` (docs/adr/0048).`,
     );
   const webFixture = "apps/web/src/__fixtures__/telemetry-node.ts";
   const webText = tree.paths.includes(webFixture) ? tree.read(webFixture) : "";
   if (!stopsImport(webText, "@agent-software-factory/telemetry/node"))
     failures.push(
-      `${webFixture} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0047).`,
+      `${webFixture} must import @agent-software-factory/telemetry/node below \`oxlint-disable-next-line no-restricted-imports\`, so that dropping the ban in apps/web/src fails \`vp check\` (docs/adr/0048).`,
     );
   return failures;
 }

@@ -1,4 +1,4 @@
-# ローカルでトレースを見る環境 (docs/tooling/local-telemetry.md、docs/adr/0047)。Grafana、Tempo、Loki、Prometheus と
+# ローカルでトレースを見る環境 (docs/tooling/local-telemetry.md、docs/adr/0048)。Grafana、Tempo、Loki、Prometheus と
 # OpenTelemetry Collector が 1 つのイメージに入っている。本番の送り先ではない。
 # 版は固定し、更新は Renovate に任せる。
 name: agent-software-factory-otel
