@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { isObject } from "../json.ts";
 import { runIn, sandbox, type Sandbox } from "../../test/sandbox.ts";
+import rootConfig from "../../../../../vite.config.ts";
 
 const root = join(import.meta.dirname, "../../../../..");
 const effectTsgo = join(root, "node_modules/@effect/tsgo/dist/effect-tsgo.cjs");
@@ -91,5 +92,18 @@ describe("oxlint.effect.json", { timeout: 120_000 }, () => {
     const result = lint('import { Effect } from "effect";\n\nEffect.succeed(1);\n');
     expect(result.status).toBe(1);
     expect(result.output).toContain("effecttsgo(floating-effect)");
+  });
+});
+
+// `vp check` demands an `oxlint-disable` for each rule of `typedRules` (vite.config.ts). `lint-effect` reports a disable
+// of a rule that it does not enable as unused (reportUnusedDisableDirectives), so it enables the same rules.
+describe("oxlint.effect.json and the typed rules of vite.config.ts", () => {
+  it("enables every typescript/* rule that vite.config.ts enables, with the same options", () => {
+    const parsed: unknown = JSON.parse(readFileSync(join(root, "oxlint.effect.json"), "utf8"));
+    if (!isObject(parsed) || !isObject(parsed.rules))
+      throw new Error("oxlint.effect.json has no rules");
+    const typed = (rules: Record<string, unknown>) =>
+      Object.fromEntries(Object.entries(rules).filter(([name]) => name.startsWith("typescript/")));
+    expect(typed(parsed.rules)).toEqual(typed({ ...rootConfig.lint?.rules }));
   });
 });
