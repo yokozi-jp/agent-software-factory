@@ -2,7 +2,10 @@
 // (その処理は未実装、Issue #366)。入口なので process を読む。
 //   pnpm send-sample [宛先のメールアドレス]
 // `id` は毎回新しくする。同じ `id` は processed_message で重複として捨てられ、メールが出ない。
+import { readFileSync } from "node:fs";
+
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
+import { z } from "zod";
 
 import { createSqsClient } from "../queues.ts";
 
@@ -13,16 +16,25 @@ if (queueUrl === undefined || queueUrl === "" || endpoint === undefined || endpo
   process.exit(2);
 }
 
-// packages/approval/events/test/fixtures/approval.notification_requested.v1.json と同じ形。
+// 契約の fixture (packages/approval/events/test/fixtures) を元にして、重複として捨てられないよう id と時刻を替える。
+const fixture = z
+  .record(z.string(), z.unknown())
+  .parse(
+    JSON.parse(
+      readFileSync(
+        new URL(
+          "../../../../packages/approval/events/test/fixtures/approval.notification_requested.v1.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ),
+  );
 const message = {
+  ...fixture,
   id: crypto.randomUUID(),
-  tenantId: "11111111-1111-4111-8111-111111111111",
-  kind: "approval.notification_requested",
-  version: 1,
   occurredAt: new Date().toISOString(),
   to: process.argv[2] ?? "manager@example.com",
-  template: "review_requested",
-  values: { applicantName: "山田 太郎", claimTitle: "10月の交通費" },
 };
 
 const sqs = createSqsClient({ endpoint });

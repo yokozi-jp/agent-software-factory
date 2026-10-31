@@ -29,7 +29,7 @@ docker compose -f compose.local.yaml up -d --wait
 
 ## データベースを用意する
 
-初回の起動で、PostgreSQL に本番と同じ `packages/db/bootstrap.sql` が流れ、ロールができます。パスワードは `docker/postgres-local-roles.sql` が設定します (すべて `local-password`)。この初期化は、データのボリュームが空のときだけ流れます。ロールの作り方を変えたら `down -v` でやり直します。
+初回の起動で、PostgreSQL に本番と同じ `packages/db/bootstrap.sql` が流れ、ロールができます。パスワードは `docker/postgres-local-roles.sql` が設定します (すべて `local-password`)。この初期化は、データのディレクトリが空のときだけ流れます ([Docker Official Image の postgres](https://hub.docker.com/_/postgres) の Initialization scripts)。データは名前付きボリューム `postgres-data` にあり、`down` では残ります。ロールの作り方を変えたら `down -v` でやり直します。
 migration は `migrator` で流します ([ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md))。
 
 ```sh
@@ -64,7 +64,7 @@ pnpm --filter @agent-software-factory/worker send-sample [宛先のメールア�
 
 ## 版を上げるとき
 
-ElasticMQ と Mailpit のイメージは `compose.local.yaml` が持ち、結合テスト (`apps/worker/test/containers.ts`) もそこから読みます。ElasticMQ の設定は `docker/elasticmq.conf` です。Renovate が `compose.local.yaml` の版を更新します。
+ElasticMQ と Mailpit のイメージは `compose.local.yaml` が持ち、結合テスト (`apps/worker/test/containers.ts`) もそこから読みます。ElasticMQ の設定は `docker/elasticmq.conf` です。`compose.local.yaml` は、Renovate の docker-compose manager の既定の対象 (`compose` で始まる `.yaml`) なので、版の更新の PR が出ます ([Renovate の docker-compose manager](https://docs.renovatebot.com/modules/manager/docker-compose/))。
 PostgreSQL の版は `packages/db/src/testing/connection.ts` の `postgresImage` (テストと型の生成) と、`compose.local.yaml` の 2 か所にあります。上げるときは両方を同じ版にします。
 
 ## この環境に入っていないもの
