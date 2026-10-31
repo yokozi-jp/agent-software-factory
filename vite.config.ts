@@ -314,6 +314,7 @@ const testDeepImports = [
       ...dbSubpaths.map((path) => `!${scope}/db/${path}`),
       `!${scope}/telemetry/node`,
       `!${scope}/logging/node`,
+      `!${scope}/logging/testing`,
     ],
     message: deepMessage,
   },

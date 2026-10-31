@@ -13,6 +13,6 @@ export function failureLine(error: unknown, messageId: string | undefined): stri
 
 /** Writes `failureLine` to stderr: the `onError` of both workers. */
 export function reportFailure(error: unknown, messageId: string | undefined): void {
-  // oxlint-disable-next-line no-restricted-globals -- the workers do not take the Logger of packages/logging yet; moving them to it is a follow-up of docs/adr/0049
+  // oxlint-disable-next-line no-restricted-globals -- the workers do not take the Logger of packages/logging yet; moving them to it is Issue #536 (docs/adr/0049)
   console.error(failureLine(error, messageId));
 }

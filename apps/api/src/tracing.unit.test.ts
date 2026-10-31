@@ -1,4 +1,5 @@
-import { createNodeLogger, memoryDestination } from "@agent-software-factory/logging/node";
+import { createNodeLogger } from "@agent-software-factory/logging/node";
+import { memoryDestination } from "@agent-software-factory/logging/testing";
 import { SpanKind } from "@opentelemetry/api";
 import { startTelemetry, type Telemetry } from "@agent-software-factory/telemetry/node";
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";

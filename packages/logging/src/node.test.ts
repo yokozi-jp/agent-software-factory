@@ -4,7 +4,8 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-tr
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 
 import type { LogContext, LogFields } from "./index.ts";
-import { createNodeLogger, memoryDestination, type NodeLoggerOptions } from "./node.ts";
+import { createNodeLogger, type NodeLoggerOptions } from "./node.ts";
+import { memoryDestination } from "./testing.ts";
 
 const service = { name: "api", version: "1.2.3", environment: "test" } as const;
 

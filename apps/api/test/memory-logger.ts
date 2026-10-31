@@ -1,4 +1,5 @@
-import { createNodeLogger, memoryDestination } from "@agent-software-factory/logging/node";
+import { createNodeLogger } from "@agent-software-factory/logging/node";
+import { memoryDestination } from "@agent-software-factory/logging/testing";
 
 import { requestLogContext } from "../src/http/logging.ts";
 

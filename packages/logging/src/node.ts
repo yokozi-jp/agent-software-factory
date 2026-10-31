@@ -51,29 +51,6 @@ const redactKeys = [
 const redactPaths = redactKeys.flatMap((key) => [`["${key}"]`, `*["${key}"]`]);
 
 /**
- * テスト用のメモリ上の出力先。`write` された JSON Lines を `lines()` が 1 行ずつ object にして返す。
- * 本番のコードは使わない (出力先は入口が `stdoutDestination()` で作る)。
- */
-export function memoryDestination() {
-  const chunks: string[] = [];
-  return {
-    write: (chunk: string): void => {
-      chunks.push(chunk);
-    },
-    chunks,
-    lines: (): Record<string, unknown>[] =>
-      chunks.flatMap((chunk) => chunk.split("\n").filter(Boolean)).map(parseLine),
-  };
-}
-
-function parseLine(line: string): Record<string, unknown> {
-  const value: unknown = JSON.parse(line);
-  if (typeof value !== "object" || value === null || Array.isArray(value))
-    throw new Error("a log line is not a JSON object");
-  return Object.fromEntries(Object.entries(value));
-}
-
-/**
  * 標準出力への同期の書き込み。worker transport は使わない: 起動が非同期で、`process.exit()` の前だと行を失う
  * (docs/adr/0049)。
  */

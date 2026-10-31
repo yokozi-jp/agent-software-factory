@@ -91,8 +91,8 @@ const uiPublicApi = {
 //              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
 //   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
 //              apps import (docs/adr/0048).
-//   logging    the entry for any code (the Logger interface) and the Node-only entry that creates the pino logger, which the
-//              entry files of the apps import (docs/adr/0049).
+//   logging    the entry for any code (the Logger interface), the Node-only entry that creates the pino logger (which the
+//              entry files of the apps import), and the tools of the tests, so that they stay out of production (docs/adr/0049).
 const ownExports: Readonly<
   Record<string, { readonly exports: Record<string, string>; readonly says: string }>
 > = {
@@ -113,8 +113,8 @@ const ownExports: Readonly<
     says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
   },
   [logging]: {
-    exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
-    says: "the entry for any code and the Node-only entry that creates the pino logger, and nothing else (docs/adr/0049)",
+    exports: { ".": "./src/index.ts", "./node": "./src/node.ts", "./testing": "./src/testing.ts" },
+    says: "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)",
   },
 };
 

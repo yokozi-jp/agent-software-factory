@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { createNodeLogger, memoryDestination, startOrFail, stdoutDestination } from "./node.ts";
+import { createNodeLogger, startOrFail, stdoutDestination } from "./node.ts";
+import { memoryDestination } from "./testing.ts";
 
 describe("startOrFail (起動の失敗)", () => {
   it("実プロセスで、fatal を標準出力に 1 行出し、終了コードを非ゼロにする", () => {

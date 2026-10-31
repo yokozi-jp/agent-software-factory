@@ -3110,7 +3110,11 @@ describe("ADR 0048: packages/telemetry", () => {
 });
 
 describe("ADR 0049: packages/logging", () => {
-  const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
+  const exports = {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./testing": "./src/testing.ts",
+  };
   const stops = (name: string) =>
     `// @ts-expect-error -- fixture: not a dependency\n// oxlint-disable-next-line no-restricted-imports -- fixture: ${name}\nimport "${name}";\n`;
   const runtimeApis = [
@@ -3140,7 +3144,7 @@ describe("ADR 0049: packages/logging", () => {
     expect(
       violations(withLogging(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
     ).toEqual([
-      `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that creates the pino logger, and nothing else (docs/adr/0049).`,
+      `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049).`,
     ]);
   });
 
