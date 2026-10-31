@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Queryable } from "./queryable.ts";
 
 /** モジュールの名前と、そのモジュールが読んでよいモジュール (依存の方向。締め → 承認 → 申請) (docs/adr/0029)。 */
 export type ModuleReads = Readonly<Record<string, readonly string[]>>;
@@ -22,7 +22,7 @@ const outboxName = `${outbox.schema}.${outbox.table}`;
 const tenantExpression = "(tenant_id = (current_setting('app.current_tenant'::text))::uuid)";
 
 // 検査は 1 種類ずつの関数にする。どれも pool と、見る対象を受け取り、決めたとおりでない点を文の一覧で返す。
-type Check = (pool: Pool, reads: ModuleReads) => Promise<string[]>;
+type Check = (pool: Queryable, reads: ModuleReads) => Promise<string[]>;
 
 const yesNo = (has: boolean) => (has ? "ある" : "ない");
 
@@ -415,7 +415,7 @@ const privileges: readonly Check[] = [
   crossSchemaForeignKeys,
 ];
 
-const runAll = async (checks: readonly Check[], pool: Pool, reads: ModuleReads) =>
+const runAll = async (checks: readonly Check[], pool: Queryable, reads: ModuleReads) =>
   (await Promise.all(checks.map((check) => check(pool, reads)))).flat();
 
 /**
@@ -438,7 +438,7 @@ const runAll = async (checks: readonly Check[], pool: Pool, reads: ModuleReads) 
  * この検査はテスト専用で、migrate や CI の別の段からは呼ばない。migration を流した DB に対する結合テスト
  * (module-roles-catalog.test.ts) が、毎回これを呼んで問題が空であることを確かめる。
  */
-export async function checkModuleRoles(pool: Pool, reads: ModuleReads): Promise<string[]> {
+export async function checkModuleRoles(pool: Queryable, reads: ModuleReads): Promise<string[]> {
   const missing = await runAll(existence, pool, reads);
   if (missing.length > 0) return missing;
   return runAll(privileges, pool, reads);

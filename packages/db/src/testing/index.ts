@@ -12,6 +12,13 @@ export { rolePassword } from "./credentials.ts";
 export { createTestDatabase, type TestDatabase } from "./database.ts";
 export { reportSetupFailure } from "./global-setup.ts";
 export { prepareDatabase, prepareSeededDatabase } from "./prepare-database.ts";
+export {
+  openRolledBack,
+  rolledBackPerTest,
+  type MigratorQuery,
+  type RolledBackQueries,
+  type RolledBackSession,
+} from "./rolled-back.ts";
 export { startPostgres } from "./postgres-container.ts";
 export { processedMessageTableSql } from "./processed-message.ts";
 export {

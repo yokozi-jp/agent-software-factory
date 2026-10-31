@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Queryable } from "./queryable.ts";
 
 // docs/db の規約のうち、migration を流した DB のカタログ (pg_catalog) で判定できるものを確かめる (Issue #361)。
 // SQL の静的な解析はしない。規約の出典は検査ごとに書く。人がレビューで見る項目 (名前が意味に合うか、結合する列の
@@ -131,7 +131,7 @@ function groupByTable<Row extends { schema: string; table: string }>(rows: Row[]
   return groups;
 }
 
-async function snapshot(pool: Pool): Promise<Snapshot> {
+async function snapshot(pool: Queryable): Promise<Snapshot> {
   const [schemas, tables, columns, constraints, keywords] = await Promise.all([
     pool.query<{ nspname: string }>(
       `SELECT nspname FROM pg_namespace n WHERE ${userSchema("nspname")}`,
@@ -381,7 +381,7 @@ const publicGrants = `
  * DDL を実行できるのは、スキーマかデータベースに CREATE できるロール、オブジェクトの所有者 (所有者のメンバーで
  * 権限を継承するロールを含む)、superuser、CREATEROLE、CREATEDB を持つロール。
  */
-async function privileges(pool: Pool): Promise<Violation[]> {
+async function privileges(pool: Queryable): Promise<Violation[]> {
   const report = (where: { schema: string; table?: string }, message: string) =>
     violation("privileges", where, message);
   const [attributes, inherited, creates, databaseCreates, owned, publics] = await Promise.all([
@@ -479,7 +479,7 @@ const covers = (exception: ConventionException, found: Violation) =>
  * (convention-catalog.test.ts) が、毎回これを呼んで問題が空であることを確かめる。
  */
 export async function checkConventions(
-  pool: Pool,
+  pool: Queryable,
   exceptions: readonly ConventionException[] = conventionExceptions,
 ): Promise<string[]> {
   const snap = await snapshot(pool);

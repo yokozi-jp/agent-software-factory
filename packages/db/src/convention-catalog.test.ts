@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
   checkConventions,
@@ -6,32 +6,19 @@ import {
   conventionExceptions,
   type ConventionException,
 } from "./convention-catalog.ts";
-import { createTestDatabase, type TestDatabase } from "./testing/index.ts";
+import { rolledBackPerTest, type RolledBackQueries } from "./testing/index.ts";
 
 // docs/db の規約を、migration を流した DB のカタログで確かめる検査 (Issue #361、docs/db/convention-check.md)。
 describe("checkConventions", () => {
-  let db: TestDatabase;
-
-  beforeEach(async () => {
-    db = await createTestDatabase();
-  });
-
-  afterEach(async () => {
-    // ロールの属性とメンバーシップはクラスタ全体のもので、複製した DB に閉じない。壊した検出力のテストの後に戻す。
-    await db.superuser.query(
-      `ALTER ROLE app_user NOSUPERUSER NOCREATEROLE NOCREATEDB;
-       ALTER ROLE auth_service NOSUPERUSER NOCREATEROLE NOCREATEDB;
-       REVOKE migrator FROM app_user`,
-    );
-    await db.close();
-  });
+  // 規則を壊すテストは、テストごとのトランザクションの中で壊す。ロールの変更はクラスタ全体に及ぶので、コミットしない (Issue #448)。
+  const db = rolledBackPerTest();
 
   it("migration を流した DB では、問題がないこと", async () => {
     expect(await checkConventions(db.superuser)).toEqual([]);
   });
 
   // 規約を満たす表 claim.t_x を作る。規約を破る検査は、この表に 1 か所だけ手を入れて、その 1 件だけが出ることを確かめる。
-  const createCompliantTable = async (d: TestDatabase) => {
+  const createCompliantTable = async (d: RolledBackQueries) => {
     await d.migrator.query(
       `CREATE TABLE claim.t_x (LIKE claim.t_claim INCLUDING ALL);
        ALTER TABLE claim.t_x ENABLE ROW LEVEL SECURITY;
@@ -39,7 +26,7 @@ describe("checkConventions", () => {
     );
   };
 
-  const failuresOf = async (d: TestDatabase, table: string) =>
+  const failuresOf = async (d: RolledBackQueries, table: string) =>
     (await checkConventions(d.superuser)).filter(
       (failure) => failure.includes(table) && !failure.startsWith("外している検査"),
     );
