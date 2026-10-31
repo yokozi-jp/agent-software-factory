@@ -9,6 +9,7 @@ import "temporal-polyfill/global";
 import "./index.css";
 import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
+import { signOutAndLeave } from "./lib/sign-out.ts";
 import { applyStoredTheme, darkSchemeQuery } from "./lib/theme.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
 
@@ -33,15 +34,15 @@ const context: AppContext = {
     const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
     if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);
   },
-  signOut: async () => {
-    // IdP が end_session_endpoint を持てば、その URL が返る。持たなければ /login に移る。
-    const { data, error } = await authClient.signOut({
-      disableRedirect: true,
-      callbackURL: loggedOutUrl,
-    });
-    if (error) throw new Error(`Sign out failed: ${error.message ?? error.statusText}`);
-    location.assign(typeof data?.url === "string" ? data.url : loggedOutUrl);
-  },
+  // IdP が end_session_endpoint を持てば、その URL へ。持たなければ /login へ。
+  signOut: () =>
+    signOutAndLeave(
+      (options) => authClient.signOut(options),
+      (url) => {
+        location.assign(url);
+      },
+      loggedOutUrl,
+    ),
 };
 
 const router = createAppRouter(context, createBrowserHistory());

@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 
+import { EmbeddedNotFound } from "@/components/error-screens.tsx";
 import { AppLayout } from "@/components/app-layout.tsx";
 import { loginSearchFor } from "@/lib/login-redirect.ts";
 
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_authenticated")({
     return { user: session };
   },
   component: Layout,
+  notFoundComponent: EmbeddedNotFound,
 });
 
 function Layout() {

@@ -7,11 +7,11 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { RouteError } from "./components/route-error.tsx";
 import { ForbiddenError } from "./lib/forbidden.ts";
-import { ForbiddenScreen } from "./components/error-screens.tsx";
+import { EmbeddedNotFound, ForbiddenScreen, RouteNotFound } from "./components/error-screens.tsx";
 import {
   withSessionExpiry,
   type AppContext,
@@ -415,6 +415,40 @@ export const ForbiddenForNonAccountingUser: Story = {
     // URL は変えない。メニューは出す。
     await expect(locationOf().pathname).toBe("/closing");
     await expect(canvas.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
+    // 見出し (h1) は 403 の画面の 1 つだけ。上部バーは名前を出さない。
+    await expect(canvas.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  },
+};
+
+// route の中で notFound() を投げたときの 404。投げる route はまだないので、画面だけを最小の router で確かめる。
+function inMinimalRouter(screen: () => React.JSX.Element) {
+  return () => {
+    const root = createRootRoute({ component: screen });
+    const router = createRouter({
+      routeTree: root,
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    return <RouterProvider router={router} />;
+  };
+}
+
+export const NotFoundThrownInARouteWithoutTheMenu: Story = {
+  render: inMinimalRouter(RouteNotFound),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
+    ).toBeVisible();
+    await expect(canvas.getByRole("main")).toBeVisible();
+  },
+};
+
+export const NotFoundThrownInAProtectedRouteIsEmbedded: Story = {
+  render: inMinimalRouter(EmbeddedNotFound),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("heading", { name: "ページが見つかりません。" }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole("main")).toBeNull();
   },
 };
 
@@ -452,24 +486,52 @@ export const SkipLinkMovesToTheMainContent: Story = {
   },
 };
 
+// 画面の幅を、matchMedia の差し替えで決める (useIsMobile は `(max-width: 767px)` を見る)。
+function withScreen(narrow: boolean) {
+  const original = window.matchMedia.bind(window);
+  window.matchMedia = (query) => {
+    const media = original(query);
+    if (!query.includes("max-width")) return media;
+    // 本物の MediaQueryList の部品を使い、`matches` だけを差し替える。
+    return {
+      media: media.media,
+      matches: narrow,
+      onchange: null,
+      addEventListener: media.addEventListener.bind(media),
+      removeEventListener: media.removeEventListener.bind(media),
+      addListener: media.addListener.bind(media),
+      removeListener: media.removeListener.bind(media),
+      dispatchEvent: media.dispatchEvent.bind(media),
+    };
+  };
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
 export const TriggerTogglesTheMenu: Story = {
   args: { path: "/", session: member },
+  beforeEach: () => withScreen(false),
   play: async ({ canvas }) => {
     const trigger = await canvas.findByRole("button", { name: "メニューを開閉" });
     const sidebar = () => document.querySelector("[data-slot='sidebar']");
-    // 広い画面では開いていて、押すと閉じ、もう一度押すと開く。狭い画面では Sheet で開く。
-    if (window.innerWidth >= 768) {
-      await expect(sidebar()).toHaveAttribute("data-state", "expanded");
-      await userEvent.click(trigger);
-      await expect(sidebar()).toHaveAttribute("data-state", "collapsed");
-      await userEvent.click(trigger);
-      await expect(sidebar()).toHaveAttribute("data-state", "expanded");
-    } else {
-      await userEvent.click(trigger);
-      await expect(
-        await within(document.body).findByRole("navigation", { name: "メインメニュー" }),
-      ).toBeVisible();
-    }
+    await expect(sidebar()).toHaveAttribute("data-state", "expanded");
+    await userEvent.click(trigger);
+    await expect(sidebar()).toHaveAttribute("data-state", "collapsed");
+    await userEvent.click(trigger);
+    await expect(sidebar()).toHaveAttribute("data-state", "expanded");
+  },
+};
+
+export const TriggerOpensTheMenuInASheetOnANarrowScreen: Story = {
+  args: { path: "/", session: member },
+  beforeEach: () => withScreen(true),
+  play: async ({ canvas }) => {
+    await userEvent.click(await canvas.findByRole("button", { name: "メニューを開閉" }));
+    // Sheet は portal で body の直下に出る。
+    const nav = await within(document.body).findByRole("navigation", { name: "メインメニュー" });
+    // 開くときの animation で、出た直後は見えない (#523)。見えるまで待つ。
+    await waitFor(() => expect(within(nav).getByRole("link", { name: "承認" })).toBeVisible());
   },
 };
 

@@ -1,10 +1,11 @@
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 
+import { RouteNotFound } from "@/components/error-screens.tsx";
 import type { AppContext } from "@/lib/session.ts";
 
-// 404 は、どの route にも当たらない URL を `routes/$.tsx` が受けて出す (ログイン済みならメニューの中、未ログインならメニューなし)。
-// route の中で notFound() を投げる画面 (他人の申請など) は、投げる route を足す Issue が、`_authenticated` に
-// notFoundComponent を足して、メニューの中の 404 を出す (Issue #407)。
+// 404 は 2 か所で出す。どの route にも当たらない URL は `routes/$.tsx` (ログイン済みならメニューの中)、
+// route の中で notFound() を投げた場合は、`_authenticated` の中ならメニューの中、そうでなければここ (Issue #397、#407)。
 export const Route = createRootRouteWithContext<AppContext>()({
   component: Outlet,
+  notFoundComponent: RouteNotFound,
 });

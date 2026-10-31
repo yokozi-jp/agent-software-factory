@@ -36,3 +36,13 @@ export function ForbiddenScreen({ embedded = false }: { readonly embedded?: bool
   const { t } = useTranslation();
   return <ErrorScreen title={t("forbidden.title")} embedded={embedded} />;
 }
+
+/** root の notFoundComponent。route の中で投げた notFound() を、メニューなしで受ける。 */
+export function RouteNotFound() {
+  return <NotFoundScreen />;
+}
+
+/** `_authenticated` の notFoundComponent。route の中で投げた notFound() (他人の申請など) を、メニューの中に出す。 */
+export function EmbeddedNotFound() {
+  return <NotFoundScreen embedded />;
+}

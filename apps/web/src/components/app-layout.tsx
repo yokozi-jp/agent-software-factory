@@ -21,6 +21,10 @@ export function AppLayout({ user, onSignOut, children }: AppLayoutProps) {
   // 上部バーの画面の名前は、いちばん深い route が staticData.title で渡す。
   const title = useMatches({
     select: (matches) => {
+      // 失敗した画面 (403、404) は自分で見出しを持つ。子の route の名前を出すと、見出しが 2 つになる。
+      if (matches.some((match) => match.status === "error" || match.status === "notFound")) {
+        return undefined;
+      }
       let title: ((t: TFunction) => string) | undefined;
       for (const match of matches) title = match.staticData.title ?? title;
       return title;
