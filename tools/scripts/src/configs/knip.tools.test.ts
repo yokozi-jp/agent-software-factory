@@ -66,7 +66,11 @@ const apps: Record<string, string> = {
       name: "@agent-software-factory/api",
       private: true,
       type: "module",
-      scripts: { check: "vp check" },
+      // The generator of the OpenAPI spec in tools/scripts is reached from this script (docs/adr/0047).
+      scripts: {
+        check: "vp check",
+        openapi: "node --import ./test/temporal.ts ../../tools/scripts/src/openapi/cli.ts",
+      },
       dependencies: { "@hono/node-server": "catalog:", hono: "catalog:" },
       devDependencies: { "vite-plus": "catalog:" },
       nx: { name: "api" },
@@ -75,6 +79,9 @@ const apps: Record<string, string> = {
     2,
   ),
   "apps/api/src/app.ts": 'import { Hono } from "hono";\n\nexport const app = new Hono();\n',
+  // What the `openapi` script above and the generator in tools/scripts reach (docs/adr/0047).
+  "apps/api/src/openapi.ts": "export function generateOpenApi() {\n  return {};\n}\n",
+  "apps/api/test/temporal.ts": "export {};\n",
   "apps/api/src/index.ts": 'import { app } from "./app.ts";\n\nexport default app;\n',
   "apps/api/src/server.ts":
     'import { serve } from "@hono/node-server";\nimport { app } from "./app.ts";\n\nserve({ fetch: app.fetch });\n',

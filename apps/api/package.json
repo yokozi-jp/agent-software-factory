@@ -3,12 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/contract.ts"
+  },
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vp test run --coverage",
-    "check": "vp check"
+    "check": "vp check",
+    "openapi": "node --import ./test/temporal.ts ../../tools/scripts/src/openapi/cli.ts"
   },
   "dependencies": {
     "@agent-software-factory/approval": "workspace:*",
@@ -19,6 +23,7 @@
     "@agent-software-factory/telemetry": "workspace:*",
     "@hono/node-server": "catalog:",
     "@hono/otel": "catalog:",
+    "@hono/zod-openapi": "catalog:",
     "better-auth": "catalog:",
     "effect": "catalog:",
     "hono": "catalog:",

@@ -5,12 +5,13 @@ import "@agent-software-factory/claim";
 import "@agent-software-factory/closing";
 import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
-import { Hono } from "hono";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
 import { requireSession, sessionGuard, type SessionVariables } from "./auth/session.ts";
 import type { ModuleDatabases } from "./db/databases.ts";
+import { validationHook } from "./http/validation-hook.ts";
 import { csrfProtection } from "./security/csrf.ts";
 
 // セキュリティヘッダーの値は docs/web-api/security.md に従う。
@@ -30,6 +31,21 @@ export interface AppDependencies {
   readonly databases?: ModuleDatabases;
 }
 
+// route は createRoute で書く。ここから OpenAPI 3.1 の spec (apps/api/openapi.json) を生成し、web が hc で同じ型を使う
+// (docs/adr/0047)。応答のステータスは route に明示する。
+const healthRoute = createRoute({
+  method: "get",
+  path: "/health",
+  summary: "Health check",
+  tags: ["health"],
+  responses: {
+    200: {
+      description: "The API is running.",
+      content: { "application/json": { schema: z.object({ status: z.literal("ok") }) } },
+    },
+  },
+});
+
 // 受信のトレースが取る属性 (docs/adr/0048)。ヘッダーは取らない (captureRequestHeaders を書かない)。
 // url.full の既定はクエリ文字列を含み、OIDC の callback の code や state が載るので、クエリを落とす。
 // SDK が起動していなければ、この middleware は何もしない。
@@ -38,18 +54,22 @@ const tracingMiddleware = httpInstrumentationMiddleware({
 });
 
 export function createApp({ auth }: AppDependencies = {}) {
-  const app = new Hono<{ Variables: SessionVariables }>()
-    .use(tracingMiddleware)
-    .use(
-      secureHeaders({
-        contentSecurityPolicy: { defaultSrc: ["'none'"] },
-        strictTransportSecurity: "max-age=63072000; includeSubDomains",
-        xContentTypeOptions: "nosniff",
-        xXssProtection: false,
-        xFrameOptions: false,
-      }),
-    )
-    .get("/health", (c) => c.json({ status: "ok" }));
+  const withoutRoutes = new OpenAPIHono<{ Variables: SessionVariables }>({
+    defaultHook: validationHook,
+  });
+  // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
+  // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
+  withoutRoutes.use(tracingMiddleware);
+  withoutRoutes.use(
+    secureHeaders({
+      contentSecurityPolicy: { defaultSrc: ["'none'"] },
+      strictTransportSecurity: "max-age=63072000; includeSubDomains",
+      xContentTypeOptions: "nosniff",
+      xXssProtection: false,
+      xFrameOptions: false,
+    }),
+  );
+  const app = withoutRoutes.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
 
   if (auth !== undefined) {
     app.use("/api/*", csrfProtection(auth.origin));
