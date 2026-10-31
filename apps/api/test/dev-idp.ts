@@ -10,8 +10,12 @@ const appOrigin = process.env["IDP_APP_ORIGIN"] ?? "http://localhost:5173";
 const idp = await startTestIdp({ port, appOrigin });
 console.log(`IdP listening on ${idp.issuer}`);
 console.log(`discovery: ${idp.issuer}/.well-known/openid-configuration`);
-for (const user of Object.values(users))
-  console.log(`user: ${user.username} / ${user.password} (${user.email})`);
+// パスワードは出力しない (CodeQL の clear-text logging)。ユーザーとパスワードは docs/tooling/local-api.md にある。
+console.log(
+  `users: ${Object.values(users)
+    .map((user) => user.username)
+    .join(", ")}`,
+);
 
 for (const signal of ["SIGTERM", "SIGINT"] as const)
   process.once(signal, () => {
