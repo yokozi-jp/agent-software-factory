@@ -6,11 +6,16 @@ import { fetchSession, withSessionExpiry } from "./session.ts";
 const clientOf = (fetchApi: typeof fetch) => createApiClient("https://web.example", fetchApi);
 
 describe("セッションの確認 (fetchSession)", () => {
-  it("200 ならログイン済み", async () => {
+  it("200 ならログイン済みで、氏名と役割を返す", async () => {
     const fetchApi = vi.fn<typeof fetch>(() =>
-      Promise.resolve(Response.json({ id: "1", email: "a@example.com", name: "A" })),
+      Promise.resolve(
+        Response.json({ id: "1", email: "a@example.com", name: "A", roles: ["accounting"] }),
+      ),
     );
-    await expect(fetchSession(clientOf(fetchApi))).resolves.toBe("authenticated");
+    await expect(fetchSession(clientOf(fetchApi))).resolves.toEqual({
+      name: "A",
+      roles: ["accounting"],
+    });
     const [input] = vi.mocked(fetchApi).mock.calls[0] ?? [];
     expect(new Request(input ?? "").url).toBe("https://web.example/api/me");
   });

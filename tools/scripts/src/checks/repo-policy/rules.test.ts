@@ -2413,6 +2413,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     const uiExports = {
       "./globals.css": "./src/styles/globals.css",
       "./components/*": "./src/components/*.tsx",
+      "./hooks/*": "./src/hooks/*.ts",
       "./lib/*": "./src/lib/*.ts",
     };
     const ui = (fields: Record<string, unknown>) => ({

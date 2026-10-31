@@ -24,8 +24,13 @@ export interface AuthFixture {
    * 本物のログイン (テスト用 IdP) を通さずに、認証済みの browser を作る。
    * 業務のテストは、認証が目的ではないので、これを使う (docs/adr/0022)。
    * ログイン、Cookie、ログアウトを確かめるテストだけが `newBrowser().login()` を使う。
+   * `roles` を渡すと、新しいテナントのメンバーとして、その役割 (経理は "accounting") を持たせる。
    */
-  signedIn(user?: { email?: string; name?: string }): Promise<TestBrowser>;
+  signedIn(user?: {
+    email?: string;
+    name?: string;
+    roles?: readonly string[];
+  }): Promise<TestBrowser>;
   close(): Promise<void>;
 }
 
@@ -84,9 +89,18 @@ export async function createAuthFixture({
       return instance;
     },
     newBrowser: () => new TestBrowser(app, appOrigin),
-    async signedIn(user = {}) {
+    async signedIn({ roles = [], ...user } = {}) {
       const saved = await test.saveUser(test.createUser(user));
-      const headers = await test.getAuthHeaders({ userId: saved.id });
+      let session: Record<string, unknown> = {};
+      if (roles.length > 0) {
+        // 役割は member の行にあり、セッションの active organization で引く (ADR 0022)。
+        const organization = await test.saveOrganization?.(test.createOrganization?.() ?? {});
+        const organizationId = organization?.id;
+        if (typeof organizationId !== "string") throw new Error("organization was not saved");
+        await test.addMember?.({ userId: saved.id, organizationId, role: roles.join(",") });
+        session = { activeOrganizationId: organizationId };
+      }
+      const headers = await test.getAuthHeaders({ userId: saved.id, session });
       const browser = new TestBrowser(app, appOrigin);
       browser.adoptCookieHeader(headers.get("cookie") ?? "");
       return browser;

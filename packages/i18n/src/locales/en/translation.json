@@ -31,5 +31,36 @@
   "errorScreen": {
     "toHome": "Back to home",
     "toLogin": "Go to sign in"
+  },
+  "nav": {
+    "label": "Main menu",
+    "toggle": "Toggle menu",
+    "skipToContent": "Skip to main content",
+    "approvals": "Approvals",
+    "review": "Review",
+    "closing": "Closing",
+    "group": {
+      "approval": "Approval and review",
+      "closing": "Closing"
+    }
+  },
+  "userMenu": {
+    "theme": "Theme",
+    "signOut": "Sign out",
+    "signOutFailed": "Sign-out failed. Please try again."
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "approvals": {
+    "title": "Approvals"
+  },
+  "review": {
+    "title": "Review"
+  },
+  "closing": {
+    "title": "Closing"
   }
 }

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/login")({
   // /api/me が答えないとき (障害) も、ログイン画面は開く。画面まで失敗にすると、復旧した後に入る道もなくなる。
   beforeLoad: async ({ context, search }) => {
     const session = await context.getSession().catch((): SessionState => "unauthenticated");
-    if (session === "authenticated") {
+    if (session !== "unauthenticated") {
       // oxlint-disable-next-line typescript/only-throw-error -- TanStack Router の redirect は throw する値で、Error ではない
       throw redirect({ href: search.redirect ?? "/" });
     }

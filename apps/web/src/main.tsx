@@ -9,6 +9,8 @@ import "temporal-polyfill/global";
 import "./index.css";
 import { createApiClient } from "./lib/api-client.ts";
 import { fetchSession, withSessionExpiry, type AppContext } from "./lib/session.ts";
+import { signOutAndLeave } from "./lib/sign-out.ts";
+import { applyStoredTheme, darkSchemeQuery } from "./lib/theme.ts";
 import { createAppRouter, goToSessionExpired } from "./router.ts";
 
 // 認証は同じオリジンの /api/auth/* に向く (Better Auth の既定。docs/adr/0022)。
@@ -16,6 +18,9 @@ const authClient = createAuthClient();
 
 // IdP の ID。apps/api の oidcProviderId と同じ値にする (apps/web は apps/api を import しない)。
 const oidcProviderId = "oidc";
+
+// ログアウト後の戻り先。/login が「ログアウトしました」を出す (lib/login-redirect.ts の reason)。
+const loggedOutUrl = "/login?reason=logged-out";
 
 const context: AppContext = {
   apiFetch: withSessionExpiry(
@@ -29,9 +34,21 @@ const context: AppContext = {
     const { error } = await authClient.signIn.social({ provider: oidcProviderId, callbackURL });
     if (error) throw new Error(`Sign in failed: ${error.message ?? error.statusText}`);
   },
+  // IdP が end_session_endpoint を持てば、その URL へ。持たなければ /login へ。
+  signOut: () =>
+    signOutAndLeave(
+      (options) => authClient.signOut(options),
+      (url) => {
+        location.assign(url);
+      },
+      loggedOutUrl,
+    ),
 };
 
 const router = createAppRouter(context, createBrowserHistory());
+
+// 保存したテーマは、最初の描画の前に反映する (ちらつき防止。inline script は CSP で使えない)。
+applyStoredTheme(localStorage, document.documentElement, window.matchMedia(darkSchemeQuery));
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root not found");
