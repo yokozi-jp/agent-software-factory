@@ -24,7 +24,10 @@ describe("API クライアント (hc)", () => {
       expectTypeOf(await res.json()).toEqualTypeOf<{ id: string; email: string; name: string }>();
     } else {
       expectTypeOf(res.status).toEqualTypeOf<401>();
-      expectTypeOf(await res.json()).toEqualTypeOf<{ error: string }>();
+      const body = await res.json();
+      expectTypeOf(body.type).toEqualTypeOf<
+        "/problems/unauthenticated" | "/problems/session-expired"
+      >();
     }
   });
 });

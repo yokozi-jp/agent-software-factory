@@ -80,18 +80,36 @@
             }
           },
           "401": {
-            "description": "Not signed in.",
+            "description": "There is no valid session.",
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "error": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/unauthenticated",
+                        "/problems/session-expired"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
                       "type": "string"
                     }
                   },
                   "required": [
-                    "error"
+                    "type",
+                    "title",
+                    "status"
                   ]
                 }
               }

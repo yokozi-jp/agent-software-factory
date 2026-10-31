@@ -19,7 +19,16 @@ describe("セッションの確認 (fetchSession)", () => {
     await expect(
       fetchSession(
         clientOf(() =>
-          Promise.resolve(Response.json({ error: "unauthenticated" }, { status: 401 })),
+          Promise.resolve(
+            Response.json(
+              {
+                type: "/problems/unauthenticated",
+                title: "Authentication is required.",
+                status: 401,
+              },
+              { status: 401 },
+            ),
+          ),
         ),
       ),
     ).resolves.toBe("unauthenticated");
