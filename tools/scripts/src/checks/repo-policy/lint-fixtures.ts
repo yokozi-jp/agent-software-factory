@@ -308,17 +308,13 @@ export function dbBoundaries(tree: Tree): string[] {
 //   apps/web/src                     the import of the Node-only entry of packages/telemetry, below the comment
 //   packages/telemetry/src           the SDK import with no comment, which Oxlint must not report, and the import of
 //                                    an SQS client with the comment, which the override must still report.
-const stopsImport = (text: string, name: string): boolean =>
-  new RegExp(
-    `oxlint-disable-next-line no-restricted-imports[^\\n]*\\n[^\\n]*"${name.replaceAll("/", "\\/")}"`,
-  ).test(text);
-
 // The names imported on the line below `oxlint-disable-next-line no-restricted-imports`.
 const stoppedImports = (text: string): string[] =>
   Array.from(
     text.matchAll(/oxlint-disable-next-line no-restricted-imports[^\n]*\n[^\n"]*"([^"\n]+)"/g),
     (match) => String(match[1]),
   );
+const stopsImport = (text: string, name: string): boolean => stoppedImports(text).includes(name);
 
 export function telemetryBoundaries(tree: Tree): string[] {
   if (!packageNames(tree).includes("telemetry")) return [];
@@ -328,6 +324,10 @@ export function telemetryBoundaries(tree: Tree): string[] {
       "vite.config.ts has no otelSdkKinds array. It lists the kinds of OpenTelemetry import that the ban stops, and repo-policy asks for a fixture of each (docs/adr/0048).",
     ];
   const failures: string[] = [];
+  if (!/\botelSdkKinds\.join\(/.test(tree.read("vite.config.ts").replace(/\/\/[^\n]*/g, "")))
+    failures.push(
+      'vite.config.ts does not build the regex of otelSdkPattern from otelSdkKinds (`otelSdkKinds.join("|")`): a second list of the kinds would let the ban and the fixtures disagree (docs/adr/0048).',
+    );
   for (const file of [
     "apps/api/src/__fixtures__/otel-sdk.ts",
     "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
@@ -337,7 +337,7 @@ export function telemetryBoundaries(tree: Tree): string[] {
     for (const kind of kinds)
       if (!stopped.some((name) => new RegExp(`^@opentelemetry/(?:${kind})`).test(name)))
         failures.push(
-          `${file} has no import of a package that matches @opentelemetry/${kind} below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists the kind \`${kind}\` in otelSdkKinds, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`,
+          `${file} has no import of a package whose name matches the regular expression ^@opentelemetry/(?:${kind}) below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists \`${kind}\` in otelSdkKinds (\`$\` ends the name), so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`,
         );
   }
   const telemetryFixture = "packages/telemetry/src/__fixtures__/otel-sdk.ts";

@@ -189,6 +189,15 @@ const rootTsconfig = [
   "",
 ].join("\n");
 
+// The kinds of OpenTelemetry import that the ban stops (`otelSdkKinds` of vite.config.ts), a name or a start of a name.
+export const otelSdkKinds = [
+  "sdk-",
+  "exporter-",
+  "instrumentation",
+  "resources$",
+  "auto-instrumentations",
+];
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "tsconfig.json": rootTsconfig,
@@ -255,7 +264,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
     // The raw SQL of Kysely, which a module may not import.
     'const sqlImportNames = ["sql"];',
     // The kinds of OpenTelemetry import that the ban stops (docs/adr/0048), one fixture each.
-    'const otelSdkKinds = ["sdk-", "exporter-", "instrumentation", "resources$", "auto-instrumentations"];',
+    `const otelSdkKinds = ${JSON.stringify(otelSdkKinds)};`,
+    'const otelSdkPattern = { regex: `^@opentelemetry/(?:${otelSdkKinds.join("|")})` };',
     // The messages of those imports say what to write instead, and name the ADR.
     'const outboxBypassMessage = "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).";',
     'const connectionMessage = "Open a transaction with inTenantTransaction (docs/adr/0029, rule 2).";',

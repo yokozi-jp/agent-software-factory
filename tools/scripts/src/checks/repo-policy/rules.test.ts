@@ -15,6 +15,7 @@ import {
   factoryAgent,
   migration,
   moduleFixture,
+  otelSdkKinds,
   passingRepo,
   runtimeFixture,
   lintEffect,
@@ -2949,7 +2950,7 @@ describe("ADR 0048: packages/telemetry", () => {
       ...files,
     });
   const noImport = (file: string, kind: string) =>
-    `${file} has no import of a package that matches @opentelemetry/${kind} below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists the kind \`${kind}\` in otelSdkKinds, so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`;
+    `${file} has no import of a package whose name matches the regular expression ^@opentelemetry/(?:${kind}) below \`oxlint-disable-next-line no-restricted-imports\`: vite.config.ts lists \`${kind}\` in otelSdkKinds (\`$\` ends the name), so that a kind dropped from the ban, or an override that stops reaching the directory, fails \`vp check\` (docs/adr/0048).`;
 
   it("passes telemetry with its two exports and the three fixtures", () => {
     expect(violationsWithoutOrder(withTelemetry())).toEqual([]);
@@ -2990,7 +2991,7 @@ describe("ADR 0048: packages/telemetry", () => {
   it("names each kind of import that the fixture of apps/api or of the packages leaves out", () => {
     const file = "apps/api/src/__fixtures__/otel-sdk.ts";
     expect(violations(withTelemetry({ [file]: kinds.slice(1).map(stops).join("") }))).toEqual([
-      noImport(file, "sdk-"),
+      noImport(file, otelSdkKinds[0] ?? ""),
     ]);
     const other = "packages/module-fixtures/src/__fixtures__/otel-sdk.ts";
     expect(violations(withTelemetry({ [other]: undefined }))).toHaveLength(kinds.length);
@@ -2998,12 +2999,23 @@ describe("ADR 0048: packages/telemetry", () => {
 
   it("asks for a fixture of a kind that is added to otelSdkKinds in vite.config.ts", () => {
     const config = base["vite.config.ts"] ?? "";
-    const added = config.replace('"sdk-",', '"sdk-", "logs-",');
+    const added = config.replace(/^const otelSdkKinds = \[/m, 'const otelSdkKinds = ["logs-", ');
     const file = "apps/api/src/__fixtures__/otel-sdk.ts";
     const other = "packages/module-fixtures/src/__fixtures__/otel-sdk.ts";
     expect(violations(withTelemetry({ "vite.config.ts": added }))).toEqual([
       noImport(file, "logs-"),
       noImport(other, "logs-"),
+    ]);
+  });
+
+  it("refuses an otelSdkPattern that is not built from otelSdkKinds", () => {
+    const config = base["vite.config.ts"] ?? "";
+    const own = config.replace(
+      /^const otelSdkPattern.*$/m,
+      'const otelSdkPattern = { regex: "^@opentelemetry/sdk-" };',
+    );
+    expect(violations(withTelemetry({ "vite.config.ts": own }))).toEqual([
+      'vite.config.ts does not build the regex of otelSdkPattern from otelSdkKinds (`otelSdkKinds.join("|")`): a second list of the kinds would let the ban and the fixtures disagree (docs/adr/0048).',
     ]);
   });
 
