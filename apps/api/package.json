@@ -12,7 +12,9 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vp test run --coverage",
     "check": "vp check",
-    "openapi": "node --import ./test/temporal.ts ../../tools/scripts/src/openapi/cli.ts"
+    "openapi": "node --import ./test/temporal.ts ../../tools/scripts/src/openapi/cli.ts",
+    "contract-lint": "sh ../../tools/scripts/sh/openapi-lint.sh",
+    "contract-breaking": "sh ../../tools/scripts/sh/openapi-breaking.sh"
   },
   "dependencies": {
     "@agent-software-factory/approval": "workspace:*",
@@ -45,6 +47,20 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "api"
+    "name": "api",
+    "targets": {
+      "contract-lint": {
+        "cache": true,
+        "inputs": [
+          "{projectRoot}/openapi.json",
+          "{workspaceRoot}/.spectral.yaml",
+          "{workspaceRoot}/mise.toml",
+          "{workspaceRoot}/mise.lock"
+        ]
+      },
+      "contract-breaking": {
+        "cache": false
+      }
+    }
   }
 }

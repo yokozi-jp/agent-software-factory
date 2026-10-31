@@ -43,7 +43,9 @@ export interface AppDependencies {
 const healthRoute = createRoute({
   method: "get",
   path: "/health",
+  operationId: "getHealth",
   summary: "Health check",
+  description: "Reports that the API process is running. It does not check the database.",
   tags: ["health"],
   responses: {
     200: {
@@ -58,7 +60,10 @@ const healthRoute = createRoute({
 const meRoute = createRoute({
   method: "get",
   path: "/api/me",
+  operationId: "getCurrentUser",
   summary: "Current user",
+  description:
+    "Returns the user of the current session. Responds 401 when there is no valid session.",
   tags: ["auth"],
   responses: {
     200: {

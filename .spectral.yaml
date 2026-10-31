@@ -1,0 +1,48 @@
+# apps/api/openapi.json の lint (docs/adr/0047、tools/scripts/sh/openapi-lint.sh)。`--fail-severity=warn` で走らせるので、
+# spectral:oas の推奨の warn も error と同じく落とす。直し方は各 rule の message に書く。
+extends: [[spectral:oas, recommended]]
+rules:
+  # 推奨に入っていない 4 つを有効にする。
+  operation-singular-tag: true
+  openapi-tags: true
+  tag-description: true
+  openapi-tags-alphabetical: true
+  # info-license、license-url、contact-properties は有効にしない。社内向けで、公開する契約ではない。
+
+  # 独自の rule は 1 つだけ。4xx と 5xx の応答は application/problem+json で、type、title、status を持つ
+  # (docs/adr/0035、Issue #221 の決定 14)。
+  problem-details-error-response:
+    description: Every 4xx and 5xx response is application/problem+json with type, title and status.
+    message: >-
+      {{error}}. Write the response with the shared Problem Details schema (packages/shared-kernel/src/problem.ts)
+      under the content type application/problem+json, as docs/adr/0035 says.
+    severity: error
+    given: $.paths[*][*].responses[?(@property.match(/^[45]/))]
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [content]
+          properties:
+            content:
+              type: object
+              required: ["application/problem+json"]
+              properties:
+                application/problem+json:
+                  type: object
+                  required: [schema]
+                  properties:
+                    schema:
+                      type: object
+                      required: [properties, required]
+                      properties:
+                        properties:
+                          type: object
+                          required: [type, title, status]
+                        required:
+                          type: array
+                          allOf:
+                            - contains: { const: type }
+                            - contains: { const: title }
+                            - contains: { const: status }

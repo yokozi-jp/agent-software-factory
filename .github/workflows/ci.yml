@@ -134,6 +134,15 @@ jobs:
       - name: Tool tests (tools/scripts)
         run: pnpm exec nx affected -t test-tools
 
+      # The spec that the API generates (apps/api/openapi.json, docs/adr/0047, Issue #190). The names are rows of the assurance catalog.
+      - name: API contract lint (Spectral)
+        run: pnpm exec nx contract-lint api
+
+      # Compares with the spec on the base branch (fetch-depth 0 above has origin/main). A pull request only: a push to main has no base.
+      - name: API contract breaking changes (oasdiff)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: pnpm exec nx contract-breaking api
+
   # Known vulnerabilities in pnpm-lock.yaml (docs/adr/0021). Warns, never fails: dependency review
   # (dependency-review.yml) is the gate for dependencies. It is a job of its own because it is the only one that
   # may write to Code scanning (security-events: write); the permissions of a job replace the workflow's.
