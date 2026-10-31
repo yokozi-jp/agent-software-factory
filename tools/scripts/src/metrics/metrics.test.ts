@@ -194,7 +194,7 @@ describe("isSampleFile, categoryOf", () => {
     "apps/api/src/app.ts",
     "packages/db/migrations/1.sql",
     "apps/web/index.html",
-    "packages/shared/src/index.ts",
+    "packages/shared-kernel/src/index.ts",
     "apps/api/src/lint/x.ts",
   ])("puts %s, a file of a project in apps/ or packages/, in the sample feature", (path) => {
     expect(isSampleFile(path)).toBe(true);

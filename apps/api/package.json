@@ -15,7 +15,7 @@
     "@agent-software-factory/claim": "workspace:*",
     "@agent-software-factory/closing": "workspace:*",
     "@agent-software-factory/db": "workspace:*",
-    "@agent-software-factory/shared": "workspace:*",
+    "@agent-software-factory/shared-kernel": "workspace:*",
     "@hono/node-server": "catalog:",
     "better-auth": "catalog:",
     "effect": "catalog:",

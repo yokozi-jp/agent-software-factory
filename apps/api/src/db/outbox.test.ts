@@ -6,7 +6,7 @@ import {
   defineEvent,
   enqueueOutbox,
   inTenantTransaction,
-} from "@agent-software-factory/shared";
+} from "@agent-software-factory/shared-kernel";
 import { Cause, Effect, Exit } from "effect";
 import { sql } from "kysely";
 import { describe, expect, it } from "vite-plus/test";

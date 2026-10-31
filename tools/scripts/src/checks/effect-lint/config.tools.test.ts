@@ -38,7 +38,7 @@ beforeEach(() => {
   writeFileSync(join(project, "oxlint.json"), config());
   // effect-tsgo resolves oxlint from vite-plus, and the sources resolve effect and typescript, from the project.
   for (const [name, from] of [
-    ["effect", "packages/shared/node_modules/effect"],
+    ["effect", "packages/shared-kernel/node_modules/effect"],
     ["vite-plus", "node_modules/vite-plus"],
     ["typescript", "node_modules/typescript"],
   ] as const)

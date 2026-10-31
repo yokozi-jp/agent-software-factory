@@ -29,7 +29,7 @@ tags: [adr, architecture, domain-model, typescript, result, lint]
 
   `throw` は `infrastructure` の `parseX` だけに置きます。`domain` では `throw` を止めます。
 
-- **`Result`** (Q9): `Result` の型は `shared` に置き、`domain` は `import type` で使います。値は `{ _tag: "Ok", value }` / `{ _tag: "Err", error }` の object literal で作り、`ok()` と `err()` は置きません。
+- **`Result`** (Q9): `Result` の型は `shared-kernel` に置き、`domain` は `import type` で使います。値は `{ _tag: "Ok", value }` / `{ _tag: "Err", error }` の object literal で作り、`ok()` と `err()` は置きません。
 - **業務の失敗の応答** (Q11): `http` が失敗の `_tag` ごとに 422 の Problem Details にします ([ステータスコード](../web-api/status-codes.md)、[レスポンスボディ](../web-api/response-body.md))。
 - **時刻と乱数** (Q23): `domain` では `Date` の値 (`new Date()`、`Date.now()`)、`Temporal.Now`、`Math.random` を止めます。`Date` と `Temporal.Now` は `domain` だけでなく `apps/api/src` と `packages/*/src` の全体で止めます ([ADR 0043](0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。時刻の型は `Temporal.Instant` と `Temporal.PlainDate` で、自前の branded の `Instant` は作りません。`domain` の override の `no-restricted-globals` (`Date`) と `no-restricted-properties` (`Temporal.Now`、`Math.random`) が止めます ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md)、[Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。`crypto` などは `packages/*/tsconfig.json` の `types: []` で型検査が止めます。
 - **`domain` の `throw`** (Q10): 自作の Oxlint の plugin ([ADR 0019](0019-custom-oxlint-plugin-for-xss.md) と同じ形、`tools/lint-plugins/src/domain-plugin.ts` の `domain/no-throw`) で止めます ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。
@@ -59,14 +59,14 @@ skill をそのまま見せないのは、`parseX` が `throw` する例と「Sc
 
 - **zod の `.brand()` を `domain` に入れる**: 検証と型を 1 つの schema に持てます。ただし `domain` が zod を import することになり、「`domain` は何も import しない」(ADR 0026) を崩します。zod の `.optional()` は `exactOptionalPropertyTypes` ([ADR 0020](0020-typescript-strictness.md)) を緩めます。型述語と `.refine(isX)` なら、`domain` の型が `c.req.valid` まで `as` なしで届き、`.int().positive()` を書けば OpenAPI に制約が出ることを試作で確かめました。後から `.brand()` に移すには lint を緩めるだけで済みます (判断)。
 - **`throw` で業務の失敗を表す**: 書きやすい方式です。ただし、4xx への対応の書き忘れを止めるセンサーがありません。回復できる失敗だけを `Result` にする考え方は、Wlaschin の [Against Railway-Oriented Programming](https://fsharpforfunandprofit.com/posts/against-railway-oriented-programming/) と Rust Book の 9 章に従います。
-- **`Result` の library (neverthrow など) を `domain` に入れる**: `domain` が library を import することになります。型だけを `shared` に置けば足ります (Q9)。形は TC39 の [try 演算子の提案](https://github.com/arthurfiorette/proposal-try-operator) (Stage 0) と同じです。
+- **`Result` の library (neverthrow など) を `domain` に入れる**: `domain` が library を import することになります。型だけを `shared-kernel` に置けば足ります (Q9)。形は TC39 の [try 演算子の提案](https://github.com/arthurfiorette/proposal-try-operator) (Stage 0) と同じです。
 
 ## Consequences
 
 - `domain` は、時刻、乱数、`throw`、library、他のモジュールを持てません。必要なものは引数で受けるか、`application` に置きます。
 - 業務の失敗の `_tag` を足したら、`http` の 422 への対応も足します。`switch` の網羅が漏れを止めます。
 - 型述語が claim を検証しているかは、型検査では確かめられません。境界値のテストで確かめます。
-- `domain` の `throw` (Q10)、`Date` の値、`Temporal.Now`、`Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。型の注釈の `Date` は止まりません。`globalThis.Date.now()` のようにグローバルオブジェクトを通した `Date` は、ADR 0043 で `no-restricted-properties` に `globalThis.Date` と `globalThis.Temporal` を足して止めるようにしました。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
+- `domain` の `throw` (Q10)、`Date` の値、`Temporal.Now`、`Math.random` (Q23) は `vp check` が止め、`Result` の型 (Q9) は `shared-kernel` の `src/result.ts` にあります ([Issue #259](https://github.com/yokozi-jp/agent-software-factory/issues/259))。止まらない書き方があります。型の注釈の `Date` は止まりません。`globalThis.Date.now()` のようにグローバルオブジェクトを通した `Date` は、ADR 0043 で `no-restricted-properties` に `globalThis.Date` と `globalThis.Temporal` を足して止めるようにしました。Q7、Q8 のうち、この検査で止められないことは、このガイドとレビューで守ります。
 - `Result` を Effect に変える `fromResult` と、Effect の使い方は [ADR 0028](0028-effect-in-application-and-infrastructure.md) で決めます。
 
 ## 出典
