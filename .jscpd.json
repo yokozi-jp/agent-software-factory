@@ -5,6 +5,7 @@
   "ignore": [
     "**/routeTree.gen.ts",
     "**/db.gen.ts",
+    "**/schema.gen.ts",
     "**/fixtures/**",
     "**/__fixtures__/**",
     "packages/ui/src/styles/globals.css"

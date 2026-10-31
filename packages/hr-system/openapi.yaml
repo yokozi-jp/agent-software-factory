@@ -1,0 +1,70 @@
+# 人事システムの契約 (OpenAPI 3.1)。クライアントの型 (src/schema.gen.ts) とフェイクのスタブ (fake/mappings) は、これに合わせる。
+# 操作は 2 つだけ: メールアドレスで社員を引く、社員番号で上長を引く。一覧と組織の構造は持たない。
+# テナントは接続先の base URL で分ける。servers の {tenantId} は、フェイクの `/<tenant_id>/…` の接頭辞。
+openapi: 3.1.0
+info:
+  title: 人事システム
+  version: 1.0.0
+servers:
+  - url: https://hr.example.com/{tenantId}
+    variables:
+      tenantId:
+        default: tenant-a
+paths:
+  /employees:
+    get:
+      operationId: findEmployeeByEmail
+      summary: メールアドレスで社員を引く
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: 社員
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: そのメールアドレスの社員がいない
+  /employees/{employeeNumber}/manager:
+    get:
+      operationId: findManager
+      summary: 社員番号で上長を引く
+      parameters:
+        - name: employeeNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 上長
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: 社員がいない、または上長がいない
+components:
+  schemas:
+    Employee:
+      type: object
+      required: [employeeNumber, email, active, hasAccountingRole]
+      additionalProperties: false
+      properties:
+        employeeNumber:
+          type: string
+        email:
+          type: string
+          format: email
+        active:
+          type: boolean
+          description: 在籍しているか
+        hasAccountingRole:
+          type: boolean
+          description: 経理の役割を持つか

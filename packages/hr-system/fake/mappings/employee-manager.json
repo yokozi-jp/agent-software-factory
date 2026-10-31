@@ -1,0 +1,24 @@
+{
+  "name": "メールアドレス hanako.suzuki@example.com の社員",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/[^/]+/employees",
+    "queryParameters": {
+      "email": {
+        "equalTo": "hanako.suzuki@example.com"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "employeeNumber": "E0002",
+      "email": "hanako.suzuki@example.com",
+      "active": true,
+      "hasAccountingRole": false
+    }
+  }
+}

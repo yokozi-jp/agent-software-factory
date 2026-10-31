@@ -1,0 +1,24 @@
+{
+  "name": "メールアドレス retired@example.com の社員",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/[^/]+/employees",
+    "queryParameters": {
+      "email": {
+        "equalTo": "retired@example.com"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "employeeNumber": "E0099",
+      "email": "retired@example.com",
+      "active": false,
+      "hasAccountingRole": false
+    }
+  }
+}

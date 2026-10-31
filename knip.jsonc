@@ -18,6 +18,8 @@
   "ignoreIssues": {
     "packages/*/src/infrastructure/db.gen.ts": ["types"],
     "packages/shared-kernel/src/messaging/messaging.gen.ts": ["types"],
+    // openapi-typescript writes the types of paths, operations and components (packages/hr-system). The client names only the ones it uses.
+    "packages/hr-system/src/schema.gen.ts": ["types"],
   },
   "workspaces": {
     ".": {

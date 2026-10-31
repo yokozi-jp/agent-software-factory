@@ -1,0 +1,19 @@
+{
+  "name": "E0003 の上長",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/[^/]+/employees/E0003/manager"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "employeeNumber": "E0002",
+      "email": "hanako.suzuki@example.com",
+      "active": true,
+      "hasAccountingRole": false
+    }
+  }
+}

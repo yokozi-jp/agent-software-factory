@@ -290,6 +290,9 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: 5.0.5
       version: 5.0.5
+    ajv:
+      specifier: ^8.20.0
+      version: 8.20.0
     better-auth:
       specifier: ^1.7.12
       version: 1.7.14
@@ -326,6 +329,9 @@ catalogs:
     knip:
       specifier: 6.43.0
       version: 6.43.0
+    ky:
+      specifier: 2.2.0
+      version: 2.2.0
     kysely:
       specifier: ^0.29.7
       version: 0.29.7
@@ -842,6 +848,37 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 1.4.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(playwright@1.64.1)(typescript@7.0.2)(yaml@2.9.1)
+
+  packages/hr-system:
+    dependencies:
+      ky:
+        specifier: 'catalog:'
+        version: 2.2.0
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.5(@vitest/browser@5.0.5)(vitest@5.0.5)
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      testcontainers:
+        specifier: 'catalog:'
+        version: 12.2.1(supports-color@7.2.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.4.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(jiti@2.7.0)(playwright@1.64.1)(typescript@7.0.2)(yaml@2.9.1)
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
 
   packages/i18n:
     dependencies:
@@ -6315,6 +6352,10 @@ packages:
   koa@3.2.1:
     resolution: {integrity: sha512-e7IpWJrnanNUroVK2taAgMxoEZvHLXdQiNjeExSu/DEIWm83jaKGBgb7tLmu2rMYpA027qFB3iLR/k3AVpFRnA==}
     engines: {node: '>= 18'}
+
+  ky@2.2.0:
+    resolution: {integrity: sha512-4+B63kyZt+Y8snQiUGydK1vgY9xYQJZEh9K/nIAIEts+gYJzy1EiAw3BbK8xpWRuWUpN70SNCMjqRGTm75xxIA==}
+    engines: {node: '>=22'}
 
   kysely-codegen@0.20.0:
     resolution: {integrity: sha512-LSi2KBG7uDmNCZ+XurLSA9LH7XFyyoQ6xb5DLJSInPTSYLVApjOP2KwO8mSaREWTtoX+C2AG2GTlYR0DLjTbcA==}
@@ -13279,6 +13320,8 @@ snapshots:
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
+
+  ky@2.2.0: {}
 
   kysely-codegen@0.20.0(kysely@0.29.7)(pg@8.23.1)(typescript@7.0.2):
     dependencies:
