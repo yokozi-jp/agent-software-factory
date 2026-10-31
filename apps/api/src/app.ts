@@ -45,10 +45,12 @@ const healthRoute = createRoute({
 });
 
 export function createApp({ auth }: AppDependencies = {}) {
-  const base = new OpenAPIHono<{ Variables: SessionVariables }>({ defaultHook: validationHook });
+  const withoutRoutes = new OpenAPIHono<{ Variables: SessionVariables }>({
+    defaultHook: validationHook,
+  });
   // `use` は OpenAPIHono ではなく Hono を返し、そのあとでは `openapi` を呼べない。`use` を先に呼び、route の型は
   // `openapi` の戻り値で受ける (同じ object なので、このあとの `app.use` は全 route に効く)。
-  base.use(
+  withoutRoutes.use(
     secureHeaders({
       contentSecurityPolicy: { defaultSrc: ["'none'"] },
       strictTransportSecurity: "max-age=63072000; includeSubDomains",
@@ -57,7 +59,7 @@ export function createApp({ auth }: AppDependencies = {}) {
       xFrameOptions: false,
     }),
   );
-  const app = base.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
+  const app = withoutRoutes.openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
 
   if (auth !== undefined) {
     app.use("/api/*", csrfProtection(auth.origin));
@@ -78,10 +80,3 @@ export function createApp({ auth }: AppDependencies = {}) {
 }
 
 export const app = createApp();
-
-// spec のサーバー URL は相対パス。web と API は同じオリジンで配信する (docs/adr/0022、0047)。
-export const openApiDocument: Parameters<OpenAPIHono["getOpenAPI31Document"]>[0] = {
-  openapi: "3.1.0",
-  info: { title: "agent-software-factory API", version: "0.0.0" },
-  servers: [{ url: "/" }],
-};

@@ -11,17 +11,17 @@ tags: [adr, web-api, openapi, hono, zod, rpc, contract]
 
 ## 決定
 
-- **route の書き方**: `@hono/zod-openapi` の `OpenAPIHono` と `createRoute` で書きます。応答のステータスコードは route に明示します。Zod 専用です (peer `zod ^4`、`hono >=4.10.0`)。
+- **route の書き方**: `@hono/zod-openapi` の `OpenAPIHono` と `createRoute` で書きます。応答のステータスコードは route に明示します。Zod 専用です (1.6.3 の peer は `zod ^4.0.0`、`hono >=4.10.0`。`pnpm-lock.yaml`)。
 - **spec**: OpenAPI 3.1 (`getOpenAPI31Document`) です。生成した spec は 1 つ、`apps/api/openapi.json` に置いて commit します。PR の差分で、人が API の変更を読めます。
-- **生成**: `tools/scripts/src/openapi/cli.ts` が書きます (`pnpm exec nx openapi api`)。`apps/api` のコードは `node:fs` を使わない ([ADR 0007](0007-api-on-node-web-standard-app.md)) ので、ファイルへの書き込みはここに閉じます ([ADR 0024](0024-scripts-and-hooks-in-typescript.md))。`openapi.json` は生成物なので、フォーマッタと lint の対象から外します。
-- **drift の検出**: `apps/api/src/openapi.unit.test.ts` が spec を route から再生成し、commit した `openapi.json` と突き合わせます。古い spec が commit されると、`ci.yml` の `api:test` が落ちます。同じテストが、route を欠いた古い spec とは一致しないことを確かめます。
-- **検証エラーの形**: `defaultHook` の 1 か所 (`apps/api/src/http/validation-hook.ts`) に書きます。RFC 9457 の Problem Details (`type: /problems/validation`) で、`errors` に `pointer` と `code` を持ちます ([ADR 0035](0035-problem-details-for-api-errors.md))。Problem の schema を `shared-kernel` に移すのは [Issue #307](https://github.com/yokozi-jp/agent-software-factory/issues/307) です。
+- **生成**: `tools/scripts/src/openapi/cli.ts` が書きます (`pnpm exec nx openapi api`。Node.js 24 に Temporal がないので、`apps/api` の script が polyfill を `--import` で入れて起動します)。`apps/api` のコードは `node:fs` を使わない ([ADR 0007](0007-api-on-node-web-standard-app.md)) ので、ファイルへの書き込みはここに閉じます ([ADR 0024](0024-scripts-and-hooks-in-typescript.md))。`openapi.json` は生成物なので、フォーマッタと lint の対象から外します。
+- **drift の検出**: `apps/api/src/openapi.unit.test.ts` が spec を route から再生成し、commit した `openapi.json` と突き合わせます (内容の比較で、書式は見ません。書式は生成 CLI が決めます)。古い spec が commit されると、`ci.yml` の `api:test` が落ちます。同じテストが、route を欠いた古い spec とは一致しないことを確かめます。
+- **検証エラーの形**: `defaultHook` の 1 か所 (`apps/api/src/http/validation-hook.ts`) に書きます。RFC 9457 の Problem Details (`type: /problems/validation`) で、`errors` に `pointer` と `code` を持ちます ([ADR 0035](0035-problem-details-for-api-errors.md))。これは [ADR 0035](0035-problem-details-for-api-errors.md) の 4 か所のうちの `defaultHook` です。0035 は変換を `shared-kernel` の関数に通すと定めますが、その関数は [Issue #307](https://github.com/yokozi-jp/agent-software-factory/issues/307) で入るので、それまでは `validation-hook.ts` が Problem を自分で組み立てます。
 - **同一オリジン**: web と API は同じオリジン (`/api/*`、[ADR 0022](0022-better-auth-cookie-bff.md)) なので、CORS の middleware は入れず、spec のサーバー URL は相対パス `/` にします。[Issue #114](https://github.com/yokozi-jp/agent-software-factory/issues/114) の結論が覆ったら、この部分だけ直します。
 - **web の呼び方**: Hono RPC の `hc` を使います。`apps/api` の `package.json` の `exports` は `src/contract.ts` で、`AppType` の型だけを出します。web が `@agent-software-factory/api` を import してよいのは `apps/web/src/lib/api-client.ts` の `import type` 1 か所だけで、ほかの import は Oxlint の `no-restricted-imports` が止めます。API の route の入力や応答を変えると、web の型検査が直接落ちます。
 
 ## Considered Options
 
-- **hono-openapi** (第三者製): Standard Schema を通して Zod 以外の schema library も使えます。ただ、この repo は Zod だけを使うので、その柔軟さは要りません。`@hono/zod-openapi` は Hono の組織の monorepo にあり、版が安定しています。
+- **hono-openapi** (第三者製): Standard Schema を通して Zod 以外の schema library も使えます。ただ、この repo は Zod だけを使うので、その柔軟さは要りません。`@hono/zod-openapi` は Hono の組織の monorepo (`honojs/middleware`) にあります。
 - **Hono RPC だけ** (spec を出さない): コード生成も spec もなく、いちばん軽いです。ただ、Spectral と oasdiff が使えず、検証を OpenAPI に寄せる前提 ([docs/web-api/validation-and-code-values.md](../web-api/validation-and-code-values.md)) も捨てることになります。
 - **Orval で client を生成する**: spec から型と client を作れ、MSW の mock も生成できます。ただ、生成物が増え、今は web に MSW が要りません。MSW が要るようになったら足します。
 - **spec を commit せず CI だけで生成する**: PR の差分に API の変更が出ず、レビューで見えません。oasdiff が main の版とそのまま比べるのにも、commit した spec が要ります。
@@ -31,6 +31,7 @@ tags: [adr, web-api, openapi, hono, zod, rpc, contract]
 - API の route を変えたら `pnpm exec nx openapi api` を実行し、`openapi.json` を commit します。忘れると `api:test` が落ちます。
 - `apps/web` の依存に `apps/api` が増え、Nx の project graph にアプリ同士の依存が出ます。import が 1 か所に限られるので、API のコードが web の bundle に入ることはありません。
 - `createApp` の戻り値の型 (`AppType`) は、`createApp` の中で chain した route だけを含みます。`auth` を渡したときだけ付く `/api/auth/*` と `/api/me` は、まだ契約に入っていません。契約に足すときは `createRoute` で書き直します。
+- 検証エラーの 400 は、`/health` に入力がないので、まだ spec にも `hc` の型にも出ません。入力を持つ最初の route が、400 を応答に書きます ([Issue #307](https://github.com/yokozi-jp/agent-software-factory/issues/307))。
 - Spectral と oasdiff のゲートは [Issue #190](https://github.com/yokozi-jp/agent-software-factory/issues/190) で足します。
 
 ## 出典

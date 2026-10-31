@@ -9,7 +9,7 @@ const ignorePatterns = [
   "packages/*/src/infrastructure/db.gen.ts",
   // The same for the shared `messaging` schema (the Outbox, docs/adr/0029).
   "packages/shared-kernel/src/messaging.gen.ts",
-  // Generated from the routes of apps/api (pnpm exec nx openapi api, docs/adr/0047). Committed; CI checks that it matches.
+  // Generated from the routes of apps/api (pnpm exec nx openapi api, docs/adr/0047). Committed; apps/api/src/openapi.unit.test.ts checks that it matches the routes.
   "apps/api/openapi.json",
   // Agent skills installed from upstream (tracked by skills-lock.json). Must stay byte-identical.
   ".agents/**",
