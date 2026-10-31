@@ -200,6 +200,9 @@ export const otelSdkKinds = [
 
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
+  "compose.local.yaml":
+    "services:\n  postgres:\n    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4\n",
+  "packages/db/src/testing/connection.ts": 'export const postgresImage = "postgres:18";\n',
   "tsconfig.json": rootTsconfig,
   "apps/api/src/__fixtures__/tsconfig-flags.ts": tsconfigFlagsFixture,
   "packages/claim/tsconfig.json": JSON.stringify({

@@ -56,6 +56,8 @@ pre-commit:
               - "tools/scripts/sh/**"
               - "docs/**"
               - "**/*.ts"
+              # The PostgreSQL tag of compose and postgresImage must agree (Issue #515).
+              - "compose.local.yaml"
             # Check what is staged, so unstaged edits to other files cannot fail the commit.
             run: node tools/scripts/src/checks/repo-policy/cli.ts staged
 

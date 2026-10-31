@@ -157,6 +157,28 @@ export function oneNodeMajor(tree: Tree): string[] {
   return failures;
 }
 
+// The PostgreSQL image of compose.local.yaml (a hand-run stack) and postgresImage (tests and generated types)
+// name the same tag. compose pins a digest after the tag (`postgres:18@sha256:...`), postgresImage does not,
+// so only the part before `@` is compared (docs/tooling/local-worker.md, Issue #515).
+export function onePostgresVersion(tree: Tree): string[] {
+  const services = record(record(tree.parsed("compose.local.yaml")).services);
+  const image = record(services.postgres).image;
+  const composeTag = typeof image === "string" ? image.split("@")[0] : undefined;
+  const testPath = "packages/db/src/testing/connection.ts";
+  const testTag = /postgresImage\s*=\s*"([^"]+)"/.exec(tree.read(testPath))?.[1];
+  if (composeTag === undefined)
+    return ["compose.local.yaml must set services.postgres.image (docs/tooling/local-worker.md)."];
+  if (testTag === undefined)
+    return [
+      `${testPath} must set postgresImage to a string literal (docs/tooling/local-worker.md).`,
+    ];
+  return composeTag === testTag
+    ? []
+    : [
+        `compose.local.yaml postgres image (${composeTag}) must be the tag of postgresImage in ${testPath} (${testTag}) (docs/tooling/local-worker.md).`,
+      ];
+}
+
 // ADR numbers are unique. Two branches can each take the next free number, and both ADRs can reach main
 // without a merge conflict (docs/tooling/worktrees.md ("PR を出す")).
 export function uniqueAdrNumbers(tree: Tree): string[] {

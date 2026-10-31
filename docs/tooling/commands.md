@@ -97,7 +97,7 @@ docs/      ドキュメント (入口は docs/index.md)
 
 ## 補足
 
-- api と db の test は Docker が要ります (`packages/db/test/global-setup.ts` も PostgreSQL のコンテナを起動します)。api の test では、`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:17`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します。IdP は Docker を使わず、テストのプロセスの中で node-oidc-provider を動かします (`apps/api/test/oidc-provider.ts`。複数のセッションが並行しても、IdP は重複せず、起動は 1 秒未満です。[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
+- api と db の test は Docker が要ります (`packages/db/test/global-setup.ts` も PostgreSQL のコンテナを起動します)。api の test では、`apps/api/test/global-setup.ts` が PostgreSQL (`postgres:18`) のコンテナを testcontainers で一度だけ起動し、全テストで共有します。IdP は Docker を使わず、テストのプロセスの中で node-oidc-provider を動かします (`apps/api/test/oidc-provider.ts`。複数のセッションが並行しても、IdP は重複せず、起動は 1 秒未満です。[ADR 0022](../adr/0022-better-auth-cookie-bff.md))。GitHub Actions の ubuntu runner は Docker を持つので、CI では何も足しません。
   起動に失敗すると、vitest は `No test files found` と `TypeError: code.charCodeAt is not a function` だけを出します。原因は、その上の `globalSetup (test/global-setup.ts) が失敗した:` の行にあります。PostgreSQL のコンテナの起動の待ちの時間切れなら、ほかのセッションのテストで testcontainers のコンテナが多く動いていないか (`docker ps`、`uptime`) を確かめます。
 - api の test は coverage を取り、下限を割ると失敗します ([CI](ci.md#coverage-の下限))。全体の値が上がると `apps/api/vite.config.ts` の下限が書き換わるので、その変更も commit します。`tools/lint-plugins` の test も同じ基準で coverage を取り、`tools/lint-plugins/vite.config.ts` の下限が同じように書き換わります。
 - `apps/*/src` のテストの名前 (`describe`、`it`、`test`) は日本語で書きます。実行結果 (`--reporter=verbose`) が、そのまま何を保証しているかの一覧になるためです。日本語を1文字も含まない名前は、`vp check` の自作 Oxlint 規則 `test-title/japanese-title` (`tools/lint-plugins/src/test-title-plugin.ts`) が止めます。"〜すること" の形を勧めます。ツールのテスト (`tools/`) と、lint plugin のテスト (`tools/lint-plugins/`) は対象外です。
