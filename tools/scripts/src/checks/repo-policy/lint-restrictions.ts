@@ -25,7 +25,7 @@ interface Restriction {
   readonly mentions: readonly string[];
 }
 
-type Shape = Record<string, unknown>;
+type Fields = Record<string, unknown>;
 
 const isStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -34,7 +34,7 @@ const shapeFailure = (where: string, what: string): string =>
   `${tablePath} の ${where} が${what}でない (${howTo})。`;
 
 // The fields of a row that do not have their shape, each with what it should be.
-function rowProblems(row: Shape): (readonly [string, string])[] {
+function rowProblems(row: Fields): (readonly [string, string])[] {
   const files = row.files;
   return [
     ...(isStrings(files) && files.length > 0 && files.every((file) => text(file) !== undefined)
@@ -50,7 +50,7 @@ function rowProblems(row: Shape): (readonly [string, string])[] {
 }
 
 // The fields of a restriction, other than its rows, that do not have their shape.
-function restrictionProblems(restriction: Shape): (readonly [string, string])[] {
+function restrictionProblems(restriction: Fields): (readonly [string, string])[] {
   return [
     ...(typeof restriction.adr === "string" ? [] : [["adr", "文字列"] as const]),
     ...["values", "mentions"]
@@ -63,12 +63,19 @@ function restrictionProblems(restriction: Shape): (readonly [string, string])[] 
   ];
 }
 
-// Whether a value with no problems has the shape. The problems are checked above, field by field.
-const hasShape = <T>(value: Shape, problems: readonly unknown[]): value is Shape & T =>
+// rowProblems and restrictionProblems check the fields one by one; a value with no problems has the shape `T`.
+const hasNoProblems = <T>(value: Fields, problems: readonly unknown[]): value is Fields & T =>
   problems.length === 0;
 
+// A restriction of the table, under its key, with the rows that have their shape.
+interface Entry {
+  readonly key: string;
+  readonly restriction: Restriction;
+  readonly rows: readonly Row[];
+}
+
 interface Table {
-  readonly restrictions: readonly (readonly [string, Restriction, readonly Row[]])[];
+  readonly entries: readonly Entry[];
   readonly failures: readonly string[];
 }
 
@@ -76,10 +83,10 @@ interface Table {
 function readTable(table: unknown): Table {
   if (!isRecord(table))
     return {
-      restrictions: [],
+      entries: [],
       failures: [`${tablePath} の最上位がオブジェクトでない (${howTo})。`],
     };
-  const restrictions: [string, Restriction, Row[]][] = [];
+  const entries: Entry[] = [];
   const failures: string[] = [];
   for (const [key, value] of Object.entries(table)) {
     if (!isRecord(value)) {
@@ -88,7 +95,7 @@ function readTable(table: unknown): Table {
     }
     const problems = restrictionProblems(value);
     failures.push(...problems.map(([name, what]) => shapeFailure(`${key}.${name}`, what)));
-    if (!hasShape<Restriction & { rows: unknown[] }>(value, problems)) continue;
+    if (!hasNoProblems<Restriction & { rows: unknown[] }>(value, problems)) continue;
     const rows: Row[] = [];
     for (const [index, row] of value.rows.entries()) {
       const where = `${key}.rows[${index}]`;
@@ -98,11 +105,11 @@ function readTable(table: unknown): Table {
       }
       const wrong = rowProblems(row);
       failures.push(...wrong.map(([name, what]) => shapeFailure(`${where}.${name}`, what)));
-      if (hasShape<Row>(row, wrong)) rows.push(row);
+      if (hasNoProblems<Row>(row, wrong)) rows.push(row);
     }
-    restrictions.push([key, value, rows]);
+    entries.push({ key, restriction: value, rows });
   }
-  return { restrictions, failures };
+  return { entries, failures };
 }
 
 // The rules of an `oxlint-disable-next-line` comment that fills its line (`// ...` or `/* ... */`), before the
@@ -164,21 +171,18 @@ const fixtureKey = (path: string): string | undefined =>
 const hasName = (text: string, value: string): boolean =>
   new RegExp(`(?<![\\w-])${value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\w-])`).test(text);
 
-function restrictionFailures(
-  tree: Tree,
-  key: string,
-  restriction: Restriction,
-  rows: readonly Row[],
-): string[] {
+function restrictionFailures(tree: Tree, { key, restriction, rows }: Entry): string[] {
   const { adr } = restriction;
   const failures: string[] = [];
-  const named = (file: string) => fixtureKey(file) === key;
-  for (const file of [...new Set(rows.flatMap((row) => row.files))].filter((f) => !named(f)))
+  const namedAfterKey = (file: string) => fixtureKey(file) === key;
+  for (const file of [...new Set(rows.flatMap((row) => row.files))].filter(
+    (f) => !namedAfterKey(f),
+  ))
     failures.push(
       `${tablePath} の ${key} の行が \`${file}\` を挙げるが、fixture のファイルは __fixtures__/${key}.ts か __fixtures__/${key}.test.ts にする (${howTo})。`,
     );
   for (const row of rows)
-    for (const file of row.files.filter(named))
+    for (const file of row.files.filter(namedAfterKey))
       if (!codeLines(tree.read(file)).some((line) => matches(row, line)))
         failures.push(missingLine(file, row, adr));
   // Each file that stops the restriction has a row for each value it stops, so that a value added to the table
@@ -204,7 +208,7 @@ function restrictionFailures(
 
 // Every line of a fixture of the table that the rule stops, or that has a text of the restriction and is let through,
 // has its row: a row removed from the table fails here.
-function unlistedLines(tree: Tree, key: string, allRows: readonly Row[], file: string): string[] {
+function unlistedLines(tree: Tree, { key, rows: allRows }: Entry, file: string): string[] {
   const rows = allRows.filter((row) => row.files.includes(file));
   const failures: string[] = [];
   for (const line of codeLines(tree.read(file))) {
@@ -231,6 +235,7 @@ export const isRestrictionFixture = (tree: Tree, path: string): boolean =>
   Object.keys(record(tree.parsed(tablePath))).some((key) => key === fixtureKey(path));
 
 export function lintRestrictionsAgree(tree: Tree): string[] {
+  // The path is written out so that lefthook-inputs.test.ts finds it among the files read by name.
   const table = tree.parsed("lint-restrictions.json");
   if (table === undefined)
     return tree.paths.includes(tablePath)
@@ -238,16 +243,14 @@ export function lintRestrictionsAgree(tree: Tree): string[] {
       : [
           `${tablePath} がない。lint で止める import と呼び出しと、その fixture の行を並べる表で、vite.config.ts と repo-policy が読む (${howTo})。`,
         ];
-  const { restrictions, failures } = readTable(table);
+  const { entries, failures } = readTable(table);
   return [
     ...failures,
-    ...restrictions.flatMap(([key, restriction, rows]) =>
-      restrictionFailures(tree, key, restriction, rows),
-    ),
+    ...entries.flatMap((entry) => restrictionFailures(tree, entry)),
     ...tree.paths.flatMap((file) =>
-      restrictions
-        .filter(([key]) => key === fixtureKey(file))
-        .flatMap(([key, , rows]) => unlistedLines(tree, key, rows, file)),
+      entries
+        .filter(({ key }) => key === fixtureKey(file))
+        .flatMap((entry) => unlistedLines(tree, entry, file)),
     ),
   ];
 }

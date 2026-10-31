@@ -20,13 +20,14 @@ tags: [adr, lint, oxlint, repo-policy, fixture]
 - **`import type` は区別しない**: 型の import に disable のコメントを書いても使われず、`vp check` が失敗するので、表の検査は区別しません。
 - **OpenTelemetry の種類は文字列の前方一致**: 以前の正規表現の断片 (`resources$`) をやめ、値をパッケージ名の先頭の文字列にします。閉じの引用符で終わる値 (`@opentelemetry/resources"`) は名前の全体です。fixture の文字列も同じ形 (`"@opentelemetry/resources"`) で書きます。
 - **#136 (item 8) の判断を、表の範囲で置き換える**: #136 は「`vite.config.ts` は parser なしで文字列として読む」と決めました。禁止の値、message、fixture の行は、この表で JSON の parser (`tree.parsed`) で読みます。repo-policy は index を検査するので、作業ツリーの `vite.config.ts` を import できないためです。規則の名前 (`lintRulesHaveFixtures`) と `layers` は、今も文字列として読みます。
+- **Issue との違い**: #550 は、ADR と message の要件を行ごとに持たせ、行に fixture のファイルを 1 つ書くとしていました。実装では、ADR (`adr`) と message の要件 (`mentions`) は欄に 1 回だけ書き、行は複数のファイル (`files`) を持ちます。同じ ADR と要件が、1 つの欄の全行で同じだからです (`outbox` は 7 行 × 8 ファイル)。失敗の message は、止める行には Issue のひな形を、通す行には「disable のコメントを前に置かずに」と書いた同じ形を使います。表にない行、値の欠け、ファイルの名前、message、表の形の失敗は、それぞれ直し方を書いた別の文にしました (判断)。
 - **表に入れないもの**: 規則の名前と `layers` から機械的に求まる検査 (lint の規則の fixture、tsconfig のフラグ、層の境界、domain の純粋さ、Effect) は、`lint-fixtures.ts` に残します。行を手で並べる必要がないためです。
 
 ## Considered Options
 
 - **表を TypeScript (`lint-restrictions.ts`) にする**: コメントが書け、型が付きます。ただし repo-policy は index の内容を検査するので、作業ツリーのファイルを import できず、TS のソースを正規表現で読むことに戻ります。JSON なら `vite.config.ts` は import で、repo-policy は parser で、同じ値を読めます。
 - **`vite.config.ts` を文字列で読み続け、guard を足していく**: 今の形です。禁止ごとに guard と、定数を読む正規表現と、fixture の置き場所の規則が増え、名前と確かめ方がそろいません。
-- **表を YAML にする**: コメントが書けますが、`vite.config.ts` から読むには parser の依存か、ビルドの手順が要ります。JSON は Node.js と Vite+ が import attributes で直接読めます。
+- **表を YAML にする**: コメントが書けますが、ECMAScript の import attributes で読めるのは JSON だけで ([Node.js の JSON modules](https://nodejs.org/api/esm.html#json-modules))、`vite.config.ts` から YAML を読むには parser の依存を足すことになります (判断)。JSON なら、Vite+ 1.4.0 の config の読み込みがそのまま扱えます (#550 のコメント)。
 - **override の `files` も表に入れる**: どの override がどこに届くかと、Oxlint が最後の override だけを使う規則 ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md)) は、`vite.config.ts` の組み立てと切り離せません。届くかどうかは fixture の `vp check` が確かめるので、表には入れません (判断)。
 
 ## Consequences

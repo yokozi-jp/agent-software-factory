@@ -28,6 +28,11 @@ const effectOnlyFixtures = ["packages/*/src/*/__fixtures__/effect-tsgo.ts"];
 const runtimeImportMessage =
   "Runtime-specific code belongs in an entry file such as apps/api/src/server.ts (docs/adr/0007).";
 
+// The entries of no-restricted-imports `paths` (and the like) for the values of a restriction of the table, with its message.
+const restrictedNames = ({ values, message }: { values: readonly string[]; message: string }) =>
+  values.map((name) => ({ name, message }));
+
+// hasName in tools/scripts/src/checks/repo-policy/lint-restrictions.ts escapes the same characters; keep the two alike.
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 // The OpenTelemetry SDK, its exporters and the instrumentations (docs/adr/0048). Code outside packages/telemetry and the entry
@@ -45,10 +50,7 @@ const otelSdkPattern = {
 
 // pino is the implementation behind the Logger (docs/adr/0049). Code outside packages/logging/src/node.ts and the tests
 // depends on the `Logger` interface of @agent-software-factory/logging, so that the logger can be replaced in one place.
-const pinoPaths = restrictions.pino.values.map((name) => ({
-  name,
-  message: restrictions.pino.message,
-}));
+const pinoPaths = restrictedNames(restrictions.pino);
 
 const runtimeImports = {
   paths: [
@@ -73,14 +75,10 @@ const runtimeImports = {
 // A file that has to open a connection, such as a databases.ts that makes the pool (today it only imports the type
 // of Pool), is an entry file: add it to the override of the entry files below. This is a guardrail: a `fetch` to an AWS
 // endpoint and a dynamic import are not stopped.
-const outboxPaths: RestrictedPath[] = restrictions.outbox.values.map((name) => ({
-  name,
-  message: restrictions.outbox.message,
-}));
-const connectionPaths: RestrictedPath[] = restrictions.connection.values.map((name) => ({
-  name,
+const outboxPaths: RestrictedPath[] = restrictedNames(restrictions.outbox);
+const connectionPaths: RestrictedPath[] = restrictedNames(restrictions.connection).map((path) => ({
+  ...path,
   allowTypeImports: true,
-  message: restrictions.connection.message,
 }));
 const bypassPaths = [...outboxPaths, ...connectionPaths];
 
@@ -99,9 +97,9 @@ const sqlPaths: RestrictedPath[] = [
 
 // `withTables` gives a transaction the types of another database. It is called in infrastructure/ only, inside a public
 // API function that takes the caller's transaction to read its own tables (docs/adr/0029).
-const withTablesEntries = restrictions["with-tables"].values.map((property) => ({
-  property,
-  message: restrictions["with-tables"].message,
+const withTablesEntries = restrictedNames(restrictions["with-tables"]).map(({ name, message }) => ({
+  property: name,
+  message,
 }));
 
 // Runtime-specific globals (docs/adr/0007), with the fix to name in the message. runtimeGlobalLintRules turns them
@@ -115,7 +113,7 @@ const runtimeGlobals = [
   },
   { name: "Bun", message: runtimeImportMessage },
   { name: "Buffer", message: "Use Uint8Array, TextEncoder or TextDecoder." },
-  ...restrictions.console.values.map((name) => ({ name, message: restrictions.console.message })),
+  ...restrictedNames(restrictions.console),
 ];
 const runtimeGlobalEntries = [
   ...runtimeGlobals,
@@ -185,10 +183,7 @@ const webParentImport = {
   message: "Import a file in another directory with `@/` (apps/web/src), not `../`.",
 };
 // The Node-only entry of packages/telemetry starts the SDK; the browser does not (docs/adr/0048).
-const webTelemetryPaths = restrictions["telemetry-node"].values.map((name) => ({
-  name,
-  message: restrictions["telemetry-node"].message,
-}));
+const webTelemetryPaths = restrictedNames(restrictions["telemetry-node"]);
 const webImportPatterns = [webParentImport];
 const webFiles = ["apps/web/src/**", "packages/ui/src/**"];
 // The layers of a module (src/<layer>/), with the layers each may import. domain imports nothing but the types of
