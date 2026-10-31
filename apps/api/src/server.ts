@@ -103,7 +103,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const)
     void stopGracefully({ ...started, flushTelemetry: () => telemetry.shutdown() }).then(
       () => process.exit(0),
       (error: unknown) => {
-        logger.error("API-001", exceptionFields(error));
+        logger.error("API-003", exceptionFields(error));
         process.exit(1);
       },
     );

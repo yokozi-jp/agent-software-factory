@@ -3,12 +3,12 @@ import { Cause, Effect, Exit } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createApp } from "./app.ts";
-import { unusedRuntime } from "./runtime.ts";
+import { runtimeWithoutDatabase } from "./runtime.ts";
 
 // spec の生成と DB を使わないテストが createApp に渡す runtime。DB を使うと、渡し忘れとわかる defect で落ちる。
-describe("DB のない runtime (unusedRuntime)", () => {
+describe("DB のない runtime (runtimeWithoutDatabase)", () => {
   it("Database を使う Effect は、runtime が DB を持たないと言う defect で落ちること", async () => {
-    const runtime = unusedRuntime();
+    const runtime = runtimeWithoutDatabase();
     try {
       const exit = await runtime.runPromiseExit(
         Effect.gen(function* () {
@@ -23,7 +23,7 @@ describe("DB のない runtime (unusedRuntime)", () => {
   });
 
   it("DB を使わない route は、そのまま応答すること", async () => {
-    const res = await createApp({ runtime: unusedRuntime() }).request("/health");
+    const res = await createApp({ runtime: runtimeWithoutDatabase() }).request("/health");
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: "ok" });

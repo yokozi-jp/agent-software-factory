@@ -18,7 +18,7 @@ export const createApiRuntime = (db: Kysely<never>): ApiRuntime =>
  * routes that do not use it. The layer is built on the first run only, so a route that never runs an effect answers as
  * usual; a run dies with a message that says the database is missing.
  */
-export const unusedRuntime = (): ApiRuntime =>
+export const runtimeWithoutDatabase = (): ApiRuntime =>
   ManagedRuntime.make(
     Layer.effect(
       Database,
