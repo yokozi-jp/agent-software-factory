@@ -60,6 +60,31 @@ export default defineConfig({
       {
         extends: true,
         plugins: [storybookTest({ configDir: ".storybook" })],
+        // 先に最適化する依存 (#523)。CI で story のファイルが `Failed to fetch dynamically imported module` や
+        // `iframe ... did not become ready` で読めなかったことがある。Storybook の FAQ は、実行の途中で Vite が依存を
+        // 最適化し直す (ログの `new dependencies optimized: ...`) と、再読み込みでテストが壊れるので、`optimizeDeps.include`
+        // に先に書くよう勧める (https://storybook.js.org/docs/writing-tests/integrations/vitest-addon の FAQ)。
+        // ただし、この再最適化が原因かは確かめていない (ローカルでは、キャッシュを消しても起きなかった)。
+        // 一覧は、story が使う依存 (`node_modules/.cache/storybook/<版>/*/sb-vitest/vitest/*/deps/_metadata.json` の
+        // `optimized`) から、vitest と storybook の内部を除いて書いた。story が新しい依存を import したら足す。
+        // web の依存でないものは、pnpm の厳密な node_modules で web から解決できない (`Failed to resolve dependency` になる)
+        // ので、依存している package を前に置いた `<package> > <依存>` の形で書く。
+        optimizeDeps: {
+          include: [
+            "@agent-software-factory/ui > @base-ui/react/button",
+            "@agent-software-factory/ui > @base-ui/react/dialog",
+            "@tanstack/react-router",
+            "@storybook/addon-a11y > axe-core",
+            "@agent-software-factory/ui > class-variance-authority",
+            "i18next",
+            "@agent-software-factory/ui > lucide-react",
+            "react",
+            "react-dom",
+            "react-dom/client",
+            "react-i18next",
+            "react/jsx-dev-runtime",
+          ],
+        },
         test: {
           name: "storybook",
           // Storybook の plugin の既定は 15 秒。各ファイルの最初の story は、ブラウザで部品と a11y の axe を読み込むので、
