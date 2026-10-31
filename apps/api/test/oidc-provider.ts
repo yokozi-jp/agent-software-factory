@@ -26,7 +26,7 @@ export interface TestIdp {
   stop(): Promise<void>;
 }
 
-export interface TestIdpOptions {
+interface TestIdpOptions {
   /** 待ち受けるポート。省略すると空きポート (テスト)。手で動かすときは固定する (test/dev-idp.ts)。 */
   readonly port?: number;
   /** ログイン後に戻る、アプリの公開のオリジン。省略するとテスト用の値。 */

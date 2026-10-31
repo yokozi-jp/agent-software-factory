@@ -3,8 +3,9 @@ import { users } from "./credentials.ts";
 
 // 手で動かすための IdP の入口 (docs/tooling/local-api.md)。結合テストと同じ node-oidc-provider の実装を、
 // 固定のポートと、web の開発サーバー (vp dev) の origin で起動する。止めるのは Ctrl-C。
-const port = 9000;
-const appOrigin = "http://localhost:5173";
+// 既定の値は apps/api/.env.example の OIDC_DISCOVERY_URL と PUBLIC_ORIGIN に合わせてある。変えるときは環境変数で渡し、.env も合わせる。
+const port = Number(process.env["IDP_PORT"] ?? 9000);
+const appOrigin = process.env["IDP_APP_ORIGIN"] ?? "http://localhost:5173";
 
 const idp = await startTestIdp({ port, appOrigin });
 console.log(`IdP listening on ${idp.issuer}`);

@@ -12,7 +12,7 @@ IdP は、結合テストと同じ node-oidc-provider の実装 (`apps/api/test/
 
 ## 用意する
 
-1. PostgreSQL を起動して migration を流す。手順は[ローカルで通知メールのワーカーを動かす](local-worker.md)の「起動する」と「データベースを用意する」。
+1. PostgreSQL を起動して (`compose.local.yaml` の PostgreSQL 18 が起動しない件は [Issue #531](https://github.com/yokozi-jp/agent-software-factory/issues/531)) migration を流す。手順は[ローカルで通知メールのワーカーを動かす](local-worker.md)の「起動する」と「データベースを用意する」。
 2. `apps/api/.env.example` を同じディレクトリの `.env` に写す。値は compose と下の IdP に合わせてある。
 
 ## 起動する
@@ -25,7 +25,25 @@ pnpm --filter @agent-software-factory/api dev:auth   # API。http://localhost:30
 pnpm --filter @agent-software-factory/web dev        # web。http://localhost:5173
 ```
 
-ブラウザで <http://localhost:5173> を開きます。ログインは `POST /api/auth/sign-in/social` (`provider: "oidc"`) で始まり、IdP の画面でユーザー名とパスワードを入れると web に戻ります。web にログインの画面はまだないので、ブラウザの場合は開発者ツールの console から `fetch("/api/auth/sign-in/social", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: "oidc", callbackURL: "/" }) })` の応答の `url` を開きます。ログアウトは `POST /api/auth/sign-out` で、応答の `url` (IdP の `/session/end`) を開くと IdP のセッションも終わります。
+ブラウザで <http://localhost:5173> を開きます。web にログインの画面はまだないので、開発者ツールの console から API を呼びます。
+
+```js
+// ログイン: 応答の url (IdP の画面) を開き、ユーザー名とパスワードを入れると web に戻る。
+const login = await fetch("/api/auth/sign-in/social", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ provider: "oidc", callbackURL: "/" }),
+});
+location.href = (await login.json()).url;
+
+// ログアウト: 応答の url (IdP の /session/end) を開くと、IdP のセッションも終わる。
+const logout = await fetch("/api/auth/sign-out", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: "{}",
+});
+location.href = (await logout.json()).url;
+```
 
 | ユーザー | パスワード        | メールアドレス       |
 | -------- | ----------------- | -------------------- |
@@ -43,7 +61,8 @@ pnpm --filter @agent-software-factory/web dev        # web。http://localhost:51
 | `PUBLIC_ORIGIN`                    | `.env`                  | `http://localhost:5173`。API (3000) ではなく web の origin にする。  |
 
 `PUBLIC_ORIGIN` を web の origin にする理由: web の開発サーバーは `/api` を API へ転送するので (`apps/web/vite.config.ts`)、ブラウザからは同じ origin に見えます。Cookie の `__Host-` と `SameSite=Strict`、CSRF の `Origin` の検査 ([ADR 0022](../adr/0022-better-auth-cookie-bff.md)) は、この 1 つの origin の上で成り立ちます。API の 3000 番を直接開くと、`PUBLIC_ORIGIN` と違う origin になり、CSRF の検査で 403 になります。
-IdP から戻る callback は `http://localhost:5173/api/auth/callback/oidc` です。IdP の origin (127.0.0.1) とアプリの origin (localhost) は別なので、`state` の Cookie が `SameSite=Lax` である理由は ADR 0022 のとおりです。
+IdP から戻る callback は `http://localhost:5173/api/auth/callback/oidc` です。IdP の origin (127.0.0.1) とアプリの origin (localhost) は別のサイトなので、callback で送られる `state` の Cookie は `SameSite=Lax` です ([ADR 0022](../adr/0022-better-auth-cookie-bff.md) の Cookie の項)。
+IdP を `127.0.0.1`、web を `localhost` にしているのは、API が IdP を呼ぶ node の `fetch` で `localhost` が IPv6 (`::1`) に解決されると、`127.0.0.1` だけで待ち受ける IdP に届かないためです (判断。IdP の待ち受けは `test/oidc-provider.ts`)。
 
 ## 置き場所
 
@@ -51,10 +70,10 @@ IdP から戻る callback は `http://localhost:5173/api/auth/callback/oidc` で
 
 ## うまくいかないとき
 
-- 起動直後の `Rate limiting could not determine a client IP` の警告は、ローカルでは無視できる。
+- 起動直後の `Rate limiting could not determine a client IP` の警告は、Better Auth の rate limit が接続元の IP を取れないときの警告 (出所は Better Auth)。ローカルでは 1 人で使うので無視できる (判断)。
 - ポート 9000 を別のものが使っている: `apps/api/test/dev-idp.ts` の `port` を変え、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
-- `__Host-` の Cookie は `Secure` が要る。Chrome と Firefox は `http://localhost` を安全な文脈として扱い、受け付ける。Safari では確かめていない。
+- `__Host-` の Cookie は `Secure` が要る。ブラウザは `http://localhost` を安全な文脈 (potentially trustworthy origin) として扱う ([MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts))。この手順の Cookie を実際のブラウザで受け付けるかは、まだ確かめていない ([Issue #532](https://github.com/yokozi-jp/agent-software-factory/issues/532))。
 
 ## この手順で確かめていないもの
 
-- ブラウザ (Playwright) を通した E2E。手順の流れは、Cookie を保持する HTTP クライアントで 5173 経由に通した (ログイン、セッションの取得、ログアウトの応答)。
+- 実際のブラウザ (Playwright を含む) でのログインとログアウト。このコミットを書いたときは、Cookie を保持する使い捨ての Node.js のスクリプトで、5173 経由の `sign-in/social`、IdP のログイン、callback、`get-session`、`sign-out` を通した (スクリプトは残していない)。
