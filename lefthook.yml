@@ -234,10 +234,12 @@ pre-push:
     # holds. Needs the tools of mise.lock (`mise install --locked`).
     nx-affected-test-tools:
       run: tools/scripts/sh/tee-log.sh nx-affected-test-tools pnpm exec nx affected -t test-tools --base=origin/main --head=HEAD
-    # The isolation test (docs/adr/0024, "隔離") takes about 50 s, so it runs only when what it checks changes. CI asks
-    # the same tools/scripts/src/checks/isolation-scope, so the two cannot drift apart. If it fails, the push stops.
+    # The isolation test (docs/adr/0024, "隔離") takes about 50 s, so it runs only when what it checks changes, as CI does.
     nx-test-isolation:
-      run: scope="$(node tools/scripts/src/checks/isolation-scope/cli.ts origin/main HEAD)" || exit 1; [ "$scope" != run ] || pnpm exec nx test-isolation scripts
+      glob:
+        - "tools/scripts/src/test/**"
+        - "tools/scripts/vite.config.ts"
+      run: pnpm exec nx test-isolation scripts
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.
