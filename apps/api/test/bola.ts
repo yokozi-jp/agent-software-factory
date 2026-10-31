@@ -121,12 +121,11 @@ async function checkOperation({
 }): Promise<string[]> {
   const [method = "", template = ""] = key.split(" ");
   const created = await factory(context);
+  const names = [...template.matchAll(/\{([^}]+)\}/g)].map((match) => match[1] ?? "");
+  const missing = names.filter((name) => created.params[name] === undefined);
   const path = template.replaceAll(/\{([^}]+)\}/g, (_, name: string) =>
     encodeURIComponent(created.params[name] ?? ""),
   );
-  const missing = [...template.matchAll(/\{([^}]+)\}/g)]
-    .map((match) => match[1] ?? "")
-    .filter((name) => created.params[name] === undefined);
   if (missing.length > 0)
     return [`${key}: 作る関数が path parameter ${missing.join(", ")} を返していない`];
 
@@ -177,21 +176,21 @@ const excludedSchemas = ["pg_catalog", "information_schema", "pg_toast", "auth",
  * 行数でなく中身を比べるので、既存の行の更新も差に出る。
  */
 async function dumpRows(pool: Pool): Promise<string> {
-  const { rows: tables } = await pool.query<{ schema: string; name: string }>(
-    `SELECT n.nspname AS schema, c.relname AS name
+  const { rows: tables } = await pool.query<{ ref: string }>(
+    `SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS ref
        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relpersistence <> 't'
         AND n.nspname <> ALL ($1::text[])
         AND n.nspname NOT LIKE 'pg\\_temp\\_%' AND n.nspname NOT LIKE 'pg\\_toast\\_temp\\_%'
-      ORDER BY 1, 2`,
+      ORDER BY n.nspname, c.relname`,
     [excludedSchemas],
   );
   const dumps: string[] = [];
-  for (const { schema, name } of tables) {
+  for (const { ref } of tables) {
     const { rows } = await pool.query<{ dump: string }>(
-      `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text), '[]')::text AS dump FROM "${schema}"."${name}" t`,
+      `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text), '[]')::text AS dump FROM ${ref} t`,
     );
-    dumps.push(`${schema}.${name}=${rows[0]?.dump ?? ""}`);
+    dumps.push(`${ref}=${rows[0]?.dump ?? ""}`);
   }
   return dumps.join("\n");
 }

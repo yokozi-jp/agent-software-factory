@@ -51,5 +51,5 @@ route (パスに id を持つ操作) を足したとき:
 2. `bola.test.ts` の `factories` の型が操作の名前 (`GET /api/claims/{id}`) を要求して、型の検査が止まります。その操作について、持ち主のリソースを作る関数を足します。関数は `ResourceContext` (`owner`、`other`、`superuser`) を受け取り、`superuser` の接続で持ち主の行を作り、パスの値 (`params`) と、書き込みの操作なら検証を通る本文 (`body`) を返します。
 3. 404 でなくてよい操作 (公開のリソースなど) は、関数の代わりに、理由を付けて `exceptions` に書きます。理由が空だと失敗します。spec から消えた操作が `exceptions` に残っていても失敗します。
 
-判定は、同じテナントの別の社員が持ち主のリソースの id で叩いたときに、404 の Problem Details が返ることです。書き込みの操作では、DB の全表の行 (`auth` を除く) が変わらないことも見ます。別のテナントの行が見えないことは、RLS のテストで確かめます ([ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md))。
+判定は、持ち主でない社員が持ち主のリソースの id で叩いたときに、404 の Problem Details が返ることです。書き込みの操作では、DB の全表の行 (`auth` を除く) が変わらないことも見ます。2 人は、今は `signedIn` で作った別々のセッションで、同じテナントのメンバーとしては用意していません ([#487](https://github.com/yokozi-jp/agent-software-factory/issues/487))。別のテナントの行が見えないことは、RLS のテストで確かめます ([ADR 0011](../adr/0011-tenant-id-and-rls-from-the-start.md))。
 仕組みの検出力は、`apps/api/test/bola-fixtures.ts` の fixture の route (`leak` で絞り込みをわざと外す) で確かめます。

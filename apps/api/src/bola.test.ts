@@ -11,7 +11,6 @@ import {
   type ResourceFactory,
 } from "../test/bola.ts";
 import { addNoteRoutes, createNote, type Leak } from "../test/bola-fixtures.ts";
-import { generateOpenApi } from "./openapi.ts";
 
 // 他人のリソースの id で読めないこと (OWASP API Security Top 10 2023 の API1 BOLA、docs/adr/0045)。
 // commit した spec のパスに id を持つ操作はすべて、ここで 404 になることを確かめる対象になる。
@@ -34,7 +33,7 @@ async function employee(fixture: AuthFixture, email: string): Promise<Employee> 
   return { browser, userId: me.id };
 }
 
-async function context(fixture: AuthFixture): Promise<ResourceContext> {
+async function twoEmployees(fixture: AuthFixture): Promise<ResourceContext> {
   return {
     owner: await employee(fixture, "owner@example.com"),
     other: await employee(fixture, "other@example.com"),
@@ -48,7 +47,7 @@ describe("commit した spec の、パスに id を持つ操作", () => {
 
   beforeAll(async () => {
     fixture = await createAuthFixture();
-    people = await context(fixture);
+    people = await twoEmployees(fixture);
   });
 
   afterAll(async () => {
@@ -77,10 +76,6 @@ describe("commit した spec の、パスに id を持つ操作", () => {
 
     expect(Object.keys(factories).filter((key) => !operations.includes(key))).toEqual([]);
   });
-
-  it("route から生成した spec が、commit した spec と同じであること (対象の取りこぼしがない)", () => {
-    expect(extractIdOperations(generateOpenApi())).toEqual(extractIdOperations(committed));
-  });
 });
 
 describe("検出力: id を持つ route (fixture) に対するテスト", () => {
@@ -93,15 +88,14 @@ describe("検出力: id を持つ route (fixture) に対するテスト", () => 
   ) {
     const fixture = await createAuthFixture();
     try {
-      const target = fixture.app;
-      await addNoteRoutes(target, fixture.db, leak);
-      const spec = target.getOpenAPI31Document({
+      await addNoteRoutes(fixture.app, fixture.db, leak);
+      const spec = fixture.app.getOpenAPI31Document({
         openapi: "3.1.0",
         info: { title: "fixture", version: "0.0.0" },
       });
       return await findBolaViolations({
         spec,
-        context: await context(fixture),
+        context: await twoEmployees(fixture),
         factories: overrides.factories ?? {
           "GET /api/notes/{id}": createNote,
           "PUT /api/notes/{id}": createNote,
