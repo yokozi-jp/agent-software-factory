@@ -24,6 +24,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@agent-software-factory/claim": "workspace:*",
     "@types/aws-lambda": "catalog:",
     "@types/node": "catalog:",
     "@types/nodemailer": "catalog:",

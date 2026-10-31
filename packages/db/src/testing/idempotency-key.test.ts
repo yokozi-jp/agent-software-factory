@@ -66,7 +66,7 @@ describe("idempotency_key の雛形", () => {
     ]);
   });
 
-  it("主キーが (tenant_id, user_id, idempotency_key) で、expires_at の索引があること", async () => {
+  it("主キーが (tenant_id, user_id, idempotency_key) で、expires_at の索引 (tenant_id, expires_at) があること", async () => {
     const { rows } = await db.superuser.query<{ key: string; indexes: string[] }>(
       `SELECT (SELECT string_agg(a.attname, ', ' ORDER BY k.ord)
                  FROM pg_index i
@@ -79,7 +79,9 @@ describe("idempotency_key の雛形", () => {
     );
 
     expect(rows[0]?.key).toBe("tenant_id, user_id, idempotency_key");
-    expect(rows[0]?.indexes.some((definition) => definition.includes("(expires_at)"))).toBe(true);
+    expect(
+      rows[0]?.indexes.some((definition) => definition.includes("(tenant_id, expires_at)")),
+    ).toBe(true);
   });
 
   it("表の権限が、自分のモジュールのロールだけにあり、依存の方向のモジュールのロールは読めないこと", async () => {

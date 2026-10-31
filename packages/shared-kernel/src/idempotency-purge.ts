@@ -13,7 +13,7 @@ export const DEFAULT_PURGE_BATCH_SIZE = 1000;
 
 export interface PurgeOptions {
   /** The most rows one transaction deletes; the lock is held for that many rows only. 1 or more. */
-  readonly batchSize?: number;
+  readonly batchSize?: number | undefined;
 }
 
 export interface PurgeResult {
@@ -25,7 +25,7 @@ export interface PurgeResult {
 
 /**
  * Deletes up to `limit` expired rows of the tenant of the open transaction. The CTE takes the rows in the order of
- * `idx_idempotency_key_expires_at`, and `FOR UPDATE SKIP LOCKED` leaves out a row that a running request holds (the
+ * `idx_idempotency_key_tenant_expires_at`, and `FOR UPDATE SKIP LOCKED` leaves out a row that a running request holds (the
  * request deletes an expired row of its own key, or updates its row), so the cleanup never waits for one. The CTE is
  * `MATERIALIZED` and joined with `USING`: with `WHERE … IN (SELECT … LIMIT … FOR UPDATE)` the planner may run the
  * subquery again for each row, and the statement then deletes more than `limit` rows (seen on PostgreSQL 17).

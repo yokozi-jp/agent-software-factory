@@ -20,6 +20,11 @@ export {
 } from "./rolled-back.ts";
 export { startPostgres } from "./postgres-container.ts";
 export { idempotencyKeyTableSql } from "./idempotency-key.ts";
+export {
+  countIdempotencyKeys,
+  seedIdempotencyKeys,
+  type ExpiryExpression,
+} from "./idempotency-key-rows.ts";
 export { processedMessageTableSql } from "./processed-message.ts";
 export {
   diffRowCounts,

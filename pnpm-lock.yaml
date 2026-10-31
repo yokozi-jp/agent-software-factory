@@ -661,6 +661,9 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
+      '@agent-software-factory/claim':
+        specifier: workspace:*
+        version: link:../../packages/claim
       '@types/aws-lambda':
         specifier: 'catalog:'
         version: 8.10.164

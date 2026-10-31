@@ -1,10 +1,19 @@
-import { idempotencyKeyTableSql, createTestDatabase } from "@agent-software-factory/db/testing";
-import { Database, type ModuleTx } from "@agent-software-factory/shared-kernel";
-import { Context, Effect } from "effect";
-import type { Kysely, Transaction } from "kysely";
+import { ApprovalTx } from "@agent-software-factory/approval";
+import { ClaimTx } from "@agent-software-factory/claim";
+import {
+  countIdempotencyKeys,
+  createTestDatabase,
+  idempotencyKeyTableSql,
+  seedIdempotencyKeys,
+  type ExpiryExpression,
+} from "@agent-software-factory/db/testing";
+import { Database } from "@agent-software-factory/shared-kernel";
+import { Effect } from "effect";
+import type { Kysely } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
+  asModule,
   idempotencyKeyModules,
   purgeFinishedLine,
   runPurgeJob,
@@ -16,24 +25,6 @@ import { createDatabase } from "./runtime.ts";
 // 消し方そのもの (期限、テナント、上限、ロック) は shared-kernel の purgeExpiredIdempotencyKeys を apps/api の結合テストが確かめる。
 const tenantId = "00000000-0000-4000-8000-00000000000a";
 const otherTenant = "00000000-0000-4000-8000-00000000000b";
-
-// 試験用の DB の型。表の中身は、掃除が SQL で直接書くので持たない。
-interface TestDb {
-  "claim.idempotency_key": { tenant_id: string };
-}
-
-// モジュールのコードに依存しないよう、試験用の Tx を 2 つ置く (schema は、テンプレートの DB にある claim と approval)。
-class ClaimTestTx extends Context.Service<ClaimTestTx, Transaction<TestDb>>()("test/ClaimTx") {
-  static readonly module = "claim" as const;
-}
-class ApprovalTestTx extends Context.Service<ApprovalTestTx, Transaction<TestDb>>()(
-  "test/ApprovalTx",
-) {
-  static readonly module = "approval" as const;
-}
-
-// 配列に直接入れると、Context.Service の class の型の合成 (Unify) が static の module を落とす。1 つずつ ModuleTx に通す。
-const asModule = <K extends ModuleTx>(tx: K): ModuleTx => tx;
 
 describe("期限切れの冪等キーを消すバッチ", () => {
   let current: { db: Awaited<ReturnType<typeof createTestDatabase>>; kysely: Kysely<never> };
@@ -50,37 +41,21 @@ describe("期限切れの冪等キーを消すバッチ", () => {
     await current.db.close();
   });
 
-  const seed = (module: string, tenant: string, count: number, expires: string) =>
-    current.db.superuser.query(
-      `INSERT INTO ${module}.idempotency_key
-         (tenant_id, user_id, idempotency_key, request_hash, status_code, expires_at,
-          created_at, created_by, created_pgm_cd, created_tx_id,
-          updated_at, updated_by, updated_pgm_cd, updated_tx_id)
-       SELECT $1::uuid, gen_random_uuid(), gen_random_uuid(), repeat('a', 64), 201, ${expires},
-              now(), 'seed', 'seed', 'seed', now(), 'seed', 'seed', 'seed'
-       FROM generate_series(1, $2::int)`,
-      [tenant, count],
-    );
-  const countIn = async (module: string, tenant: string) =>
-    Number(
-      (
-        await current.db.superuser.query<{ n: string }>(
-          `SELECT count(*) AS n FROM ${module}.idempotency_key WHERE tenant_id = $1`,
-          [tenant],
-        )
-      ).rows[0]?.n,
-    );
+  const seed = (module: string, tenant: string, count: number, expiry: ExpiryExpression) =>
+    seedIdempotencyKeys(current.db.superuser, { module, tenantId: tenant, count, expiry });
+  const countIn = (module: string, tenant: string) =>
+    countIdempotencyKeys(current.db.superuser, module, tenant);
 
   it("モジュールごとに、指定したテナントの期限切れの行だけを、上限ごとに消すこと", async () => {
     await current.db.migrator.query(idempotencyKeyTableSql("claim"));
     await current.db.migrator.query(idempotencyKeyTableSql("approval"));
     for (const module of ["claim", "approval"]) {
-      await seed(module, tenantId, 3, "now() - interval '1 hour'");
-      await seed(module, tenantId, 2, "now() + interval '1 hour'");
-      await seed(module, otherTenant, 4, "now() - interval '1 hour'");
+      await seed(module, tenantId, 3, "expired");
+      await seed(module, tenantId, 2, "alive");
+      await seed(module, otherTenant, 4, "expired");
     }
     const input: PurgeJobInput = {
-      modules: [asModule(ClaimTestTx), asModule(ApprovalTestTx)],
+      modules: [asModule(ClaimTx), asModule(ApprovalTx)],
       tenantId,
       txId: "exec-1",
       batchSize: 2,

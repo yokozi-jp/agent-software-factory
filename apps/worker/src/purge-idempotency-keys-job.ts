@@ -11,10 +11,16 @@ import { Effect } from "effect";
 // 1 回の実行は 1 つのテナントを受け持つ。テナントを回すのは Step Functions の Map で、アプリではない (docs/adr/0042 と同じ形)。
 
 /**
- * 冪等キーの表 `idempotency_key` を持つモジュールの Tx。書き込みの API を持つモジュールが、migration で表を足すときに、同じ変更でここへ足す。
+ * 冪等キーの表 `idempotency_key` を持つモジュールの Tx (`[asModule(ClaimTx)]` の形で足す)。書き込みの API を持つモジュールが、migration で表を足すときに、同じ変更でここへ足す。
  * 食い違えば `purge-idempotency-keys-job.test.ts` が、DB のスキーマと比べて失敗する。
  */
 export const idempotencyKeyModules: readonly ModuleTx[] = [];
+
+/**
+ * Tx を `ModuleTx` として一覧に入れる。`ModuleTx` の引数や配列のリテラルに直接入れると、`Context.Service` の class の型の合成
+ * (Unify) が static の `module` を落とし、型検査が通らない。型引数の制約 (`K extends ModuleTx`) を通すと通る。
+ */
+export const asModule = <K extends ModuleTx>(tx: K): ModuleTx => tx;
 
 /** バッチのプログラム名。共通カラムの `*_by` (バッチでは pgmCd と同じ) と `*_pgm_cd` に入る。 */
 const PURGE_PGM_CD = "purge-idempotency-keys";
@@ -42,7 +48,7 @@ export const runPurgeJob = (input: PurgeJobInput): Effect.Effect<PurgeJobResult,
           pgmCd: PURGE_PGM_CD,
           txId: input.txId,
         },
-        input.batchSize === undefined ? {} : { batchSize: input.batchSize },
+        { batchSize: input.batchSize },
       );
     }
     return results;

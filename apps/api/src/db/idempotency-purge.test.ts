@@ -1,9 +1,16 @@
 import { ClaimTx } from "@agent-software-factory/claim";
 import { createPool } from "@agent-software-factory/db";
-import { idempotencyKeyTableSql } from "@agent-software-factory/db/testing";
 import {
+  countIdempotencyKeys,
+  idempotencyKeyTableSql,
+  seedIdempotencyKeys,
+  type ExpiryExpression,
+} from "@agent-software-factory/db/testing";
+import {
+  createdColumns,
   CurrentWrite,
   Database,
+  dbCall,
   inTenantTransaction,
   purgeExpiredIdempotencyKeys,
   withIdempotencyKey,
@@ -23,49 +30,39 @@ const userA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () => {
   const ctx = useDatabase();
+  /** テンプレートの DB が最初から持つ業務の行 (seed) の数。 */
+  let baseline = 0;
 
   beforeEach(async () => {
     await ctx.db.migrator.query(idempotencyKeyTableSql("claim"));
+    baseline = Number(
+      (await ctx.db.superuser.query<{ n: string }>("SELECT count(*) AS n FROM claim.t_claim"))
+        .rows[0]?.n,
+    );
   });
 
-  /** `count` 行の冪等キーを、`expires` (SQL の式) の期限で、superuser が直接書く。RLS は superuser には効かない。 */
-  const seed = async (tenantId: string, count: number, expires: string, key?: string) => {
-    await ctx.db.superuser.query(
-      `INSERT INTO claim.idempotency_key
-         (tenant_id, user_id, idempotency_key, request_hash, status_code, expires_at,
-          created_at, created_by, created_pgm_cd, created_tx_id,
-          updated_at, updated_by, updated_pgm_cd, updated_tx_id)
-       SELECT $1::uuid, $2::uuid, COALESCE($3::uuid, gen_random_uuid()), repeat('a', 64), 201, ${expires},
-              now(), 'seed', 'seed', 'seed', now(), 'seed', 'seed', 'seed'
-       FROM generate_series(1, $4::int)`,
-      [tenantId, userA, key ?? null, count],
-    );
-  };
-  const expired = "now() - interval '1 hour'";
-  const alive = "now() + interval '1 hour'";
-
-  const countOf = async (tenantId: string) =>
+  const seed = (tenantId: string, count: number, expiry: ExpiryExpression, key?: string) =>
+    seedIdempotencyKeys(ctx.db.superuser, {
+      module: "claim",
+      tenantId,
+      userId: userA,
+      count,
+      expiry,
+      key,
+    });
+  const claimRows = async () =>
     Number(
-      (
-        await ctx.db.superuser.query<{ n: string }>(
-          "SELECT count(*) AS n FROM claim.idempotency_key WHERE tenant_id = $1",
-          [tenantId],
-        )
-      ).rows[0]?.n,
-    );
+      (await ctx.db.superuser.query<{ n: string }>("SELECT count(*) AS n FROM claim.t_claim"))
+        .rows[0]?.n,
+    ) - baseline;
+  const countOf = (tenantId: string) => countIdempotencyKeys(ctx.db.superuser, "claim", tenantId);
 
   const purge = (tenantId: string, batchSize?: number) =>
-    ctx.run(
-      purgeExpiredIdempotencyKeys(
-        ClaimTx,
-        { tenantId, ...writer },
-        batchSize === undefined ? {} : { batchSize },
-      ),
-    );
+    ctx.run(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId, ...writer }, { batchSize }));
 
   it("期限を過ぎた行だけを消し、期限内の行は残すこと", async () => {
-    await seed(tenantA, 3, expired);
-    await seed(tenantA, 2, alive);
+    await seed(tenantA, 3, "expired");
+    await seed(tenantA, 2, "alive");
 
     const result = await purge(tenantA);
 
@@ -78,15 +75,15 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   });
 
   it("消す行がなければ、0 件で 1 回だけ確かめて終わること", async () => {
-    await seed(tenantA, 2, alive);
+    await seed(tenantA, 2, "alive");
 
     expect(await purge(tenantA)).toEqual({ deleted: 0, batches: 1 });
     expect(await countOf(tenantA)).toBe(2);
   });
 
   it("別のテナントの期限切れの行は消さないこと", async () => {
-    await seed(tenantA, 2, expired);
-    await seed(tenantB, 4, expired);
+    await seed(tenantA, 2, "expired");
+    await seed(tenantB, 4, "expired");
 
     await purge(tenantA);
 
@@ -99,8 +96,8 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   });
 
   it("上限を超える件数でも、上限ごとの複数回のトランザクションで消し切ること", async () => {
-    await seed(tenantA, 25, expired);
-    await seed(tenantA, 3, alive);
+    await seed(tenantA, 25, "expired");
+    await seed(tenantA, 3, "alive");
 
     const result = await purge(tenantA, 10);
 
@@ -110,7 +107,7 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   });
 
   it("件数がちょうど上限の倍数でも、最後に 0 件を確かめて終わること", async () => {
-    await seed(tenantA, 20, expired);
+    await seed(tenantA, 20, "expired");
 
     expect(await purge(tenantA, 10)).toEqual({ deleted: 20, batches: 3 });
   });
@@ -120,57 +117,115 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
     await expect(purge(tenantA, 1.5)).rejects.toThrow(/batchSize/);
   });
 
-  it("実行中の冪等キーの処理が持つ行のロックを待たず、その行は飛ばして、ほかの行を消すこと", async () => {
-    const heldKey = "44444444-4444-4444-8444-444444444444";
-    await seed(tenantA, 1, expired, heldKey);
-    await seed(tenantA, 5, expired);
+  /**
+   * 冪等キーの要求を、業務の行を 1 つ書いたところで止めたまま、`during` を動かす。要求は `during` の後に commit する。
+   * 掃除が、実行中の要求のロックを待つなら、`during` が終わらず、テストの timeout で失敗する。
+   */
+  const whileRequestRuns = async (
+    key: string,
+    during: (
+      provide: <A, E>(e: Effect.Effect<A, E, Database>) => Promise<Exit.Exit<A, E>>,
+    ) => Promise<void>,
+  ) => {
     const pool = createPool({ connectionString: ctx.db.url("app_user"), max: 4 });
     const kysely = new Kysely<never>({ dialect: new PostgresDialect({ pool }) });
     const provide = <A, E>(effect: Effect.Effect<A, E, Database>) =>
       Effect.runPromiseExit(effect.pipe(Effect.provide(Database.layer(kysely))));
     try {
-      // 期限切れの行と同じキーの要求。withIdempotencyKey はその行を消し、commit までロックを持つ。
       const release = Effect.runSync(Deferred.make<void>());
       const entered = Effect.runSync(Deferred.make<void>());
-      const slow: Effect.Effect<IdempotentResponse, never, CurrentWrite> = Effect.gen(function* () {
+      const slow: Effect.Effect<
+        IdempotentResponse,
+        never,
+        CurrentWrite | typeof ClaimTx.Identifier
+      > = Effect.gen(function* () {
+        const write = yield* CurrentWrite;
+        yield* dbCall(ClaimTx, (trx) =>
+          trx
+            .insertInto("claim.t_claim")
+            .values({ tenant_id: tenantA, ...createdColumns(write) })
+            .execute(),
+        );
         yield* Deferred.succeed(entered, undefined);
         yield* Deferred.await(release);
         return { status: 201 };
       });
-      const holder = provide(
+      const request = provide(
         inTenantTransaction(
           ClaimTx,
           { tenantId: tenantA, ...writer },
           withIdempotencyKey(
             ClaimTx,
-            { tenantId: tenantA, userId: userA, key: heldKey },
+            { tenantId: tenantA, userId: userA, key },
             { method: "POST", path: "/api/claims", query: "", body: "{}" },
             slow,
           ),
         ),
       );
       await Effect.runPromise(Deferred.await(entered));
-
-      // ロックを待つなら、holder が終わるまで終わらない。待たなければ、すぐに終わる。
-      const started = Date.now();
-      const exit = await provide(
-        purgeExpiredIdempotencyKeys(ClaimTx, { tenantId: tenantA, ...writer }, {}),
-      );
-      const elapsed = Date.now() - started;
-
-      expect(Exit.isSuccess(exit) ? exit.value.deleted : undefined).toBe(5);
-      expect(elapsed).toBeLessThan(2000);
-
+      await during(provide);
       Effect.runSync(Deferred.succeed(release, undefined));
-      expect(Exit.isSuccess(await holder)).toBe(true);
-      // 要求は新しい行を入れて commit した。掃除はそれを消していない。
-      const held = await ctx.db.superuser.query<{ expired: boolean }>(
-        "SELECT expires_at > now() AS expired FROM claim.idempotency_key WHERE idempotency_key = $1",
-        [heldKey],
-      );
-      expect(held.rows).toEqual([{ expired: true }]);
+      expect(Exit.isSuccess(await request)).toBe(true);
     } finally {
       await kysely.destroy();
+    }
+  };
+
+  const purgeIn = (provide: Parameters<Parameters<typeof whileRequestRuns>[1]>[0]) =>
+    provide(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId: tenantA, ...writer }));
+
+  it("実行中の要求が期限切れの行を消して持つロックは待たず、その行は飛ばして、ほかの行を消すこと", async () => {
+    const heldKey = "44444444-4444-4444-8444-444444444444";
+    await seed(tenantA, 1, "expired", heldKey);
+    await seed(tenantA, 5, "expired");
+
+    // 同じキーの要求は、期限切れの行を消し、新しい行を入れて、commit までロックを持つ。
+    await whileRequestRuns(heldKey, async (provide) => {
+      const exit = await purgeIn(provide);
+      expect(Exit.isSuccess(exit) ? exit.value.deleted : undefined).toBe(5);
+    });
+
+    // 要求は新しい行を入れて commit した。掃除はそれを消していない。
+    const held = await ctx.db.superuser.query<{ alive: boolean }>(
+      "SELECT expires_at > now() AS alive FROM claim.idempotency_key WHERE idempotency_key = $1",
+      [heldKey],
+    );
+    expect(held.rows).toEqual([{ alive: true }]);
+  });
+
+  it("実行中の要求が書いた commit 前のキーの行と業務の行に触れず、待たずに期限切れの行を消すこと", async () => {
+    const runningKey = "55555555-5555-4555-8555-555555555555";
+    await seed(tenantA, 4, "expired");
+
+    await whileRequestRuns(runningKey, async (provide) => {
+      const exit = await purgeIn(provide);
+      expect(Exit.isSuccess(exit) ? exit.value.deleted : undefined).toBe(4);
+    });
+
+    // 要求は commit した。キーの行と業務の行が残っている。
+    expect(await countOf(tenantA)).toBe(1);
+    expect(await claimRows()).toBe(1);
+  });
+
+  it("テナントごとに期限の古い順で探す索引 (tenant_id, expires_at) を使うこと", async () => {
+    await seed(tenantA, 50, "expired");
+    await seed(tenantB, 50, "expired");
+    await ctx.db.superuser.query("ANALYZE claim.idempotency_key");
+
+    // 件数の少ない試験の表では、計画が順次走査になりやすい。索引が使えることを確かめるため、順次走査を禁じて計画を見る。
+    const client = await ctx.db.superuser.connect();
+    try {
+      await client.query("SET enable_seqscan = off");
+      const plan = await client.query<{ "QUERY PLAN": string }>(
+        `EXPLAIN SELECT tenant_id, user_id, idempotency_key FROM claim.idempotency_key
+         WHERE tenant_id = $1 AND expires_at <= now() ORDER BY expires_at LIMIT 10`,
+        [tenantA],
+      );
+      const text = plan.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      expect(text).toContain("idx_idempotency_key_tenant_expires_at");
+      expect(text).not.toContain("Sort");
+    } finally {
+      client.release();
     }
   });
 });

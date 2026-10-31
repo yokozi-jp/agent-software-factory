@@ -47,8 +47,9 @@ CREATE TABLE {{module}}.idempotency_key (
 REVOKE ALL ON {{module}}.idempotency_key FROM claim_module, approval_module, closing_module;
 GRANT SELECT, INSERT, UPDATE, DELETE ON {{module}}.idempotency_key TO {{module}}_module;
 
--- 期限切れの行を掃除する処理 (Issue #325) が、expires_at の範囲で探す。
-CREATE INDEX idx_idempotency_key_expires_at ON {{module}}.idempotency_key (expires_at);
+-- 期限切れの行を掃除する処理 (Issue #325) が、テナントごとに expires_at の古い順で探す。テナントを先頭にして、
+-- 他のテナントの期限切れの行を走査して捨てないようにする。
+CREATE INDEX idx_idempotency_key_tenant_expires_at ON {{module}}.idempotency_key (tenant_id, expires_at);
 
 ALTER TABLE {{module}}.idempotency_key ENABLE ROW LEVEL SECURITY;
 ALTER TABLE {{module}}.idempotency_key FORCE ROW LEVEL SECURITY;
