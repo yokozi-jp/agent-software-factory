@@ -18,9 +18,9 @@ Nx は project ごとに `test` を流す ([ADR 0002](0002-nx-orchestrates-vite-
 - 各 project の `test` は、`coverage.allowExternal: true` と、自分の `src` に加えて `**/{apps,packages}/*/{,events/}src/**/*.{ts,tsx}` を `include` に書く。テストが読み込んだ他の project のファイルも、その project の `coverage/coverage-final.json` に入る。ディレクトリや package が増えても、`include` を手で足さない。
 - coverage を出していなかった project (モジュール、`shared-kernel`、`i18n`、events の package、`ui`) も記録を出す。テストのない project は 0% の記録を出す (`passWithNoTests`)。
 - CI の `nx` の job が、`nx affected -t check test build` の後に `node tools/scripts/src/checks/merged-coverage/cli.ts` を流し、記録を合わせて、`apps/*/src`、`packages/*/src`、`packages/*/events/src` の `.ts` と `.tsx` のファイルごとに lines と branches が 90% あることを確かめる。テスト、`__fixtures__`、`*.gen.ts`、`*.d.ts`、story は数えない。記録を出した (affected な) project のファイルだけが対象で、shared-kernel を変えると api と worker も affected になる。
-- 外すファイルは、ルートの `coverage-policy.json` の `exceptions` に、パスと理由で書く。外すものだけを書くので、新しいファイルは黙って漏れない。どの記録にもないファイルは、例外にないと止まる。存在しない、または測らないファイルの行も止まる。
+- 外すファイルは、ルートの `coverage-policy.json` の `exceptions` に、パスと理由で書く。外すものだけを書くので、新しいファイルは黙って漏れない。どの記録にもないファイルは、例外にないと止まる。存在しない、測らない、または下限を超えたファイルの行も止まる。
 - 各 project の下限 (api の全体 100% と `autoUpdate`、`perFile`) は残す。`thresholds["src/**"]` に移し、自分の `src` だけに掛ける。他の project のファイルが全体の値を下げない。
-- pre-push には入れない。全 project の `test` を流した後でないと確かめられない。
+- pre-push にも pre-commit にも入れない。全 project の `test` を流した後でないと確かめられない。
 
 ## 採らなかった案
 

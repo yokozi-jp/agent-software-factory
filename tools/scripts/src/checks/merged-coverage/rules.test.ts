@@ -234,6 +234,14 @@ describe("violations", () => {
     expect(check({ [server]: file([0]) }, [server])).toEqual([]);
   });
 
+  it("stops an exception for a file that reaches the minimum now, and keeps one that does not", () => {
+    const server = "apps/api/src/server.ts";
+    expect(check({ [server]: file([1, 1]) }, [])).toEqual([
+      `${server}: the file reaches the minimum now. Remove its row from coverage-policy.json.`,
+    ]);
+    expect(check({ [server]: file([1, 0]) }, [])).toEqual([]);
+  });
+
   it("ignores the files of a project without a record, and the files that are not measured", () => {
     expect(
       check({}, ["apps/web/src/main.tsx", "apps/api/src/app.test.ts", "apps/api/src/db.gen.ts"]),

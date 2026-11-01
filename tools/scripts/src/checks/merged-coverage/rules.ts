@@ -129,6 +129,9 @@ const reaches = (
   percent: number,
 ): boolean => total === 0 || covered * 100 >= percent * total;
 
+const meetsMinimum = (summary: Summary, minimum: Policy["minimum"]): boolean =>
+  reaches(summary.lines, minimum.lines) && reaches(summary.branches, minimum.branches);
+
 const percent = ({ covered, total }: { covered: number; total: number }): string =>
   total === 0 ? "100" : (Math.floor((covered / total) * 10_000) / 100).toString();
 
@@ -156,8 +159,17 @@ export function violations({ policy, tracked, projects, coverage }: Input): stri
   }
   const { lines, branches } = policy.minimum;
   for (const path of tracked.filter(isMeasured).toSorted()) {
-    if (projectOf(path, projects) === undefined || policy.exceptions.has(path)) continue;
+    if (projectOf(path, projects) === undefined) continue;
     const file = coverage.get(path);
+    if (policy.exceptions.has(path)) {
+      // An exception that the tests have outgrown is a row to remove, so the file is checked again.
+      if (file !== undefined && meetsMinimum(summarize(file), policy.minimum)) {
+        failures.push(
+          `${path}: the file reaches the minimum now. Remove its row from coverage-policy.json.`,
+        );
+      }
+      continue;
+    }
     if (file === undefined) {
       failures.push(
         `${path}: no test of any project ran it, and it is not an exception. Add a test, or a row to coverage-policy.json with the reason.`,
@@ -165,7 +177,7 @@ export function violations({ policy, tracked, projects, coverage }: Input): stri
       continue;
     }
     const summary = summarize(file);
-    if (!reaches(summary.lines, lines) || !reaches(summary.branches, branches)) {
+    if (!meetsMinimum(summary, policy.minimum)) {
       failures.push(
         `${path}: lines ${percent(summary.lines)}% (minimum ${lines}%), branches ${percent(summary.branches)}% (minimum ${branches}%).`,
       );
