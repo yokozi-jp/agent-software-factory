@@ -46,10 +46,15 @@ const record = (project: string, files: Record<string, number | { from: number }
     ),
   );
 };
-// `pnpm exec nx show projects --affected --with-target test` prints `affected` (one project per line); exit 1 when `affected` is null (nx fails).
-const check = (affected: string | null = "") => {
-  const body = affected === null ? "exit 1" : `printf '%s' '${affected}'`;
-  const stubs = stubDir(box.root, "stubs", { pnpm: body });
+// The stand-in for `pnpm exec nx show projects --affected --with-target test`: it prints `affected` projects (a file of
+// the stub directory, so no value is quoted into a script), or exits 1 when `nxFails`.
+const check = (nx: { affected?: readonly string[]; nxFails?: boolean } = {}) => {
+  const stubs = stubDir(box.root, "stubs", {
+    pnpm:
+      nx.nxFails === true
+        ? "exit 1"
+        : `printf '%s\\n' ${(nx.affected ?? []).map((name) => `"${name}"`).join(" ")}`,
+  });
   return runIn(repo, process.execPath, [cli], {
     env: { GITHUB_ACTIONS: "", PATH: withPath(stubs) },
   });
@@ -122,21 +127,21 @@ describe("merged-coverage", () => {
   });
 
   it("exits 2 when tests were affected but no project wrote a record", () => {
-    const result = check("api\n");
+    const result = check({ affected: ["api"] });
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("no coverage-final.json");
   });
 
   it("exits 2 when nx cannot say which projects are affected", () => {
-    const result = check(null);
+    const result = check({ nxFails: true });
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("no coverage-final.json");
   });
 
   it("passes without a record when no affected project has a test target (a docs-only change)", () => {
-    const result = check("");
+    const result = check();
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("nothing to check");

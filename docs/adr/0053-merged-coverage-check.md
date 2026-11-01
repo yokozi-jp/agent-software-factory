@@ -33,3 +33,4 @@ Nx は project ごとに `test` を流す ([ADR 0002](0002-nx-orchestrates-vite-
 - 入口のファイル (`server.ts` など) は、project ごとの `vite.config.ts` の `coverage.exclude` と `coverage-policy.json` の両方に書く。前者は project ごとの下限が 0% を数えないため、後者は合わせた検査のため。
 - 初めて検査したとき、下限を割っていたファイルは、理由つきの例外の行にした (`packages/ui` の shadcn の部品 4 つ、`notification-mail.ts`、`db-call.ts`)。テストを足して行を消す。
 - project 単位の取りこぼし (テストの target も記録もない package) は、この検査では見つからない。記録を出した project だけが対象だからである。
+- `test` の target を持つ project が affected でない変更 (docs だけの変更) は、記録が 1 件もできない。このときは `nx show projects --affected --with-target test` が空であることを確かめて、検査せずに通す (docs だけの commit で CI が止まったため)。nx が答えられないときと、affected なのに記録がないときは、従来どおり検査できなかったとして止める。
