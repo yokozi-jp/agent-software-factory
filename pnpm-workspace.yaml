@@ -35,7 +35,7 @@ catalog:
   vite-plus: 1.4.0
   markdownlint-cli2: 0.24.0
   jscpd: 5.4.2
-  "@iwe-org/iwe": 0.29.2
+  "@iwe-org/iwe": 0.29.3
   knip: 6.43.0
   eslint-plugin-react-you-might-not-need-an-effect: 1.0.2
   better-auth: ^1.7.12
