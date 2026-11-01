@@ -7,7 +7,7 @@ import {
 } from "@agent-software-factory/shared-kernel/tenant-db";
 import { defineEvent } from "@agent-software-factory/shared-kernel";
 import { enqueueOutbox } from "@agent-software-factory/shared-kernel/messaging";
-import { Cause, Effect, Exit } from "effect";
+import { Cause, Effect, Exit, Tracer } from "effect";
 import { sql } from "kysely";
 import { describe, expect, it } from "vite-plus/test";
 import { z } from "zod";
@@ -122,6 +122,30 @@ describe("enqueueOutbox と messaging.outbox", () => {
 
     const [row] = await rows();
     expect(row?.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/);
+  });
+
+  it("親の span の sampled が偽なら traceparent のフラグを 00 にし、id が W3C の形でなければ NULL にすること", async () => {
+    const parent = (traceId: string, spanId: string) =>
+      Tracer.externalSpan({ traceId, spanId, sampled: false });
+    const traceId = "0af7651916cd43dd8448eb211c80319c";
+    const spanId = "b7ad6b7169203331";
+
+    await run(
+      inClaim(tenantA, enqueueOutbox(ClaimTx, submitted(tenantA))).pipe(
+        Effect.withParentSpan(parent(traceId, spanId)),
+      ),
+    );
+    await run(
+      inClaim(
+        tenantA,
+        enqueueOutbox(ClaimTx, submitted(tenantA, "22222222-2222-4222-8222-222222222222")),
+      ).pipe(Effect.withParentSpan(parent("not-hex", spanId))),
+    );
+
+    expect((await rows()).map((row) => row.traceparent)).toEqual([
+      `00-${traceId}-${spanId}-00`,
+      null,
+    ]);
   });
 
   it("別のテナントの行を入れられないこと (defect)", async () => {

@@ -1,4 +1,5 @@
 import { defineConfig } from "vite-plus";
+import { ownFilesMinimum, recordCoverage } from "../../vitest-coverage.ts";
 
 // The tests of migrate and of the type generation run against a real PostgreSQL. globalSetup starts one container for
 // all the tests and runs the migrations on a template database that createTestDatabase copies (docs/adr/0025).
@@ -18,11 +19,9 @@ export default defineConfig({
     testTimeout: 60_000,
     // The strength of the tests (#30, docs/tooling/ci.md ("coverage の下限")).
     coverage: {
-      provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: ["**/*.test.ts", "src/__fixtures__/**"],
+      ...recordCoverage(),
       // A fixed minimum for every file, as in apps/api (#30). The totals that apps/api ratchets up are not set here.
-      thresholds: { perFile: { lines: 90, branches: 90 } },
+      thresholds: ownFilesMinimum,
     },
   },
 });

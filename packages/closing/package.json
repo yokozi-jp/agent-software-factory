@@ -8,13 +8,15 @@
   },
   "scripts": {
     "check": "vp check",
-    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure"
+    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure",
+    "test": "vp test run --coverage"
   },
   "dependencies": {
     "effect": "catalog:",
     "kysely": "catalog:"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

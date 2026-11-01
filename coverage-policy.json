@@ -1,0 +1,21 @@
+{
+  "minimum": { "lines": 90, "branches": 90 },
+  "exceptions": {
+    "apps/api/src/index.ts": "vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。",
+    "apps/api/src/server.ts": "実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。",
+    "apps/api/src/telemetry.ts": "トレースを始める入口 (server.ts が最初に import する)。環境変数を読んで startTelemetry を呼ぶだけで、計装の試験は src/tracing.unit.test.ts と packages/telemetry にある。",
+    "apps/web/src/main.tsx": "実行環境ごとの入口。i18n の初期化と router を作って描画するだけで、story では通らない。",
+    "apps/worker/src/server.ts": "実行環境ごとの入口。環境変数を読んで起動するだけで、テストは createNotificationHandler と pollQueue を通す。",
+    "apps/worker/src/lambda.ts": "実行環境ごとの入口。環境変数を読んで起動するだけで、テストは createLambdaHandler を通す。",
+    "apps/worker/src/purge-idempotency-keys.ts": "期限切れの冪等キーを消すバッチの入口 (Issue #325)。環境変数を読んで runPurgeJob を 1 回呼ぶだけで、テストは runPurgeJob を通す。",
+    "apps/worker/src/local/send-sample.ts": "手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS を 1 回呼ぶだけ。",
+    "apps/worker/src/local/setup-queues.ts": "手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS のキューを作るだけ。",
+    "apps/worker/src/mail/ses.ts": "SES を呼ぶ Layer。SES のモックは作らない (docs/adr/0041)。検証環境の試験で本物の SES を通す。",
+    "packages/approval/src/application/notification-mail.ts": "未通過の分岐は `message.values[name] ?? \"\"` の `?? \"\"` だけ。直前の検査で全ての name に値があると分かっていて、noUncheckedIndexedAccess の型を満たすための分岐なので、通すテストは書けない。",
+    "packages/shared-kernel/src/tenant-db/db-call.ts": "未通過の分岐は uniqueViolationOf の、DB が object でない値で失敗する場合と、23505 に constraint がない場合。本物の PostgreSQL ではどちらも起こせず、通すには driver の失敗を偽装する必要がある。",
+    "packages/ui/src/components/dialog.tsx": "下限を割っている (lines 81%、branches 54%)。shadcn の部品で、story が開閉と閉じるボタンの分岐を通していない。story を足して外す。",
+    "packages/ui/src/components/input.tsx": "下限を割っている (branches 60%)。shadcn の部品で、story が全ての属性の分岐を通していない。story を足して外す。",
+    "packages/ui/src/components/sheet.tsx": "下限を割っている (lines 81%、branches 77%)。shadcn の部品で、story が全ての向きと閉じるボタンの分岐を通していない。story を足して外す。",
+    "packages/ui/src/components/sidebar.tsx": "下限を割っている (lines 69%、branches 54%)。shadcn の部品で、story がモバイルの表示、折りたたみ、キーボードの操作を通していない。story を足して外す。"
+  }
+}

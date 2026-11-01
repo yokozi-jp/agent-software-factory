@@ -9,6 +9,7 @@ import {
   problemResponse,
   problemSchema,
   problemTypes,
+  statusTitle,
   validationProblemSchema,
   type CommonProblemType,
 } from "./problem.ts";
@@ -119,6 +120,16 @@ describe("problemResponse", () => {
   it("今の span がなければ trace_id を付けない", async () => {
     const body = await (await app.request("/blank")).json();
     expect(body).not.toHaveProperty("trace_id");
+  });
+});
+
+describe("statusTitle", () => {
+  it("表にあるステータスはその名前を、表にないものは 5xx なら Server Error、それ以外は Client Error を返す", () => {
+    expect([statusTitle(404), statusTitle(599), statusTitle(418)]).toEqual([
+      "Not Found",
+      "Server Error",
+      "Client Error",
+    ]);
   });
 });
 

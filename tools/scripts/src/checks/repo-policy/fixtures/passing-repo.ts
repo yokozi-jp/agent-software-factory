@@ -213,7 +213,7 @@ export const eventsFiles = (
   [`packages/${module}/events/package.json`]: JSON.stringify({
     name: `@agent-software-factory/${module}-events`,
     exports: { ".": "./src/index.ts" },
-    scripts: { check: "vp check", test: "vp test run" },
+    scripts: { check: "vp check", test: "vp test run --coverage" },
     dependencies: { "@agent-software-factory/shared-kernel": "workspace:*", zod: "catalog:" },
     nx: { name: `${module}-events` },
     ...fields,

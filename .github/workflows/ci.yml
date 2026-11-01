@@ -216,6 +216,13 @@ jobs:
           pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium
           pnpm exec nx affected -t check test build
 
+      # Each project wrote coverage/coverage-final.json in its test target, counting the files of other projects that its tests
+      # ran. This adds the records up and checks each file of apps/*/src and packages/*/src against the minimum of
+      # coverage-policy.json, whichever project's tests ran it. Only the projects that ran `test` (the affected ones) count.
+      # Run after the step above, which writes the records (docs/adr/0053, docs/tooling/ci.md).
+      - name: Merged coverage of the projects (nx affected)
+        run: node tools/scripts/src/checks/merged-coverage/cli.ts
+
       # The isolation test runs the unit project a second time under Git hook variables (about 50 s). It runs only
       # when the files that make the isolation change (docs/adr/0024, "隔離"). The files are the inputs of the
       # test-isolation target (tools/scripts/package.json), the only place that lists them; nx affected selects the

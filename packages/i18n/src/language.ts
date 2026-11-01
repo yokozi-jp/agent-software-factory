@@ -11,7 +11,7 @@ const isLanguage = (value: string): value is Language => languages.some((l) => l
  */
 export function resolveLanguage(preferred: readonly string[]): Language {
   for (const tag of preferred) {
-    const primary = tag.toLowerCase().split("-")[0] ?? "";
+    const primary = tag.toLowerCase().replace(/-.*$/u, "");
     if (isLanguage(primary)) return primary;
   }
   return fallbackLanguage;

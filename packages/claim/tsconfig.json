@@ -5,5 +5,5 @@
     "lib": ["es2024", "esnext.temporal"],
     "types": []
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts"]
 }
