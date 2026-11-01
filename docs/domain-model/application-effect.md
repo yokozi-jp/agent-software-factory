@@ -18,6 +18,7 @@ Effect の一次情報は、入れた版の `node_modules/effect/AGENTS.md` と 
 | 値と失敗を作る              | `Effect.succeed`、`Effect.fail`、`fromResult` (`shared-kernel`) |
 | Promise を包む              | `Effect.tryPromise`、`Effect.promise`                           |
 | 型に出す失敗                | `Data.TaggedError`、`Effect.catchTag`                           |
+| 型に出さない失敗 (defect)   | `Effect.orDie`、`Effect.die`                                    |
 | 依存                        | `Context.Service`、`Layer`                                      |
 | 資源                        | `Effect.acquireUseRelease`                                      |
 | 実行 (`http`、入口、テスト) | `ManagedRuntime` と実行の関数                                   |
@@ -65,7 +66,7 @@ const submitClaim = Effect.fn("submitClaim")(function* (args: {
 
 - Effect の実行の関数 (`Effect.runPromise` など) は、`http`、入口、テストだけで呼びます。`application` と `infrastructure` で呼ぶと、失敗と依存の型が消えるので、`no-restricted-properties` で止めます。
 - `ManagedRuntime` は入口ごとに起動時に 1 つ作り、`app.ts` とワーカーの handler に渡します。リクエストごとに `Effect.provide` すると `Layer` を毎回作ります。停止の合図で `dispose` します。
-- `ManagedRuntime` の配線と保存先の実装は、サンプル機能の仕様で決めます。
+- api の `ManagedRuntime` は `apps/api/src/runtime.ts` の `createApiRuntime` で作り、入口の `server.ts` が `createApp` に渡します。DB を使わない spec の生成とテストは、DB を使うと defect で落ちる `runtimeWithoutDatabase` を渡します ([Issue #566](https://github.com/yokozi-jp/agent-software-factory/issues/566))。保存先の実装は、サンプル機能の仕様で決めます。
 
 ## 検査
 

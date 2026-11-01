@@ -1,6 +1,7 @@
+import { sql } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { createPool, poolTimeouts } from "./pool.ts";
+import { createDatabase, createPool, poolTimeouts } from "./pool.ts";
 import { createTestDatabase, type TestDatabase } from "./testing/database.ts";
 
 // アプリの接続が日時を Temporal で読むこと (src/pool.ts、docs/adr/0043)。Vitest の TZ は America/New_York。
@@ -130,5 +131,37 @@ describe("createPool: 接続の待ちを有限にする", () => {
       holder.release();
       await pool.end();
     }
+  });
+});
+
+// 入口が `Database` の layer に渡す Kysely (docs/adr/0028)。api と worker が同じ関数で作る。
+describe("createDatabase: createPool の pool を Kysely で包む", () => {
+  let db: TestDatabase;
+
+  beforeEach(async () => {
+    db = await createTestDatabase();
+  });
+
+  afterEach(async () => {
+    await db.close();
+  });
+
+  it("渡した接続の役割で SQL を流し、日時を Temporal で読むこと", async () => {
+    const kysely = createDatabase({ connectionString: db.url("app_user"), max: 1 });
+    try {
+      const { rows } = await sql<{ role: string; at: unknown }>`
+        SELECT current_user AS role, '2026-04-01 03:30Z'::timestamptz AS at`.execute(kysely);
+
+      expect(rows[0]?.role).toBe("app_user");
+      expect(rows[0]?.at).toBeInstanceOf(Temporal.Instant);
+    } finally {
+      await kysely.destroy();
+    }
+  });
+
+  it("pool の上限を渡さなくても作れて、閉じられること (pool は最初のクエリまで接続しない)", async () => {
+    const kysely = createDatabase({ connectionString: "postgres://app_user@127.0.0.1:1/none" });
+
+    await expect(kysely.destroy()).resolves.toBeUndefined();
   });
 });

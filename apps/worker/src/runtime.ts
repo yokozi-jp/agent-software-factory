@@ -1,35 +1,16 @@
 import { NotificationStoreLayer } from "@agent-software-factory/approval";
 import type { MailSender } from "@agent-software-factory/approval";
-import { createPool } from "@agent-software-factory/db/node";
+import { createDatabase } from "@agent-software-factory/db/node";
 import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
 import { SESv2Client } from "@aws-sdk/client-sesv2";
 import { Layer, ManagedRuntime } from "effect";
-import { Kysely, PostgresDialect } from "kysely";
+import type { Kysely } from "kysely";
 
 import type { WorkerEnv } from "./env.ts";
 import { SesMailSenderLayer } from "./mail/ses.ts";
 import { SmtpMailSenderLayer } from "./mail/smtp.ts";
 import { createNotificationHandler, type NotificationRuntime } from "./notification-worker.ts";
 import type { QueueMessage } from "./poller.ts";
-
-/**
- * The pool of `app_user`, as the Kysely that `Database` carries. Every module uses this one pool; the module's `Tx` picks
- * the role of a transaction (docs/adr/0029). The entry makes it and closes it (`Kysely.destroy`), and the `Layer` only wraps
- * it (docs/domain-model/application-effect.md). `connectionTimeoutMillis` and the idle-in-transaction timeout come from
- * `createPool` (docs/adr/0028).
- */
-export const createDatabase = (config: {
-  readonly connectionString: string;
-  readonly max?: number | undefined;
-}): Kysely<never> =>
-  new Kysely<never>({
-    dialect: new PostgresDialect({
-      pool: createPool({
-        connectionString: config.connectionString,
-        ...(config.max === undefined ? {} : { max: config.max }),
-      }),
-    }),
-  });
 
 /** The mail layer of the environment: SES, or SMTP to Mailpit (local and CI). */
 export const mailLayer = (env: WorkerEnv): Layer.Layer<MailSender> =>

@@ -151,7 +151,7 @@
         "rule": "no-restricted-imports",
         "text": "import type { Pool } from \"pg\"",
         "expect": "pass",
-        "reason": "型の import は接続を開かないので、apps/api の databases.ts と auth.ts が使う"
+        "reason": "型の import は接続を開かないので、apps/api の auth.ts が使う"
       },
       {
         "files": [

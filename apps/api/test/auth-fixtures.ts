@@ -3,11 +3,12 @@ import { testUtils } from "better-auth/plugins";
 import { inject } from "vite-plus/test";
 
 import { authOptions, authPlugins, createAuth, type AuthConfig } from "../src/auth/auth.ts";
-import { createApp } from "../src/app.ts";
 import { TestBrowser } from "./browser.ts";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import { clientId, clientSecret } from "./oidc-provider.ts";
 import { startServerProcess, type ServerProcess } from "./server-process.ts";
+import type { createApp } from "../src/app.ts";
+import { appWithoutDatabase } from "./app-without-database.ts";
 
 export const appOrigin = "https://app.example.test";
 
@@ -61,7 +62,7 @@ export async function createAuthFixture({
     session,
     rateLimit: { enabled: rateLimit },
   };
-  const app = createApp({ auth: createAuth(config) });
+  const app = appWithoutDatabase({ auth: createAuth(config) });
 
   // 同じ設定、同じ DB、同じ secret に testUtils だけを足した認証。session の行と Cookie の署名が同じなので、
   // ここで作った session を、アプリはそのまま受け取る (Better Auth の testUtils は、テスト用の別の認証を勧める)。

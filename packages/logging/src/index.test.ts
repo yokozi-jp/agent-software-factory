@@ -25,7 +25,7 @@ describe("メッセージコードの定義 (docs/logging/message-codes.md)", ()
 
 describe("Logger の型", () => {
   it("warn と error は定義のキーだけを受け取る", () => {
-    expectTypeOf<Parameters<Logger["error"]>[0]>().toEqualTypeOf<"API-001">();
+    expectTypeOf<Parameters<Logger["error"]>[0]>().toEqualTypeOf<"API-001" | "API-003">();
     // @ts-expect-error -- not a defined code
     expectTypeOf<Parameters<Logger["error"]>[0]>().toEqualTypeOf<"API-999">();
     // fatal の定義 (API-002) は error には渡せない。
