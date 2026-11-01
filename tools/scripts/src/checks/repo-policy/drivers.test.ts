@@ -5,9 +5,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   driverEntriesOnlyReexport,
+  driversAreInLint,
   driversDoNotUseEffect,
   driversHaveTheirLayout,
-  modulesHaveOnlyLayers,
 } from "./drivers.ts";
 
 const guide = "docs/domain-model/package-layout.md";
@@ -280,42 +280,65 @@ describe("ADR 0054: a driver does not depend on Effect", () => {
   });
 });
 
-describe("ADR 0054: the src/ of a module holds index.ts, the layers and __fixtures__/", () => {
-  const violations = (files: Record<string, string>): string[] =>
-    failuresOf((tree) => modulesHaveOnlyLayers(tree, ["claim"]))(repo(files));
-
-  const claim = {
-    "packages/claim/src/index.ts": "export {};\n",
-    "packages/claim/src/domain/a.ts": "export {};\n",
-    "packages/claim/src/application/a.ts": "export {};\n",
-    "packages/claim/src/infrastructure/a.ts": "export {};\n",
-    "packages/claim/src/http/a.ts": "export {};\n",
-    "packages/claim/src/__fixtures__/a.ts": "export {};\n",
+describe("ADR 0054: the drivers are in the table of lint restrictions and in vite.config.ts", () => {
+  const violations = failuresOf(driversAreInLint);
+  const table = (values: string[], effectFiles: string[]) =>
+    json({
+      "driver-in-module": { values, rows: [] },
+      "driver-effect": { values: ["effect"], rows: [{ files: effectFiles }] },
+    });
+  const effectFixture = (name: string) =>
+    `packages/${name}/src/infrastructure/__fixtures__/driver-effect.ts`;
+  const vite = (node: string, web: string) =>
+    `const nodeDrivers = {\n  ${node}: {\n    nodeFiles: [],\n  },\n};\nconst webDrivers = [${web}];\n`;
+  const complete = {
+    "lint-restrictions.json": table(
+      ["@agent-software-factory/logging"],
+      [effectFixture("logging")],
+    ),
+    "vite.config.ts": vite("logging", ""),
   };
 
-  it("passes a module with its layers", () => {
-    expect(violations(claim)).toEqual([]);
+  it("passes a driver that is in the table, has its fixture, and is named in vite.config.ts", () => {
+    expect(violations(repo({ ...logging(), ...complete }))).toEqual([]);
+    expect(
+      violations(repo({ ...logging(), ...complete, "vite.config.ts": vite("db", '"logging"') })),
+    ).toEqual([]);
   });
 
-  it("refuses a file outside a layer, and a directory that is not a layer, once for each", () => {
+  it("refuses a driver that the table, the fixture rows and vite.config.ts do not name", () => {
     expect(
-      violations({
-        ...claim,
-        "packages/claim/src/get-claim.ts": "export {};\n",
-        "packages/claim/src/utils/a.ts": "export {};\n",
-        "packages/claim/src/utils/b.ts": "export {};\n",
-      }),
+      violations(
+        repo({
+          ...logging(),
+          "lint-restrictions.json": table([], []),
+          "vite.config.ts": vite("db", '"i18n"'),
+        }),
+      ),
     ).toEqual([
-      "packages/claim/src/get-claim.ts is not a layer of a module. src/ holds index.ts, domain/, application/, infrastructure/, http/ and __fixtures__/: a file outside a layer is not under the rules of the layers, so move it into one (docs/adr/0054, " +
-        guide +
-        ").",
-      "packages/claim/src/utils/ is not a layer of a module. src/ holds index.ts, domain/, application/, infrastructure/, http/ and __fixtures__/: a file outside a layer is not under the rules of the layers, so move it into one (docs/adr/0054, " +
-        guide +
-        ").",
+      `lint-restrictions.json does not have @agent-software-factory/logging in the values of driver-in-module. The application and http of a module may import the driver logging until it is there: add it, with its rows in the fixtures of packages/module-fixtures (docs/adr/0054, ${guide}).`,
+      `lint-restrictions.json does not have packages/logging/src/infrastructure/__fixtures__/driver-effect.ts in the rows of driver-effect. Add the fixture that shows the lint rule stops \`effect\` in logging, and its rows (docs/adr/0054, ${guide}).`,
+      `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
     ]);
   });
 
-  it("leaves other packages alone", () => {
-    expect(violations({ ...claim, "packages/other/src/x.ts": "export {};\n" })).toEqual([]);
+  it("refuses a value of driver-in-module that is no driver, even when the tree has no driver", () => {
+    expect(
+      violations(
+        repo({
+          "lint-restrictions.json": table(["@agent-software-factory/claim"], []),
+        }),
+      ),
+    ).toEqual([
+      `lint-restrictions.json has @agent-software-factory/claim in the values of driver-in-module, but it is not a driver in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+    ]);
+  });
+
+  it("finds nothing to say when vite.config.ts has neither list", () => {
+    expect(
+      violations(repo({ ...logging(), ...complete, "vite.config.ts": "export default {};\n" })),
+    ).toEqual([
+      `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
+    ]);
   });
 });

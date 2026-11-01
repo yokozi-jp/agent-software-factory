@@ -5,7 +5,7 @@
 // re-export. The libraries a layer may import, and the direction between the layers, are lint rules
 // (vite.config.ts); this file checks what a lint rule cannot see: which names a package and its src/ may hold,
 // what an entry file contains, and that a driver does not depend on Effect.
-import { Tree, record } from "./tree.ts";
+import { Tree, list, record } from "./tree.ts";
 
 const guide = "docs/domain-model/package-layout.md";
 
@@ -61,7 +61,10 @@ const isDriver = (tree: Tree, name: string): boolean =>
   tree.paths.includes(`packages/${name}/package.json`);
 
 // The first segment under `prefix` of a path, and whether the path has more segments (it is in a directory).
-function childOf(path: string, prefix: string): { name: string; inDirectory: boolean } | undefined {
+export function childOf(
+  path: string,
+  prefix: string,
+): { name: string; inDirectory: boolean } | undefined {
   if (!path.startsWith(prefix)) return undefined;
   const rest = path.slice(prefix.length);
   const slash = rest.indexOf("/");
@@ -190,24 +193,56 @@ export function driversDoNotUseEffect(tree: Tree): string[] {
   });
 }
 
-// Rule M1: the src/ of a module holds index.ts, the layers and __fixtures__/, and nothing else. A file outside a layer is
-// not reached by the rules of the layers (docs/adr/0026), so its imports are not checked.
-const moduleLayers = ["domain", "application", "infrastructure", "http"];
+// The drivers are named in three places besides driverShapes, and a driver left out of one of them is not under that
+// rule: the `driver-in-module` values of the table of lint restrictions (the module's application and http may not import it),
+// the fixture of `driver-effect` (the lint rule that keeps Effect out reaches its infrastructure/), and `nodeDrivers` or
+// `webDrivers` of vite.config.ts (the libraries and the runtime its infrastructure may use). A name in the table that is
+// no driver is refused too.
+const scope = "@agent-software-factory";
+const tablePath = "lint-restrictions.json";
 
-export function modulesHaveOnlyLayers(tree: Tree, moduleNames: readonly string[]): string[] {
+// The text of `const <name> = …` in vite.config.ts, up to the end of its statement (`\n];` or `\n};`).
+function declaration(source: string, name: string): string {
+  const start = source.indexOf(`const ${name}`);
+  if (start === -1) return "";
+  const rest = source.slice(start);
+  const stop = rest.search(/\n[\]}];/);
+  return stop === -1 ? rest : rest.slice(0, stop);
+}
+
+export function driversAreInLint(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const name of moduleNames) {
-    const seen = new Set<string>();
-    for (const path of tree.paths) {
-      const inSrc = childOf(path, `packages/${name}/src/`);
-      if (inSrc === undefined || seen.has(inSrc.name)) continue;
-      const allowed = inSrc.inDirectory ? [...moduleLayers, "__fixtures__"] : ["index.ts"];
-      if (allowed.includes(inSrc.name)) continue;
-      seen.add(inSrc.name);
+  const table = record(tree.parsed(tablePath));
+  const inModule = list(record(table["driver-in-module"]).values);
+  const effectFiles = list(record(table["driver-effect"]).rows).flatMap((row) =>
+    list(record(row).files),
+  );
+  const vite = tree.read("vite.config.ts");
+  const nodeDrivers = declaration(vite, "nodeDrivers");
+  const webDrivers = declaration(vite, "webDrivers");
+  for (const name of driverNames) {
+    if (!isDriver(tree, name)) continue;
+    const fixture = `packages/${name}/src/infrastructure/__fixtures__/driver-effect.ts`;
+    if (!inModule.includes(`${scope}/${name}`))
       failures.push(
-        `packages/${name}/src/${inSrc.name}${inSrc.inDirectory ? "/" : ""} is not a layer of a module. src/ holds index.ts, ${moduleLayers.map((layer) => `${layer}/`).join(", ")} and __fixtures__/: a file outside a layer is not under the rules of the layers, so move it into one (docs/adr/0054, ${guide}).`,
+        `${tablePath} does not have ${scope}/${name} in the values of driver-in-module. The application and http of a module may import the driver ${name} until it is there: add it, with its rows in the fixtures of packages/module-fixtures (docs/adr/0054, ${guide}).`,
       );
-    }
+    if (!effectFiles.includes(fixture))
+      failures.push(
+        `${tablePath} does not have ${fixture} in the rows of driver-effect. Add the fixture that shows the lint rule stops \`effect\` in ${name}, and its rows (docs/adr/0054, ${guide}).`,
+      );
+    if (
+      !new RegExp(`^\\s+"?${name}"?: \\{`, "m").test(nodeDrivers) &&
+      !webDrivers.includes(`"${name}"`)
+    )
+      failures.push(
+        `vite.config.ts names the driver ${name} in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
+      );
   }
+  for (const value of inModule)
+    if (typeof value === "string" && !driverNames.some((name) => value === `${scope}/${name}`))
+      failures.push(
+        `${tablePath} has ${value} in the values of driver-in-module, but it is not a driver in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+      );
   return failures;
 }

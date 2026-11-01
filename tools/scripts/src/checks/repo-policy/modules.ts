@@ -1,7 +1,7 @@
 // Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
 // Effect lint of each module.
-import { driversOfModules, modulesHaveOnlyLayers } from "./drivers.ts";
+import { childOf, driversOfModules } from "./drivers.ts";
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
@@ -143,9 +143,27 @@ const ownExports: Readonly<
   },
 };
 
-// Rule M1 (docs/adr/0054): the src/ of each module holds index.ts and the layers.
-export const modulesHaveLayers = (tree: Tree): string[] =>
-  modulesHaveOnlyLayers(tree, modulePackageNames(tree));
+// Rule M1 (docs/adr/0054): the src/ of a module holds index.ts, the layers and __fixtures__/, and nothing else. A file outside a
+// layer is not reached by the rules of the layers (docs/adr/0026), so its imports are not checked.
+const moduleLayers = ["domain", "application", "infrastructure", "http"];
+
+export function modulesHaveLayers(tree: Tree): string[] {
+  const failures: string[] = [];
+  for (const name of modulePackageNames(tree)) {
+    const seen = new Set<string>();
+    for (const path of tree.paths) {
+      const inSrc = childOf(path, `packages/${name}/src/`);
+      if (inSrc === undefined || seen.has(inSrc.name)) continue;
+      const allowed = inSrc.inDirectory ? [...moduleLayers, "__fixtures__"] : ["index.ts"];
+      if (allowed.includes(inSrc.name)) continue;
+      seen.add(inSrc.name);
+      failures.push(
+        `packages/${name}/src/${inSrc.name}${inSrc.inDirectory ? "/" : ""} is not a layer of a module. src/ holds index.ts, ${moduleLayers.map((layer) => `${layer}/`).join(", ")} and __fixtures__/: a file outside a layer is not under the rules of the layers, so move it into one (docs/adr/0054, docs/domain-model/package-layout.md).`,
+      );
+    }
+  }
+  return failures;
+}
 
 export function packageManifests(tree: Tree): string[] {
   return packageNames(tree).flatMap((name) => {

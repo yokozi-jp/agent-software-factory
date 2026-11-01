@@ -30,15 +30,7 @@ tags: [adr, architecture, packages, drivers, clean-architecture, lint, effect]
 
 ## 止める仕組み
 
-| 規則                                                                                                       | 仕組み                                                                             |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| 層の方向、`domain` の純粋さ                                                                                | lint (今の `layers` の規則が届く)                                                  |
-| モジュールの `application` と `http` がドライバを import しない                                            | lint (禁止の表の `driver-in-module`)                                               |
-| ドライバが `effect` を import しない                                                                       | lint (禁止の表の `driver-effect`)、repo-policy (`package.json` に `effect` がない) |
-| 層のコードが `testing/` を import しない                                                                   | lint (禁止の表の `testing-import`)                                                 |
-| ドライバの root と `src/` に置ける名前、入口のファイルが再 export だけであること、入口ごとの再 export の元 | repo-policy (`drivers.ts`)                                                         |
-| モジュールの `src/` が `index.ts`、層、`__fixtures__/` だけであること                                      | repo-policy (`drivers.ts` の `modulesHaveOnlyLayers`)                              |
-| Port を `application` に、実装を `infrastructure` に置くこと。`signal` を外部ライブラリへ渡すこと          | レビュー ([package の構成](../domain-model/package-layout.md))                     |
+規則の一覧 (C1〜C5、M1〜M5、D1〜D7) と、規則ごとの仕組みは [package の構成](../domain-model/package-layout.md) が正本です。lint (層の規則と、禁止の表の `driver-in-module`、`driver-effect`、`testing-import`) と repo-policy (`drivers.ts`) が止め、Port の置き場と `signal` を渡すことの 2 つだけをレビューで見ます。
 
 道具が決める置き場 (dbmate の `migrations/`、`openapi.yaml`、WireMock の `fake/`、i18next-cli の `locales/`) は動かさず、`drivers.ts` の `driverShapes` に package ごとに書きます。
 

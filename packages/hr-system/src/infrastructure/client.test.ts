@@ -137,7 +137,7 @@ describe("人事システムが不調なとき", () => {
   });
 });
 
-describe("中断 (docs/adr/0054 D7)", () => {
+describe("中断 (docs/domain-model/package-layout.md D7)", () => {
   it("中断済みの signal を渡すと、リクエストを出さずに中断の理由を投げる", async () => {
     await addStub(origin, {
       request: { method: "GET", urlPath: employeesPath() },

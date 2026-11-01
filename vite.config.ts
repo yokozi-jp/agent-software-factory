@@ -212,6 +212,10 @@ const domainMessage =
 // testing/ holds the tools of the tests of a driver (docs/adr/0054): it imports Vitest and testcontainers, so no layer
 // imports it. The tests of a layer may.
 const testingMessage = restrictions["testing-import"].message;
+const testingImportPattern = {
+  regex: "^(?:\\./)?(?:\\.\\./)+testing(?:/|\\.ts$|$)",
+  message: testingMessage,
+};
 // A driver is a shared package that touches an external system and holds no business rule (docs/adr/0054). Only the
 // infrastructure of a module imports one; the application and http of a module depend on a Port that infrastructure implements.
 const driverInModule = restrictions["driver-in-module"];
@@ -310,7 +314,8 @@ const sharedKernelLibraries = [
   ...new Set(Object.values(sharedKernelEntries).flatMap((libraries) => libraries)),
 ];
 // The subpaths that other code may import: the entries of shared-kernel, the Node-only entry of db (the
-// package has no `.`, docs/adr/0038) and the entry of the ky client of hr-system (docs/adr/0054). Oxlint 1.89 ends the check of an import at a negated group that matches it,
+// package has no `.`, docs/adr/0038) and the entry of the ky client of hr-system (docs/adr/0054). Oxlint 1.89 ends the
+// check of an import at a negated group that matches it,
 // so a pattern that must still apply to these (the domain layer) goes before deepImports.
 const publicSubpaths = [
   ...sharedKernelSubpaths.map((entry) => `!${scope}/shared-kernel/${entry}`),
@@ -379,11 +384,7 @@ function moduleImports(
         regex: `^(?:\\./)?(?:\\.\\./)+(?:${other.join("|")})(?:/|$)`,
         message: layerMessage,
       });
-    if (!test)
-      patterns.push({
-        regex: "^(?:\\./)?(?:\\.\\./)+testing(?:/|\\.ts$|$)",
-        message: testingMessage,
-      });
+    if (!test) patterns.push(testingImportPattern);
   }
   // A test of domain imports Vitest, which the ban on libraries below would stop. Any other subpath of vite-plus stays stopped.
   if (layer === "domain" && test)
@@ -536,24 +537,27 @@ const runtimeRulesOff = {
 // - The other drivers (hr-system, i18n) run where the apps do, so infrastructure/ keeps the restrictions of the
 //   modules and adds the ban on Effect.
 // db also imports the packages of the workspace as types only (docs/adr/0038).
-const nodeDrivers: Readonly<Record<string, { wide: string[]; workspaceTypesOnly?: boolean }>> = {
-  db: {
-    wide: [
-      "packages/db/src/infrastructure/**",
-      "packages/db/src/testing/**",
-      "packages/db/src/__fixtures__/**",
-    ],
-    workspaceTypesOnly: true,
-  },
-  logging: { wide: ["packages/logging/src/infrastructure/**", "packages/logging/src/testing/**"] },
-  telemetry: {
-    wide: [
-      "packages/telemetry/src/infrastructure/**",
-      "packages/telemetry/src/__fixtures__/otel-sdk.ts",
-      "packages/telemetry/src/__fixtures__/outbox.ts",
-    ],
-  },
-};
+const nodeDrivers: Readonly<Record<string, { nodeFiles: string[]; workspaceTypesOnly?: boolean }>> =
+  {
+    db: {
+      nodeFiles: [
+        "packages/db/src/infrastructure/**",
+        "packages/db/src/testing/**",
+        "packages/db/src/__fixtures__/**",
+      ],
+      workspaceTypesOnly: true,
+    },
+    logging: {
+      nodeFiles: ["packages/logging/src/infrastructure/**", "packages/logging/src/testing/**"],
+    },
+    telemetry: {
+      nodeFiles: [
+        "packages/telemetry/src/infrastructure/**",
+        "packages/telemetry/src/__fixtures__/otel-sdk.ts",
+        "packages/telemetry/src/__fixtures__/outbox.ts",
+      ],
+    },
+  };
 const webDrivers = ["hr-system", "i18n"];
 
 function nodeDriverImports(workspaceTypesOnly: boolean, test: boolean) {
@@ -563,11 +567,7 @@ function nodeDriverImports(workspaceTypesOnly: boolean, test: boolean) {
     regex: `^(?:\\./)?(?:\\.\\./)+(?:application|http)(?:/|$)`,
     message: layerMessage,
   });
-  if (!test)
-    patterns.push({
-      regex: "^(?:\\./)?(?:\\.\\./)+testing(?:/|\\.ts$|$)",
-      message: testingMessage,
-    });
+  if (!test) patterns.push(testingImportPattern);
   if (workspaceTypesOnly)
     patterns.push({ regex: `^${scope}/[^/]+$`, allowTypeImports: true, message: dbMessage });
   return { paths: outboxPaths, patterns };
@@ -575,9 +575,9 @@ function nodeDriverImports(workspaceTypesOnly: boolean, test: boolean) {
 
 const driverOverrides: OxlintOverride[] = [
   ...Object.entries(nodeDrivers).flatMap(
-    ([name, { wide, workspaceTypesOnly = false }]): OxlintOverride[] => [
+    ([name, { nodeFiles, workspaceTypesOnly = false }]): OxlintOverride[] => [
       {
-        files: wide,
+        files: nodeFiles,
         plugins: ["import"],
         rules: {
           ...runtimeRulesOff,

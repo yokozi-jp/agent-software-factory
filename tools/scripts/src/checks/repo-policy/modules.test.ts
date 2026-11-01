@@ -18,6 +18,7 @@ import {
   modulePackageNames,
   modulesAreRegistered,
   modulesDependOneWay,
+  modulesHaveLayers,
   modulesLintEffect,
   noResolutionBypass,
   packageManifests,
@@ -973,5 +974,43 @@ describe("ADR 0028: every module runs the Effect lint", () => {
         }),
       ),
     ).toEqual([missing("claim")]);
+  });
+});
+
+describe("ADR 0054: the src/ of a module holds index.ts, the layers and __fixtures__/", () => {
+  const layerMessage = (path: string) =>
+    `${path} is not a layer of a module. src/ holds index.ts, domain/, application/, infrastructure/, http/ and __fixtures__/: a file outside a layer is not under the rules of the layers, so move it into one (docs/adr/0054, docs/domain-model/package-layout.md).`;
+  const violations = (files: Record<string, string>): string[] =>
+    failuresOf(modulesHaveLayers)(repo(files));
+
+  const claim = {
+    "packages/claim/src/index.ts": "export {};\n",
+    "packages/claim/src/domain/a.ts": "export {};\n",
+    "packages/claim/src/application/a.ts": "export {};\n",
+    "packages/claim/src/infrastructure/a.ts": "export {};\n",
+    "packages/claim/src/http/a.ts": "export {};\n",
+    "packages/claim/src/__fixtures__/a.ts": "export {};\n",
+  };
+
+  it("passes a module with its layers", () => {
+    expect(violations(claim)).toEqual([]);
+  });
+
+  it("refuses a file outside a layer, and a directory that is not a layer, once for each", () => {
+    expect(
+      violations({
+        ...claim,
+        "packages/claim/src/get-claim.ts": "export {};\n",
+        "packages/claim/src/utils/a.ts": "export {};\n",
+        "packages/claim/src/utils/b.ts": "export {};\n",
+      }),
+    ).toEqual([
+      layerMessage("packages/claim/src/get-claim.ts"),
+      layerMessage("packages/claim/src/utils/"),
+    ]);
+  });
+
+  it("leaves other packages alone", () => {
+    expect(violations({ ...claim, "packages/other/src/x.ts": "export {};\n" })).toEqual([]);
   });
 });

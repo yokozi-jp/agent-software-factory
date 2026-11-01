@@ -14,7 +14,7 @@ const retry = { limit: 2, methods: ["get"], retryOnTimeout: true, jitter: true }
  * baseUrl は人事システムの接続先で、テナントごとに違う (テナントごとの設定)。フェイクでは `http://host:port/<tenant_id>`。
  * 404 は null で返し、再試行しない。人事システムが止まったとき (タイムアウト、接続断、再試行しても 5xx) は、
  * ky のエラー (HTTPError、TimeoutError、NetworkError) を投げる。ログインも申請も失敗にするのは呼んだ側 (docs/adr/0022)。
- * `signal` が中断されると、出ているリクエストも止め、中断の理由を投げる (docs/adr/0054 D7)。
+ * `signal` が中断されると、出ているリクエストも止め、中断の理由を投げる (docs/domain-model/package-layout.md D7)。
  */
 export function createHrSystemClient(options: { readonly baseUrl: string }): HrSystemClient {
   const http = ky.create({

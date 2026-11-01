@@ -24,6 +24,7 @@ import { docsCodePaths, docsReferences } from "./docs-references.ts";
 import {
   driverEntriesOnlyReexport,
   driversDoNotUseEffect,
+  driversAreInLint,
   driversHaveTheirLayout,
 } from "./drivers.ts";
 import { headerNamesAgree, writersUseIdempotencyKey } from "./idempotency.ts";
@@ -89,6 +90,7 @@ function run(tree: Tree): string[] {
     ...driversHaveTheirLayout(tree),
     ...driverEntriesOnlyReexport(tree),
     ...driversDoNotUseEffect(tree),
+    ...driversAreInLint(tree),
     ...steeringFrontmatter(tree),
     ...gitOnOtherRepositories(tree),
     ...oneNodeMajor(tree),
