@@ -44,7 +44,7 @@ export function docsReferences(tree: Tree): string[] {
         continue;
       }
       const path = `docs/${file}`;
-      const target = tree.repo.read(path);
+      const target = tree.maybe(path);
       if (target === undefined) failures.push(`${source} cites ${path}, which does not exist.`);
       else if (heading !== undefined && !hasHeading(target, heading))
         failures.push(

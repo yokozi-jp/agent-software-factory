@@ -255,8 +255,7 @@ function unlistedLines(tree: Tree, { key, rows: allRows }: Entry, file: string):
   return failures;
 }
 
-// The parsed table. The path is written out here, the one place that reads it, so that lefthook-inputs.test.ts finds
-// it among the files read by name.
+// The parsed table.
 const parsedTable = (tree: Tree): unknown => tree.parsed("lint-restrictions.json");
 
 // Whether the path is a fixture of the table: one named after a key. It shows one restriction, and is not a fixture of

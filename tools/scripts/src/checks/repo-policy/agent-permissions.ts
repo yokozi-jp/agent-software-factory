@@ -176,7 +176,7 @@ export function agentPermissions(tree: Tree): string[] {
     failures.push(
       `${settingsFile} must set "chat.defaultAgent" to the name of an agent of .kiro/agents/, so that the rules apply without --agent.`,
     );
-  const markdown = tree.repo.read(permissionsDoc);
+  const markdown = tree.maybe(permissionsDoc);
   const rows = markdown === undefined ? undefined : forbiddenRows(markdown);
   if (rows === undefined)
     return [

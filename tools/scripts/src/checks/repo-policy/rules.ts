@@ -1,6 +1,6 @@
 // The rules of repo-policy: mechanical checks for the decisions recorded in docs/adr/.
 // Pure functions over a Repo; cli.ts reads git and the files (of the working tree, or of the index) into it.
-// This file lists the checks; each lives in a file of its own theme:
+// This file lists the checks; each lives in a file of its own theme, and has its cases in <theme>.test.ts:
 //   tooling.ts           tool settings and repository files (Nx, lefthook, betterleaks, Node.js, steering ...)
 //   lint-fixtures.ts     fixtures that show a lint rule, a tsconfig flag, a layer or an Effect rule is on
 //   lint-restrictions.ts the table of lint restrictions (lint-restrictions.json) and its fixtures agree
@@ -58,9 +58,8 @@ import { uiComponentsHaveStories } from "./ui-stories.ts";
 
 export type { Repo };
 
-// Every failure: the files that do not parse, then the checks in order.
-export function violations(repo: Repo): string[] {
-  const tree = new Tree(repo);
+// Runs every check on the tree: the files that do not parse, then the checks in order.
+function run(tree: Tree): string[] {
   const failures = [
     ...nxRunsTasks(tree),
     ...lefthookOwnsHooks(tree),
@@ -100,4 +99,14 @@ export function violations(repo: Repo): string[] {
     ...headerNamesAgree(tree),
   ];
   return [...tree.parseErrors, ...failures];
+}
+
+// Every failure of the repository.
+export const violations = (repo: Repo): string[] => run(new Tree(repo));
+
+// The paths the checks read from the repository (a name for `named`), including the files it does not have.
+export function readPaths(repo: Repo): string[] {
+  const tree = new Tree(repo);
+  run(tree);
+  return tree.readPaths;
 }
