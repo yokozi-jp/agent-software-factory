@@ -14,7 +14,7 @@ import { gitIn, runIn, sandbox, type Sandbox } from "../../test/sandbox.ts";
 
 const cli = join(import.meta.dirname, "cli.ts");
 const migrations = "packages/db/migrations";
-const seed = "packages/db/src/seed/index.ts";
+const seed = "packages/db/src/infrastructure/seed/index.ts";
 const harness = "packages/db/src/testing/prepare-database.ts";
 // The variables that cli.ts reads, cleared as on a developer machine (Vitest itself may run in CI).
 const local = { GITHUB_ACTIONS: "", GITHUB_BASE_REF: "", RUNNER_TEMP: "" };

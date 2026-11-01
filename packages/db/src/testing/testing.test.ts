@@ -12,7 +12,7 @@ import {
   reportSetupFailure,
   roles,
   startPostgres,
-} from "./index.ts";
+} from "../testing.ts";
 
 // db/testing は、packages/db 自身のテストと apps/api のテストが使う道具 (docs/adr/0038)。
 describe("startPostgres", () => {

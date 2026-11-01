@@ -17,7 +17,7 @@ const cli = join(
 
 /** fixture の配置は、リポジトリの `packages/i18n` と `apps/web` と同じ。cwd は fixture の packages/i18n。 */
 function run(fixture: string, command: "status" | "lint", ...args: string[]): number | null {
-  const cwd = join(packageRoot, "test/__fixtures__/keys", fixture, "packages/i18n");
+  const cwd = join(packageRoot, "test/key-cases", fixture, "packages/i18n");
   return spawnSync(process.execPath, [cli, "--config", config, command, ...args], {
     cwd,
     encoding: "utf8",

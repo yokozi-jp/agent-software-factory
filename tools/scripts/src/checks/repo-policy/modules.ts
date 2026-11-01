@@ -1,6 +1,7 @@
 // Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
 // Effect lint of each module.
+import { driversOfModules, modulesHaveOnlyLayers } from "./drivers.ts";
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
@@ -99,6 +100,7 @@ const uiPublicApi = {
 //              apps import (docs/adr/0048).
 //   logging    the entry for any code (the Logger interface), the Node-only entry that creates the pino logger (which the
 //              entry files of the apps import), and the tools of the tests, so that they stay out of production (docs/adr/0049).
+//   hr-system  the contract, and the entry of the ky client that the infrastructure of a module imports (docs/adr/0052, 0054).
 const ownExports: Readonly<
   Record<string, { readonly exports: Record<string, string>; readonly says: string }>
 > = {
@@ -122,10 +124,14 @@ const ownExports: Readonly<
   [db]: {
     exports: {
       "./node": "./src/node.ts",
-      "./seed": "./src/seed/index.ts",
-      "./testing": "./src/testing/index.ts",
+      "./seed": "./src/seed.ts",
+      "./testing": "./src/testing.ts",
     },
-    says: "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051)",
+    says: "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051, 0054)",
+  },
+  [hrSystem]: {
+    exports: { ".": "./src/index.ts", "./client": "./src/client.ts" },
+    says: "the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054)",
   },
   [telemetry]: {
     exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
@@ -136,6 +142,10 @@ const ownExports: Readonly<
     says: "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)",
   },
 };
+
+// Rule M1 (docs/adr/0054): the src/ of each module holds index.ts and the layers.
+export const modulesHaveLayers = (tree: Tree): string[] =>
+  modulesHaveOnlyLayers(tree, modulePackageNames(tree));
 
 export function packageManifests(tree: Tree): string[] {
   return packageNames(tree).flatMap((name) => {
@@ -178,8 +188,8 @@ const isEventsPackage = (tree: Tree, name: string): boolean =>
   name.endsWith(eventsSuffix) &&
   eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
 
-// Every package under packages/ but shared-kernel, module-fixtures, ui, i18n, telemetry and logging is a module of moduleOrder, and depends on no
-// package of the workspace but shared-kernel and the modules after it. shared-kernel, module-fixtures, ui, i18n, telemetry and logging depend on none.
+// Every package under packages/ but shared-kernel, module-fixtures, ui and the drivers is a module of moduleOrder, and depends on no
+// package of the workspace but shared-kernel, the modules after it and the drivers (not db). shared-kernel, module-fixtures, ui and the drivers depend on none.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
   for (const name of packageNames(tree)) {
@@ -204,8 +214,11 @@ export function modulesDependOneWay(tree: Tree): string[] {
         // A module depends on the events package of any module: the events are how the modules talk without
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
+        // A module depends on the drivers that its infrastructure wraps: the HTTP client of a system, the Logger, the
+        // telemetry helper (docs/adr/0054). db is not one of them (dbDependencies).
+        if (!dependsOnNone && driversOfModules.includes(target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel and the modules after it in closing → approval → claim, and shared-kernel, module-fixtures, ui, i18n, telemetry and logging on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
         );
       }
   }
@@ -294,7 +307,7 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
 }
 
 // The mark of a module in package.json: nx.tags has "type:module". The type generation of packages/db reads it too
-// (moduleSchemas in packages/db/src/types.ts, which cannot import this file: keep the two values the same), so the
+// (moduleSchemas in packages/db/src/testing/types.ts, which cannot import this file: keep the two values the same), so the
 // tag is the second list of the modules besides moduleOrder.
 const moduleTag = "type:module";
 const addModuleGuide = "docs/domain-model/add-module.md";

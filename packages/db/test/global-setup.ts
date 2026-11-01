@@ -6,7 +6,7 @@ import {
   reportSetupFailure,
   startPostgres,
   templateDatabase,
-} from "../src/testing/index.ts";
+} from "../src/testing.ts";
 import { diffRoles, snapshotRoles } from "../src/testing/role-snapshot.ts";
 
 // One PostgreSQL for all the tests, with the migrations and then the seed run once on the template database (docs/adr/0025, 0036).

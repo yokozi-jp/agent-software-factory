@@ -2,6 +2,6 @@
 // dbmate, pg and `node:*`. The package has no `.`, so no import reaches these libraries by accident. The seed is
 // `@agent-software-factory/db/seed` and the tools of the tests are `@agent-software-factory/db/testing`, so faker,
 // testcontainers and Vitest stay out of here.
-export { bootstrapSql } from "./bootstrap.ts";
-export { migrate } from "./migrate.ts";
-export { createDatabase, createPool, poolTimeouts } from "./pool.ts";
+export { bootstrapSql } from "./infrastructure/bootstrap.ts";
+export { migrate } from "./infrastructure/migrate.ts";
+export { createDatabase, createPool, poolTimeouts } from "./infrastructure/pool.ts";

@@ -83,7 +83,7 @@ sources:
 このリポジトリの migration は [dbmate](https://github.com/amacneil/dbmate) で流す版付きの SQL のファイルで、決定と根拠は [ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md) にあります。次の書き方を守ります。
 
 - **置き場所**: `packages/db/migrations/<UTC の日時 14 桁>_<名前>.sql`。足すときは `dbmate new` ではなく、下のひな形を写します。`dbmate new` のひな形は down が空だからです。
-- **流し方**: `packages/db` の `pnpm db:migrate` (`pnpm exec nx db:migrate db`) (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `packages/db/src/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
+- **流し方**: `packages/db` の `pnpm db:migrate` (`pnpm exec nx db:migrate db`) (`DATABASE_URL` に `migrator` の接続 URL を渡す)。dbmate の引数 (`migrate`、`--migrations-table migrations.schema_migrations`、`--migration-lock`、`--no-dump-schema`) は `packages/db/src/infrastructure/migrate.ts` の 1 か所にあり、テストも同じ関数で流します。
 - **ロール**: `migrator`、`app_user`、`auth_service`、`outbox_relay` (Outbox を送る処理のロール。Secrets Manager の秘密でパスワード認証するので、bootstrap は `rds_iam` を付けない。[ADR 0025](../adr/0025-kysely-and-dbmate-sql-first.md)) と、モジュールごとの `NOLOGIN` のロール (`claim_module` など。[ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md)) は migration ではなく、`packages/db/bootstrap.sql` が作ります (冪等。master user が migration の前に流す)。表とスキーマの所有者は `migrator` で、権限の `GRANT` は migration に書きます。
 - **`lock_timeout`**: up の先頭に `SET LOCAL lock_timeout = '5s';` を書きます。ロックを待ち続けて、後ろの要求を詰まらせないためです。
 - **`transaction:false`**: `CREATE INDEX CONCURRENTLY` のように、トランザクションの中で実行できない文を含むファイルだけ、`-- migrate:up transaction:false` にします。トランザクションの外では `SET LOCAL` が効かないので、`lock_timeout` は要りません。
@@ -108,7 +108,7 @@ down が `RAISE EXCEPTION` だけであることと、up の先頭の `SET LOCAL
 
 手で触るためのローカルのデータと、結合テストのテンプレートの DB に入れるデータは、migration の外の seed に置きます。決定と根拠は [ADR 0036](../adr/0036-seed-in-typescript-through-rls.md) にあります。次の書き方を守ります。
 
-- **置き場所**: `packages/db/src/seed/` の TypeScript で、モジュールごとのファイルと `index.ts` に分けます。入口は `index.ts` の `seed(databaseUrl)` で、今は `claim.ts` だけがあります。
+- **置き場所**: `packages/db/src/infrastructure/seed/` の TypeScript で、モジュールごとのファイルと `index.ts` に分けます。入口は `index.ts` の `seed(databaseUrl)` で、今は `claim.ts` だけがあります。
 - **流し方**: `pnpm db:seed` (`DATABASE_URL` に `migrator` の接続 URL を渡す)、またはコードから `seed(databaseUrl)`。`migrator` の 1 つのトランザクションの中で `set_config('app.current_tenant', …, true)` を切り替えて、RLS を通して書きます。`inTenantTransaction` と superuser は使いません。
 - **冪等にしない**: テナント A の行があれば、何もせずに失敗します。やり直すときは DB を作り直してから流します。
 - **データ**: 名前で呼ぶデータは固定のリテラル、件数を増やすデータは `fakerJA` と固定の `faker.seed()` で作ります。id は採番に任せ、`now()` と乱数は使いません。

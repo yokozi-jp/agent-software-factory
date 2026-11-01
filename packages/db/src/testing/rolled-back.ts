@@ -1,7 +1,7 @@
 import type { QueryResult, QueryResultRow } from "pg";
 import { afterAll, afterEach, beforeEach } from "vite-plus/test";
 
-import type { Queryable } from "../queryable.ts";
+import type { Queryable } from "../infrastructure/queryable.ts";
 import { createTestDatabase, type TestDatabase } from "./database.ts";
 
 /** migrator として DDL を流す口。表の所有者が migrator になる。パラメータは取らない。 */

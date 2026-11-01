@@ -18,8 +18,12 @@ _Avoid_: 参照業務機能、デモ
 サンプル機能の、業務の機能ごとのまとまり。`packages/` の1つの package で、公開 API の入口（`index.ts`）だけを他から見せる。申請（`claim`）、承認（`approval`、審査を持つ）、締め（`closing`）があり、依存は「締め → 承認 → 申請」の一方向。`packages/shared-kernel`（モジュールが共有するコード）と `packages/module-fixtures`（モジュールの境界の検出力の fixture だけを持つ、モジュールの形をした package）はモジュールではなく、サンプル機能を消しても残る。
 _Avoid_: 機能、ドメイン、コンポーネント
 
+**ドライバ**:
+外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。import してよいのはモジュールの `infrastructure` だけで、モジュールはそれを包んで Port を実装する。構成は [package の構成](docs/domain-model/package-layout.md)。
+_Avoid_: ライブラリ、アダプター、共通基盤
+
 **Shared Kernel**:
-複数のモジュールが合意して共有する、小さなモデルとコード（`Result`、イベントの定義、時刻、共通の列、楽観ロック、テナントのトランザクションなど）。`packages/shared-kernel` に置く。DDD の Shared Kernel にあたり、どのモジュールにも依存しない。業務の道具として複数の利用側が使う `ui`、`db`、`i18n` とは区別する。
+複数のモジュールが合意して共有する、小さなモデルとコード（`Result`、イベントの定義、時刻、共通の列、楽観ロック、テナントのトランザクションなど）。`packages/shared-kernel` に置く。DDD の Shared Kernel にあたり、どのモジュールにも依存しない。外部の道具を包む `db`、`i18n` などのドライバや、`ui` とは区別する。
 _Avoid_: shared、common、共通部品
 
 **サービスの型**:

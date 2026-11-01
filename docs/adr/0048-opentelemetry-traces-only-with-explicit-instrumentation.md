@@ -26,7 +26,7 @@ tags: [adr, observability, opentelemetry, logging, security, lint]
 - **一括パッケージ `auto-instrumentations-node`**: 数十の計装が既定で有効になり、何を取るかを導入側が見直しにくい。ヘッダーや SQL の値の取り扱いが計装ごとに違うため、明示して 4 つに絞りました。
 - **ログも OTLP で送る**: ログを Collector 経由にでき、送り先を 1 つにできます。ただし今の規約 (stdout の JSON Lines、保存先の機能でマスク) を変え、Collector を置く前提になります。ログは発生源で機密を載せないことと保存先の機能で守るので、送りません。
 - **ブラウザにも OpenTelemetry を入れる**: ブラウザから API までを 1 本のトレースにできますが、ブラウザの OpenTelemetry はまだ stable ではなく ([Issue #148](https://github.com/yokozi-jp/agent-software-factory/issues/148) の決定)、送り先も決まっていません。
-- **各アプリの入口に SDK の初期化を書く**: API、ワーカー、バッチ、Lambda で同じ初期化が重複し、属性の方針が入口ごとにずれます。`startTelemetry()` に集めれば、方針は `packages/telemetry/src/policy.ts` の 1 か所です。
+- **各アプリの入口に SDK の初期化を書く**: API、ワーカー、バッチ、Lambda で同じ初期化が重複し、属性の方針が入口ごとにずれます。`startTelemetry()` に集めれば、方針は `packages/telemetry/src/infrastructure/policy.ts` の 1 か所です。
 
 ## Consequences
 

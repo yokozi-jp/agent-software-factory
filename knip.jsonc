@@ -11,15 +11,15 @@
   // nothing imports them (docs/adr/0026). Knip does not read a file it reports as unused, so their imports are not
   // checked. A *.test.ts fixture is still an entry for Knip's Vitest plugin, so it must not import a dependency that
   // only the fixtures use (packages/*/src/{application,infrastructure}/__fixtures__/effect.test.ts imports no effect).
-  // packages/i18n/test/__fixtures__ are the same for the key check (docs/adr/0044): a tree of screens and resources.
-  "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**", "packages/i18n/test/__fixtures__/**"],
+  // packages/i18n/test/key-cases are the same for the key check (docs/adr/0044): a tree of screens and resources.
+  "ignoreFiles": ["{apps,packages}/*/src/**/__fixtures__/**", "packages/i18n/test/key-cases/**"],
   // kysely-codegen writes an interface for each table and uses it in `DB` of the same file (docs/adr/0025). The code
   // uses `DB`; whether it also names a table's interface is up to the code, and the generator cannot know it.
   "ignoreIssues": {
     "packages/*/src/infrastructure/db.gen.ts": ["types"],
     "packages/shared-kernel/src/messaging/messaging.gen.ts": ["types"],
     // openapi-typescript writes the types of paths, operations and components (packages/hr-system). The client names only the ones it uses.
-    "packages/hr-system/src/schema.gen.ts": ["types"],
+    "packages/hr-system/src/domain/schema.gen.ts": ["types"],
   },
   "workspaces": {
     ".": {

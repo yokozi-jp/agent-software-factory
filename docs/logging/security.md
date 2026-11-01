@@ -32,5 +32,5 @@ sources:
 機密情報の漏れは、三層で防ぐ ([ADR 0049](../adr/0049-logging-with-pino-behind-a-logger-interface.md))。
 
 1. **発生源で載せない**: 呼び出し側が渡せるキーは `LogFields` の型にあるものだけで、秘匿情報になるキーはそこにない。例外は `exceptionFields()` を通し、型、メッセージ、スタックトレースだけを出す。pg のエラーの `detail`、`where`、`parameters` は行の値を含むので読まない。`user.id` と `tenant_id` は UUID で、秘匿しない。
-2. **ロガーの `redact`**: pino の `redact` で、最上位と 1 段下の秘匿キー (`password`、`token`、`authorization`、`cookie`、`set-cookie`、`detail`、`where`、`parameters` など) を `[REDACTED]` にする。型を迂回して渡された値の、最後の防御。`message` の文字列に混ぜた値、綴りの違うキー、2 段より深い入れ子は守れない。守れないことは `packages/logging/src/node.test.ts` に書いてある。
+2. **ロガーの `redact`**: pino の `redact` で、最上位と 1 段下の秘匿キー (`password`、`token`、`authorization`、`cookie`、`set-cookie`、`detail`、`where`、`parameters` など) を `[REDACTED]` にする。型を迂回して渡された値の、最後の防御。`message` の文字列に混ぜた値、綴りの違うキー、2 段より深い入れ子は守れない。守れないことは `packages/logging/src/infrastructure/node-logger.test.ts` に書いてある。
 3. **保存先**: CloudWatch Logs のデータ保護で、保存先でもマスクする。AWS の上の設定と確認はデプロイの実施で行う。

@@ -57,7 +57,7 @@ describe("isMeasured", () => {
   it.each([
     ["apps/api/src/app.ts", true],
     ["apps/web/src/screens/home.tsx", true],
-    ["packages/db/src/migrate.ts", true],
+    ["packages/db/src/infrastructure/migrate.ts", true],
     ["packages/approval/events/src/index.ts", true],
     ["apps/api/src/app.test.ts", false],
     ["apps/web/src/screens/home.test.tsx", false],

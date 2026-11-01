@@ -11,7 +11,7 @@ tags: [adr, hr-system, openapi, wiremock, testcontainers, ky, packages]
 
 ## 決定
 
-- **置き場は `packages/hr-system`**: module ではありません（`moduleOrder` と `type:module` の印に入れず、層を持たず、他の workspace の package に依存しません）。人事システムは申請の module にも承認の module にも属さない外部システムで、ログイン（[Issue #156](https://github.com/yokozi-jp/agent-software-factory/issues/156)）と申請の両方が呼ぶためです。呼ぶ側が増えたときの依存の向きは、呼ぶ module が `dependencies` に足して決めます。`exports` は `.`（クライアントと `Employee` の型）だけです。フェイクとテストの道具は `test/` と `fake/` に置き、本番の入口には出しません。
+- **置き場は `packages/hr-system`**: module ではありません（`moduleOrder` と `type:module` の印に入れず、他の workspace の package に依存しません。ドライバとして `domain` と `infrastructure` の層を持ちます。ADR 0054）。人事システムは申請の module にも承認の module にも属さない外部システムで、ログイン（[Issue #156](https://github.com/yokozi-jp/agent-software-factory/issues/156)）と申請の両方が呼ぶためです。呼ぶ側が増えたときの依存の向きは、呼ぶ module が `dependencies` に足して決めます。`exports` は `.`（`Employee` の型と `HrSystemClient` のインターフェース）と `./client`（ky の実装）です（[ADR 0054](0054-drivers-with-domain-and-infrastructure-layers.md) で、層を `domain` と `infrastructure` に分け、入口を分けました）。呼ぶ module では `infrastructure` だけが import し、`Effect.tryPromise` で包みます。フェイクとテストの道具は `test/` と `fake/` に置き、本番の入口には出しません。
 - **契約の正は `openapi.yaml`（OpenAPI 3.1）**: 操作はメールアドレスで社員を引く、社員番号で上長を引く、の 2 つです。クライアントの型（`src/schema.gen.ts`）は openapi-typescript で作って commit し、フェイクのスタブの本文と path は unit test が OpenAPI に照らします。
 - **クライアントは `Promise` を返し、Effect で包まない**: ADR 0028 の Effect は `application` と `infrastructure` の層のためのもので、この package に層はありません。呼ぶ module の `infrastructure` が `Effect.tryPromise` で包みます。404 は `null`、止まったときは ky のエラーを投げます。
 - **テナントは接続先の base URL で分ける**: フェイクは `/<tenant_id>/…` の接頭辞で返し分けます。

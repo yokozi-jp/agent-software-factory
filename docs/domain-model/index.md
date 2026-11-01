@@ -6,5 +6,6 @@
 - [認可の書き方](authorization.md)：認可の方針の関数 `authorize` や許可の証 (`Permit`) を書くとき、遷移の関数が取る引数を決めるとき、認可の網羅のテストを書くとき、403 と 404 のどちらを返すか迷うとき
 - [型述語の境界値のテスト](testing.md)：`domain` の型述語や遷移の関数のテストを書くとき
 - [英語の識別子と用語集の対応表](glossary-mapping.md)：`domain` や `application` の識別子を決めるとき、`GLOSSARY.md` の言葉を英語にするとき
+- [package の構成 (モジュールとドライバ)](package-layout.md)：`packages/` の package の `src/` にファイルを置くとき、ドライバ (db、hr-system、i18n、logging、telemetry) を足す、変えるとき、モジュールがドライバを使うとき、repo-policy や lint が package の構成で止めたとき
 - [モジュールを足す手順](add-module.md)：サンプル機能のモジュールを足すとき、`moduleOrder`、`apps/api` への登録、migration、型の生成の足し忘れで repo-policy や `types.test.ts` が失敗したとき
 - [module ではない package を足す手順](add-package.md)：`packages/` の直下に shared-kernel、ui、db、telemetry のような module ではない package を足すとき、`exports` を `index.ts` 以外にしたいとき、repo-policy が `moduleOrder` にないと止めたとき

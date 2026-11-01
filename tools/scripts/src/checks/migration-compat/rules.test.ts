@@ -35,9 +35,9 @@ describe("classifyMigrations", () => {
   });
 
   it("ignores other files, blank lines and a diff with no change", () => {
-    expect(classifyMigrations(`A\tapps/api/src/a.ts\nM\tpackages/db/src/migrate.ts\n\n`)).toEqual(
-      none,
-    );
+    expect(
+      classifyMigrations(`A\tapps/api/src/a.ts\nM\tpackages/db/src/infrastructure/migrate.ts\n\n`),
+    ).toEqual(none);
     expect(classifyMigrations("")).toEqual(none);
   });
 });

@@ -8,7 +8,7 @@ tags: [db, postgresql, testing, convention, sensor]
 # DB の規約の検査（カタログのテスト）
 
 `docs/db/` と ADR の規約のうち、migration を流した DB のカタログ (`pg_catalog`) で判定できるものを、`packages/db` のテストで確かめます。
-実装は `packages/db/src/convention-catalog.ts` の `checkConventions` で、`convention-catalog.test.ts` が、テンプレートの DB (ADR 0025) を複製して毎回呼びます。
+実装は `packages/db/src/infrastructure/convention-catalog.ts` の `checkConventions` で、`convention-catalog.test.ts` が、テンプレートの DB (ADR 0025) を複製して毎回呼びます。
 SQL の静的な解析は使いません。決定は [Issue #361](https://github.com/yokozi-jp/agent-software-factory/issues/361) です。
 モジュールのロールと表の所有を確かめる検査は別にあります (`module-roles-catalog.ts`、[ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md))。
 
