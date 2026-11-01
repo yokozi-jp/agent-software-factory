@@ -37,16 +37,24 @@ function candidates(top: string): string[] {
   ];
 }
 
-// The projects that nx would run `test` for in this change, or undefined when nx cannot say. A change that touches no
-// project (docs only) has none: `nx affected -t test` then writes no record, and that is not a failure.
-function affectedTestProjects(top: string): string[] | undefined {
+// The projects that nx would run `test` for in this change and that can write a record (the directories of
+// candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, or tools/scripts
+// alone, whose coverage is not a record of this check) has none: `nx affected -t test` then writes no record, and that
+// is not a failure.
+function affectedRecordProjects(top: string): string[] | undefined {
   const result = spawnSync(
     "pnpm",
-    ["exec", "nx", "show", "projects", "--affected", "--with-target", "test"],
-    {
-      cwd: top,
-      encoding: "utf8",
-    },
+    [
+      "exec",
+      "nx",
+      "show",
+      "projects",
+      "--affected",
+      "--with-target",
+      "test",
+      ...["apps/*", "packages/*", "packages/*/events"].flatMap((glob) => ["--projects", glob]),
+    ],
+    { cwd: top, encoding: "utf8" },
   );
   if (result.status !== 0) return undefined;
   return result.stdout.split("\n").filter((line) => line.trim() !== "");
@@ -62,9 +70,9 @@ function main(): string[] {
     join(top, project, "coverage", "coverage-final.json");
   const projects = candidates(top).filter((project) => existsSync(recordOf(project)));
   if (projects.length === 0) {
-    if (affectedTestProjects(top)?.length === 0) {
+    if (affectedRecordProjects(top)?.length === 0) {
       process.stdout.write(
-        "merged-coverage: no affected project has a test target; nothing to check.\n",
+        "merged-coverage: no affected project of apps/* or packages/* has a test target; nothing to check.\n",
       );
       return [];
     }

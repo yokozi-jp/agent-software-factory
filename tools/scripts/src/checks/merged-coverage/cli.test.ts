@@ -46,14 +46,17 @@ const record = (project: string, files: Record<string, number | { from: number }
     ),
   );
 };
-// The stand-in for `pnpm exec nx show projects --affected --with-target test`: it prints `affected` projects (a file of
-// the stub directory, so no value is quoted into a script), or exits 1 when `nxFails`.
+// The stand-in for `pnpm exec nx show projects --affected --with-target test ...`. It prints `affected` (one project per
+// line) only when it is asked for the directories that write a record (tools/scripts is not one), as nx filters by
+// them; it exits 1 when `nxFails`.
+const filters = "--projects apps/* --projects packages/* --projects packages/*/events";
 const check = (nx: { affected?: readonly string[]; nxFails?: boolean } = {}) => {
+  const names = (nx.affected ?? []).map((name) => `"${name}"`).join(" ");
   const stubs = stubDir(box.root, "stubs", {
     pnpm:
       nx.nxFails === true
         ? "exit 1"
-        : `printf '%s\\n' ${(nx.affected ?? []).map((name) => `"${name}"`).join(" ")}`,
+        : `case "$*" in *"${filters}"*) printf '%s\\n' ${names};; esac`,
   });
   return runIn(repo, process.execPath, [cli], {
     env: { GITHUB_ACTIONS: "", PATH: withPath(stubs) },
