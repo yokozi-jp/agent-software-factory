@@ -14,6 +14,7 @@ tags: [db, postgresql, testing, concurrency, runbook]
 ## 置き場所と道具
 
 DB を使う結合テストは `apps/api/src/**/*.test.ts` に置きます ([ADR 0038](../adr/0038-db-package.md))。
+置く場所が apps でも、coverage は測られます。`apps/api` の `test` は、テストが通した shared-kernel (`tenant-db`、`idempotency-db`、`messaging`) とモジュールの repository のファイルも記録し (`coverage.allowExternal`)、CI の `nx` の job が全 project の記録を合わせて、ファイルごとの lines と branches が 90% あることを確かめます ([合わせた検査](../tooling/ci.md#合わせた検査)、[ADR 0053](../adr/0053-merged-coverage-check.md))。結合テストを足した分は、呼ばれる側のファイルの下限に数えられます。
 道具は `@agent-software-factory/db/testing` にあります。
 
 | 道具                                         | 使い方                                                                                                    |

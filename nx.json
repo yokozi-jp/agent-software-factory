@@ -30,7 +30,13 @@
     },
     "test": {
       "cache": true,
-      "inputs": ["default", "^production"]
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/coverage-policy.json",
+        "{workspaceRoot}/vitest-coverage.ts"
+      ],
+      "outputs": ["{projectRoot}/coverage/coverage-final.json"]
     },
     "check": {
       "cache": true,

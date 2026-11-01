@@ -88,6 +88,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   - 先に失敗させるもの: base にある migration の書き換えと削除は、DB の起動前に失敗させます。
   - 流し方: base を `git worktree` に出し、その版の結合テストを coverage なしで全部流します。base は `git worktree` (`$RUNNER_TEMP` か一時ディレクトリ) に出し、`pnpm install --frozen-lockfile` の後、`apps/api` で `vp test run --project integration` を流します。DB には、base の migration、seed、PR が足した migration の順に流します。PR が足した migration のファイルは、環境変数 `MIGRATION_COMPAT_FILES` (絶対 path の JSON の配列) で base の harness に渡します。終了コードは、通ったか対象がなければ 0、base の migration の変更と削除かテストの失敗が 1、base が見つからないなど実行できなかったときが 2 です。
   - 止まったとき: 前の版のアプリが新しいスキーマで動かないということです。互換を壊す変更を expand と contract に分け、contract は前の版のアプリが使わなくなってから出します ([PostgreSQL のスキーママイグレーション](../db/postgresql-migration.md#このリポジトリの-migration-の書き方))。例外のラベルはなく、緊急のときだけ ruleset の bypass で人が通します。
+- `node tools/scripts/src/checks/merged-coverage/cli.ts` (`nx` の job の「Merged coverage of the projects」): `nx affected -t check test build` が各 project に書いた `coverage/coverage-final.json` を 1 つに合わせ、`apps/*/src`、`packages/*/src`、`packages/*/events/src` のコードのファイルごとに、lines と branches が 90% あることを確かめます ([coverage の下限](#coverage-の下限)、[ADR 0053](../adr/0053-merged-coverage-check.md))。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
 ## coverage の下限
@@ -100,6 +101,17 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 対象から外すのは、実行環境ごとの入口 (`apps/api/src/server.ts`、トレースを始める `apps/api/src/telemetry.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`)、テストファイル、lint の検出力を確かめる fixture (`apps/api/src/__fixtures__/`) です。fixture はわざと規則に違反する文を持ち、どこからも import されないので、0% と数えられて下限を割ります。`apps/web` は、`src/` の `*.test.ts` (unit) と story (`play`) の両方が通した行を数えます。対象から外すのは、生成物 (`routeTree.gen.ts`)、入口 (`main.tsx`)、story です。`src/routes/` の route も数えます ([Issue #406](https://github.com/yokozi-jp/agent-software-factory/issues/406))。route の HMR 用のコードは、テストでは動かず route のファイルの最後の行が未通過と数えられるので、`vite.config.ts` が `VITEST` の環境変数があるとき (テスト) だけ外します。`packages/ui` の部品は、story で確かめますが coverage には数えません (`packages/ui` に専用のテストは書かない。[ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。
 
 ファイルごとの下限で止まったら、そのファイルの、通っていない行と分岐を確かめるテストを足します。下限を下げたり、ファイルを `exclude` に足したりはしません。テストで通せない分岐 (型のためだけの `??` など) には、理由を添えて `/* v8 ignore next -- <理由> */` を書きます。
+
+### 合わせた検査
+
+project ごとの下限は、その project の `src` だけを数えます。shared-kernel の `tenant-db`、`idempotency-db`、`messaging` は `apps/api/src/db/*.test.ts` が、`approval` の infrastructure は worker のテストが確かめるので、どちらも呼んだ側の下限にも shared-kernel とモジュールの下限にも入りません。そこで、`nx` の job が `nx affected -t check test build` の後に、全ての project の記録を合わせて検査します (`node tools/scripts/src/checks/merged-coverage/cli.ts`)。手で流す方法は[開発コマンド](commands.md)にあります。
+
+- 記録の出し方: `apps/*`、`packages/*`、`packages/*/events` の `test` が、`coverage/coverage-final.json` (Istanbul の形) を書きます。`vite.config.ts` の `coverage` は `allowExternal: true` で、`include` に自分の `src` と `**/{apps,packages}/*/{,events/}src/**/*.{ts,tsx}` を書きます。テストが読み込んだ他の project のファイルも、その記録に入ります。呼ぶ側の `include` にディレクトリや package を足す必要はなく、増えても漏れません。テストのない `approval`、`claim`、`closing`、`ui` も、`passWithNoTests` で 0% の記録を出します。Nx の `test` の `outputs` が記録を指すので、cache から再生した project の記録も残ります。
+- 合わせ方: 同じファイルの記録を、文の位置と分岐の種類と位置を鍵にして足します (Vitest の v8 の記録は、ソースの構文木から作るので、同じソースなら鍵が揃います)。行は、その行から始まる文のどれかが通れば通った行で、分岐は経路ごとに数えます。数えるものがなければ 100% です。
+- 対象のファイル: 記録を出した project (CI では affected なもの) の、`src` の `.ts` と `.tsx` のうち、テスト、`__fixtures__`、`*.gen.ts`、`*.d.ts`、story を除いたもの。shared-kernel を変えると api と worker も affected になるので、その分の記録も入ります。
+- 外すもの: ルートの `coverage-policy.json` の `exceptions` に、パスと理由を書きます。外すものだけを書くので、新しいファイルは黙って漏れません。どの記録にもないファイル (どのテストも読み込まない) は、例外にないと止まります。存在しないファイルや、もともと測らないファイルの行も止まります。下限を超えたファイルの行も止まるので、テストを足したら行を消します。project ごとの `vite.config.ts` の `coverage.exclude` にも、入口のファイルを同じ理由で書いてあります (project ごとの下限が 0% を数えないため)。足すときは両方を直します。
+- 残す下限: project ごとの `perFile` と全体のラチェット (`autoUpdate`) は残し、`thresholds["src/**"]` に移して自分の `src` だけに掛けます。他の project のファイルが全体の値を下げないためです。
+- 局所の実行: `nx run-many -t test` の後に流します。古い `coverage/` のディレクトリがあると、その project も対象になります。`coverage/` は git で管理せず、Nx の cache が `test` の `outputs` として運びます。pre-push にも pre-commit にも入れません (理由は [ADR 0053](../adr/0053-merged-coverage-check.md))。
 
 上がった下限は commit します。CI で書き換わると、「Generated files are committed」の step が `vite.config.ts` の差分を出して失敗します。書き換わった `vite.config.ts` は `test` の target の入力なので、次の実行は Nx の cache を使わずにテストを走らせ直します。
 

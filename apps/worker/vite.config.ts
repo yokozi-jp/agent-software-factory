@@ -1,4 +1,5 @@
 import { defineConfig } from "vite-plus";
+import { ownFilesMinimum, recordCoverage } from "../../vitest-coverage.ts";
 
 // テストの project は 2 つ。integration は src/ のテストで、PostgreSQL、ElasticMQ、Mailpit のコンテナを全テストで共有して一度だけ起動する。
 // unit (`*.unit.test.ts`) はどれも起動しない。入力を渡して結果を見るだけのテストは unit にする。
@@ -34,24 +35,21 @@ export default defineConfig({
     ],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。ファイルごとの下限だけ掛ける。
     coverage: {
-      provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: [
-        "**/*.test.ts",
-        // lint の検出力を確かめる fixture。わざと規則に違反する文を持ち、どこからも import されない。
-        "src/__fixtures__/**",
-        // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは createNotificationHandler と pollQueue と
-        // createLambdaHandler を通す。
-        "src/server.ts",
-        "src/lambda.ts",
-        // 期限切れの冪等キーを消すバッチの入口 (Issue #325)。環境変数を読んで runPurgeJob を 1 回呼ぶだけで、テストは runPurgeJob を通す。
-        "src/purge-idempotency-keys.ts",
-        // 手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS を 1 回呼ぶだけ。
-        "src/local/**",
-        // SES を呼ぶ Layer。SES のモックは作らない (docs/adr/0041)。検証環境の試験で本物の SES を通す。
-        "src/mail/ses.ts",
-      ],
-      thresholds: { perFile: { lines: 90, branches: 90 } },
+      ...recordCoverage({
+        exclude: [
+          // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは createNotificationHandler と pollQueue と
+          // createLambdaHandler を通す。
+          "src/server.ts",
+          "src/lambda.ts",
+          // 期限切れの冪等キーを消すバッチの入口 (Issue #325)。環境変数を読んで runPurgeJob を 1 回呼ぶだけで、テストは runPurgeJob を通す。
+          "src/purge-idempotency-keys.ts",
+          // 手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS を 1 回呼ぶだけ。
+          "src/local/**",
+          // SES を呼ぶ Layer。SES のモックは作らない (docs/adr/0041)。検証環境の試験で本物の SES を通す。
+          "src/mail/ses.ts",
+        ],
+      }),
+      thresholds: ownFilesMinimum,
     },
   },
 });

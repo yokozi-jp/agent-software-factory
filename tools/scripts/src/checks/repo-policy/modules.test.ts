@@ -405,7 +405,7 @@ describe("ADR 0026: the events package of each module", () => {
       `${events("claim")} must have the name "@agent-software-factory/claim-events", the scope and the module and events (docs/adr/0026).`,
       `${events("claim")} must have the exports {".":"./src/index.ts"}, so that another package can import only its src/index.ts (docs/adr/0026).`,
       `packages/claim/events/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
-      `${events("claim")} must have the test script "vp test run", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
+      `${events("claim")} must have the test script "vp test run --coverage", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
       `${events("claim")} must have the Nx project name "claim-events" (nx.name), the module and events (docs/adr/0026).`,
       `${events("claim")} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
     ]);
@@ -421,7 +421,7 @@ describe("ADR 0026: the events package of each module", () => {
         }),
       ),
     ).toEqual([
-      `${events("claim")} must have the test script "vp test run", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
+      `${events("claim")} must have the test script "vp test run --coverage", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
       "packages/claim/events/test/versions.test.ts does not exist. It checks the schemas against the fixtures of the past versions (docs/async/event-contract.md).",
       "packages/claim/events/test/fixtures/ has no <kind>.v<version>.json. Each event has a fixture of its current version (docs/async/event-contract.md).",
     ]);

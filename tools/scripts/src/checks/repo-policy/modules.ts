@@ -245,9 +245,9 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
       failures.push(
         `packages/${module}/events/src/index.ts, the public API that the exports name, does not exist (docs/adr/0026).`,
       );
-    if (record(json.scripts).test !== "vp test run")
+    if (record(json.scripts).test !== "vp test run --coverage")
       failures.push(
-        `${path} must have the test script "vp test run", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
+        `${path} must have the test script "vp test run --coverage", so that Nx runs the check of the past versions of the events (docs/async/event-contract.md).`,
       );
     if (!tree.paths.includes(`packages/${module}/events/test/versions.test.ts`))
       failures.push(

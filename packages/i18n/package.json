@@ -8,7 +8,7 @@
   },
   "scripts": {
     "check": "vp check",
-    "test": "vp test run --exclude \"**/__fixtures__/**\" --exclude \"**/node_modules/**\"",
+    "test": "vp test run --coverage --exclude \"**/__fixtures__/**\" --exclude \"**/node_modules/**\"",
     "i18n-lint": "i18next-cli lint"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "i18next-cli": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"

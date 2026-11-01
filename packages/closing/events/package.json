@@ -8,13 +8,14 @@
   },
   "scripts": {
     "check": "vp check",
-    "test": "vp test run"
+    "test": "vp test run --coverage"
   },
   "dependencies": {
     "@agent-software-factory/shared-kernel": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },

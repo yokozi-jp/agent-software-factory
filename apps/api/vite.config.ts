@@ -1,5 +1,6 @@
 import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite-plus";
+import { recordCoverage } from "../../vitest-coverage.ts";
 
 // テストの project は 2 つ。integration は src/ のテストで、PostgreSQL のコンテナとテスト用 IdP (test/oidc-provider.ts) を、全テストで共有して
 // 一度だけ起動する。unit (`*.unit.test.ts`) はどちらも起動しない。入力を渡して結果を見るだけのテストは unit にする。
@@ -45,30 +46,29 @@ export default defineConfig({
     ],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。下限を割ったら、そのファイルのテストを足す。
     coverage: {
-      provider: "v8",
-      // テストのない新しいファイルも数え、ファイルごとの下限で止める。
-      include: ["src/**/*.ts"],
-      exclude: [
-        "**/*.test.ts",
-        // lint の検出力を確かめる fixture (docs/adr/0007、0026)。わざと規則に違反する文を持ち、どこからも import されない。
-        "src/__fixtures__/**",
-        // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。
-        "src/server.ts",
-        // トレースを始める入口 (server.ts が最初に import する)。環境変数を読んで startTelemetry を呼ぶだけで、
-        // 計装の試験は src/tracing.unit.test.ts と packages/telemetry にある。
-        "src/telemetry.ts",
-        // vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。
-        "src/index.ts",
-      ],
+      ...recordCoverage({
+        exclude: [
+          // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。
+          "src/server.ts",
+          // トレースを始める入口 (server.ts が最初に import する)。環境変数を読んで startTelemetry を呼ぶだけで、
+          // 計装の試験は src/tracing.unit.test.ts と packages/telemetry にある。
+          "src/telemetry.ts",
+          // vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。
+          "src/index.ts",
+        ],
+      }),
       thresholds: {
-        // ファイルごとの固定の下限。
-        perFile: { lines: 90, branches: 90 },
-        // 全体の値は上がる方向にだけ動く。上回った実行が、切り捨てた新しい値をここに書く。書き換わったら commit する。
         autoUpdate: (newThreshold: number) => Math.floor(newThreshold),
-        lines: 100,
-        branches: 100,
-        functions: 100,
-        statements: 100,
+        // この project の src だけに下限を掛ける。他の project のファイルは CI の合わせた検査が見る。
+        "src/**": {
+          // ファイルごとの固定の下限。
+          perFile: { lines: 90, branches: 90 },
+          // 全体の値は上がる方向にだけ動く。上回った実行が、切り捨てた新しい値をここに書く。書き換わったら commit する。
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
       },
     },
   },

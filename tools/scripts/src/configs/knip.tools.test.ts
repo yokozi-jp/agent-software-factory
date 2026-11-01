@@ -39,6 +39,8 @@ const rootFiles = [
   "tsconfig.json",
 ];
 const rootCode = /^[^.].*\.(js|cjs|mjs|jsx|ts|cts|mts|tsx)$/;
+// The vite.config.ts of the projects import it (docs/adr/0053); the small apps have none, so Knip would find no importer.
+const notCopied = new Set(["vitest-coverage.ts"]);
 const folders = ["tools", ".github/workflows", ".kiro/settings/mcp.json"];
 // Not copied: what git ignores, which Knip does not read either.
 const skipped = new Set([
@@ -248,7 +250,7 @@ const put = (path: string, text: string): void => {
 function populate(): void {
   mkdirSync(copy, { recursive: true });
   for (const name of readdirSync(workspace))
-    if (rootFiles.includes(name) || rootCode.test(name))
+    if ((rootFiles.includes(name) || rootCode.test(name)) && !notCopied.has(name))
       cpSync(join(workspace, name), join(copy, name));
   for (const folder of folders)
     if (existsSync(join(workspace, folder)))

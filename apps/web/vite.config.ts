@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite-plus";
+import { recordCoverage } from "../../vitest-coverage.ts";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 // coverage の全体の値を、切り捨てて書き戻す (docs/tooling/ci.md ("coverage の下限"))。apps/api の vite.config.ts に同じ
@@ -98,28 +99,25 @@ export default defineConfig({
     reporters: ["default", "./test/a11y-warnings-reporter.ts"],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。unit と storybook の両方が通した行を数える。
     coverage: {
-      provider: "v8",
-      // テストのない新しいファイルも数え、ファイルごとの下限で止める。
-      include: ["src/**/*.{ts,tsx}"],
-      exclude: [
-        "**/*.test.ts",
-        "**/*.stories.tsx",
-        // lint の検出力を確かめる fixture (docs/adr/0026)。わざと規則に違反する文を持ち、どこからも import されない。
-        "src/__fixtures__/**",
-        // 実行環境ごとの入口。i18n の初期化と router を作って描画するだけで、story では通らない。
-        "src/main.tsx",
-        // TanStack Router の plugin が書く生成物 (commit している)。
-        "src/routeTree.gen.ts",
-      ],
+      ...recordCoverage({
+        own: "src/**/*.{ts,tsx}",
+        exclude: [
+          // 実行環境ごとの入口。i18n の初期化と router を作って描画するだけで、story では通らない。
+          "src/main.tsx",
+        ],
+      }),
       thresholds: {
-        // ファイルごとの固定の下限。
-        perFile: { lines: 90, branches: 90 },
-        // 全体の値は上がる方向にだけ動く。上回った実行が、切り捨てた新しい値を下に書く。書き換わったら commit する。
         autoUpdate: floorThreshold,
-        statements: 100,
-        lines: 100,
-        functions: 100,
-        branches: 100,
+        // この project の src だけに下限を掛ける。他の project のファイルは CI の合わせた検査が見る。
+        "src/**": {
+          // ファイルごとの固定の下限。
+          perFile: { lines: 90, branches: 90 },
+          // 全体の値は上がる方向にだけ動く。上回った実行が、切り捨てた新しい値を下に書く。書き換わったら commit する。
+          statements: 100,
+          lines: 100,
+          functions: 100,
+          branches: 100,
+        },
       },
     },
   },
