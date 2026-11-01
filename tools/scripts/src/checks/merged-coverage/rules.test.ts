@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
+  addFile,
   isMeasured,
   mergeFileCoverage,
   parseFileCoverage,
@@ -142,6 +143,17 @@ describe("mergeFileCoverage", () => {
   it("keeps the paths of the first record when the second has fewer for a branch", () => {
     const merged = mergeFileCoverage(file([1], [[0, 1, 1]]), file([1], [[1, 0]]));
     expect(summarize(merged).branches).toEqual({ covered: 3, total: 3 });
+  });
+});
+
+describe("addFile", () => {
+  it("keeps the first record of a file, and adds up the next ones", () => {
+    const coverage = new Map<string, FileCoverage>();
+    addFile(coverage, "a.ts", file([1, 0]));
+    expect(summarize(coverage.get("a.ts") ?? file([])).lines).toEqual({ covered: 1, total: 2 });
+
+    addFile(coverage, "a.ts", file([0, 1]));
+    expect(summarize(coverage.get("a.ts") ?? file([])).lines).toEqual({ covered: 2, total: 2 });
   });
 });
 

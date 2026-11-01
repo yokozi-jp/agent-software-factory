@@ -111,7 +111,7 @@ project ごとの下限は、その project の `src` だけを数えます。sh
 - 対象のファイル: 記録を出した project (CI では affected なもの) の、`src` の `.ts` と `.tsx` のうち、テスト、`__fixtures__`、`*.gen.ts`、`*.d.ts`、story を除いたもの。shared-kernel を変えると api と worker も affected になるので、その分の記録も入ります。
 - 外すもの: ルートの `coverage-policy.json` の `exceptions` に、パスと理由を書きます。外すものだけを書くので、新しいファイルは黙って漏れません。どの記録にもないファイル (どのテストも読み込まない) は、例外にないと止まります。存在しないファイルや、もともと測らないファイルの行も止まります。下限を超えたファイルの行も止まるので、テストを足したら行を消します。project ごとの `vite.config.ts` の `coverage.exclude` にも、入口のファイルを同じ理由で書いてあります (project ごとの下限が 0% を数えないため)。足すときは両方を直します。
 - 残す下限: project ごとの `perFile` と全体のラチェット (`autoUpdate`) は残し、`thresholds["src/**"]` に移して自分の `src` だけに掛けます。他の project のファイルが全体の値を下げないためです。
-- 局所の実行: `nx run-many -t test` の後に流します。古い `coverage/` のディレクトリがあると、その project も対象になります。`coverage/` は git で管理せず、Nx の cache が `test` の `outputs` として運びます。pre-push にも pre-commit にも入れません (全 project の `test` を流した後でないと確かめられず、pre-push の `nx affected -t test` と同じ時間がもう一度かかるため)。
+- 局所の実行: `nx run-many -t test` の後に流します。古い `coverage/` のディレクトリがあると、その project も対象になります。`coverage/` は git で管理せず、Nx の cache が `test` の `outputs` として運びます。pre-push にも pre-commit にも入れません (理由は [ADR 0053](../adr/0053-merged-coverage-check.md))。
 
 上がった下限は commit します。CI で書き換わると、「Generated files are committed」の step が `vite.config.ts` の差分を出して失敗します。書き換わった `vite.config.ts` は `test` の target の入力なので、次の実行は Nx の cache を使わずにテストを走らせ直します。
 

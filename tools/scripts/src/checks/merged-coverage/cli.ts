@@ -10,14 +10,14 @@ import { tryGit } from "../git.ts";
 import { isObject } from "../json.ts";
 import {
   isMeasured,
-  mergeFileCoverage,
+  addFile,
   parseFileCoverage,
   parsePolicy,
   violations,
   type FileCoverage,
 } from "./rules.ts";
 
-class Unrunnable extends Error {}
+class CannotRun extends Error {}
 
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"));
 
@@ -37,15 +37,15 @@ function candidates(top: string): string[] {
 
 function main(): string[] {
   const top = tryGit(undefined, ["rev-parse", "--show-toplevel"])?.trim();
-  if (top === undefined) throw new Unrunnable("not in a git repository.");
+  if (top === undefined) throw new CannotRun("not in a git repository.");
   const policy = parsePolicy(readJson(join(top, "coverage-policy.json")));
-  if (typeof policy === "string") throw new Unrunnable(policy);
+  if (typeof policy === "string") throw new CannotRun(policy);
 
   const recordOf = (project: string): string =>
     join(top, project, "coverage", "coverage-final.json");
   const projects = candidates(top).filter((project) => existsSync(recordOf(project)));
   if (projects.length === 0) {
-    throw new Unrunnable(
+    throw new CannotRun(
       "no coverage-final.json under apps/*/coverage or packages/*/coverage. Run `pnpm exec nx affected -t test` first.",
     );
   }
@@ -53,21 +53,20 @@ function main(): string[] {
   const coverage = new Map<string, FileCoverage>();
   for (const project of projects) {
     const record = readJson(recordOf(project));
-    if (!isObject(record)) throw new Unrunnable(`${project}: the record is not an object.`);
+    if (!isObject(record)) throw new CannotRun(`${project}: the record is not an object.`);
     for (const [absolute, value] of Object.entries(record)) {
       const path = relative(top, absolute).replaceAll("\\", "/");
       if (!isMeasured(path)) continue;
       const file = parseFileCoverage(value);
       if (file === undefined) {
-        throw new Unrunnable(`${project}: the record of ${path} is not in Istanbul's format.`);
+        throw new CannotRun(`${project}: the record of ${path} is not in Istanbul's format.`);
       }
-      const before = coverage.get(path);
-      coverage.set(path, before === undefined ? file : mergeFileCoverage(before, file));
+      addFile(coverage, path, file);
     }
   }
 
   const listing = tryGit(top, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
-  if (listing === undefined) throw new Unrunnable("git ls-files failed.");
+  if (listing === undefined) throw new CannotRun("git ls-files failed.");
   const tracked = listing.split("\0").filter((path) => path !== "");
 
   const failures = violations({ policy, tracked, projects, coverage });
@@ -91,7 +90,7 @@ try {
     process.exitCode = 1;
   }
 } catch (error) {
-  if (!(error instanceof Unrunnable)) throw error;
+  if (!(error instanceof CannotRun)) throw error;
   print([`merged-coverage: ${error.message}`]);
   process.exitCode = 2;
 }

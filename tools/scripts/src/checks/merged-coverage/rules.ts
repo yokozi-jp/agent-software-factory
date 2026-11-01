@@ -17,9 +17,15 @@ export interface FileCoverage {
   readonly branches: ReadonlyMap<string, readonly number[]>;
 }
 
+// How many of the things (lines, branch paths) that a file has ran.
+interface Ratio {
+  readonly covered: number;
+  readonly total: number;
+}
+
 export interface Summary {
-  readonly lines: { readonly covered: number; readonly total: number };
-  readonly branches: { readonly covered: number; readonly total: number };
+  readonly lines: Ratio;
+  readonly branches: Ratio;
 }
 
 // The files that count: the code of apps and packages (and the events packages in them), not the tests, the fixtures
@@ -64,6 +70,10 @@ export function parsePolicy(value: unknown): Policy | string {
 const numbers = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === "number");
 
+// The line where an Istanbul location starts.
+const startLine = (location: unknown): unknown =>
+  isObject(location) && isObject(location.start) ? location.start.line : undefined;
+
 // A file of coverage-final.json; undefined when it is not in Istanbul's format.
 export function parseFileCoverage(value: unknown): FileCoverage | undefined {
   if (!isObject(value)) return undefined;
@@ -74,7 +84,7 @@ export function parseFileCoverage(value: unknown): FileCoverage | undefined {
   const statements = new Map<string, { line: number; hits: number }>();
   for (const [id, location] of Object.entries(statementMap)) {
     const hits = s[id];
-    const line = isObject(location) && isObject(location.start) ? location.start.line : undefined;
+    const line = startLine(location);
     if (typeof hits !== "number" || typeof line !== "number") return undefined;
     const key = JSON.stringify(location);
     statements.set(key, { line, hits: (statements.get(key)?.hits ?? 0) + hits });
@@ -124,16 +134,24 @@ export function summarize(file: FileCoverage): Summary {
 }
 
 // Whether covered/total reaches the percentage. Nothing to count is 100%, as in Vitest. Integers only: no rounding.
-const reaches = (
-  { covered, total }: { covered: number; total: number },
-  percent: number,
-): boolean => total === 0 || covered * 100 >= percent * total;
+const reaches = ({ covered, total }: Ratio, percent: number): boolean =>
+  total === 0 || covered * 100 >= percent * total;
 
 const meetsMinimum = (summary: Summary, minimum: Policy["minimum"]): boolean =>
   reaches(summary.lines, minimum.lines) && reaches(summary.branches, minimum.branches);
 
-const percent = ({ covered, total }: { covered: number; total: number }): string =>
+const percent = ({ covered, total }: Ratio): string =>
   total === 0 ? "100" : (Math.floor((covered / total) * 10_000) / 100).toString();
+
+// Adds one file of a record to the merged coverage of the repository.
+export function addFile(
+  coverage: Map<string, FileCoverage>,
+  path: string,
+  file: FileCoverage,
+): void {
+  const before = coverage.get(path);
+  coverage.set(path, before === undefined ? file : mergeFileCoverage(before, file));
+}
 
 export interface Input {
   readonly policy: Policy;

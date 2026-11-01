@@ -13,8 +13,10 @@ import { defineConfig } from "vite-plus";
 // `exclude` has what is never measured (the same list as `isMeasured` in tools/scripts/src/checks/merged-coverage/rules.ts)
 // and the entry files of the project, which only its own minimum needs (`thresholds["src/**"]`): the merged check reads
 // the exceptions from coverage-policy.json.
+const ownFiles = "src/**/*.ts";
+
 export function recordCoverage({
-  own = "src/**/*.ts",
+  own = ownFiles,
   exclude = [],
 }: {
   readonly own?: string;
@@ -42,10 +44,10 @@ export const ownFilesMinimum = { "src/**": { perFile: { lines: 90, branches: 90 
 // The vite.config.ts of a project that has no minimum of its own and only writes its record: the modules (their code is run by
 // apps/api and apps/worker), the events packages (their tests are in test/) and ui (its stories run in apps/web).
 // `passWithNoTests` lets a project without tests write a record at 0%.
-export const recordOnlyConfig = (own?: string) =>
+export const recordOnlyConfig = (own: string = ownFiles) =>
   defineConfig({
     test: {
       passWithNoTests: true,
-      coverage: recordCoverage(own === undefined ? {} : { own }),
+      coverage: recordCoverage({ own }),
     },
   });
