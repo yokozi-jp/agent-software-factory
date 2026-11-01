@@ -1,4 +1,5 @@
-// The checks of the dependencies between the modules (./modules.ts), each called on a small repository held in memory: a case breaks one file of
+// The checks of the dependencies between the modules
+// (./modules.ts), each called alone on a small repository held in memory: a case breaks one file of
 // a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import {

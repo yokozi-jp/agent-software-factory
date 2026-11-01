@@ -1,5 +1,5 @@
-// The checks of the stories of packages/ui (./ui-stories.ts), each called on a small repository held in memory: a case breaks one file of
-// a repository that passes, and expects the message that names the problem.
+// The checks of the stories of packages/ui (./ui-stories.ts), each called alone on a small repository held in memory:
+// a case breaks one file of a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import { failuresOf, repo } from "./fixtures/repo.ts";
 import { uiComponentsHaveStories } from "./ui-stories.ts";

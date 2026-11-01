@@ -1,4 +1,5 @@
-// The checks of tool settings and repository files (./tooling.ts), each called on a small repository held in memory: a case breaks one file of
+// The checks of tool settings and repository files
+// (./tooling.ts), each called alone on a small repository held in memory: a case breaks one file of
 // a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import { apiDependencies, migration, passingRepo } from "./fixtures/passing-repo.ts";
@@ -590,7 +591,7 @@ describe("the pnpm catalog has no workspace packages", () => {
   });
 });
 
-// The edges of each check: inputs just inside and just outside what it matches.
+// The edges of nxRunsTasks: inputs just inside and just outside what it matches.
 describe("ADR 0002: the edges", () => {
   const violations = failuresOf(nxRunsTasks);
   it("refuses @nx/vite in the root package.json", () => {

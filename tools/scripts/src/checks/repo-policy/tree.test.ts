@@ -1,5 +1,5 @@
 // The tree the rules read: a file that does not parse is reported once and reads as empty, and the paths asked for
-// are recorded (lefthook-inputs.test.ts compares them with the glob of the pre-commit job).
+// are recorded (lefthook-inputs.tools.test.ts compares them with the glob of the pre-commit job).
 import { describe, expect, it } from "vite-plus/test";
 import { repo } from "./fixtures/repo.ts";
 import { Tree } from "./tree.ts";

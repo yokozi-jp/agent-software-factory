@@ -1,4 +1,5 @@
-// The checks of references to docs/ and to the code (./docs-references.ts), each called on a small repository held in memory: a case breaks one file of
+// The checks of references to docs/ and to the code
+// (./docs-references.ts), each called alone on a small repository held in memory: a case breaks one file of
 // a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import { passingRepo } from "./fixtures/passing-repo.ts";

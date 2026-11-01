@@ -1,5 +1,5 @@
-// The checks of CI workflows (./ci.ts), each called on a small repository held in memory: a case breaks one file of
-// a repository that passes, and expects the message that names the problem.
+// The checks of CI workflows (./ci.ts), each called alone on a small repository held in memory:
+// a case breaks one file of a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import { passingRepo } from "./fixtures/passing-repo.ts";
 import { failuresOf, repo } from "./fixtures/repo.ts";

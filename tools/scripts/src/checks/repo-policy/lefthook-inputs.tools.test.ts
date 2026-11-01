@@ -1,4 +1,4 @@
-// Every file a rule of repo-policy reads by name must be in the glob of the pre-commit job `repo-policy` in
+// Every file a rule of repo-policy reads must be in the glob of the pre-commit job `repo-policy` in
 // lefthook.yml. Otherwise a commit that changes only that file skips the check, and the failure surfaces in CI (#515:
 // compose.local.yaml was read by onePostgresVersion but missing from the glob).
 // The paths are the ones the rules asked the Tree for (read, maybe, parsed, named) while checking passing-repo, so a

@@ -1,4 +1,5 @@
-// The checks of the fixtures that show a lint rule, a tsconfig flag, a layer or an Effect rule is on (./lint-fixtures.ts), each called on a small repository held in memory: a case breaks one file of
+// The checks of the fixtures that show a lint rule, a tsconfig flag, a layer or an Effect rule is on
+// (./lint-fixtures.ts), each called alone on a small repository held in memory: a case breaks one file of
 // a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import {
