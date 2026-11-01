@@ -2,9 +2,11 @@
 // (#567, docs/tooling/ci.md ("coverage の下限")). Run from the repository root after `nx affected -t test` (CI), or by hand:
 //   node tools/scripts/src/checks/merged-coverage/cli.ts
 // A project is in scope when it wrote coverage/coverage-final.json, so only the affected projects count in CI. Exit codes:
-// 0 passes, 1 a file is under the minimum or an exception is wrong, 2 the check could not run (no record, bad policy).
+// 0 passes (also when no affected project runs tests, so there is no record), 1 a file is under the minimum or an
+// exception is wrong, 2 the check could not run (no record although tests were affected, bad policy).
 // The rules are in rules.ts; this file reads the files and prints.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join, relative } from "node:path";
 import { tryGit } from "../git.ts";
 import { isObject } from "../json.ts";
@@ -35,6 +37,21 @@ function candidates(top: string): string[] {
   ];
 }
 
+// The projects that nx would run `test` for in this change, or undefined when nx cannot say. A change that touches no
+// project (docs only) has none: `nx affected -t test` then writes no record, and that is not a failure.
+function affectedTestProjects(top: string): string[] | undefined {
+  const result = spawnSync(
+    "pnpm",
+    ["exec", "nx", "show", "projects", "--affected", "--with-target", "test"],
+    {
+      cwd: top,
+      encoding: "utf8",
+    },
+  );
+  if (result.status !== 0) return undefined;
+  return result.stdout.split("\n").filter((line) => line.trim() !== "");
+}
+
 function main(): string[] {
   const top = tryGit(undefined, ["rev-parse", "--show-toplevel"])?.trim();
   if (top === undefined) throw new CannotRun("not in a git repository.");
@@ -45,6 +62,12 @@ function main(): string[] {
     join(top, project, "coverage", "coverage-final.json");
   const projects = candidates(top).filter((project) => existsSync(recordOf(project)));
   if (projects.length === 0) {
+    if (affectedTestProjects(top)?.length === 0) {
+      process.stdout.write(
+        "merged-coverage: no affected project has a test target; nothing to check.\n",
+      );
+      return [];
+    }
     throw new CannotRun(
       "no coverage-final.json under apps/*/coverage or packages/*/coverage. Run `pnpm exec nx affected -t test` first.",
     );
