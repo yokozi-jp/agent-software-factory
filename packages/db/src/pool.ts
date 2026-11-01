@@ -1,3 +1,4 @@
+import { Kysely, PostgresDialect } from "kysely";
 import { Pool, TypeOverrides, type PoolConfig } from "pg";
 
 // PostgreSQL の型の OID。
@@ -52,3 +53,21 @@ export const poolTimeouts = {
 export function createPool(config: PoolConfig): Pool {
   return new Pool({ ...poolTimeouts, ...config, types: temporalTypes() });
 }
+
+/**
+ * The pool of `createPool`, as the Kysely that `Database` of shared-kernel carries (docs/adr/0028). Every module uses this
+ * one pool; the module's `Tx` picks the role of a transaction (docs/adr/0029). The entry makes it and closes it
+ * (`Kysely.destroy`), and the `Layer` only wraps it (docs/domain-model/application-effect.md).
+ */
+export const createDatabase = (config: {
+  readonly connectionString: string;
+  readonly max?: number | undefined;
+}): Kysely<never> =>
+  new Kysely<never>({
+    dialect: new PostgresDialect({
+      pool: createPool({
+        connectionString: config.connectionString,
+        ...(config.max === undefined ? {} : { max: config.max }),
+      }),
+    }),
+  });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { WorkerEnv } from "./env.ts";
-import { createDatabase, createWorker, mailLayer } from "./runtime.ts";
+import { createWorker, mailLayer } from "./runtime.ts";
 
 const common = {
   APP_DATABASE_URL: "postgres://app_user@127.0.0.1:1/none",
@@ -18,14 +18,6 @@ describe("メールの Layer の選び方", () => {
   it("SES と SMTP のどちらの設定でも、Layer を作れること (送信はしない)", () => {
     expect(mailLayer({ ...common, MAIL_TRANSPORT: "ses" })).toBeDefined();
     expect(mailLayer(smtp)).toBeDefined();
-  });
-});
-
-describe("DB の pool", () => {
-  it("pool の上限を渡さなくても作れて、閉じられること (pool は最初のクエリまで接続しない)", async () => {
-    const db = createDatabase({ connectionString: common.APP_DATABASE_URL });
-
-    await expect(db.destroy()).resolves.toBeUndefined();
   });
 });
 

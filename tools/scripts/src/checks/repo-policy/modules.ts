@@ -299,11 +299,12 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
 const moduleTag = "type:module";
 const addModuleGuide = "docs/domain-model/add-module.md";
 const apiManifest = "apps/api/package.json";
-const apiFiles = ["apps/api/src/db/databases.ts", "apps/api/src/app.ts"];
+const apiApp = "apps/api/src/app.ts";
 
 // Every package that has the tag is in moduleOrder, and every name of moduleOrder is a package that has the tag.
-// A tagged module is also a dependency of apps/api, and databases.ts and app.ts import it: a module copied from
-// another and left out of one of these has no database, or no route, and nothing else says so (docs/adr/0026).
+// A tagged module is also a dependency of apps/api, and app.ts imports it: a module copied from
+// another and left out of one of these has no route, and nothing else says so (docs/adr/0026). The database of a
+// module needs no registration: the module's Tx picks its role on the one pool of the runtime (docs/adr/0029).
 export function modulesAreRegistered(tree: Tree): string[] {
   const failures: string[] = [];
   const guide = `Follow ${addModuleGuide}.`;
@@ -328,11 +329,10 @@ export function modulesAreRegistered(tree: Tree): string[] {
         `${apiManifest} must have ${scope}/${name}: "workspace:*" in dependencies, since packages/${name} has the tag ${moduleTag}. ${guide}`,
       );
     const importPattern = new RegExp(`(?:from|import)\\s*["']${scope}/${name}["']`);
-    for (const path of apiFiles)
-      if (!importPattern.test(tree.read(path)))
-        failures.push(
-          `${path} must import ${scope}/${name}, since packages/${name} has the tag ${moduleTag}. ${guide}`,
-        );
+    if (!importPattern.test(tree.read(apiApp)))
+      failures.push(
+        `${apiApp} must import ${scope}/${name}, since packages/${name} has the tag ${moduleTag}. ${guide}`,
+      );
   }
   return failures;
 }

@@ -28,7 +28,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 - **Oxlint**: `packages/db/src/**` では、入口のファイルと同じく ADR 0007 のランタイムの制限 (`process` など) と `import/no-nodejs-modules` を外します。migration を流す `child_process` と、テストの `process` を使うためです。深い import の禁止は残します。workspace の package からの値の import は `no-restricted-imports` の `allowTypeImports` で止め、`import type` だけを通します。`packages/db/src/__fixtures__/db-imports.ts` が、値の import が止まること、`import type` と `node:child_process` が通ることを確かめ、repo-policy が禁止の表 (`lint-restrictions.json` の `db-imports`、[ADR 0050](0050-lint-restrictions-table-in-json.md)) と fixture が合うことを確かめます。
 - **テストの道具の import**: `apps/api/src` の本番のコードは `@agent-software-factory/db/testing` と `./seed` を import できません (深い import として止まります)。`apps/api/src/**/*.test.ts` と `apps/worker/src/**/*.test.ts` だけが、この 2 つの subpath を import できます。
 - **Nx の target**: `db:migrate`、`db-types`、`db-types-check`、`test`、`check` は `db` の project にあります。`db-types` は `pnpm exec nx db-types db`。`test` は Vitest で、PostgreSQL のコンテナを起動する globalSetup を `db` が持ちます。ファイルごとの coverage の下限 (lines と branches が 90%) を `db` にも掛けます。全体の下限のラチェットは掛けません。`import.meta.main` の CLI の部分は、テストが関数を呼ぶので coverage の対象から外します (`/* v8 ignore */`)。
-- **残すテスト**: `tenant-transaction.test.ts` と `databases.ts` は `apps/api` のコード (`createModuleDatabases`) を試すので、`apps/api` に残します。`migrate.test.ts` と `types.test.ts` は `db` に移しました。
+- **残すテスト**: `tenant-transaction.test.ts` は `apps/api` に残します。`createModuleDatabases` (`databases.ts`) は、使われていなかったので [Issue #566](https://github.com/yokozi-jp/agent-software-factory/issues/566) で消しました。`migrate.test.ts` と `types.test.ts` は `db` に移しました。
 
 ## Considered Options
 

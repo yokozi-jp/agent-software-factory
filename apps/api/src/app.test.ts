@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { memoryLogger } from "../test/memory-logger.ts";
-import { app, createApp } from "./app.ts";
+import { app } from "./app.ts";
+import { appWithoutDatabase } from "../test/app-without-database.ts";
 
 describe("ヘルスチェック (GET /health)", () => {
   it("ok を返すこと", async () => {
@@ -68,7 +69,7 @@ describe("エラー応答 (docs/adr/0035)", () => {
 
   it("予期しない例外は、メッセージを出さない about:blank の 500 にすること", async () => {
     const { logger, lines } = memoryLogger();
-    const failing = createApp({ logger });
+    const failing = appWithoutDatabase({ logger });
     failing.get("/boom", () => {
       throw new Error("password=hunter2");
     });

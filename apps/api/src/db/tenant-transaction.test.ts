@@ -15,7 +15,6 @@ import { Cause, Data, Effect, Exit, type Duration } from "effect";
 import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { createModuleDatabases, type ModuleDatabases } from "./databases.ts";
 import { useDatabase, writer } from "../../test/use-database.ts";
 
 // shared のトランザクションの関数 (inTenantTransaction、dbCall、dbCallUnique) と、モジュールの最初の表 claim.t_claim の RLS
@@ -566,26 +565,5 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
     await expect(run(query("closing", sql`SELECT * FROM auth."user"`))).rejects.toThrow(
       /permission denied for table user/,
     );
-  });
-});
-
-describe("モジュールの DB (createModuleDatabases)", () => {
-  let db: TestDatabase;
-
-  beforeEach(async () => {
-    db = await createTestDatabase();
-  });
-
-  afterEach(async () => {
-    await db.close();
-  });
-
-  it("どのモジュールの DB も、同じ app_user の接続で SQL を流せること", async () => {
-    const databases: ModuleDatabases = createModuleDatabases(db.appUser);
-
-    for (const database of [databases.claim, databases.approval, databases.closing]) {
-      const { rows } = await sql<{ role: string }>`SELECT current_user AS role`.execute(database);
-      expect(rows).toEqual([{ role: "app_user" }]);
-    }
   });
 });
