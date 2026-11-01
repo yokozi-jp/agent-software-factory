@@ -5,7 +5,7 @@
 name: agent-software-factory-local
 services:
   postgres:
-    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
+    image: postgres:18@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
     environment:
       POSTGRES_DB: app
       # superuser のパスワード。ローカルの 127.0.0.1 にだけ開く使い捨ての DB で、本物の秘密ではない。
