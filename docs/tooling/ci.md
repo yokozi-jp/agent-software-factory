@@ -118,9 +118,9 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 既存の repo-policy に規則を 1 つ足すだけなら、上の 1 から 3 と 7 は済んでいます。直す場所は次の 5 つです (PR #538 が例です)。
 
 - `tools/scripts/src/checks/repo-policy/` の、主題に合う `*.ts` (規則の置き場は `rules.ts` の先頭のコメント) に規則を書き、`rules.ts` の `violations` に並べます。
-- 規則が名前で読むファイル (`tree.read("…")`、`tree.parsed("…")`、`tree.named("…")`) を、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。足し忘れは `lefthook-inputs.test.ts` が止めます。
+- 規則が読むファイルを、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。`Tree` の `read`、`maybe`、`parsed`、`named` は、規則が読もうとした path を記録します (ファイルがなくても記録します)。`lefthook-inputs.tools.test.ts` が、`passing-repo` に対して記録した path を `glob` と突き合わせて、足し忘れを止めます。path を変数で作っても記録されます。ファイルの内容は `Tree` を通して読みます (`tree.repo.read` は使いません)。
 - `fixtures/passing-repo.ts` に、規則を通す最小のファイルを足します。
-- `rules.test.ts` に、止める入力と通す入力のテストを足します。
+- 主題に合う `<主題>.test.ts` (`tooling.test.ts`、`modules.test.ts` など。`*.ts` と同じ名前) に、止める入力と通す入力のテストを足します。`fixtures/repo.ts` の `failuresOf(規則)` でその規則だけを呼び、期待する message は、その規則の失敗だけを並べます。`violations` を通すテストは、`rules.test.ts` の「`passing-repo` では失敗がない」だけです。
 - この文書の repo-policy の項に、確かめる内容を足します。
 
 ## lint の規則と tsconfig のフラグの fixture
@@ -195,7 +195,7 @@ repo-policy は次の欠けを止めます。どれも、表の行か fixture �
 - `src/sh/<名前>.tools.test.ts` は、同じラッパーを本物の道具で動かします (shellcheck、jactionlint と zizmor、OSV-Scanner、Renovate、Spectral と oasdiff)。`src/configs/*.tools.test.ts` は、ラッパーを持たない道具 (jscpd、Knip、markdownlint-cli2、commitlint) と、`ci.yml` の step を、このリポジトリの本物の設定で確かめます。Knip のテストは、設定が読む root のファイルと `tools/` を sandbox にコピーし、`apps/` はテストの中に書いた小さなアプリで置き換えて動かします。本物のアプリを読むと、アプリだけを変えた PR で `scripts` が affected になり、`tools/scripts` のテストが走ってしまうためです。このため、`knip.jsonc` の `workspaces` に `entry` を足したり、アプリの構成を変えたりしたら、`tools/scripts/src/configs/knip.tools.test.ts` の小さなアプリにも、その `entry` が指すファイルを足します。`entry` を書くと Knip の既定の entry が外れるので、既定の entry だったファイルへのつながり (`apps/web` なら `index.html` の `<script>`) も要ります。足さないと、このテストが「設定の hint」か「未使用のファイル」で落ちます。落ちるのは pre-push の約 1 分後で、pre-commit では分かりません。
 - `runIn` は `HOME` を sandbox にします。mise のディレクトリの既定は `HOME` の下なので ([mise の Directories](https://mise.jdx.dev/directories.html))、そのままだと `mise exec` は sandbox の中に道具をすべて入れ直します (2026-10-26 に mise 2026.10.17 で確かめ、約 70 秒かかりました)。`*.tools.test.ts` は `miseDirs()` (`src/test/sandbox.ts`) を `runIn` に渡し、`mise install --locked` で入れた道具を使います。
 - Stryker は、変更する対象を import するテストを project に関係なく sandbox のコピーで走らせます。本物のワークスペースを読む `tools` の project は、Stryker の実行中 (`STRYKER_MUTATOR_WORKER`) は `include` を空にして外します (`vite.config.ts`)。
-- `mutation` は生き残った mutant が 1 つでもあると失敗します (`break` が 100)。PR の CI では動かないので、`rules.ts` を変えたら push の前に、そのファイルだけを手元で変異させます。`tools/scripts` で `pnpm exec stryker run --mutate src/checks/<名前>/rules.ts` を実行し、出力の `[Survived]` の行が、消すか書き換えても通ってしまったコードです。小さい `rules.ts` なら数秒で終わります。最初の実行は、`rules.ts` が大きいと十数分かかります (`repo-policy` で約 13〜19 分、他のセッションが動いていて load average が 20 前後のとき)。出力は `> /tmp/stryker.log 2>&1` でファイルに出し、`All files` の行と `[Survived]` の行を読みます。結果は `reports/stryker-incremental.json` (git では無視) に残り、次の実行で変わらない mutant は再利用されます。
+- `mutation` は生き残った mutant が 1 つでもあると失敗します (`break` が 100)。PR の CI では動かないので、`rules.ts` を変えたら push の前に、そのファイルだけを手元で変異させます。`tools/scripts` で `pnpm exec stryker run --mutate src/checks/<名前>/rules.ts` を実行し、出力の `[Survived]` の行が、消すか書き換えても通ってしまったコードです。小さい `rules.ts` なら数秒で終わります。規則が主題ごとのファイルにある `repo-policy` は、`--mutate 'src/checks/repo-policy/!(*.test|cli).ts'` で規則のファイルをまとめて変異させます。最初の実行は、`rules.ts` が大きいと十数分かかります (`repo-policy` で約 13〜19 分、他のセッションが動いていて load average が 20 前後のとき)。出力は `> /tmp/stryker.log 2>&1` でファイルに出し、`All files` の行と `[Survived]` の行を読みます。結果は `reports/stryker-incremental.json` (git では無視) に残り、次の実行で変わらない mutant は再利用されます。
   生き残った mutant は、その違いで失敗するテストを足して殺します。振る舞いが変わらない mutant (等価な mutant) は、同じ値を返す書き方にコードを直すか、その行の前に `// Stryker disable next-line <mutator>: equivalent, <理由>` を書きます。
 - アプリだけを変えた PR では、`tools/scripts` のテストは走りません。`ci.yml` の `nx` の job の「An app change does not affect tools/scripts」の step が、`apps/api` と `apps/web` のファイルを変えたときに `scripts` が affected にならないことを確かめます。`tools/scripts` の target が、アプリのコードに及ぶ `inputs` を宣言すると、この step が失敗します。
 

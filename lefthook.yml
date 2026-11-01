@@ -47,6 +47,9 @@ pre-commit:
               - ".betterleaks.toml"
               - "mise.toml"
               - ".kiro/steering/**"
+              # The permissions of the agents (docs/tooling/agent-permissions.md).
+              - ".kiro/agents/**"
+              - ".kiro/settings/**"
               - "tools/scripts/src/checks/repo-policy/**"
               # The Node.js major (docs/adr/0013). The catalog also pins the parsers that repo-policy uses.
               - ".node-version"
@@ -61,6 +64,9 @@ pre-commit:
               - "**/*.ts"
               # The PostgreSQL tag of compose and postgresImage must agree (Issue #515).
               - "compose.local.yaml"
+              # The fixtures of the past versions of each event (docs/async/event-contract.md), and the migrations (docs/adr/0025).
+              - "packages/*/events/test/fixtures/**"
+              - "packages/db/migrations/**"
             # Check what is staged, so unstaged edits to other files cannot fail the commit.
             run: node tools/scripts/src/checks/repo-policy/cli.ts staged
 

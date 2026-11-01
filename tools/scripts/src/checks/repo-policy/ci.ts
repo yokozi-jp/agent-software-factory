@@ -6,7 +6,7 @@ import { Tree, isRecord, list, record, text } from "./tree.ts";
 // `needs` is a job id or a list of them (GitHub Docs, workflow syntax, `jobs.<job_id>.needs`).
 export function mainNeedsEveryJob(tree: Tree): string[] {
   const ci = ".github/workflows/ci.yml";
-  if (tree.repo.read(ci) === undefined)
+  if (tree.maybe(ci) === undefined)
     return [
       `${ci} does not exist. Its main job is the required status check (docs/tooling/ci.md ("ci.yml の検証")).`,
     ];
