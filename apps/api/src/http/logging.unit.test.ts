@@ -6,11 +6,10 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
 import { describe, expect, it } from "vite-plus/test";
 
-import { createApp } from "../app.ts";
-import { runtimeWithoutDatabase } from "../runtime.ts";
 import type { Auth } from "../auth/auth.ts";
 import { memoryLogger } from "../../test/memory-logger.ts";
 import { validationHook } from "./validation-hook.ts";
+import { appWithoutDatabase } from "../../test/app-without-database.ts";
 import {
   accessLog,
   logUnexpectedError,
@@ -54,12 +53,9 @@ const signedIn = () =>
 describe("アクセスログ (docs/logging/web-api.md)", () => {
   it("要求時と応答時の両方を info で出し、同じ http.request.id を付ける", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({ runtime: runtimeWithoutDatabase(), logger }).request(
-      "/not-found",
-      {
-        headers: { "user-agent": "vitest/1" },
-      },
-    );
+    const res = await appWithoutDatabase({ logger }).request("/not-found", {
+      headers: { "user-agent": "vitest/1" },
+    });
 
     expect(res.status).toBe(404);
     const [received, completed, ...rest] = lines();
@@ -86,14 +82,14 @@ describe("アクセスログ (docs/logging/web-api.md)", () => {
 
   it("/health は出さない", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/health");
+    const res = await appWithoutDatabase({ logger }).request("/health");
     expect(res.status).toBe(200);
     expect(lines()).toEqual([]);
   });
 
   it("OPTIONS は出す", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/health2", {
+    await appWithoutDatabase({ logger }).request("/health2", {
       method: "OPTIONS",
     });
     expect(lines().map((line) => line["http.request.method"])).toEqual(["OPTIONS", "OPTIONS"]);
@@ -101,7 +97,7 @@ describe("アクセスログ (docs/logging/web-api.md)", () => {
 
   it("クエリ文字列と client.address は出さない", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/a?code=secret-code", {
+    await appWithoutDatabase({ logger }).request("/a?code=secret-code", {
       headers: { "x-forwarded-for": "192.0.2.1" },
     });
     const text = JSON.stringify(lines());
@@ -112,7 +108,7 @@ describe("アクセスログ (docs/logging/web-api.md)", () => {
 
   it("user_agent がなければキーを付けない", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/a");
+    await appWithoutDatabase({ logger }).request("/a");
     expect(lines()[0]).not.toHaveProperty("user_agent.original");
   });
 });
@@ -120,7 +116,7 @@ describe("アクセスログ (docs/logging/web-api.md)", () => {
 describe("リクエストの ID", () => {
   it("形が合う X-Request-Id はそのまま使う", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/a", {
+    await appWithoutDatabase({ logger }).request("/a", {
       headers: { "x-request-id": "req-abc_1.2" },
     });
     for (const line of lines()) expect(line["http.request.id"]).toBe("req-abc_1.2");
@@ -128,7 +124,7 @@ describe("リクエストの ID", () => {
 
   it("形が合わない X-Request-Id は使わず、採番する (ログの汚染を避ける)", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/a", {
+    await appWithoutDatabase({ logger }).request("/a", {
       headers: { "x-request-id": "bad id with spaces" },
     });
     expect(lines()[0]?.["http.request.id"]).toMatch(/^[0-9a-f-]{36}$/);
@@ -138,11 +134,7 @@ describe("リクエストの ID", () => {
 describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
   it("401 は理由つきで info に残し、event.category は authentication", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({
-      runtime: runtimeWithoutDatabase(),
-      logger,
-      auth: fakeAuth(signedOut),
-    }).request("/api/me");
+    const res = await appWithoutDatabase({ logger, auth: fakeAuth(signedOut) }).request("/api/me");
 
     expect(res.status).toBe(401);
     const rejected = lines().find((line) => line["message"] === "request rejected");
@@ -160,15 +152,14 @@ describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
 
   it("403 (CSRF の Origin) は event.category が iam", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({
-      runtime: runtimeWithoutDatabase(),
-      logger,
-      auth: fakeAuth(signedOut),
-    }).request("/api/anything", {
-      method: "POST",
-      headers: { origin: "https://evil.example", "content-type": "application/json" },
-      body: "{}",
-    });
+    const res = await appWithoutDatabase({ logger, auth: fakeAuth(signedOut) }).request(
+      "/api/anything",
+      {
+        method: "POST",
+        headers: { origin: "https://evil.example", "content-type": "application/json" },
+        body: "{}",
+      },
+    );
 
     expect(res.status).toBe(403);
     expect(lines().find((line) => line["message"] === "request rejected")).toMatchObject({
@@ -252,7 +243,7 @@ describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
 
   it("User-Agent は 512 文字で切る", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/a", {
+    await appWithoutDatabase({ logger }).request("/a", {
       headers: { "user-agent": "x".repeat(2000) },
     });
     expect(String(lines()[0]?.["user_agent.original"])).toHaveLength(512);
@@ -262,11 +253,7 @@ describe("401、403、400 の記録 (docs/logging/web-api.md)", () => {
 describe("user.id と tenant_id", () => {
   it("ログイン済みなら、応答時の行に user.id が付く", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({
-      runtime: runtimeWithoutDatabase(),
-      logger,
-      auth: fakeAuth(signedIn),
-    }).request("/api/me", {
+    const res = await appWithoutDatabase({ logger, auth: fakeAuth(signedIn) }).request("/api/me", {
       headers: { origin: "https://app.example.com" },
     });
     expect(res.status).toBe(200);
@@ -278,11 +265,7 @@ describe("user.id と tenant_id", () => {
 
   it("未ログインなら user.id を付けない", async () => {
     const { logger, lines } = memoryLogger();
-    await createApp({
-      runtime: runtimeWithoutDatabase(),
-      logger,
-      auth: fakeAuth(signedOut),
-    }).request("/api/me");
+    await appWithoutDatabase({ logger, auth: fakeAuth(signedOut) }).request("/api/me");
     for (const line of lines()) expect(line).not.toHaveProperty("user.id");
   });
 
@@ -345,11 +328,7 @@ describe("5xx の記録 (app.onError)", () => {
   it("createApp では、route より前の middleware の例外も 1 か所で書く", async () => {
     const { logger, lines } = memoryLogger();
     const failing = fakeAuth(() => Promise.reject(new Error("db down")));
-    const res = await createApp({
-      runtime: runtimeWithoutDatabase(),
-      logger,
-      auth: failing,
-    }).request("/api/me");
+    const res = await appWithoutDatabase({ logger, auth: failing }).request("/api/me");
 
     expect(res.status).toBe(500);
     expect(lines().filter((line) => line["event.code"] === "API-001")).toHaveLength(1);
@@ -359,7 +338,7 @@ describe("5xx の記録 (app.onError)", () => {
 
   it("4xx の HTTPException は error で書かない", async () => {
     const { logger, lines } = memoryLogger();
-    const res = await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/nothing");
+    const res = await appWithoutDatabase({ logger }).request("/nothing");
     expect(res.status).toBe(404);
     expect(lines().some((line) => line["severity.text"] === "ERROR")).toBe(false);
   });

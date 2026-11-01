@@ -69,7 +69,7 @@ export const messageCodes = {
     level: "error",
     message: "The API did not stop cleanly.",
     cause:
-      "At a stop signal (SIGTERM, SIGINT), the runtime or a database pool failed to close, or did not close within the wait because a request or a transaction was still running. The process exits with code 1; open transactions roll back when the connections close.",
+      "At a stop signal (SIGTERM, SIGINT), the server failed to stop accepting, the runtime or a database pool failed to close, or they did not close within the wait because a request or a transaction was still running. The process exits with code 1; open transactions roll back when the connections close.",
     action:
       "Read exception.message. If it repeats at every deploy, find the long requests just before the stop by the access log and the traces, and shorten them.",
   },

@@ -31,7 +31,7 @@ describe("停止の手順 (stopGracefully)", () => {
   // 終わらなければ、残りを進めてトレースを送り、上限を過ぎたことを失敗にする。
   it.each([
     ["処理中のリクエスト", "closeServer", ["closeResources", "flushTelemetry"]],
-    ["資源の close", "closeResources", ["closeServer", "flushTelemetry"]],
+    ["資源を閉じる処理", "closeResources", ["closeServer", "flushTelemetry"]],
   ] as const)(
     "%sが待ちの上限までに終わらなければ、トレースを送ってから、その旨の失敗で終わること",
     async (_, hanging, expected) => {
@@ -44,14 +44,20 @@ describe("停止の手順 (stopGracefully)", () => {
     },
   );
 
-  it("受け付けの停止に失敗しても、資源を閉じてトレースを送ること", async () => {
+  it("受け付けの停止に失敗したら、資源を閉じてトレースを送ってから、その失敗で終わること", async () => {
     const { calls, steps } = recording({
       closeServer: () => Promise.reject(new Error("not running")),
     });
 
-    await stopGracefully(steps);
-
+    await expect(stopGracefully(steps)).rejects.toThrow(/did not stop accepting: not running/);
     expect(calls).toEqual(["closeResources", "flushTelemetry"]);
+  });
+
+  it("トレースの送信が、それ自身の待ちの上限までに終わらなくても終わること", async () => {
+    const { calls, steps } = recording({ flushTelemetry: () => new Promise<void>(() => {}) });
+
+    await expect(stopGracefully(steps, { flushTimeoutMs: 10 })).resolves.toBeUndefined();
+    expect(calls).toEqual(["closeServer", "closeResources"]);
   });
 
   it("資源を閉じるのに失敗したら、トレースを送ってから、その失敗で終わること", async () => {

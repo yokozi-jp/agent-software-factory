@@ -34,7 +34,7 @@ const logger = createNodeLogger({
 });
 
 // 停止の合図で閉じるもの。起動に失敗したときは何もない (トレースの送信だけを行う)。
-let started: Omit<StopSteps, "flushTelemetry"> = {
+let closeSteps: Omit<StopSteps, "flushTelemetry"> = {
   closeServer: () => Promise.resolve(),
   closeResources: () => Promise.resolve(),
 };
@@ -75,9 +75,9 @@ await startOrFail(logger, () => {
     logger.info(`api listening on port ${info.port}`);
   });
 
-  started = {
+  closeSteps = {
     // node:http の close は、新しい接続を受けず、処理中のリクエストが終わってから callback を呼ぶ。待っている keep-alive の
-    // 接続は Node.js 19 から close が閉じる。
+    // 接続は Node.js 19 から close が閉じる (https://nodejs.org/api/http.html の server.closeIdleConnections())。
     closeServer: () =>
       new Promise<void>((resolve, reject) => {
         server.close((error) => (error === undefined ? resolve() : reject(error)));
@@ -100,7 +100,7 @@ if (!telemetry.enabled)
 // runtime と pool を閉じ、送っていない span を送り切ってから終わる (src/shutdown.ts)。
 for (const signal of ["SIGTERM", "SIGINT"] as const)
   process.once(signal, () => {
-    void stopGracefully({ ...started, flushTelemetry: () => telemetry.shutdown() }).then(
+    void stopGracefully({ ...closeSteps, flushTelemetry: () => telemetry.shutdown() }).then(
       () => process.exit(0),
       (error: unknown) => {
         logger.error("API-003", exceptionFields(error));

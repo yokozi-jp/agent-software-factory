@@ -5,9 +5,8 @@ import { startTelemetry, type Telemetry } from "@agent-software-factory/telemetr
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
-import { createApp } from "./app.ts";
-import { runtimeWithoutDatabase } from "./runtime.ts";
 import { requestLogContext } from "./http/logging.ts";
+import { appWithoutDatabase } from "../test/app-without-database.ts";
 
 // 受信の span (docs/adr/0048)。SDK を起動してから createApp を呼ぶ。
 describe("受信のトレース", () => {
@@ -24,7 +23,7 @@ describe("受信のトレース", () => {
   afterAll(() => telemetry.shutdown());
 
   it("リクエストごとに、メソッドと route を名前にした span ができる", async () => {
-    const response = await createApp({ runtime: runtimeWithoutDatabase() }).request("/health");
+    const response = await appWithoutDatabase().request("/health");
     expect(response.status).toBe(200);
     // SimpleSpanProcessor は、resource の解決を待ってから exporter に渡す。
     await vi.waitFor(() =>
@@ -39,7 +38,7 @@ describe("受信のトレース", () => {
   it("エラー応答の trace_id は、受信の span の trace id と同じ (docs/adr/0035)", async () => {
     exporter.reset();
 
-    const res = await createApp({ runtime: runtimeWithoutDatabase() }).request("/not-found");
+    const res = await appWithoutDatabase().request("/not-found");
     const body: unknown = await res.json();
 
     await vi.waitFor(() => expect(exporter.getFinishedSpans()).not.toHaveLength(0));
@@ -51,7 +50,7 @@ describe("受信のトレース", () => {
   it("クエリ文字列、リクエストのヘッダー、Cookie は span に載らない", async () => {
     exporter.reset();
     const secret = "s3cret-value-that-must-not-reach-a-trace";
-    await createApp({ runtime: runtimeWithoutDatabase() }).request(`/health?code=${secret}`, {
+    await appWithoutDatabase().request(`/health?code=${secret}`, {
       headers: { authorization: `Bearer ${secret}`, cookie: `session=${secret}` },
     });
     await vi.waitFor(() => expect(exporter.getFinishedSpans()).toHaveLength(1));
@@ -71,7 +70,7 @@ describe("受信のトレース", () => {
       context: requestLogContext,
     });
 
-    await createApp({ runtime: runtimeWithoutDatabase(), logger }).request("/not-found");
+    await appWithoutDatabase({ logger }).request("/not-found");
 
     await vi.waitFor(() => expect(exporter.getFinishedSpans()).not.toHaveLength(0));
     const span = exporter.getFinishedSpans()[0]?.spanContext();
