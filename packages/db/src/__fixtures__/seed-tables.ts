@@ -1,6 +1,6 @@
 // Detection-power fixture for the map of tables of a seed (docs/adr/0036): a map that lacks a table must not compile.
 // If `TableSeeds` stops requiring a key for every table, the directive is unused and `vp check` fails.
-import type { TableSeeds } from "../seed/context.ts";
+import type { TableSeeds } from "../infrastructure/seed/context.ts";
 
 interface Tables {
   "x.t_one": { id: string };

@@ -16,8 +16,8 @@ tags: [tooling, runbook, hr-system, wiremock, testcontainers, openapi, ky]
 | 物                 | 場所                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 契約（正）         | `openapi.yaml`。操作は、メールアドレスで社員を引く `GET /employees?email=` と、社員番号で上長を引く `GET /employees/{employeeNumber}/manager` の 2 つ |
-| クライアントの型   | `src/schema.gen.ts`（`openapi.yaml` から作る。手で直さない）                                                                                          |
-| クライアント       | `src/index.ts` の `createHrSystemClient({ baseUrl })`                                                                                                 |
+| クライアントの型   | `src/domain/schema.gen.ts`（`openapi.yaml` から作る。手で直さない）                                                                                   |
+| クライアント       | `src/client.ts` (`./client`) の `createHrSystemClient({ baseUrl })`。実装は `src/infrastructure/client.ts`、契約 (型) は `src/domain/`                |
 | フェイクのスタブ   | `fake/mappings/*.json`（testcontainers と Compose の両方が、このディレクトリを読む）                                                                  |
 | フェイクのイメージ | `compose.local.yaml` の `hr-system-fake`（テストもここから版を読む）                                                                                  |
 

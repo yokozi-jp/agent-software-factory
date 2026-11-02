@@ -35,6 +35,7 @@ GitHub Copilot code review も、既定ではプルリクエストの必須の�
 - テストが、仕様を確かめているか。実装に合わせて期待値を書き換えただけのテストではないか
 - `oxlint-disable` の理由が、その場で安全だと言えるものか。`apps/web/src` は理由の有無を機械で止めるが、それ以外では止まらない ([ADR 0020](../adr/0020-typescript-strictness.md))
 - 新しい依存が実在し、保守されていて、ライセンスが合うか
+- `packages/` の package の構成で、機械で止まらない 2 つ: Port が `application` にあり、業務の言葉で書かれているか (M5)、ドライバの非同期の関数が `signal` を外部ライブラリに渡しているか (D7)。見方は [package の構成](../domain-model/package-layout.md) の「レビューで見ること」
 
 `main` の ruleset は、マージに必要な承認の数を 0 にしている ([GitHub リポジトリの設定](../repository/github-settings.md))。
 人は、次のどれかに当たる PR を、マージの前に必ず読む。

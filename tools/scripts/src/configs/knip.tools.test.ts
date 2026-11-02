@@ -236,7 +236,7 @@ apps["packages/i18n/package.json"] = JSON.stringify(
 apps["packages/i18n/src/index.ts"] = "export {};\n";
 apps["packages/i18n/i18next.config.ts"] = "export default {};\n";
 // A file of the trees that the detection-power test of the key check runs the CLI on (ignoreFiles in knip.jsonc).
-apps["packages/i18n/test/__fixtures__/keys/complete/apps/web/src/screen.tsx"] = "export {};\n";
+apps["packages/i18n/test/key-cases/complete/apps/web/src/screen.tsx"] = "export {};\n";
 
 let box: Sandbox;
 let copy: string;

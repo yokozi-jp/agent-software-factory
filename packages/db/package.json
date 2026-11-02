@@ -5,16 +5,16 @@
   "type": "module",
   "exports": {
     "./node": "./src/node.ts",
-    "./seed": "./src/seed/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./seed": "./src/seed.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "check": "vp check",
     "test": "vp test run --coverage",
-    "db:migrate": "node src/migrate.ts",
-    "db:seed": "node src/seed/index.ts",
-    "db-types": "node src/types.ts",
-    "db-types-check": "node src/types.ts --check"
+    "db:migrate": "node src/infrastructure/migrate.ts",
+    "db:seed": "node src/infrastructure/seed/index.ts",
+    "db-types": "node src/testing/types.ts",
+    "db-types-check": "node src/testing/types.ts --check"
   },
   "dependencies": {
     "dbmate": "catalog:",

@@ -1,4 +1,4 @@
-import type { Queryable } from "../queryable.ts";
+import type { Queryable } from "../infrastructure/queryable.ts";
 
 /**
  * クラスタ全体のロールの状態 (属性とメンバーシップ) を、並べ替えた文の一覧にする。システムのロール (pg_*) は除く。

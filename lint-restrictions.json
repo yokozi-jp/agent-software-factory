@@ -270,7 +270,7 @@
       "@opentelemetry/resources\"",
       "@opentelemetry/auto-instrumentations"
     ],
-    "message": "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in packages/telemetry/src/node.ts and the entry file of the app (docs/adr/0048).",
+    "message": "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in packages/telemetry/src/infrastructure/sdk.ts and the entry file of the app (docs/adr/0048).",
     "mentions": ["@opentelemetry/api"],
     "rows": [
       {
@@ -357,7 +357,7 @@
   "pino": {
     "adr": "docs/adr/0049",
     "values": ["pino"],
-    "message": "Take a Logger from @agent-software-factory/logging as an argument. pino is created in packages/logging/src/node.ts (docs/adr/0049).",
+    "message": "Take a Logger from @agent-software-factory/logging as an argument. pino is created in packages/logging/src/infrastructure/node-logger.ts (docs/adr/0049).",
     "mentions": ["Logger"],
     "rows": [
       {
@@ -368,7 +368,7 @@
         "rule": "no-restricted-imports",
         "text": "\"pino\"",
         "expect": "stop",
-        "reason": "コードは Logger のインターフェースに依存し、pino を作るのは packages/logging/src/node.ts だけ"
+        "reason": "コードは Logger のインターフェースに依存し、pino を作るのは packages/logging/src/infrastructure/node-logger.ts だけ"
       }
     ]
   },
@@ -453,6 +453,194 @@
         "text": "\"node:child_process\"",
         "expect": "pass",
         "reason": "db は migration を流すので、Node.js のモジュールを使う"
+      }
+    ]
+  },
+  "driver-in-module": {
+    "adr": "docs/adr/0054",
+    "values": [
+      "@agent-software-factory/db",
+      "@agent-software-factory/hr-system",
+      "@agent-software-factory/i18n",
+      "@agent-software-factory/logging",
+      "@agent-software-factory/telemetry"
+    ],
+    "message": "A driver (db, hr-system, i18n, logging, telemetry) is imported in the infrastructure of a module only: application and http depend on a Port that infrastructure implements with the driver (docs/adr/0054).",
+    "mentions": ["infrastructure", "Port"],
+    "rows": [
+      {
+        "files": [
+          "packages/module-fixtures/src/application/__fixtures__/driver-in-module.ts",
+          "packages/module-fixtures/src/http/__fixtures__/driver-in-module.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/db/node\"",
+        "expect": "stop",
+        "reason": "application と http はドライバを直接 import せず、application の Port を使う。ドライバを包んで Port を実装するのは infrastructure"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/application/__fixtures__/driver-in-module.ts",
+          "packages/module-fixtures/src/http/__fixtures__/driver-in-module.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/hr-system/client\"",
+        "expect": "stop",
+        "reason": "application と http はドライバを直接 import せず、application の Port を使う。ドライバを包んで Port を実装するのは infrastructure"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/application/__fixtures__/driver-in-module.ts",
+          "packages/module-fixtures/src/http/__fixtures__/driver-in-module.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/i18n\"",
+        "expect": "stop",
+        "reason": "application と http はドライバを直接 import せず、application の Port を使う。ドライバを包んで Port を実装するのは infrastructure"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/application/__fixtures__/driver-in-module.ts",
+          "packages/module-fixtures/src/http/__fixtures__/driver-in-module.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/logging\"",
+        "expect": "stop",
+        "reason": "application と http はドライバを直接 import せず、application の Port を使う。ドライバを包んで Port を実装するのは infrastructure"
+      },
+      {
+        "files": [
+          "packages/module-fixtures/src/application/__fixtures__/driver-in-module.ts",
+          "packages/module-fixtures/src/http/__fixtures__/driver-in-module.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/telemetry\"",
+        "expect": "stop",
+        "reason": "application と http はドライバを直接 import せず、application の Port を使う。ドライバを包んで Port を実装するのは infrastructure"
+      },
+      {
+        "files": ["packages/module-fixtures/src/infrastructure/__fixtures__/driver-in-module.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/hr-system/client\"",
+        "expect": "pass",
+        "reason": "モジュールの infrastructure はドライバを import して Port を実装する"
+      },
+      {
+        "files": ["packages/module-fixtures/src/infrastructure/__fixtures__/driver-in-module.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/i18n\"",
+        "expect": "pass",
+        "reason": "モジュールの infrastructure はドライバを import して Port を実装する"
+      },
+      {
+        "files": ["packages/module-fixtures/src/infrastructure/__fixtures__/driver-in-module.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/logging\"",
+        "expect": "pass",
+        "reason": "モジュールの infrastructure はドライバを import して Port を実装する"
+      },
+      {
+        "files": ["packages/module-fixtures/src/infrastructure/__fixtures__/driver-in-module.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"@agent-software-factory/telemetry\"",
+        "expect": "pass",
+        "reason": "モジュールの infrastructure はドライバを import して Port を実装する"
+      }
+    ]
+  },
+  "driver-effect": {
+    "adr": "docs/adr/0054",
+    "values": ["effect"],
+    "message": "A driver returns a Promise and does not import Effect: the infrastructure of the module wraps it with Effect.tryPromise (docs/adr/0054).",
+    "mentions": ["Promise", "Effect.tryPromise"],
+    "rows": [
+      {
+        "files": [
+          "packages/db/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"effect\"",
+        "expect": "stop",
+        "reason": "ドライバは Promise を返し、Effect を import しない。Effect で包むのはモジュールの infrastructure の Effect.tryPromise"
+      },
+      {
+        "files": [
+          "packages/db/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"effect/Effect\"",
+        "expect": "stop",
+        "reason": "ドライバは Promise を返し、Effect を import しない。Effect で包むのはモジュールの infrastructure の Effect.tryPromise"
+      },
+      {
+        "files": [
+          "packages/db/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@effect/platform-node\"",
+        "expect": "stop",
+        "reason": "ドライバは Promise を返し、Effect を import しない。Effect で包むのはモジュールの infrastructure の Effect.tryPromise"
+      }
+    ]
+  },
+  "testing-import": {
+    "adr": "docs/adr/0054",
+    "values": ["testing"],
+    "message": "Do not import testing/ from the code of a layer: it holds the tools of the tests and imports Vitest and testcontainers. A test may import it; put what production code needs in infrastructure/ (docs/adr/0054).",
+    "mentions": ["infrastructure/"],
+    "rows": [
+      {
+        "files": [
+          "packages/db/src/infrastructure/__fixtures__/testing-import.ts",
+          "packages/logging/src/infrastructure/__fixtures__/testing-import.ts",
+          "packages/module-fixtures/src/application/__fixtures__/testing-import.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"../../testing.ts\"",
+        "expect": "stop",
+        "reason": "本番のコードはテストの道具の入口を import しない"
+      },
+      {
+        "files": ["packages/db/src/infrastructure/__fixtures__/testing-import.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"../../testing/connection.ts\"",
+        "expect": "stop",
+        "reason": "本番のコードは testing/ の中のファイルも import しない"
+      },
+      {
+        "files": ["packages/logging/src/infrastructure/__fixtures__/testing-import.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"../../testing/memory-destination.ts\"",
+        "expect": "stop",
+        "reason": "本番のコードは testing/ の中のファイルも import しない"
+      },
+      {
+        "files": [
+          "packages/db/src/infrastructure/__fixtures__/testing-import.test.ts",
+          "packages/logging/src/infrastructure/__fixtures__/testing-import.test.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"../../testing.ts\"",
+        "expect": "pass",
+        "reason": "テストは testing/ の道具を使う"
       }
     ]
   }

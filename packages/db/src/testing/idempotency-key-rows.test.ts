@@ -6,7 +6,7 @@ import {
   idempotencyKeyTableSql,
   seedIdempotencyKeys,
   type TestDatabase,
-} from "./index.ts";
+} from "../testing.ts";
 
 // 掃除の試験 (Issue #325) が冪等キーの行を用意して数えるための道具。
 const tenantA = "00000000-0000-4000-8000-00000000000a";

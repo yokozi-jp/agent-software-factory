@@ -6,7 +6,7 @@ import {
   createTestDatabase,
   type BlockedSessions,
   type TestDatabase,
-} from "./index.ts";
+} from "../testing.ts";
 
 // B の文の結果。成功も失敗も値として持つ。
 type Outcome =

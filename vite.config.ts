@@ -56,7 +56,7 @@ const otelSdkPattern = {
   message: restrictions["otel-sdk"].message,
 };
 
-// pino is the implementation behind the Logger (docs/adr/0049). Code outside packages/logging/src/node.ts and the tests
+// pino is the implementation behind the Logger (docs/adr/0049). Code outside packages/logging/src/infrastructure and the tests
 // depends on the `Logger` interface of @agent-software-factory/logging, so that the logger can be replaced in one place.
 const pinoPaths = restrictedNames(restrictions.pino);
 
@@ -206,9 +206,33 @@ const dbMessage = restrictions["db-imports"].message;
 const layerMessage =
   "Layers point inward: domain imports nothing, application imports domain, and infrastructure and http import " +
   "application and domain but not each other (docs/adr/0026).";
+// A relative import of a directory of src/ (`../application/x.ts`) that a layer may not use.
+const relativeDirsPattern = (dirs: readonly string[]) => ({
+  regex: `^(?:\\./)?(?:\\.\\./)+(?:${dirs.join("|")})(?:/|$)`,
+  message: layerMessage,
+});
 const domainMessage =
   `domain imports nothing but types of ${scope}/shared-kernel and ${scope}/shared-kernel/result (\`import type\`). Put the code that needs a library or ` +
   "another module in application or infrastructure (docs/adr/0026).";
+// testing/ holds the tools of the tests of a driver (docs/adr/0054): it imports Vitest and testcontainers, so no layer
+// imports it. The tests of a layer may.
+const testingImportPattern = {
+  regex: "^(?:\\./)?(?:\\.\\./)+testing(?:/|\\.ts$|$)",
+  message: restrictions["testing-import"].message,
+};
+// A driver is a shared package that touches an external system and holds no business rule (docs/adr/0054). Only the
+// infrastructure of a module imports one; the application and http of a module depend on a Port that infrastructure implements.
+const driverInModule = restrictions["driver-in-module"];
+const driverInModulePattern = {
+  regex: `^(?:${driverInModule.values.map((name) => escapeRegExp(name)).join("|")})(?:/|$)`,
+  message: driverInModule.message,
+};
+// A driver returns a Promise and does not import Effect: the infrastructure of the module wraps it with Effect.tryPromise.
+const driverEffect = restrictions["driver-effect"];
+const driverEffectPattern = {
+  regex: "^(?:@effect/.+|effect(?:/.+)?)$",
+  message: driverEffect.message,
+};
 
 // Effect (docs/adr/0028). The features that the ADR does not use are each done by another tool already: validation
 // by zod, logs by stdout, retries by ky and the SDKs. The `unstable` and `experimental` APIs are stopped by
@@ -293,12 +317,14 @@ const sharedKernelSubpaths = Object.keys(sharedKernelEntries).filter((entry) => 
 const sharedKernelLibraries = [
   ...new Set(Object.values(sharedKernelEntries).flatMap((libraries) => libraries)),
 ];
-// The subpaths that other code may import: the entries of shared-kernel, and the Node-only entry of db (the
-// package has no `.`, docs/adr/0038). Oxlint 1.89 ends the check of an import at a negated group that matches it,
+// The subpaths that other code may import: the entries of shared-kernel, the Node-only entry of db (the
+// package has no `.`, docs/adr/0038) and the entry of the ky client of hr-system (docs/adr/0054). Oxlint 1.89 ends the
+// check of an import at a negated group that matches it,
 // so a pattern that must still apply to these (the domain layer) goes before deepImports.
 const publicSubpaths = [
   ...sharedKernelSubpaths.map((entry) => `!${scope}/shared-kernel/${entry}`),
   `!${scope}/db/node`,
+  `!${scope}/hr-system/client`,
 ];
 const subpathImport = { group: [`${scope}/*/**`, ...publicSubpaths], message: deepMessage };
 const relativeDeepImport = { regex: "^\\.{1,2}/(?:.*/)?[^/]+/src(?:/|$)", message: deepMessage };
@@ -327,7 +353,17 @@ const testDeepImports = [
 // files outside the layers, and shared-kernel). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 // `shared` is not a module: it owns the SQL of the transaction helper, so it may import `sql` (sqlPaths).
-function moduleImports(layer?: string, allowSql = false) {
+// `allowSql`: the file may import `sql` (shared-kernel and the apps, see sqlPaths). `isTest`: a test file of a layer, which may
+// import testing/. `noEffect`: the layer of a driver, which does not import Effect.
+interface ImportOptions {
+  readonly allowSql?: boolean;
+  readonly isTest?: boolean;
+  readonly noEffect?: boolean;
+}
+function moduleImports(
+  layer?: string,
+  { allowSql = false, isTest = false, noEffect = false }: ImportOptions = {},
+) {
   const patterns: Record<string, unknown>[] = [...runtimeImports.patterns];
   // The patterns of domain go before deepImports, whose negated groups end the check of an entry of shared-kernel.
   if (layer === "domain")
@@ -342,15 +378,18 @@ function moduleImports(layer?: string, allowSql = false) {
         message: domainMessage,
       },
     );
+  // The application and http of a module do not import a driver (domain is stopped by its ban on every library). This goes
+  // before deepImports, whose negated groups end the check of the entries that a module may import (db/node, hr-system/client).
+  if (layer === "application" || layer === "http") patterns.push(driverInModulePattern);
   patterns.push(...deepImports);
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
-    if (other.length > 0)
-      patterns.push({
-        regex: `^(?:\\./)?(?:\\.\\./)+(?:${other.join("|")})(?:/|$)`,
-        message: layerMessage,
-      });
+    if (other.length > 0) patterns.push(relativeDirsPattern(other));
+    if (!isTest) patterns.push(testingImportPattern);
   }
+  // A test of domain imports Vitest, which the ban on libraries below would stop. Any other subpath of vite-plus stays stopped.
+  if (layer === "domain" && isTest)
+    patterns.push({ group: ["vite-plus/*", "!vite-plus/test"], message: domainMessage });
   if (layer === "domain")
     // Oxlint 1.89 checks the patterns in order, and a negated group that matches ends the check of that import.
     // So the entries of shared-kernel are stopped first (above), then every package but shared-kernel.
@@ -359,6 +398,7 @@ function moduleImports(layer?: string, allowSql = false) {
       { group: ["@*/*", `!${scope}/shared-kernel`], message: domainMessage },
     );
   if (layer !== "domain") patterns.push(...effectPatterns);
+  if (noEffect && layer !== "domain") patterns.push(driverEffectPattern);
   const paths: RestrictedPath[] = [...runtimeImports.paths, ...bypassPaths];
   if (!allowSql) paths.push(...sqlPaths);
   if (layer !== "domain") paths.push(...effectPaths);
@@ -380,7 +420,7 @@ function moduleImports(layer?: string, allowSql = false) {
 // The options of no-restricted-imports for a file of one entry of shared-kernel: the restrictions of shared-kernel, and a
 // ban on the libraries (and their subpaths, `hono/client`) that the entry is not listed for.
 function sharedKernelEntryImports(entry: string, allowed: readonly string[]) {
-  const base = moduleImports(undefined, true);
+  const base = moduleImports(undefined, { allowSql: true });
   const banned = sharedKernelLibraries.filter((library) => !allowed.includes(library));
   const message =
     `${entry === "." ? "The entry `.`" : `The entry \`${entry}\``} of shared-kernel imports ${allowed.join(", ")} and no other ` +
@@ -457,18 +497,26 @@ const moduleOverrides: OxlintOverride[] = [
     files: ["packages/*/src/**"],
     rules: { "no-restricted-imports": ["error", moduleImports()] },
   },
-  ...Object.keys(layers).map((layer): OxlintOverride => {
+  ...Object.keys(layers).flatMap((layer): OxlintOverride[] => {
     const files = [`packages/*/src/${layer}/**`];
     const imports: NonNullable<OxlintOverride["rules"]> = {
       "no-restricted-imports": ["error", moduleImports(layer)],
     };
-    return layer === "domain"
-      ? {
-          files,
-          jsPlugins: domainPurityRules.jsPlugins,
-          rules: { ...imports, ...domainPurityRules.rules },
-        }
-      : { files, rules: imports };
+    const layerOverride: OxlintOverride =
+      layer === "domain"
+        ? {
+            files,
+            jsPlugins: domainPurityRules.jsPlugins,
+            rules: { ...imports, ...domainPurityRules.rules },
+          }
+        : { files, rules: imports };
+    // A test of the layer may import testing/ (and, in domain, Vitest). It sets only this rule, so the rest of the layer's
+    // rules reach it.
+    const testOverride: OxlintOverride = {
+      files: [`packages/*/src/${layer}/**/*.test.ts`],
+      rules: { "no-restricted-imports": ["error", moduleImports(layer, { isTest: true })] },
+    };
+    return [layerOverride, testOverride];
   }),
 ];
 
@@ -478,6 +526,91 @@ const runtimeRulesOff = {
   "no-restricted-globals": "off",
   "no-restricted-properties": "off",
 } as const;
+
+// Drivers (docs/adr/0054): the shared packages that touch an external system and hold no business rule. They have the
+// layers domain and infrastructure, and testing/ for the tools of the tests, and do not import Effect. The domain of a
+// driver is under the same override as the domain of a module, so it imports no library. The overrides below are listed
+// after the rules of application/ and infrastructure/ (which set no-restricted-properties) and win over them for the
+// files they name.
+// - A driver that runs on Node.js (db, logging, telemetry) leaves the runtime restrictions of docs/adr/0007 in infrastructure/
+//   and testing/, as an entry file does, and imports its own libraries (pg, pino, the SDK), which the rest of packages/ may
+//   not. It does not send, so the SDK clients stay stopped (outboxPaths).
+// - The other drivers (hr-system, i18n) run where the apps do, so infrastructure/ keeps the restrictions of the
+//   modules and adds the ban on Effect.
+// db also imports the packages of the workspace as types only (docs/adr/0038).
+// The drivers are named here, in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts, and in the values of
+// `driver-in-module` of lint-restrictions.json; repo-policy (driversAreInLint) fails when a driver is missing from one.
+const nodeDrivers: Readonly<Record<string, { nodeFiles: string[]; workspaceTypesOnly?: boolean }>> =
+  {
+    db: {
+      nodeFiles: [
+        "packages/db/src/infrastructure/**",
+        "packages/db/src/testing/**",
+        "packages/db/src/__fixtures__/**",
+      ],
+      workspaceTypesOnly: true,
+    },
+    logging: {
+      nodeFiles: ["packages/logging/src/infrastructure/**", "packages/logging/src/testing/**"],
+    },
+    telemetry: {
+      nodeFiles: [
+        "packages/telemetry/src/infrastructure/**",
+        "packages/telemetry/src/__fixtures__/otel-sdk.ts",
+        "packages/telemetry/src/__fixtures__/outbox.ts",
+      ],
+    },
+  };
+const webDrivers = ["hr-system", "i18n"];
+
+function nodeDriverImports(workspaceTypesOnly: boolean, isTest: boolean) {
+  // infrastructure/ imports domain/ and itself, not application/ or http/ (a driver has neither) and not testing/.
+  const patterns: Record<string, unknown>[] = [
+    ...deepImports,
+    driverEffectPattern,
+    relativeDirsPattern(["application", "http"]),
+  ];
+  if (!isTest) patterns.push(testingImportPattern);
+  if (workspaceTypesOnly)
+    patterns.push({ regex: `^${scope}/[^/]+$`, allowTypeImports: true, message: dbMessage });
+  return { paths: outboxPaths, patterns };
+}
+
+// The two overrides of the infrastructure/ of a driver: its code, and its tests, which may import testing/.
+const infrastructureOverrides = (
+  name: string,
+  importsFor: (isTest: boolean) => Record<string, unknown>,
+): OxlintOverride[] => [
+  {
+    files: [`packages/${name}/src/infrastructure/**`],
+    rules: { "no-restricted-imports": ["error", importsFor(false)] },
+  },
+  {
+    files: [`packages/${name}/src/infrastructure/**/*.test.ts`],
+    rules: { "no-restricted-imports": ["error", importsFor(true)] },
+  },
+];
+
+const driverOverrides: OxlintOverride[] = [
+  ...Object.entries(nodeDrivers).flatMap(
+    ([name, { nodeFiles, workspaceTypesOnly = false }]): OxlintOverride[] => [
+      {
+        files: nodeFiles,
+        plugins: ["import"],
+        rules: {
+          ...runtimeRulesOff,
+          "no-restricted-imports": ["error", nodeDriverImports(workspaceTypesOnly, true)],
+        },
+      },
+      ...infrastructureOverrides(name, (isTest) => nodeDriverImports(workspaceTypesOnly, isTest)),
+    ],
+  ),
+  ...webDrivers.flatMap((name) =>
+    infrastructureOverrides(name, (isTest) =>
+      moduleImports("infrastructure", { noEffect: true, isTest }),
+    ),
+  ),
+];
 
 const childProcessMessage =
   "Start git and other processes through gitIn() or runIn() from tools/scripts/src/test/sandbox.ts, which refuse " +
@@ -645,7 +778,7 @@ export default defineConfig({
       // It keeps every other restriction of the modules.
       {
         files: ["packages/shared-kernel/src/**"],
-        rules: { "no-restricted-imports": ["error", moduleImports(undefined, true)] },
+        rules: { "no-restricted-imports": ["error", moduleImports(undefined, { allowSql: true })] },
       },
       // Each entry of shared-kernel imports only the libraries it is listed for in sharedKernelEntries (docs/adr/0051), so that
       // the import path of an entry says which libraries it pulls in. These overrides carry the restrictions of the one above,
@@ -654,60 +787,6 @@ export default defineConfig({
       ...Object.entries(sharedKernelEntries).map(([entry, allowed]) =>
         sharedKernelEntryOverride(entry, allowed),
       ),
-      // packages/db is not a module (docs/adr/0038). It runs the migrations and starts containers, so it leaves the
-      // runtime restrictions as an entry file does (docs/adr/0007), keeps the ban on deep imports, and imports the
-      // packages of the workspace as types only. It has no layers, so the overrides above reach it only by
-      // packages/*/src/**, which this override replaces.
-      {
-        files: ["packages/db/src/**"],
-        plugins: ["import"],
-        rules: {
-          ...runtimeRulesOff,
-          "no-restricted-imports": [
-            "error",
-            {
-              // db opens the connections, so it may import pg, but it does not send.
-              paths: outboxPaths,
-              patterns: [
-                ...deepImports,
-                { regex: `^${scope}/[^/]+$`, allowTypeImports: true, message: dbMessage },
-              ],
-            },
-          ],
-        },
-      },
-      // packages/telemetry is not a module (docs/adr/0048). Its Node-only entry (src/node.ts) starts the OpenTelemetry SDK,
-      // so it, the policy it passes to the instrumentations (policy.ts), the tests and the fixture of this override may
-      // import the SDK and leave the runtime restrictions as an entry file does (docs/adr/0007). index.ts, the entry that
-      // any code may import, stays under the restrictions of packages/*/src above, so it cannot pull the SDK in. These
-      // files have no layers, keep the ban on deep imports, and do not send (outboxPaths, which outbox.ts shows).
-      {
-        files: [
-          "packages/telemetry/src/node.ts",
-          "packages/telemetry/src/policy.ts",
-          "packages/telemetry/src/**/*.test.ts",
-          "packages/telemetry/src/__fixtures__/otel-sdk.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts",
-        ],
-        plugins: ["import"],
-        rules: {
-          ...runtimeRulesOff,
-          "no-restricted-imports": ["error", { paths: outboxPaths, patterns: deepImports }],
-        },
-      },
-      // packages/logging is not a module (docs/adr/0049). Its Node-only entry (src/node.ts) creates the pino logger, so it and
-      // the tests may import pino and the SDK, and leave the runtime restrictions as an entry file does (docs/adr/0007):
-      // the entry writes to the standard output and sets the exit code. index.ts, the entry that any code may import,
-      // stays under the restrictions of packages/*/src above, so it cannot pull pino in. These files have no layers,
-      // keep the ban on deep imports, and do not send (outboxPaths).
-      {
-        files: ["packages/logging/src/node.ts", "packages/logging/src/**/*.test.ts"],
-        plugins: ["import"],
-        rules: {
-          ...runtimeRulesOff,
-          "no-restricted-imports": ["error", { paths: outboxPaths, patterns: deepImports }],
-        },
-      },
       // application and infrastructure never run an Effect (docs/adr/0028); a test of them may. Each layer has a
       // fixture in <layer>/__fixtures__/effect.ts that this rule must report (repo-policy checks it).
       // This override replaces the no-restricted-properties of the override for all of packages/*/src, so it
@@ -743,6 +822,10 @@ export default defineConfig({
         ],
         rules: { "no-restricted-properties": "off" },
       },
+      // The drivers (docs/adr/0054; db, hr-system, i18n, logging, telemetry): not modules, so no application/ or http/, no Effect,
+      // and the libraries and the runtime that each is for (driverOverrides). They come after the overrides of the layers above,
+      // whose no-restricted-properties they replace for the files they name.
+      ...driverOverrides,
       // Tests of tools/scripts run from Git hooks, where a git command can act on this repository instead of
       // the temporary one (docs/tooling/ci.md ("スクリプトのテスト")). They start processes only through the
       // helpers in tools/scripts/src/test/, which are not test files. Dynamic import() and createRequire are

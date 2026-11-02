@@ -8,7 +8,7 @@ tags: [domain-model, runbook, modules, nx]
 # モジュールを足す手順
 
 モジュールの雛形を作る generator は置かず、既存のモジュールを写して足します ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
-写して登録を忘れた箇所のうち、機械で止められるものは repo-policy (`tools/scripts/src/checks/repo-policy/modules.ts`) と `packages/db/src/types.test.ts` が止めます。
+写して登録を忘れた箇所のうち、機械で止められるものは repo-policy (`tools/scripts/src/checks/repo-policy/modules.ts`) と `packages/db/src/testing/types.test.ts` が止めます。
 
 ## 手順
 
@@ -21,6 +21,7 @@ tags: [domain-model, runbook, modules, nx]
    - `index.ts` は、データベースの型 (`<Name>Database`) を export します。`infrastructure/database.ts` は `Kysely<DB>` の型です。`infrastructure/transaction.ts` は、トランザクションの tag (`<Name>Tx`、`static readonly module`) で、`index.ts` が export します ([PostgreSQL のクライアント管理](../db/postgresql-client.md))。`db.gen.ts` は手順 8 で生成します。
    - `static readonly module` の名前は、`packages/shared-kernel/src/tenant-db/tenant-transaction.ts` の `ModuleName` と `moduleRoles` (`<name>` と `<name>_module`) にも足します。SQL に入るロールとスキーマの名前の許可リストです。
    - `__fixtures__/database.ts` は、ほかのモジュールの表へのクエリが型エラーになる `@ts-expect-error` です。
+   - `src/` に置けるのは、`index.ts`、層のディレクトリ、`__fixtures__/` だけです。層の外のファイルには層の規則が届かないので、repo-policy が止めます。ドライバを使うコードは `infrastructure` に置きます ([package の構成](package-layout.md))。
 2. **events の package を足す**: 既存のモジュールの `packages/<name>/events/` (`package.json`、`tsconfig.json`、`src/index.ts`) を写します。モジュールが外へ送るイベントのスキーマを置く、モジュールの中の入れ子の package です ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
    - `package.json` の `name` は `@agent-software-factory/<name>-events`、`nx.name` は `<name>-events` にします。`exports` は `"."` だけ、`check` の script は写したままにします。`nx.tags` と `lint-effect` の script は付けません。events の package はモジュールではありません。
    - 依存は `zod` と `shared-kernel` だけです。ほかの events の package にも依存しません。

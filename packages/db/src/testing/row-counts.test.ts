@@ -5,7 +5,7 @@ import {
   diffRowCounts,
   snapshotRowCounts,
   type TestDatabase,
-} from "./index.ts";
+} from "../testing.ts";
 
 // 原子性のテストの道具 (docs/db/concurrency-testing.md): 処理の前後で全表の行数を比べ、失敗した処理が
 // 業務の表、Outbox、processed_message のどこにも行を残していないことを確かめる。

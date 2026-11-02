@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { checkConventions } from "../convention-catalog.ts";
-import { checkModuleRoles } from "../module-roles-catalog.ts";
-import { createTestDatabase, processedMessageTableSql, type TestDatabase } from "./index.ts";
+import { checkConventions } from "../infrastructure/convention-catalog.ts";
+import { checkModuleRoles } from "../infrastructure/module-roles-catalog.ts";
+import { createTestDatabase, processedMessageTableSql, type TestDatabase } from "../testing.ts";
 
 // processed_message の migration の雛形 (packages/db/templates/processed_message.sql、docs/adr/0029)。
 // 雛形から作った表が、DB の規約とモジュールのロールの検査を通ることを確かめる。

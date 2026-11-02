@@ -69,6 +69,10 @@ pre-commit:
               # The fixtures of the past versions of each event (docs/async/event-contract.md), and the migrations (docs/adr/0025).
               - "packages/*/events/test/fixtures/**"
               - "packages/db/migrations/**"
+              # The layout of the modules and of the drivers (docs/adr/0054): the names in the root of a package and in its src/,
+              # whatever their extension. A file one or two levels down is enough to show a name that the layout does not allow.
+              - "packages/*/*"
+              - "packages/*/*/*"
             # Check what is staged, so unstaged edits to other files cannot fail the commit.
             run: node tools/scripts/src/checks/repo-policy/cli.ts staged
 
@@ -178,14 +182,14 @@ pre-commit:
               - ".node-version"
               - ".kiro/hooks/*.json"
             run: pnpm exec nx test scripts
-          # The Kysely types of the module schemas match the migrations (packages/db/src/types.ts, docs/adr/0025). It starts a
+          # The Kysely types of the module schemas match the migrations (packages/db/src/testing/types.ts, docs/adr/0025). It starts a
           # PostgreSQL container (about 10 s), so it runs only when a migration, a generated type file, the generator or the
           # version of kysely-codegen (pnpm-workspace.yaml) changes. Nx skips the run when the cached result still holds.
           - name: db-types
             glob:
               - "packages/db/migrations/**"
               - "packages/db/bootstrap.sql"
-              - "packages/db/src/types.ts"
+              - "packages/db/src/testing/types.ts"
               - "packages/*/src/infrastructure/db.gen.ts"
               - "packages/db/src/testing/connection.ts"
               - "packages/db/src/testing/prepare-database.ts"
