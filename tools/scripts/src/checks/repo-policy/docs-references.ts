@@ -1,6 +1,22 @@
 // Checks of the references between docs/ and the code: to docs/ from outside it, and to files of the code from inside it
 // and from the configs and scripts outside it.
+import { posix } from "node:path";
 import { Tree } from "./tree.ts";
+
+// Sources that no check of a path reads: docs/ (docs-check follows its links), the upstream skills, the research notes
+// (they quote paths of other commits and of upstream repositories), and the lock files, which name files that are not in
+// the tree.
+const neverRead = [
+  /^docs\//,
+  /^\.agents\//,
+  /^\.kiro\/skills\//,
+  /^research\//,
+  /^pnpm-lock\.yaml$/,
+  /^mise\.lock$/,
+];
+
+// What to say after a path that the tree does not have.
+const moved = "The file was moved or removed: write its path now, or the directory it is in.";
 
 // References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
 // docs-check (tools/scripts/src/checks/docs-check/) only follows Markdown links inside docs/, so these plain-text paths are checked here:
@@ -13,12 +29,8 @@ import { Tree } from "./tree.ts";
 // wayfinder research tickets, which live on throwaway branches and are never merged; they quote paths
 // of other commits and of upstream repositories.
 const unchecked = [
-  /^docs\//,
-  /^\.agents\//,
-  /^\.kiro\/skills\//,
-  /^research\//,
+  ...neverRead,
   /^tools\/scripts\/src\/checks\/(adr-check|repo-policy)\/([^/]*\.test\.ts$|fixtures\/)/,
-  /^pnpm-lock\.yaml$/,
 ];
 
 const docsReference =
@@ -73,9 +85,7 @@ export function docsCodePaths(tree: Tree): string[] {
     for (const match of tree.read(source).matchAll(codePath)) {
       const path = String(match[1]);
       if (!tracked.has(path))
-        failures.push(
-          `${source} cites ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`,
-        );
+        failures.push(`${source} cites ${path}, which does not exist. ${moved}`);
     }
   }
   return failures;
@@ -83,43 +93,71 @@ export function docsCodePaths(tree: Tree): string[] {
 
 // References from the configs and the scripts to files of the code: the paths in lefthook.yml, the workflows, knip.jsonc,
 // the compose files, the comments of vite.config.ts and the checks of tools/scripts. A file that is moved or removed leaves
-// its path behind there too, and some of them are read by a check that then passes on nothing (the entry of the seed in
-// migration-compat names a path; a path that does not exist makes the check skip its work). docs/ is checked above, and the
-// tests and fixtures cite paths that do not exist on purpose (a test builds a small repository of its own), so they are
-// skipped, and so is an ignore file, which names the files that git does not track. A path is a run of path characters that starts with a top-level directory of the code, ends with an extension, and
-// is not part of a longer path; a glob, a placeholder and a relative path (`./`, `../`) are not a path the tree must have.
-const outsideDocs = [
-  /^docs\//,
-  /^\.agents\//,
-  /^\.kiro\/skills\//,
-  /^research\//,
-  /^pnpm-lock\.yaml$/,
+// its path behind there too, and some of them are read by a check that then passes on nothing (migration-compat names the
+// entry of the seed; a path that does not exist makes it skip its work).
+//   a path to a file     a run of path characters under a top-level directory of the tree, ending with an extension
+//   a path to a directory  the same, ending with `/` after a name under the root: some file of the tree must be under it
+//   a relative path      `./` and `../` in front: resolved from the directory of the file that names it
+// A glob (`packages/*/src/a.ts`, `apps/web/src/**`), a placeholder (`packages/<name>/a.ts`) and a path that is part of a
+// longer one (a URL) are not a path the tree must have, and nor is a root alone (`packages/`). The top-level directories are
+// those of the tree itself, so a new one is read without a change here; docs/ is checked above.
+// Not read: the tests and fixtures (a test builds a small repository of its own, and cites paths that do not exist on
+// purpose), generated files, the changelogs, and an ignore file, which names the files that git does not track.
+const notScanned = [
+  ...neverRead,
   /(?:^|\/)CHANGELOG\.md$/,
   /\.test\.tsx?$/,
   /\/(?:__fixtures__|fixtures)\//,
   /\.gen\.ts$/,
-  // An ignore file names files that git does not track.
   /(?:^|\/)\.[a-z]*ignore$/,
 ];
-const pathInText =
-  /(?<![A-Za-z0-9_./@-])((?:tools|packages|apps|types|\.github|\.kiro)\/[A-Za-z0-9_./@-]*\.[A-Za-z0-9]+)(?![A-Za-z0-9_/-])/g;
+const notARoot = ["docs", "research", ".agents"];
+
+// The top-level directories of the tree, as a pattern for the start of a path.
+function rootsOf(tracked: readonly string[]): string {
+  const roots = new Set(
+    tracked.flatMap((path) => (path.includes("/") ? [String(path.split("/")[0])] : [])),
+  );
+  return [...roots]
+    .filter((root) => !notARoot.includes(root))
+    .map((root) => root.replaceAll(".", "\\."))
+    .join("|");
+}
 
 export function codePathReferences(tree: Tree): string[] {
   const tracked = new Set(tree.paths);
+  const roots = rootsOf(tree.paths);
+  if (roots === "") return [];
+  const pathInText = new RegExp(
+    `(?<![A-Za-z0-9_./@-])((?:\\.{1,2}/)*)((?:${roots})/[A-Za-z0-9_./@-]*)(?![A-Za-z0-9_-])([*{<\\[?$])?`,
+    "g",
+  );
   const failures: string[] = [];
   for (const source of tree.paths) {
-    if (outsideDocs.some((pattern) => pattern.test(source))) continue;
+    if (notScanned.some((pattern) => pattern.test(source))) continue;
     const text = tree.read(source);
     if (text.includes("\0")) continue;
     const seen = new Set<string>();
     for (const match of text.matchAll(pathInText)) {
+      const relative = String(match[1]);
       // A sentence can end with the path and a period.
-      const path = String(match[1]).replace(/\.$/, "");
-      if (tracked.has(path) || seen.has(path)) continue;
-      seen.add(path);
-      failures.push(
-        `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`,
-      );
+      const body = String(match[2]).replace(/\.$/, "");
+      const written = `${relative}${body}`;
+      // The character that a glob or a placeholder goes on with after a directory.
+      const goesOn = match[3] !== undefined;
+      const isDirectory = body.endsWith("/");
+      if (seen.has(written)) continue;
+      // A directory is named with a slash and two names or more; a glob or a placeholder goes on after the slash.
+      if (isDirectory && (body.split("/").length < 3 || goesOn)) continue;
+      if (!isDirectory && !/\.[A-Za-z0-9]+$/.test(body)) continue;
+      const path =
+        relative === "" ? body : posix.normalize(posix.join(posix.dirname(source), written));
+      const exists = isDirectory
+        ? tree.paths.some((candidate) => candidate.startsWith(path))
+        : tracked.has(path);
+      if (exists) continue;
+      seen.add(written);
+      failures.push(`${source} names ${written}, which does not exist. ${moved}`);
     }
   }
   return failures;

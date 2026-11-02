@@ -34,15 +34,12 @@ pre-commit:
               - "apps/**"
               - "packages/**"
               - ".jscpd.json"
-              - "pnpm-workspace.yaml"
             run: pnpm lint:dup
           - name: repo-policy
             glob:
-              - "**/package.json"
               - "**/vite.config.ts"
               # The table of lint restrictions (docs/adr/0050).
               - "lint-restrictions.json"
-              - "**/tsconfig.json"
               - ".vite-hooks/**"
               - ".betterleaks.toml"
               - "mise.toml"
@@ -62,8 +59,13 @@ pre-commit:
               - "tools/scripts/sh/**"
               - "docs/**"
               - "**/*.ts"
-              # The PostgreSQL tag of compose and postgresImage must agree (Issue #515).
-              - "compose.local.yaml"
+              # The configs that a rule reads, at any depth, by their extension: package.json and tsconfig.json (the modules and the
+              # flags), pnpm-workspace.yaml (the catalog and the hoisting), compose.local.yaml (the PostgreSQL tag of compose and
+              # postgresImage must agree, Issue #515). The paths that a config names must exist too (codePathReferences).
+              - "*.json"
+              - "*.jsonc"
+              - "*.yaml"
+              - "*.toml"
               # The fixtures of the past versions of each event (docs/async/event-contract.md), and the migrations (docs/adr/0025).
               - "packages/*/events/test/fixtures/**"
               - "packages/db/migrations/**"

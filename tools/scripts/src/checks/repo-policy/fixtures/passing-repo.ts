@@ -292,6 +292,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/module-fixtures/src/domain/__fixtures__/purity.ts": domainFixture,
   "packages/module-fixtures/src/http/__fixtures__/boundaries.ts": moduleFixture,
   // The fixtures that the rows of the table name (lint-restrictions.json).
+  // A config that names a file of the tree (codePathReferences reads it, so the pre-commit glob of repo-policy must reach it).
+  "compose.otel-lgtm.yaml": "# apps/api/package.json\n",
   "lint-restrictions.json": JSON.stringify(lintRestrictions, undefined, 2),
   "packages/module-fixtures/src/__fixtures__/outbox.ts": outboxFixture,
   "apps/api/src/__fixtures__/outbox.test.ts": outboxFixture,

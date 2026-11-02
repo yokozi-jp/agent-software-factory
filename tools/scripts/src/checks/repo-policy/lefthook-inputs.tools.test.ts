@@ -76,17 +76,14 @@ describe("the repo-policy job of lefthook.yml", () => {
     expect(uncovered(paths, globs)).toEqual([]);
   });
 
-  it.each(["compose.local.yaml", "**/package.json", "pnpm-workspace.yaml", "**/tsconfig.json"])(
-    "fails when %s is left out of the glob",
-    (glob) => {
-      const globs = jobGlob();
-      expect(globs).toContain(glob);
-      expect(
-        uncovered(
-          paths,
-          globs.filter((other) => other !== glob),
-        ),
-      ).not.toEqual([]);
-    },
-  );
+  it.each(["*.json", "*.yaml"])("fails when %s is left out of the glob", (glob) => {
+    const globs = jobGlob();
+    expect(globs).toContain(glob);
+    expect(
+      uncovered(
+        paths,
+        globs.filter((other) => other !== glob),
+      ),
+    ).not.toEqual([]);
+  });
 });

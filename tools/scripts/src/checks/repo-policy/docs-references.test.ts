@@ -276,12 +276,42 @@ describe("references from the configs and the scripts to files of the code", () 
     ["a glob", '- "packages/*/src/a.ts"'],
     ["a glob of a directory", '- "packages/db/migrations/**"'],
     ["a placeholder", "# packages/<name>/package.json"],
-    ["a directory", "# packages/a/src/"],
-    ["a relative path", "# ../packages/a/b.ts and ./apps/c.ts"],
+    ["a root alone", "# packages/ and apps/"],
+    ["a glob after a directory", "# apps/web/src/**/x.ts and packages/*/src/x.ts"],
+    ["a glob of braces", "# {apps,packages}/*/src/x.ts"],
+    ["a name with no extension", "# packages/a/src and tools/scripts"],
     ["a path inside a longer path", "# https://example.com/apps/a/b.ts"],
     ["a name that is not under a directory of the code", "# docs/a.ts and src/a.ts"],
   ])("does not read %s as a file the tree must have", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
+  });
+
+  it("reads a directory with a slash, which must have a file of the tree under it", () => {
+    expect(violations(repo({ ...cite("# packages/a/src/"), "packages/a/src/x.ts": "" }))).toEqual(
+      [],
+    );
+    expect(violations(repo(cite("# packages/a/src/ and packages/b/")))).toEqual([
+      missing("packages/a/src/"),
+      missing("packages/b/"),
+    ]);
+  });
+
+  it("resolves a relative path from the directory of the file that names it", () => {
+    const named = cite('import("../../../apps/c.ts") and "./packages/d.ts"', "packages/x/y/z.ts");
+    expect(
+      violations(repo({ ...named, "apps/c.ts": "", "packages/x/y/packages/d.ts": "" })),
+    ).toEqual([]);
+    expect(violations(repo(named))).toEqual([
+      missing("../../../apps/c.ts", "packages/x/y/z.ts"),
+      missing("./packages/d.ts", "packages/x/y/z.ts"),
+    ]);
+  });
+
+  it("takes the top-level directories from the tree, so a directory of its own is read too", () => {
+    expect(violations(repo({ ...cite("# docker/a/b.sh"), "docker/c.txt": "" }))).toEqual([
+      missing("docker/a/b.sh"),
+    ]);
+    expect(violations(repo(cite("# docker/a/b.sh")))).toEqual([]);
   });
 
   it("refuses a path that does not exist, in a config, a workflow and a script", () => {
@@ -319,6 +349,7 @@ describe("references from the configs and the scripts to files of the code", () 
     ".kiro/skills/a/SKILL.md",
     "research/a.md",
     "pnpm-lock.yaml",
+    "mise.lock",
     "packages/a/CHANGELOG.md",
     "tools/scripts/src/checks/a.test.ts",
     "apps/web/src/a.test.tsx",
@@ -333,5 +364,14 @@ describe("references from the configs and the scripts to files of the code", () 
 
   it("does not read binary files", () => {
     expect(violations(repo({ "assets/a.png": "\0apps/a/missing.ts\n" }))).toEqual([]);
+  });
+
+  it("reads nothing in a tree that has no directory", () => {
+    const flat = {
+      tracked: new Map([["a.md", "100644"]]),
+      untrackedSteering: [],
+      viteHooks: false,
+    };
+    expect(violations({ ...flat, read: () => "apps/a/missing.ts\n" })).toEqual([]);
   });
 });
