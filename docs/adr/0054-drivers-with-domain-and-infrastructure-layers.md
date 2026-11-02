@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0054: 共有の道具の package (ドライバ) を domain と infrastructure の 2 層に揃え、モジュールの infrastructure だけが import し、Effect は入れない"
-description: db、hr-system、i18n、logging、telemetry を「ドライバ」と呼び、モジュールと同じ名前の層 domain と infrastructure (と testing/) に揃える決定。モジュールの application と http はドライバを import せず、infrastructure が Effect.tryPromise で包んで Port を実装する。ドライバは Promise を返し、effect を import せず、非同期の関数は AbortSignal を受け取る。入口のファイルは再 export だけにし、構成の違反を repo-policy と lint で止める。ADR 0051 が退けた「共有 package に層を入れる」を覆す理由、比べた案 (Effect を入れる、Adapter を package に分ける、ui と shared-kernel を含める)、ログインを実装するときに決め直すことを書く。ドライバを足す、変えるとき、ドライバの src/ にファイルを置くとき、モジュールがドライバを import したくなったとき、ドライバに Effect を入れたくなったときに読む。
+title: "ADR 0054: 共有の道具の package (ドライバ) を domain と infrastructure の 2 層に揃え、モジュールでは infrastructure だけが import し、Effect は入れない"
+description: db、hr-system、i18n、logging、telemetry を「ドライバ」とし、モジュールと同じ名前の層 domain と infrastructure に揃え、モジュールでは infrastructure だけが import し、Effect を入れない決定。ドライバを足す、変えるとき、モジュールがドライバを使うとき、ドライバに Effect を入れたくなったときに読む。
 tags: [adr, architecture, packages, drivers, clean-architecture, lint, effect]
 ---
 
-# ADR 0054: 共有の道具の package (ドライバ) を domain と infrastructure の 2 層に揃え、モジュールの infrastructure だけが import し、Effect は入れない
+# ADR 0054: 共有の道具の package (ドライバ) を domain と infrastructure の 2 層に揃え、モジュールでは infrastructure だけが import し、Effect は入れない
 
 [Issue #586](https://github.com/yokozi-jp/agent-software-factory/issues/586) で決めました。構成の正本は [package の構成](../domain-model/package-layout.md) です。
 
@@ -19,14 +19,20 @@ tags: [adr, architecture, packages, drivers, clean-architecture, lint, effect]
 
 ## 決定
 
-- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package です。クリーンアーキテクチャの Frameworks & Drivers の輪にあたります。対象は db、hr-system、i18n、logging、telemetry の 5 つで、一覧は repo-policy の `drivers.ts` にあります。shared-kernel (モジュールが合意して共有する業務のコード)、ui (shadcn が配置を決める)、module-fixtures は含めません。
-- **層はモジュールと同じ名前**: ドライバの層は `domain` と `infrastructure` です。`application` と `http` は作りません。ドライバには自分の use case も route もないためです。中身のない層も作りません。名前をモジュールと同じにすると、`packages/*/src/<層>/**` の glob で作った今の層の規則 (層の方向、`domain` が外部ライブラリと Node.js の組み込みを import しないこと、`throw`、`Date`、`Math.random`) が、新しい規則なしでドライバにも届きます。
-- **`testing/`**: テストの道具とフェイクを置きます。層ではありません。層のコードは `testing/` を import しません (テストは import できます)。`testing/` は Vitest と testcontainers を import するためです。
-- **入口のファイルは再 export だけ**: `exports` が名前を挙げる `src/<名前>.ts` は、層のコードを再 export するだけです。`.` は `domain/` だけを再 export します (外部ライブラリを import しない契約。ADR 0051)。i18n は `infrastructure/` も再 export する例外です (i18next 1 つの薄い包みで、使うのは web だけ)。`./testing` は `testing/` を、それ以外 (`./node`、`./client`、`./seed`) は `infrastructure/` と `domain/` を再 export します。
-- **モジュールの `infrastructure` だけがドライバを import する**: モジュールの `application` と `http` は、ドライバを import せず、`application` の Port (`Context.Service`) に依存します。`infrastructure` が、ドライバを `Effect.tryPromise` で包んで Port を実装します。`domain` は今のルールですべての外部ライブラリが止まっています。モジュールは `package.json` でドライバ (db を除く) に依存してよいことにします。db は ADR 0038 のとおり `apps/api` と `apps/worker` だけが依存します。
-- **ドライバは `Promise` を返し、`effect` を import しない**: Effect の利点 (依存の注入、型付きの失敗、span、資源の後始末) は、モジュールの `infrastructure` がドライバを Service と Layer で包んだ所で得られます。Effect 4.0.6 に同梱の `AGENTS.md` と `ai-docs/src/01_effect/01_basics/10_creating-effects.ts` も、`Promise` の API を Service の実装の中で `Effect.tryPromise` で包む形です。ドライバを呼ぶ側には Effect の外にあるものが残ります (Better Auth の hook、migrator と Vitest の `globalSetup`、ブラウザ)。ドライバが Effect だけを返すと、そのすべてで実行の関数を呼ぶことになり、`Promise` の面と Effect の面の 2 つの入口を持つと、規則とテストが 2 つに増えます。
-- **非同期の関数は `signal?: AbortSignal` を受け取る**: `Effect.tryPromise` は、Effect が中断されると `try: (signal) => …` に渡した `AbortSignal` を中断します (effect 4.0.6 の型は `readonly try: (signal: AbortSignal) => PromiseLike<A>`)。`AbortSignal` は Web 標準なので、Effect を import せずに受け取れます。ドライバは外部ライブラリ (ky、pg) に `signal` を渡し、モジュールの `infrastructure` は `tryPromise` の `signal` を渡します。hr-system のクライアントは、今回これに従いました。
+- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package です。クリーンアーキテクチャの Frameworks & Drivers の輪にあたります。対象は db、hr-system、i18n、logging、telemetry の 5 つです。shared-kernel、ui、module-fixtures は含めません (shared-kernel は業務のコード、ui は shadcn が配置を決める)。
+- **層はモジュールと同じ名前**: ドライバの層は `domain` と `infrastructure` だけです。自分の use case も route もないので、`application` と `http` は作りません。名前が同じなので、`packages/*/src/<層>/**` の glob で作った今の層の規則が、新しい規則なしでドライバにも届きます。
+- **`testing/`**: テストの道具とフェイクを置く、層ではない場所です。層のコードは import せず、テストは import できます。
+- **入口のファイルは再 export だけ**: `exports` が名前を挙げる `src/<名前>.ts` は、層のコードを再 export するだけです。`import type {} from "./…"` (型の augmentation を届ける。i18n が使う) だけは許します。`.` は `domain/` だけを再 export します (ADR 0051)。例外は i18n で、`infrastructure/` も再 export します。`./testing` は `testing/` を、それ以外は `infrastructure/` と `domain/` を再 export します。
+- **モジュールでは `infrastructure` だけがドライバを import する**: モジュールの `application` と `http` は `application` の Port (`Context.Service`) に依存し、`infrastructure` がドライバを `Effect.tryPromise` で包んで Port を実装します。`apps/*` の入口は、組み立てのためにドライバを import します。モジュールは `package.json` でドライバ (db を除く) に依存してよく、db は ADR 0038 のとおり `apps/api` と `apps/worker` だけが依存します。
+- **ドライバは `Promise` を返し、`effect` を import しない**: 理由は「根拠」にあります。
+- **非同期の関数は `signal?: AbortSignal` を受け取る**: ドライバは外部ライブラリ (ky、pg) に `signal` を渡し、モジュールの `infrastructure` は `Effect.tryPromise` の `signal` を渡します。hr-system のクライアントは、今回これに従いました。
 - **ドライバは workspace のほかの package に依存しない**: 今の規則のままです。db は例外で、モジュールの型を `import type` で読みます (ADR 0038)。
+
+## 根拠
+
+- **Effect の利点はモジュールの `infrastructure` で得られる**: 依存の注入、型付きの失敗、span、資源の後始末は、`infrastructure` がドライバを Service と Layer で包んだ所で得られます。Effect 4.0.6 に同梱の `AGENTS.md` と `ai-docs/src/01_effect/01_basics/10_creating-effects.ts` も、`Promise` の API を Service の実装の中で `Effect.tryPromise` で包む形です。
+- **Effect の外の呼び出し側が残る**: Better Auth の hook、migrator と Vitest の `globalSetup`、ブラウザです。ドライバが Effect だけを返すと、そのすべてで実行の関数を呼ぶことになり、`Promise` の面と Effect の面の両方を持つと、入口と規則とテストが 2 つに増えます。
+- **中断は `AbortSignal` で届く**: `Effect.tryPromise` は、Effect が中断されると `try: (signal) => …` に渡した `AbortSignal` を中断します (effect 4.0.6 の型は `readonly try: (signal: AbortSignal) => PromiseLike<A>`)。`AbortSignal` は Web 標準なので、Effect を import せずに受け取れます。
 
 ## 止める仕組み
 

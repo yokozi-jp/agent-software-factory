@@ -560,7 +560,9 @@
           "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
-          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts"
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"effect\"",
@@ -573,7 +575,9 @@
           "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
-          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts"
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"effect/Effect\"",
@@ -586,7 +590,9 @@
           "packages/hr-system/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/i18n/src/infrastructure/__fixtures__/driver-effect.ts",
           "packages/logging/src/infrastructure/__fixtures__/driver-effect.ts",
-          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts"
+          "packages/telemetry/src/infrastructure/__fixtures__/driver-effect.ts",
+          "packages/db/src/testing/__fixtures__/driver-effect.ts",
+          "packages/logging/src/testing/__fixtures__/driver-effect.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@effect/platform-node\"",
@@ -604,7 +610,8 @@
       {
         "files": [
           "packages/db/src/infrastructure/__fixtures__/testing-import.ts",
-          "packages/logging/src/infrastructure/__fixtures__/testing-import.ts"
+          "packages/logging/src/infrastructure/__fixtures__/testing-import.ts",
+          "packages/module-fixtures/src/application/__fixtures__/testing-import.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"../../testing.ts\"",

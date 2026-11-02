@@ -19,7 +19,7 @@ _Avoid_: 参照業務機能、デモ
 _Avoid_: 機能、ドメイン、コンポーネント
 
 **ドライバ**:
-外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。import してよいのはモジュールの `infrastructure` だけで、モジュールはそれを包んで Port を実装する。構成は [package の構成](docs/domain-model/package-layout.md)。
+外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。モジュールのうち import してよいのは `infrastructure` だけ(`apps/*` の入口も組み立てで import する)で、それを包んで Port を実装する。構成は [package の構成](docs/domain-model/package-layout.md)。
 _Avoid_: ライブラリ、アダプター、共通基盤
 
 **Shared Kernel**:

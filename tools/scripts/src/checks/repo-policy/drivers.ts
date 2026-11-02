@@ -9,6 +9,8 @@ import { Tree, list, record } from "./tree.ts";
 
 const guide = "docs/domain-model/package-layout.md";
 
+// The drivers are named here, in nodeDrivers or webDrivers of vite.config.ts, and in the values of `driver-in-module` of
+// lint-restrictions.json; driversAreInLint fails when a driver is missing from one of them.
 // What a driver may hold besides the files every package has, and what its entries may re-export.
 //   tools     names at the root of the package that a tool decides (migrations/ of dbmate, openapi.yaml, the stubs of
 //             the fake): they stay where the tool looks for them, and are listed here (rule C5).
@@ -18,29 +20,21 @@ const guide = "docs/domain-model/package-layout.md";
 //             code imports and it must not pull in an external library (docs/adr/0051). i18n is the exception: it is a thin
 //             wrapper that web alone uses.
 interface DriverShape {
-  readonly tools: readonly string[];
-  readonly places: readonly string[];
-  readonly rootMay: readonly string[];
+  readonly tools?: readonly string[];
+  readonly places?: readonly string[];
+  readonly rootMay?: readonly string[];
 }
 
 const driverShapes: Readonly<Record<string, DriverShape>> = {
-  db: {
-    tools: ["bootstrap.sql", "migrations", "templates", "test"],
-    places: [],
-    rootMay: ["domain"],
-  },
-  "hr-system": {
-    tools: ["fake", "openapi.yaml", "test"],
-    places: [],
-    rootMay: ["domain"],
-  },
+  db: { tools: ["bootstrap.sql", "migrations", "templates", "test"] },
+  "hr-system": { tools: ["fake", "openapi.yaml", "test"] },
   i18n: {
     tools: ["i18next.config.ts", "test"],
     places: ["locales"],
     rootMay: ["domain", "infrastructure"],
   },
-  logging: { tools: [], places: [], rootMay: ["domain"] },
-  telemetry: { tools: [], places: [], rootMay: ["domain"] },
+  logging: {},
+  telemetry: {},
 };
 
 const driverNames: readonly string[] = Object.keys(driverShapes);
@@ -90,7 +84,7 @@ function entryFiles(tree: Tree, name: string): Map<string, string> {
 // application/ or http/: it has no use case of its own, and an empty layer is not made.
 export function driversHaveTheirLayout(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const [name, shape] of Object.entries(driverShapes)) {
+  for (const [name, { tools = [], places = [] }] of Object.entries(driverShapes)) {
     if (!isDriver(tree, name)) continue;
     const root = `packages/${name}/`;
     const entries = entryFiles(tree, name);
@@ -102,7 +96,7 @@ export function driversHaveTheirLayout(tree: Tree): string[] {
         const inSrc = childOf(path, `${root}src/`);
         if (inSrc === undefined || seen.has(`src/${inSrc.name}`)) continue;
         const allowed = inSrc.inDirectory
-          ? [...layers, "testing", "__fixtures__", ...shape.places]
+          ? [...layers, "testing", "__fixtures__", ...places]
           : [...entries.keys()];
         if (allowed.includes(inSrc.name)) continue;
         seen.add(`src/${inSrc.name}`);
@@ -112,7 +106,7 @@ export function driversHaveTheirLayout(tree: Tree): string[] {
           );
         else if (inSrc.inDirectory)
           failures.push(
-            `${root}src/${inSrc.name}/ is not a place of the driver ${name}. src/ holds ${[...layers, "testing", "__fixtures__", ...shape.places].join(", ")}: move the code into one of them (docs/adr/0054, ${guide}).`,
+            `${root}src/${inSrc.name}/ is not a place of the driver ${name}. src/ holds ${[...layers, "testing", "__fixtures__", ...places].join(", ")}: move the code into one of them (docs/adr/0054, ${guide}).`,
           );
         else
           failures.push(
@@ -120,10 +114,10 @@ export function driversHaveTheirLayout(tree: Tree): string[] {
           );
         continue;
       }
-      if (seen.has(top.name) || [...standardFiles, ...shape.tools].includes(top.name)) continue;
+      if (seen.has(top.name) || [...standardFiles, ...tools].includes(top.name)) continue;
       seen.add(top.name);
       failures.push(
-        `${root}${top.name}${top.inDirectory ? "/" : ""} is not in the root of the driver ${name}. The root holds ${[...standardFiles, "src", ...shape.tools].join(", ")}; a file that a tool looks for is added to the tools of ${name} in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+        `${root}${top.name}${top.inDirectory ? "/" : ""} is not in the root of the driver ${name}. The root holds ${[...standardFiles, "src", ...tools].join(", ")}; a file that a tool looks for is added to the tools of ${name} in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
       );
     }
   }
@@ -150,12 +144,12 @@ const reexport =
 // infrastructure/ for i18n), `./testing` re-exports testing/, the others re-export infrastructure/ and domain/.
 export function driverEntriesOnlyReexport(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const [name, shape] of Object.entries(driverShapes)) {
+  for (const [name, { rootMay = ["domain"] }] of Object.entries(driverShapes)) {
     if (!isDriver(tree, name)) continue;
     for (const [file, key] of entryFiles(tree, name)) {
       const path = `packages/${name}/src/${file}`;
       if (!tree.paths.includes(path)) continue;
-      const may = key === "." ? shape.rootMay : key === "./testing" ? ["testing"] : layers;
+      const may = key === "." ? rootMay : key === "./testing" ? ["testing"] : layers;
       for (const statement of statements(tree.read(path))) {
         const target = reexport.exec(statement)?.[1];
         if (target === undefined) {
