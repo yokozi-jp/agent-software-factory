@@ -1,4 +1,5 @@
-// Checks of the references between docs/ and the code: to docs/ from outside it, and to files of the code from inside it.
+// Checks of the references between docs/ and the code: to docs/ from outside it, and to files of the code from inside it
+// and from the configs and scripts outside it.
 import { Tree } from "./tree.ts";
 
 // References to docs/ from outside docs/ (scripts, configs, AGENTS.md, steering, workflows).
@@ -75,6 +76,50 @@ export function docsCodePaths(tree: Tree): string[] {
         failures.push(
           `${source} cites ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`,
         );
+    }
+  }
+  return failures;
+}
+
+// References from the configs and the scripts to files of the code: the paths in lefthook.yml, the workflows, knip.jsonc,
+// the compose files, the comments of vite.config.ts and the checks of tools/scripts. A file that is moved or removed leaves
+// its path behind there too, and some of them are read by a check that then passes on nothing (the entry of the seed in
+// migration-compat names a path; a path that does not exist makes the check skip its work). docs/ is checked above, and the
+// tests and fixtures cite paths that do not exist on purpose (a test builds a small repository of its own), so they are
+// skipped, and so is an ignore file, which names the files that git does not track. A path is a run of path characters that starts with a top-level directory of the code, ends with an extension, and
+// is not part of a longer path; a glob, a placeholder and a relative path (`./`, `../`) are not a path the tree must have.
+const outsideDocs = [
+  /^docs\//,
+  /^\.agents\//,
+  /^\.kiro\/skills\//,
+  /^research\//,
+  /^pnpm-lock\.yaml$/,
+  /(?:^|\/)CHANGELOG\.md$/,
+  /\.test\.tsx?$/,
+  /\/(?:__fixtures__|fixtures)\//,
+  /\.gen\.ts$/,
+  // An ignore file names files that git does not track.
+  /(?:^|\/)\.[a-z]*ignore$/,
+];
+const pathInText =
+  /(?<![A-Za-z0-9_./@-])((?:tools|packages|apps|types|\.github|\.kiro)\/[A-Za-z0-9_./@-]*\.[A-Za-z0-9]+)(?![A-Za-z0-9_/-])/g;
+
+export function codePathReferences(tree: Tree): string[] {
+  const tracked = new Set(tree.paths);
+  const failures: string[] = [];
+  for (const source of tree.paths) {
+    if (outsideDocs.some((pattern) => pattern.test(source))) continue;
+    const text = tree.read(source);
+    if (text.includes("\0")) continue;
+    const seen = new Set<string>();
+    for (const match of text.matchAll(pathInText)) {
+      // A sentence can end with the path and a period.
+      const path = String(match[1]).replace(/\.$/, "");
+      if (tracked.has(path) || seen.has(path)) continue;
+      seen.add(path);
+      failures.push(
+        `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`,
+      );
     }
   }
   return failures;
