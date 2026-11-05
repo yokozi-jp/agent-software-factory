@@ -5,7 +5,7 @@
 "aqua:jdx/jactionlint" = "2.4.0"
 "aqua:stoplightio/spectral" = "6.17.0"
 # Must equal betterleaksMinVersion in .betterleaks.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts). v1 only (docs/adr/0003).
-betterleaks = "1.9.0"
+betterleaks = "v1.10.0"
 "github:oasdiff/oasdiff" = "1.35.0"
 osv-scanner = "2.7.0"
 # Semgrep CE is only on PyPI. uv installs it from the dependency graph that mise.lock records (wheel hashes),
