@@ -14,14 +14,15 @@ url_api = "https://api.github.com/repos/jdx/jactionlint/releases/assets/71429854
 provenance = "github-attestations"
 
 [[tools."aqua:stoplightio/spectral"]]
-version = "6.17.0"
+version = "6.17.1"
 backend = "aqua:stoplightio/spectral"
-specifiers = ["6.17.0"]
+specifiers = ["6.17.1"]
 
 [tools."aqua:stoplightio/spectral"."platforms.linux-x64"]
-checksum = "sha256:e6244baecff57dfb89ba8379a09563270fbb4ac7f73fb8692510a6160059ec53"
-url = "https://github.com/stoplightio/spectral/releases/download/v6.17.0/spectral-linux-x64"
-url_api = "https://api.github.com/repos/stoplightio/spectral/releases/assets/604961338"
+checksum = "sha256:0196c72234478e4e23df28b662afa7c9f80a47cfd31dc697e674151ad060bb35"
+checksum_source = "mise-versions"
+url = "https://github.com/stoplightio/spectral/releases/download/v6.17.1/spectral-linux-x64"
+url_api = "https://api.github.com/repos/stoplightio/spectral/releases/assets/716458952"
 
 [[tools.betterleaks]]
 version = "1.9.0"
