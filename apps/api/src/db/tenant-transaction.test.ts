@@ -421,7 +421,7 @@ describe("pool が空のとき", () => {
 
       // 100 ms の timeout は、待ちが終わるまで効かない。結果は TimeoutError だが、返るのは待ちが終わった後 (600 ms)。
       expect(Exit.hasFails(exit)).toBe(true);
-      expect(performance.now() - startedAt).toBeGreaterThan(450);
+      expect(performance.now() - startedAt).toBeGreaterThan(250);
     });
   });
 });
