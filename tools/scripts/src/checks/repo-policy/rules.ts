@@ -20,7 +20,7 @@
 import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
-import { codePathReferences, docsCodePaths, docsReferences } from "./docs-references.ts";
+import { codePathReferences, docsReferences } from "./docs-references.ts";
 import {
   driverEntriesOnlyReexport,
   driversDoNotUseEffect,
@@ -104,7 +104,6 @@ function run(tree: Tree): string[] {
     ...executableScripts(tree),
     ...shellScriptsHaveTests(tree),
     ...docsReferences(tree),
-    ...docsCodePaths(tree),
     ...codePathReferences(tree),
     ...ciTargetsHaveCommands(tree),
     ...noWorkspaceInCatalog(tree),

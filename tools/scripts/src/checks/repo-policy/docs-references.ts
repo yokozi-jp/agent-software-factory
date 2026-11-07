@@ -3,11 +3,9 @@
 import { posix } from "node:path";
 import { Tree } from "./tree.ts";
 
-// Sources that no check of a path reads: docs/ (docs-check follows its links), the upstream skills, the research notes
-// (they quote paths of other commits and of upstream repositories), and the lock files, which name files that are not in
-// the tree.
+// Sources that no check of a path reads: the upstream skills, the research notes (they quote paths of other commits and
+// of upstream repositories), and the lock files, which name files that are not in the tree.
 const neverRead = [
-  /^docs\//,
   /^\.agents\//,
   /^\.kiro\/skills\//,
   /^research\//,
@@ -29,6 +27,7 @@ const moved = "The file was moved or removed: write its path now, or the directo
 // wayfinder research tickets, which live on throwaway branches and are never merged; they quote paths
 // of other commits and of upstream repositories.
 const unchecked = [
+  /^docs\//,
   ...neverRead,
   /^tools\/scripts\/src\/checks\/(adr-check|repo-policy)\/([^/]*\.test\.ts$|fixtures\/)/,
 ];
@@ -68,41 +67,22 @@ export function docsReferences(tree: Tree): string[] {
   return failures;
 }
 
-// References from docs/ to files of the code, such as `tools/scripts/src/checks/repo-policy/ci.ts`. A file that
-// is moved or removed leaves the path in the docs behind. Only a path in inline code that names a file (it
-// ends with an extension) under a top-level directory of the code is checked: a directory, a glob, a
-// placeholder, and a path with a line number are skipped, because none of them names a file the tree must
-// have. The ADRs count too: an ADR that names the file of a rule is read as where the rule is now. A file an
-// ADR names as it was, or as an option not taken, is written outside inline code or by its directory.
-const codePath =
-  /`((?:tools|packages|apps|types|\.github|\.kiro)\/[A-Za-z0-9_./@-]*\.[A-Za-z0-9]+)`/g;
-
-export function docsCodePaths(tree: Tree): string[] {
-  const tracked = new Set(tree.paths);
-  const failures: string[] = [];
-  for (const source of tree.paths) {
-    if (!source.startsWith("docs/") || !source.endsWith(".md")) continue;
-    for (const match of tree.read(source).matchAll(codePath)) {
-      const path = String(match[1]);
-      if (!tracked.has(path))
-        failures.push(`${source} cites ${path}, which does not exist. ${moved}`);
-    }
-  }
-  return failures;
-}
-
-// References from the configs and the scripts to files of the code: the paths in lefthook.yml, the workflows, knip.jsonc,
-// the compose files, the comments of vite.config.ts and the checks of tools/scripts. A file that is moved or removed leaves
-// its path behind there too, and some of them are read by a check that then passes on nothing (migration-compat names the
-// entry of the seed; a path that does not exist makes it skip its work).
-//   a path to a file     a run of path characters under a top-level directory of the tree, ending with an extension
-//   a path to a directory  the same, ending with `/` after a name under the root: some file of the tree must be under it
-//   a relative path      `./` and `../` in front: resolved from the directory of the file that names it
+// References from docs/, the configs and the scripts to files of the code: inline code in docs/ (including ADRs), and
+// the paths in lefthook.yml, the workflows, knip.jsonc, the compose files, the comments of vite.config.ts and the checks
+// of tools/scripts. A file that is moved or removed leaves its path behind, and some of them are read by a check that
+// then passes on nothing (migration-compat names the entry of the seed; a path that does not exist makes it skip its
+// work).
+//   in docs/ (*.md)        a path in inline code to a file (ending with an extension) under a top-level directory
+//   in configs and scripts the same in plain text, a directory ending with `/` (some file of the tree must be under it),
+//                          and a relative path (`./` and `../` in front, resolved from the directory of the source)
 // A glob (`packages/*/src/a.ts`, `apps/web/src/**`), a placeholder (`packages/<name>/a.ts`) and a path that is part of a
-// longer one (a URL) are not a path the tree must have, and nor is a root alone (`packages/`). The top-level directories are
-// those of the tree itself, so a new one is read without a change here; docs/ is checked above.
-// Not read: the tests and fixtures (a test builds a small repository of its own, and cites paths that do not exist on
-// purpose), generated files, the changelogs, and an ignore file, which names the files that git does not track.
+// longer one (a URL, or an upstream repository path such as `<upstream>/.github/workflows/ci.yml` or
+// `owner/repo/.github/ISSUE_TEMPLATE/idea.yml`) are not a path the tree must have, and nor is a root alone (`packages/`).
+// A file an ADR names as it was, or as an option not taken, is written outside inline code or by its directory.
+// The top-level directories are those of the tree itself, so a new one is read without a change here.
+// Not read: non-Markdown files in docs/, the tests and fixtures (a test builds a small repository of its own, and cites
+// paths that do not exist on purpose), generated files, the changelogs, and an ignore file, which names the files that
+// git does not track.
 const notScanned = [
   ...neverRead,
   /(?:^|\/)CHANGELOG\.md$/,
@@ -128,17 +108,20 @@ export function codePathReferences(tree: Tree): string[] {
   const tracked = new Set(tree.paths);
   const roots = rootsOf(tree.paths);
   if (roots === "") return [];
+  const inlinePath = new RegExp(`\`()((?:${roots})/[A-Za-z0-9_./@-]*\\.[A-Za-z0-9]+)\``, "g");
   const pathInText = new RegExp(
     `(?<![A-Za-z0-9_./@-])((?:\\.{1,2}/)*)((?:${roots})/[A-Za-z0-9_./@-]*)(?![A-Za-z0-9_-])([*{<\\[?$])?`,
     "g",
   );
   const failures: string[] = [];
   for (const source of tree.paths) {
-    if (notScanned.some((pattern) => pattern.test(source))) continue;
+    const inDocs = source.startsWith("docs/");
+    if (inDocs ? !source.endsWith(".md") : notScanned.some((pattern) => pattern.test(source)))
+      continue;
     const text = tree.read(source);
     if (text.includes("\0")) continue;
     const seen = new Set<string>();
-    for (const match of text.matchAll(pathInText)) {
+    for (const match of text.matchAll(inDocs ? inlinePath : pathInText)) {
       const relative = String(match[1]);
       // A sentence can end with the path and a period.
       const body = String(match[2]).replace(/\.$/, "");
