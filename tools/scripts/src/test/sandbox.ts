@@ -43,6 +43,10 @@ const inside = (root: string, path: string): boolean => {
 const environment = (root: string, env: Record<string, string> = {}): NodeJS.ProcessEnv => ({
   ...process.env,
   HOME: root,
+  GIT_AUTHOR_NAME: "test",
+  GIT_AUTHOR_EMAIL: "test@example.com",
+  GIT_COMMITTER_NAME: "test",
+  GIT_COMMITTER_EMAIL: "test@example.com",
   ...env,
 });
 

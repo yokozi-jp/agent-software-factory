@@ -26,6 +26,29 @@ describe("gitIn", () => {
     expect(gitIn(repo, ["-c", 'alias.home=!printf %s "$HOME"', "home"])).toBe(box.root);
   });
 
+  it("gives git a fixed identity when the environment has none", () => {
+    const saved = {
+      GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME,
+      GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL,
+      GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME,
+      GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL,
+    };
+    delete process.env.GIT_AUTHOR_NAME;
+    delete process.env.GIT_AUTHOR_EMAIL;
+    delete process.env.GIT_COMMITTER_NAME;
+    delete process.env.GIT_COMMITTER_EMAIL;
+    try {
+      const repo = join(box.root, "repo");
+      gitIn(repo, ["init", "-q"]);
+      gitIn(repo, ["commit", "--allow-empty", "-qm", "init"]);
+      expect(gitIn(repo, ["log", "-1", "--format=%an <%ae> / %cn <%ce>"]).trim()).toBe(
+        "test <test@example.com> / test <test@example.com>",
+      );
+    } finally {
+      Object.assign(process.env, saved);
+    }
+  });
+
   it("refuses a directory whose repository is outside the sandbox", () => {
     // This test file lives in this repository, outside any sandbox.
     expect(() => gitIn(import.meta.dirname, ["status"])).toThrow(/outside the sandbox/);
@@ -65,8 +88,8 @@ describe("runIn", () => {
   });
 
   it("gives the command the sandbox as HOME, and the variables it is given", () => {
-    const result = runIn(box.root, "sh", ["-c", 'printf "%s %s" "$HOME" "$EXTRA"'], {
-      env: { EXTRA: "x" },
+    const result = runIn(box.root, "sh", ["-c", 'printf "%s %s" "$HOME" "$GIT_AUTHOR_NAME"'], {
+      env: { GIT_AUTHOR_NAME: "x" },
     });
     expect(result.stdout).toBe(`${box.root} x`);
   });
