@@ -3,7 +3,7 @@
 # After changing a version, run `mise lock --platform linux-x64` and commit mise.lock.
 [tools]
 "aqua:jdx/jactionlint" = "2.5.0"
-"aqua:stoplightio/spectral" = "6.17.0"
+"aqua:stoplightio/spectral" = "6.17.1"
 # Must equal betterleaksMinVersion in .betterleaks.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts). v1 only (docs/adr/0003).
 betterleaks = "1.9.0"
 "github:oasdiff/oasdiff" = "1.35.0"
