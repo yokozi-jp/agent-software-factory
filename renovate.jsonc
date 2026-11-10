@@ -23,6 +23,14 @@
       "groupName": "betterleaks",
     },
     {
+      // The GitHub release tag is v1.10.0, and Renovate wrote `betterleaks = "v1.10.0"` in mise.toml. That differs from
+      // betterleaksMinVersion ("1.10.0"), so repo-policy failed. Keep the v out of the version, as the customManager below does.
+      "description": "Write the betterleaks version in mise.toml without the v of the release tag",
+      "matchDepNames": ["betterleaks"],
+      "matchManagers": ["mise"],
+      "extractVersion": "^v?(?<version>.+)$",
+    },
+    {
       // ADR 0013: one Node.js major version, set by .node-version. A major update changes the Lambda runtime,
       // the API build target and engines.node, so a person does it.
       "description": "Do not update Node.js or @types/node to a new major version",
