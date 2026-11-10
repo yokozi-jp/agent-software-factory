@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { passingRepo } from "./fixtures/passing-repo.ts";
 import { failuresOf, repo } from "./fixtures/repo.ts";
-import { codePathReferences, docsCodePaths, docsReferences } from "./docs-references.ts";
+import { codePathReferences, docsReferences } from "./docs-references.ts";
 
 const base = passingRepo;
 
@@ -120,12 +120,12 @@ describe("references to docs/ from outside docs/", () => {
 });
 
 describe("references from docs/ to files of the code", () => {
-  const violations = failuresOf(docsCodePaths);
+  const violations = failuresOf(codePathReferences);
   const cite = (line: string, path = "docs/tooling/ci.md") => ({
     [path]: `# A doc\n\n${line}\n`,
   });
   const missing = (path: string, source = "docs/tooling/ci.md") =>
-    `${source} cites ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`;
+    `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`;
 
   it.each([
     ["a path", "`tools/a.ts`", ["tools/a.ts"]],
@@ -147,7 +147,7 @@ describe("references from docs/ to files of the code", () => {
     ["tools/scripts/src/checks/repo-policy/cli.ts.map"],
     ["packages/module-fixtures/src/missing.ts"],
     ["apps/api/missing.json"],
-    ["types/missing.d.ts"],
+    ["packages/claim/src/missing.d.ts"],
     ["tools/scripts/src/a-b_c.d/@x.ts"],
   ])("refuses `%s`, which does not exist", (path) => {
     expect(violations(repo(cite(`\`${path}\``)))).toEqual([missing(path)]);
@@ -177,8 +177,18 @@ describe("references from docs/ to files of the code", () => {
     ["a path in plain text", "see tools/scripts/src/a.ts"],
     ["a path under another top-level directory", "`scripts/a.sh` and `research/a.md`"],
     ["a code span of several words", "`node tools/a.ts`"],
+    [
+      "an upstream repository path",
+      "`<upstream>/.github/workflows/ci.yml` and `owner/repo/.github/ISSUE_TEMPLATE/idea.yml`",
+    ],
   ])("skips %s", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
+  });
+
+  it("reads every top-level directory of the tree, as the configs do", () => {
+    expect(violations(repo({ ...cite("`docker/missing.yml`"), "docker/a.yml": "" }))).toEqual([
+      missing("docker/missing.yml"),
+    ]);
   });
 
   it("checks the ADRs too", () => {
@@ -187,12 +197,12 @@ describe("references from docs/ to files of the code", () => {
     ]);
   });
 
-  it("skips a file that is not Markdown, and a file outside docs/", () => {
+  it("skips a file under docs/ that is not Markdown", () => {
     expect(
       violations(
         repo({
           ...cite("`tools/a.ts`", "docs/tooling/a.txt"),
-          ...cite("`tools/a.ts`", "README.md"),
+          ...cite("`tools/a.ts`", "docs/tooling/a.md.txt"),
         }),
       ),
     ).toEqual([]);
@@ -281,7 +291,19 @@ describe("references from the configs and the scripts to files of the code", () 
     ["a glob of braces", "# {apps,packages}/*/src/x.ts"],
     ["a name with no extension", "# packages/a/src and tools/scripts"],
     ["a path inside a longer path", "# https://example.com/apps/a/b.ts"],
+    [
+      "an upstream repository path",
+      "# <upstream>/.github/workflows/ci.yml and owner/repo/.github/ISSUE_TEMPLATE/idea.yml",
+    ],
     ["a name that is not under a directory of the code", "# docs/a.ts and src/a.ts"],
+    // The limits in docs/tooling/ci.md: none of these is read.
+    ["a path from its package", '"entry": "src/seed/index.ts"'],
+    ["a path with escaped slashes in JSON", '"entry": "packages\\/a\\/b.ts"'],
+    [
+      "an untracked output outside the roots",
+      "# coverage/coverage-final.json and .nx/cache/a.json",
+    ],
+    ["an untracked output under a root, as a glob", '- "apps/api/dist/**"'],
   ])("does not read %s as a file the tree must have", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
   });
@@ -338,8 +360,16 @@ describe("references from the configs and the scripts to files of the code", () 
   });
 
   it("refuses a path in Markdown outside docs/ too", () => {
-    expect(violations(repo(cite("See `tools/a/missing.ts`.", "AGENTS.md")))).toEqual([
+    expect(
+      violations(
+        repo({
+          ...cite("See `tools/a/missing.ts`.", "AGENTS.md"),
+          ...cite("See tools/b/missing.ts.", "apps/docs/README.md"),
+        }),
+      ),
+    ).toEqual([
       missing("tools/a/missing.ts", "AGENTS.md"),
+      missing("tools/b/missing.ts", "apps/docs/README.md"),
     ]);
   });
 
