@@ -10,7 +10,7 @@ betterleaks = "1.9.0"
 osv-scanner = "2.7.1"
 # Semgrep CE is only on PyPI. uv installs it from the dependency graph that mise.lock records (wheel hashes),
 # with the Python pinned here, so it does not depend on the Python of the machine (docs/adr/0021).
-"pypi:semgrep" = "1.182.1"
+"pypi:semgrep" = "1.184.0"
 python = "3.13.17"
 shellcheck = "0.11.0"
 uv = "0.13.7"
@@ -22,5 +22,5 @@ zizmor = "1.32.0"
 # sidecar の uv.lock を作り直すたびに now-24h の絶対時刻で焼き直され、semgrep の版を固定していても
 # digest が毎回変わり、lock file maintenance の PR が繰り返し作られていました。
 # cooldown は保ったまま lock を決定論にするため、now 基準の duration ではなく固定日時にします。
-# 2026-10-24 は semgrep 1.182.1 を mise.toml で固定した日です。版を上げるときにこの日付も進めます。
-minimum_release_age = "2026-10-24T00:00:00Z"
+# 2026-11-10 は semgrep 1.184.0 を mise.toml で固定した日です。版を上げるときにこの日付も進めます。
+minimum_release_age = "2026-11-10T00:00:00Z"
