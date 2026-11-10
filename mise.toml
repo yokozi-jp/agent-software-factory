@@ -7,7 +7,7 @@
 # Must equal betterleaksMinVersion in .betterleaks.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts). v1 only (docs/adr/0003).
 betterleaks = "1.9.0"
 "github:oasdiff/oasdiff" = "1.35.0"
-osv-scanner = "2.7.0"
+osv-scanner = "2.7.1"
 # Semgrep CE is only on PyPI. uv installs it from the dependency graph that mise.lock records (wheel hashes),
 # with the Python pinned here, so it does not depend on the Python of the machine (docs/adr/0021).
 "pypi:semgrep" = "1.182.1"

@@ -46,14 +46,15 @@ url = "https://github.com/oasdiff/oasdiff/releases/download/v1.35.0/oasdiff_1.35
 url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/685622252"
 
 [[tools.osv-scanner]]
-version = "2.7.0"
+version = "2.7.1"
 backend = "aqua:google/osv-scanner"
-specifiers = ["2.7.0"]
+specifiers = ["2.7.1"]
 
 [tools.osv-scanner."platforms.linux-x64"]
-checksum = "sha256:160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
-url = "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64"
-url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/632251666"
+checksum = "sha256:fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
+checksum_source = "mise-versions"
+url = "https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64"
+url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/726165286"
 
 [[tools."pypi:semgrep"]]
 version = "1.182.1"
