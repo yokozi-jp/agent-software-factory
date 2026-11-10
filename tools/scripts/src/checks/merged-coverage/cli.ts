@@ -37,27 +37,31 @@ function candidates(top: string): string[] {
   ];
 }
 
-// The projects that nx would run `test` for in this change and that can write a record (the directories of
-// candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, or tools/scripts
-// alone, whose coverage is not a record of this check) has none: `nx affected -t test` then writes no record, and that
-// is not a failure.
-function affectedRecordProjects(top: string): string[] | undefined {
-  const result = spawnSync(
-    "pnpm",
-    [
-      "exec",
-      "nx",
-      "show",
-      "projects",
-      "--affected",
-      "--with-target",
-      "test",
-      ...["apps/*", "packages/*", "packages/*/events"].flatMap((glob) => ["--projects", glob]),
-    ],
-    { cwd: top, encoding: "utf8" },
-  );
+// The names of the projects that `nx show projects` prints for these arguments, or undefined when nx cannot say.
+function nxProjects(top: string, args: string[]): string[] | undefined {
+  const result = spawnSync("pnpm", ["exec", "nx", "show", "projects", ...args], {
+    cwd: top,
+    encoding: "utf8",
+  });
   if (result.status !== 0) return undefined;
   return result.stdout.split("\n").filter((line) => line.trim() !== "");
+}
+
+// The projects that nx would run `test` for in this change and that can write a record (the directories of
+// candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, a version bump of a
+// tool, or tools/scripts alone, whose coverage is not a record of this check) has none: `nx affected -t test` then writes
+// no record, and that is not a failure.
+// `--projects` makes `nx show projects` ignore `--affected` (it prints every matching project), so the directories are
+// asked separately and the two answers are intersected.
+function affectedRecordProjects(top: string): string[] | undefined {
+  const affected = nxProjects(top, ["--affected", "--with-target", "test"]);
+  const withRecord = nxProjects(top, [
+    "--with-target",
+    "test",
+    ...["apps/*", "packages/*", "packages/*/events"].flatMap((glob) => ["--projects", glob]),
+  ]);
+  if (affected === undefined || withRecord === undefined) return undefined;
+  return affected.filter((name) => withRecord.includes(name));
 }
 
 function main(): string[] {
