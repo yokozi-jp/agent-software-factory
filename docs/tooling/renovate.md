@@ -38,6 +38,9 @@ lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新�
 | betterleaks のメジャー版            | v1 に留める ([ADR 0003](../adr/0003-pin-betterleaks-v1.md))                                   |
 | Node.js、`@types/node` のメジャー版 | Lambda の runtime とそろえる ([ADR 0013](../adr/0013-api-on-ecs-and-lambda-web-functions.md)) |
 | `runs-on` の image (`ubuntu-26.04`) | runner の OS を変えるのは、別の判断                                                           |
+| nx と `@nx/devkit` の minimatch     | `10.2.5` に戻す (下記)                                                                        |
+
+`pnpm-workspace.yaml` の `overrides` は、Dependabot の alert の推移的依存を修正版以上に引き上げます ([PR #661](https://github.com/yokozi-jp/agent-software-factory/pull/661))。minimatch の修正版 (GHSA-g3hv-75wg-m249) は 11.0.1 だけです。nx 24.0.5 は minimatch を `10.2.5` に固定し、11 にない `minimatch.makeRe` を呼ぶので、11 に上げると `nx show projects --projects` が `makeRe is not a function` で落ち、CI の merged-coverage が止まりました。そこで `nx>minimatch` と `@nx/devkit>minimatch` だけを `10.2.5` に戻しています。nx が読む glob はリポジトリの設定から来て、外の入力ではないので、この alert の影響は受け入れます (判断)。nx の更新の PR では、`pnpm view nx@<版> dependencies.minimatch` が 11 以上になっていたら、この 2 行を消します。
 
 ## PR を merge する前に
 

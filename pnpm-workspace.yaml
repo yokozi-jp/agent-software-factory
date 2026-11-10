@@ -111,6 +111,11 @@ overrides:
   "re2js@<2.8.7": "^2.8.7"
   "katex@<0.18.2": "^0.18.2"
   "minimatch@<11.0.1": "^11.0.1"
+  # nx 24.0.5 は minimatch 10.2.5 に固定し、11 にない minimatch.makeRe を呼ぶ。11 にすると、`nx show projects --projects`
+  # が `makeRe is not a function` で落ち、merged-coverage が止まる。minimatch 11 を使う nx が出るまで、nx の分だけ戻す。
+  # nx が読む glob はリポジトリの設定から来て、外の入力ではない (判断。docs/tooling/renovate.md ("更新しないもの"))。
+  "nx>minimatch": "10.2.5"
+  "@nx/devkit>minimatch": "10.2.5"
   "glob@<14.0.2": "^14.0.2"
   "@hono/node-server@<2.1.3": "^2.1.6"
 peerDependencyRules:
