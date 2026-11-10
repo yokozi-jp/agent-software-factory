@@ -13,10 +13,39 @@ export interface Sandbox {
   remove(): void;
 }
 
+// The variables that setup.ts sets for every test: no user or system git config, only local transports,
+// and an identity, since there is no user config to read one from.
+export const isolatedGitEnv = {
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+  // A push or fetch to a URL fails instead of reaching GitHub.
+  GIT_ALLOW_PROTOCOL: "file",
+  GIT_AUTHOR_NAME: "test",
+  GIT_AUTHOR_EMAIL: "test@example.com",
+  GIT_COMMITTER_NAME: "test",
+  GIT_COMMITTER_EMAIL: "test@example.com",
+} as const;
+
+// setup.ts runs only under the Vitest config of tools/scripts. A run with another config (`vp test run
+// tools/scripts/...` from the root, whose config has no setupFiles) would start git without the isolation,
+// with the variables of a Git hook still set. It stops here instead (#500).
+function assertIsolated(): void {
+  const missing = Object.entries(isolatedGitEnv)
+    .filter(([name, value]) => process.env[name] !== value)
+    .map(([name]) => name);
+  if (missing.length > 0)
+    throw new Error(
+      `sandbox.ts: the isolation of src/test/setup.ts is not in place (${missing.join(", ")}). Run the ` +
+        "tests with the config of tools/scripts: `pnpm exec nx test scripts`, or " +
+        "`pnpm --filter @agent-software-factory/scripts exec vp test run <file>`.",
+    );
+}
+
 let current: string | undefined;
 
 // A fresh temporary directory that git repository discovery cannot climb out of.
 export function sandbox(): Sandbox {
+  assertIsolated();
   const root = realpathSync(mkdtempSync(join(tmpdir(), "scripts-test-")));
   current = root;
   // A directory in the sandbox without its own .git finds no repository, instead of this one.

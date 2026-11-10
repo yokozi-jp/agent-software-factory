@@ -10,7 +10,10 @@
 //   2. ignores the user's and the system's git config, and allows only local transports,
 //   3. gives git an identity, since there is no user config to read one from.
 // sandbox() and gitIn() in sandbox.ts do the rest. isolation.test.ts proves the whole.
+// sandbox() refuses to start when these are not set, so a run without this file fails instead of running git
+// unisolated (#500).
 import { execFileSync } from "node:child_process";
+import { isolatedGitEnv } from "./sandbox.ts";
 
 // --local-env-vars lists the variables only; it does not read a repository, so GIT_DIR cannot misdirect it.
 for (const name of execFileSync("git", ["rev-parse", "--local-env-vars"], {
@@ -18,13 +21,4 @@ for (const name of execFileSync("git", ["rev-parse", "--local-env-vars"], {
 }).split("\n")) {
   if (name !== "") delete process.env[name];
 }
-Object.assign(process.env, {
-  GIT_CONFIG_GLOBAL: "/dev/null",
-  GIT_CONFIG_NOSYSTEM: "1",
-  // A push or fetch to a URL fails instead of reaching GitHub.
-  GIT_ALLOW_PROTOCOL: "file",
-  GIT_AUTHOR_NAME: "test",
-  GIT_AUTHOR_EMAIL: "test@example.com",
-  GIT_COMMITTER_NAME: "test",
-  GIT_COMMITTER_EMAIL: "test@example.com",
-});
+Object.assign(process.env, isolatedGitEnv);

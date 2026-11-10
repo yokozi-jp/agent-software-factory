@@ -1,8 +1,16 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
-import { gitIn, miseDirs, runIn, sandbox, startIn, type Sandbox } from "./sandbox.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+  gitIn,
+  isolatedGitEnv,
+  miseDirs,
+  runIn,
+  sandbox,
+  startIn,
+  type Sandbox,
+} from "./sandbox.ts";
 
 let box: Sandbox;
 beforeEach(() => {
@@ -10,6 +18,29 @@ beforeEach(() => {
 });
 afterEach(() => {
   box.remove();
+});
+
+describe("sandbox", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each(Object.keys(isolatedGitEnv))(
+    "refuses to start when setup.ts has not set %s, as in a run from the root config",
+    (name) => {
+      vi.stubEnv(name, undefined);
+      expect(() => sandbox()).toThrow(
+        new RegExp(
+          `isolation of src/test/setup\\.ts is not in place \\(${name}\\).*nx test scripts`,
+        ),
+      );
+    },
+  );
+
+  it("refuses to start when a variable has another value", () => {
+    vi.stubEnv("GIT_CONFIG_GLOBAL", "/home/u/.gitconfig");
+    expect(() => sandbox()).toThrow(/not in place \(GIT_CONFIG_GLOBAL\)/);
+  });
 });
 
 describe("gitIn", () => {
