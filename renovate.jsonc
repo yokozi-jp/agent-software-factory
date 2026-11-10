@@ -46,6 +46,14 @@
       "enabled": false,
     },
     {
+      // pnpm-workspace.yaml pins minimatch 10.2.5 for nx and @nx/devkit only: nx 24.0.5 calls minimatch.makeRe, which 11
+      // does not have (PR #667). The open alert of minimatch made Renovate raise security PRs that undo the pin (#668,
+      // #669). Remove this rule with the two overrides when nx depends on minimatch 11 (docs/tooling/renovate.md).
+      "description": "Do not update the minimatch that nx and @nx/devkit are pinned to",
+      "matchDepNames": ["nx>minimatch", "@nx/devkit>minimatch"],
+      "enabled": false,
+    },
+    {
       // ADR 0028: each @effect/tsgo release supports a range of Oxlint and oxlint-tsgolint (its README), and Vite+
       // carries them. So a Vite+ update outside that range must not merge alone, nor an @effect/tsgo update that
       // needs a Vite+ not yet installed. The `vite` entry of the catalog is Vite+'s core package.
