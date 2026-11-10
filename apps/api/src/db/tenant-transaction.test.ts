@@ -365,7 +365,10 @@ describe("pool が空のとき", () => {
     await db.close();
   });
 
-  /** pool の接続を 1 本にして、その 1 本を 1.5 秒つかむトランザクションを始めてから、`during` を流す。 */
+  /**
+   * pool の接続を 1 本にして、その 1 本を 1.5 秒つかむトランザクションを始め、つかんだことを確かめてから、`during` を流す。
+   * 固定の時間を待つだけでは、負荷が高いと holder がまだ接続をつかんでおらず、`during` の待ちが pool の待ちにならない (#590)。
+   */
   const withHeldPool = async (
     during: (layer: ReturnType<typeof Database.layer>) => Promise<void>,
   ): Promise<void> => {
@@ -376,15 +379,17 @@ describe("pool が空のとき", () => {
     });
     const kysely = new Kysely<never>({ dialect: new PostgresDialect({ pool }) });
     const layer = Database.layer(kysely);
+    const { promise: holding, resolve: hold } = Promise.withResolvers<void>();
     try {
       const holder = Effect.runPromise(
         inTenantTransaction(
           ClaimTx,
           { tenantId: tenantA, ...writer },
-          Effect.sleep("1500 millis"),
+          Effect.sync(hold).pipe(Effect.andThen(Effect.sleep("1500 millis"))),
         ).pipe(Effect.provide(layer)),
       );
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // holder が接続をつかむ前に失敗したら、その失敗でテストを落とす。
+      await Promise.race([holding, holder]);
       await during(layer);
       await holder;
     } finally {
@@ -420,6 +425,7 @@ describe("pool が空のとき", () => {
       const exit = await attempt(layer, "100 millis");
 
       // 100 ms の timeout は、待ちが終わるまで効かない。結果は TimeoutError だが、返るのは待ちが終わった後 (600 ms)。
+      // holder が接続をつかんだ後に attempt が待ち始めるので、600 ms の待ちは startedAt より後に始まる。
       expect(Exit.hasFails(exit)).toBe(true);
       expect(performance.now() - startedAt).toBeGreaterThan(450);
     });
