@@ -109,7 +109,7 @@ overrides:
   # Dependabot alerts (GHSA)。推移的依存の脆弱な版を、修正版以上に引き上げる。
   "qs@<6.16.1": "^6.16.1"
   "re2js@<2.8.7": "^2.8.7"
-  "katex@<0.18.2": "^0.18.2"
+  "katex@<0.18.2": "^0.19.0"
   "minimatch@<11.0.1": "^11.0.1"
   # nx 24.0.5 は minimatch 10.2.5 に固定し、11 にない minimatch.makeRe を呼ぶ。11 にすると、`nx show projects --projects`
   # が `makeRe is not a function` で落ち、merged-coverage が止まる。minimatch 11 を使う nx が出るまで、nx の分だけ戻す。
