@@ -309,8 +309,8 @@ catalogs:
       specifier: ^4.0.6
       version: 4.1.2
     eslint-plugin-react-you-might-not-need-an-effect:
-      specifier: 1.1.0
-      version: 1.1.0
+      specifier: 1.2.0
+      version: 1.2.0
     eslint-plugin-storybook:
       specifier: ^10.6.5
       version: 10.6.6
@@ -449,7 +449,7 @@ importers:
         version: 24.0.5(@babel/traverse@7.29.10(supports-color@7.2.0))(@swc/core@1.16.22)(nx@24.0.5(@swc/core@1.16.22))(supports-color@7.2.0)
       eslint-plugin-react-you-might-not-need-an-effect:
         specifier: 'catalog:'
-        version: 1.1.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))
+        version: 1.2.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))
       eslint-plugin-storybook:
         specifier: 'catalog:'
         version: 10.6.6(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@7.0.2)
@@ -5690,8 +5690,8 @@ packages:
     resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
     engines: {node: '>=10'}
 
-  eslint-plugin-react-you-might-not-need-an-effect@1.1.0:
-    resolution: {integrity: sha512-cufMxMG0clISeHDMbJpOVmUSk2Hc1wQyFTW5mHO/POvAJNN3gfSSinPjxHN66iqGpsmGzon7y4HsEvcXRkHD0w==}
+  eslint-plugin-react-you-might-not-need-an-effect@1.2.0:
+    resolution: {integrity: sha512-ieSAjWnVO92c2kyDPYgGJplcX1Fs4dhCmbEVgM9PMJ3Kg0mE9BBacT7HQRyKqrhaxVyneiIlA8BsY7vzF+bQ4A==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       eslint: '>=8.40.0'
@@ -12493,7 +12493,7 @@ snapshots:
 
   escape-string-regexp@4.0.0: {}
 
-  eslint-plugin-react-you-might-not-need-an-effect@1.1.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0)):
+  eslint-plugin-react-you-might-not-need-an-effect@1.2.0(eslint@10.13.0(jiti@2.7.0)(supports-color@7.2.0)):
     dependencies:
       eslint: 10.13.0(jiti@2.7.0)(supports-color@7.2.0)
 
