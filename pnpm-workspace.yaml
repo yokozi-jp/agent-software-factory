@@ -37,7 +37,7 @@ catalog:
   jscpd: 5.4.2
   "@iwe-org/iwe": 0.32.0
   knip: 6.44.2
-  eslint-plugin-react-you-might-not-need-an-effect: 1.1.0
+  eslint-plugin-react-you-might-not-need-an-effect: 1.2.0
   better-auth: ^1.7.12
   oidc-provider: ^9.13.3
   "@types/oidc-provider": ^9.13.1
