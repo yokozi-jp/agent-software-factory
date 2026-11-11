@@ -349,7 +349,7 @@ catalogs:
       version: 0.24.0
     nodemailer:
       specifier: ^10.3.1
-      version: 10.3.1
+      version: 10.4.0
     nx:
       specifier: 24.0.5
       version: 24.0.5
@@ -673,7 +673,7 @@ importers:
         version: 0.29.8
       nodemailer:
         specifier: 'catalog:'
-        version: 10.3.1
+        version: 10.4.0
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.8
@@ -6833,8 +6833,8 @@ packages:
     resolution: {integrity: sha512-OmO8+GM1JUZqXET720VrJCwkjUCXmCMQm0Z3UDDRbfNLHS4NEAvY60j5jiFv0tkKw2PNNlqOLhahVmwJIOLDIQ==}
     engines: {node: '>=18'}
 
-  nodemailer@10.3.1:
-    resolution: {integrity: sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA==}
+  nodemailer@10.4.0:
+    resolution: {integrity: sha512-fyy6r4Q5euRJ9Qr3Cts9K7SZrfe9zmz9oLOYiAR02MEJRDRci+99y0OoYBYBgpLffOqkkjXrB/d26VfiMje/kA==}
     engines: {node: '>=20.0.0'}
 
   normalize-path@3.0.0:
@@ -13634,7 +13634,7 @@ snapshots:
 
   node-releases@2.0.60: {}
 
-  nodemailer@10.3.1: {}
+  nodemailer@10.4.0: {}
 
   normalize-path@3.0.0: {}
 
