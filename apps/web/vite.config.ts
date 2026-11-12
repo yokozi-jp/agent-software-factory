@@ -32,11 +32,9 @@ export default defineConfig({
     proxy: { "/api": "http://localhost:3000" },
   },
   test: {
-    // この test target は、Nx が他の task と同時に流さない (package.json の `nx.targets.test.parallelism: false`、#523)。
-    // CI で api:test や worker:test (testcontainers) と同時に流れると、`iframe ... did not become ready` や
-    // `Failed to fetch dynamically imported module` で落ちた。コンテナの起動や停止でホストの IP アドレスが変わると、
-    // Chromium が通信中の localhost のリクエストを中断し、Vitest は tester の読み込みの失敗を知らずに 60 秒待つ
-    // (https://github.com/vitest-dev/vitest/issues/11636)。因果は確かめていない (docs/tooling/ci.md)。
+    // この test target は、Nx が他の task と同時に流さない (package.json の `nx.targets.test.parallelism: false`)。
+    // CI で iframe が用意できない失敗が、api:test や worker:test (testcontainers) の終わりと重なっていた疑いのため
+    // (#523、因果は確かめていない。根拠は docs/tooling/ci.md ("web:test が不安定に落ちるとき"))。
     // 日時の表示が実行環境のタイムゾーンに頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
     // 効いていることは src/lib/date-time.test.ts が確かめる (docs/adr/0043)。story も同じブラウザで流す。
     browser: {
