@@ -46,20 +46,32 @@ const record = (project: string, files: Record<string, number | { from: number }
     ),
   );
 };
-// The stand-in for `pnpm exec nx show projects ...`, as nx 24 answers it: with `--projects` it prints the projects that
+// The stand-in for `pnpm exec nx ...`, as nx 24 answers it: `nx show projects` with `--projects` prints the projects that
 // write a record whether or not they are affected (it ignores `--affected`); with `--affected` alone it prints
-// `affected` (one project per line), which can include tools/scripts; it exits 1 when `nxFails`.
+// `affected` (one project per line), which can include tools/scripts; `nx show project <name> --json` prints the root
+// (the names do not follow the directories); it exits 1 when `nxFails`.
+const roots: Record<string, string> = {
+  api: "apps/api",
+  web: "apps/web",
+  claim: "packages/claim",
+  "shared-kernel": "packages/shared-kernel",
+  "claim-events": "packages/claim/events",
+  scripts: "tools/scripts",
+};
 const filters = "--projects apps/* --projects packages/* --projects packages/*/events";
-const check = (nx: { affected?: readonly string[]; nxFails?: boolean } = {}) => {
+const check = (nx: { affected?: readonly string[]; nxFails?: boolean; github?: boolean } = {}) => {
   const names = (nx.affected ?? []).map((name) => `"${name}"`).join(" ");
+  const rootCases = Object.entries(roots)
+    .map(([name, root]) => `*"show project ${name} --json"*) printf '{"root":"${root}"}';;`)
+    .join(" ");
   const stubs = stubDir(box.root, "stubs", {
     pnpm:
       nx.nxFails === true
         ? "exit 1"
-        : `case "$*" in *"${filters}"*) printf '%s\\n' api web claim;; *--affected*) printf '%s\\n' ${names};; esac`,
+        : `case "$*" in *"${filters}"*) printf '%s\\n' api web claim shared-kernel claim-events;; ${rootCases} *--affected*) printf '%s\\n' ${names};; esac`,
   });
   return runIn(repo, process.execPath, [cli], {
-    env: { GITHUB_ACTIONS: "", PATH: withPath(stubs) },
+    env: { GITHUB_ACTIONS: nx.github === true ? "true" : "", PATH: withPath(stubs) },
   });
 };
 
@@ -85,7 +97,7 @@ describe("merged-coverage", () => {
     record("apps/api", { [kernelFile]: 6, [apiFile]: 10 });
     record("packages/shared-kernel", { [kernelFile]: { from: 5 } });
 
-    const result = check();
+    const result = check({ affected: ["api", "shared-kernel"] });
 
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("merged-coverage: 2 files from the records of 2 projects.\n");
@@ -95,7 +107,7 @@ describe("merged-coverage", () => {
     record("apps/api", { [apiFile]: 5 });
     record("packages/shared-kernel", { [kernelFile]: 10 });
 
-    const result = check();
+    const result = check({ affected: ["api", "shared-kernel"] });
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
@@ -108,7 +120,7 @@ describe("merged-coverage", () => {
     record("apps/api", { [apiFile]: 10 });
     write("apps/api/src/new-file.ts", "export const added = 1;\n");
 
-    const result = check();
+    const result = check({ affected: ["api"] });
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("apps/api/src/new-file.ts: no test of any project ran it");
@@ -117,13 +129,13 @@ describe("merged-coverage", () => {
   it("leaves out the projects that have no record, as the projects that are not affected have none", () => {
     record("apps/api", { [apiFile]: 10 });
 
-    expect(check().status).toBe(0);
+    expect(check({ affected: ["api", "shared-kernel"] }).status).toBe(0);
   });
 
   it("marks the failure as an error annotation in GitHub Actions", () => {
     record("apps/api", { [apiFile]: 1 });
 
-    const result = runIn(repo, process.execPath, [cli], { env: { GITHUB_ACTIONS: "true" } });
+    const result = check({ affected: ["api"], github: true });
 
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/^::error::apps\/api\/src\/app\.ts: lines 10%/u);
@@ -136,11 +148,58 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("no coverage-final.json");
   });
 
-  it("exits 2 when nx cannot say which projects are affected", () => {
+  it("exits 2 when nx cannot say which projects are affected, though a record is there", () => {
+    record("apps/api", { [apiFile]: 10 });
+
     const result = check({ nxFails: true });
 
     expect(result.status).toBe(2);
+    expect(result.stderr).toContain("nx could not say which projects are affected");
+  });
+
+  it("ignores the record of a project that is not affected, and names it", () => {
+    // The web record is left by an earlier run: it would fail the minimum if it were read.
+    record("apps/api", { [apiFile]: 10 });
+    record("apps/web", { "apps/web/src/main.tsx": 1 });
+    write("apps/web/src/main.tsx", "export const main = 1;\n");
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(
+      "merged-coverage: ignored the records of 1 projects that are not affected (left by an earlier run): apps/web.\n" +
+        "merged-coverage: 1 files from the records of 1 projects.\n",
+    );
+  });
+
+  it("passes without reading the records left in coverage/ when no project that writes a record is affected", () => {
+    record("apps/api", { [apiFile]: 1 });
+
+    const result = check({ affected: ["scripts"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ignored the records of 1 projects that are not affected");
+    expect(result.stdout).toContain("nothing to check");
+  });
+
+  it("exits 2 when the only record is of a project that is not affected, though another one is", () => {
+    record("apps/web", { "apps/web/src/main.tsx": 10 });
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(2);
     expect(result.stderr).toContain("no coverage-final.json");
+    expect(result.stderr).toContain("affected projects (apps/api)");
+  });
+
+  it("finds the record of an events package by its directory, not by its name", () => {
+    record("packages/claim/events", { "packages/claim/events/src/event.ts": 10 });
+    write("packages/claim/events/src/event.ts", "export const event = 1;\n");
+
+    const result = check({ affected: ["claim-events"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
   });
 
   it("passes without a record when only tools/scripts is affected, though nx lists every project with --projects", () => {
@@ -173,7 +232,7 @@ describe("merged-coverage", () => {
       JSON.stringify({ [join(repo, apiFile)]: { statementMap: 1 } }),
     );
 
-    const result = check();
+    const result = check({ affected: ["api"] });
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain(

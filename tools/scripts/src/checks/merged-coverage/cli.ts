@@ -1,9 +1,11 @@
 // Add up the coverage records of the projects and check each measured file against the minimum of coverage-policy.json
 // (#567, docs/tooling/ci.md ("coverage の下限")). Run from the repository root after `nx affected -t test` (CI), or by hand:
 //   node tools/scripts/src/checks/merged-coverage/cli.ts
-// A project is in scope when it wrote coverage/coverage-final.json, so only the affected projects count in CI. Exit codes:
-// 0 passes (also when no affected project runs tests, so there is no record), 1 a file is under the minimum or an
-// exception is wrong, 2 the check could not run (no record although tests were affected, bad policy).
+// A project is in scope when nx says it is affected and it wrote coverage/coverage-final.json. The records of the other
+// projects (left in coverage/ by an earlier run; a CI checkout has none) are not read, and are named in the output (#579).
+// Exit codes: 0 passes (also when no affected project runs tests, so there is no record), 1 a file is under the minimum or
+// an exception is wrong, 2 the check could not run (no record although tests were affected, nx cannot say which projects
+// are affected, bad policy).
 // The rules are in rules.ts; this file reads the files and prints.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -47,10 +49,26 @@ function nxProjects(top: string, args: string[]): string[] | undefined {
   return result.stdout.split("\n").filter((line) => line.trim() !== "");
 }
 
-// The projects that nx would run `test` for in this change and that can write a record (the directories of
-// candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, a version bump of a
-// tool, or tools/scripts alone, whose coverage is not a record of this check) has none: `nx affected -t test` then writes
-// no record, and that is not a failure.
+// The root of an Nx project (`nx show project <name> --json`), or undefined when nx cannot say. The names that nx prints
+// (`shared-kernel`, `approval-events`) do not follow the directories (packages/approval/events), so the directory is asked.
+function nxRoot(top: string, name: string): string | undefined {
+  const result = spawnSync("pnpm", ["exec", "nx", "show", "project", name, "--json"], {
+    cwd: top,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(result.stdout);
+    return isObject(parsed) && typeof parsed.root === "string" ? parsed.root : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// The directories of the projects that nx would run `test` for in this change and that can write a record (the
+// directories of candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, a version
+// bump of a tool, or tools/scripts alone, whose coverage is not a record of this check) has none: `nx affected -t test`
+// then writes no record, and that is not a failure.
 // `--projects` makes `nx show projects` ignore `--affected` (it prints every matching project), so the directories are
 // asked separately and the two answers are intersected.
 function affectedRecordProjects(top: string): string[] | undefined {
@@ -61,7 +79,13 @@ function affectedRecordProjects(top: string): string[] | undefined {
     ...["apps/*", "packages/*", "packages/*/events"].flatMap((glob) => ["--projects", glob]),
   ]);
   if (affected === undefined || withRecord === undefined) return undefined;
-  return affected.filter((name) => withRecord.includes(name));
+  const roots: string[] = [];
+  for (const name of affected.filter((project) => withRecord.includes(project))) {
+    const root = nxRoot(top, name);
+    if (root === undefined) return undefined;
+    roots.push(root);
+  }
+  return roots;
 }
 
 function main(): string[] {
@@ -72,16 +96,29 @@ function main(): string[] {
 
   const recordOf = (project: string): string =>
     join(top, project, "coverage", "coverage-final.json");
-  const projects = candidates(top).filter((project) => existsSync(recordOf(project)));
+  const affected = affectedRecordProjects(top);
+  if (affected === undefined) {
+    throw new CannotRun(
+      "nx could not say which projects are affected, so the records cannot be told from stale ones. Run `pnpm exec nx show projects --affected --with-target test` to see why.",
+    );
+  }
+  const recorded = candidates(top).filter((project) => existsSync(recordOf(project)));
+  const stale = recorded.filter((project) => !affected.includes(project));
+  if (stale.length > 0) {
+    process.stdout.write(
+      `merged-coverage: ignored the records of ${stale.length} projects that are not affected (left by an earlier run): ${stale.join(", ")}.\n`,
+    );
+  }
+  const projects = recorded.filter((project) => affected.includes(project));
   if (projects.length === 0) {
-    if (affectedRecordProjects(top)?.length === 0) {
+    if (affected.length === 0) {
       process.stdout.write(
         "merged-coverage: no affected project of apps/* or packages/* has a test target; nothing to check.\n",
       );
       return [];
     }
     throw new CannotRun(
-      "no coverage-final.json under apps/*/coverage or packages/*/coverage. Run `pnpm exec nx affected -t test` first.",
+      `no coverage-final.json under apps/*/coverage or packages/*/coverage for the affected projects (${affected.join(", ")}). Run \`pnpm exec nx affected -t test\` first.`,
     );
   }
 

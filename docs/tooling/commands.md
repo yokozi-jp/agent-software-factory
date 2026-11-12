@@ -89,7 +89,7 @@ docs/      ドキュメント (入口は docs/index.md)
 1. 変えたファイルのテストは、ファイルを渡して流します (例: `pnpm --filter @agent-software-factory/api exec vp test run src/app.test.ts`)。Nx を通らないので cache されません。
 2. まとまったところで `pnpm exec nx affected -t test --base=origin/main` を流します。`--base` だけを渡すと、`nx affected` は base からの commit に加えて、commit していない変更と untracked のファイルも数えます (`nx affected --help`)。base に `origin/main` を渡すのは、worktree の手元の `main` が origin/main より古いと、取り込み済みの変更まで affected に数えるためです (`nx.json` の `defaultBase` は `main`)。
 3. `pnpm test` (`nx run-many -t test`) は、全部を確かめたいときに流します。変わっていないプロジェクトは cache から再生します。
-4. 各 project の記録を合わせた coverage の検査は、`pnpm exec nx affected -t test --base=origin/main` (または `pnpm test`) の後に `node tools/scripts/src/checks/merged-coverage/cli.ts` で流します。`coverage/coverage-final.json` を書いた project のファイルを、ファイルごとに lines と branches が 90% あるか確かめます ([CI](ci.md#合わせた検査))。CI の `nx` の job は、`nx affected -t check test build` の後にこれを流します。pre-push には入れません。
+4. 各 project の記録を合わせた coverage の検査は、`pnpm exec nx affected -t test --base=origin/main` (または `pnpm test`) の後に `NX_BASE=origin/main node tools/scripts/src/checks/merged-coverage/cli.ts` で流します。affected な project が書いた `coverage/coverage-final.json` を合わせ、ファイルごとに lines と branches が 90% あるか確かめます。affected でない project の古い記録は読みません ([CI](ci.md#合わせた検査))。CI の `nx` の job は、`nx affected -t check test build` の後にこれを流します。pre-push には入れません。
 
 `test` の target は `cache: true` です (`nx.json` の `targetDefaults`)。Nx は cache を `~/.nx/<id>/cache` に置き、main の作業ツリーと全ての worktree で共有するので、入力が同じなら別の worktree で流した結果も再生します ([Change Cache Location](https://nx.dev/docs/guides/tasks--caching/change-cache-location))。再生した target には `[existing outputs match the cache, left as is]` と出ます。
 
