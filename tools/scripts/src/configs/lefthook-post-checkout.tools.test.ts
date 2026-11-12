@@ -83,4 +83,15 @@ describe("lefthook.yml の post-checkout の dev-ports の run", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toContain("node: cannot start");
   });
+
+  // 偽の node はスクリプトの引数を見ない。入口のファイルがないことは、本物の node で確かめる。作業ディレクトリは空で、
+  // run が相対パスで指す入口 (tools/scripts/src/dev-ports/cli.ts) がない。
+  it("入口のファイルがなくても (本物の node)、終了コード 0 で終わること", () => {
+    const empty = join(box.root, "empty");
+    mkdirSync(empty, { recursive: true });
+    const command = jobRun().replaceAll("{1}", nullRef);
+    const result = runIn(empty, "sh", ["-c", command]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("Cannot find module");
+  });
 });

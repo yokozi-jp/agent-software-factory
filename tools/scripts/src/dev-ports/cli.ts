@@ -27,6 +27,7 @@ import {
 import { join, resolve } from "node:path";
 import {
   isNullRef,
+  lockAction,
   planAssign,
   planShow,
   shouldAssignOnCheckout,
@@ -72,10 +73,25 @@ function worktrees(cwd: string): Worktree[] {
 }
 
 // 同時に worktree を作る複数のセッションが、同じ slot を取らないための排他。git の共通ディレクトリに mkdir で
-// ロックを作る (mkdir は、あれば失敗する原子的な操作)。assign が殺されて残ったロックは、60 秒たてば捨てる。
-const staleMs = 60_000;
-// 人が実行する assign は 10 秒まで待つ。DEV_PORTS_LOCK_WAIT_MS で変えられる (テストが短くする)。
+// ロックを作る (mkdir は、あれば失敗する原子的な操作)。assign が殺されて残ったロックは、60 秒たてば捨てる
+// (rules.ts の lockAction)。
+// 人が実行する assign は 10 秒まで待つ。DEV_PORTS_LOCK_WAIT_MS で変えられる (assign のテストが短くする)。hook は
+// 下の hookLockWaitMs で、この値を見ない。
 const assignLockWaitMs = Number(process.env["DEV_PORTS_LOCK_WAIT_MS"] ?? 10_000);
+
+const isErrno = (error: unknown, code: string): boolean =>
+  error instanceof Error && "code" in error && error.code === code;
+
+// ロックを作ってからのミリ秒。調べる前に保持者が解放していれば undefined (stat が ENOENT)。
+function lockAge(lock: string): number | undefined {
+  try {
+    return Date.now() - statSync(lock).mtimeMs;
+  } catch (error) {
+    if (isErrno(error, "ENOENT")) return undefined;
+    throw error;
+  }
+}
+
 function withLock<T>(cwd: string, waitMs: number, work: () => T): T {
   const common = git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
   const lock = join(common, "dev-ports.lock");
@@ -85,14 +101,12 @@ function withLock<T>(cwd: string, waitMs: number, work: () => T): T {
       mkdirSync(lock);
       break;
     } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
-      if (Date.now() - statSync(lock).mtimeMs > staleMs) {
-        rmSync(lock, { recursive: true, force: true });
-        continue;
-      }
-      if (Date.now() >= giveUpAt)
+      if (!isErrno(error, "EEXIST")) throw error;
+      const action = lockAction({ age: lockAge(lock), remainingMs: giveUpAt - Date.now() });
+      if (action === "give-up")
         throw new Error("ほかの assign のロックを取れない (dev-ports.lock)");
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      if (action === "remove") rmSync(lock, { recursive: true, force: true });
+      if (action === "wait") Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
     }
   }
   try {
@@ -119,10 +133,12 @@ function assign(cwd: string, target: string | undefined, waitMs = assignLockWait
 }
 
 // lefthook.yml の post-checkout が呼ぶ。git worktree add が null ref を渡すので、そのときだけ割り当てる。
-// 通常の checkout と switch のたびに動くので、null ref でなければ、git もロックも使わずに終わる。
+// 通常の checkout と switch のたびに動くので、null ref でなければ、git もロックも使わずに終わる。この早期の判定は、
+// git を呼ぶ前に終えるためにここにある。割り当てるかどうかの判断 (main の checkout を除く) は、shouldAssignOnCheckout が持つ。
 // どんな失敗でも終了コード 0 で、警告だけを出す: git は、失敗した post-checkout を git worktree add の失敗にする
-// (worktree は作られる。git 2.53 で確かめた、2026-11-12)。ロックは短く待つ。git worktree add を長く止めないためで、
-// 取れなければ、worktree.sh add の assign に任せる。
+// (worktree は作られる。git 2.53.0 で確かめた、2026-11-12)。
+// ロックは短く待つ。git worktree add を長く止めないためで、取れなければ、worktree.sh add の assign に任せる。保持者は
+// git を数回呼ぶだけで、通常は数十ミリ秒で終わる。
 const hookLockWaitMs = 2_000;
 
 function hook(cwd: string, previousHead: string | undefined): Output {

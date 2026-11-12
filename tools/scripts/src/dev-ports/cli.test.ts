@@ -81,8 +81,13 @@ describe("dev-ports の hook", () => {
 
   it("main の checkout では、null ref でも何も書かず、静かに終了コード 0 で終わること", () => {
     const { main } = repo();
+    // 書き込みが起きたら落ちるよう、書き込み先の apps/ を main に用意する。
+    mkdirSync(join(main, "apps", "api"), { recursive: true });
+    mkdirSync(join(main, "apps", "web"), { recursive: true });
     const result = run(main, "hook", nullRef);
     expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
+    expect(existsSync(apiFile(main))).toBe(false);
+    expect(existsSync(webFile(main))).toBe(false);
   });
 
   // worktree.sh add が続けて assign しても、hook の結果が残る。
@@ -122,8 +127,9 @@ describe("dev-ports の hook", () => {
     expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
   });
 
-  // 別の assign がロックを持つ間、git worktree add を何秒も止めない。待ちを短くして、取れなければ警告して終わる。
-  it("ロックを取れなくても、警告を出して終了コード 0 で終わり、何も書かないこと", () => {
+  // 別の assign がロックを持つ間、git worktree add を何秒も止めない。hook の待ちは 2 秒 (hookLockWaitMs) で、人が実行する
+  // assign の 10 秒より短い。取れなければ警告して終わる。
+  it("ロックを取れなくても、2 秒ほどで警告を出して終了コード 0 で終わり、何も書かないこと", () => {
     const { main, add } = repo();
     const dir = add();
     mkdirSync(join(main, ".git", "dev-ports.lock"));
@@ -132,8 +138,8 @@ describe("dev-ports の hook", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toContain("ロック");
     expect(existsSync(apiFile(dir))).toBe(false);
-    // 既定の待ちは 2 秒。人が実行する assign の 10 秒より短い。
-    expect(Date.now() - started).toBeLessThan(8000);
+    // 待ちは 2 秒。負荷の高い環境の余裕を見ても、assign の 10 秒には届かない。
+    expect(Date.now() - started).toBeLessThan(6000);
   });
 
   // 失敗は git worktree add の失敗になるので、どの失敗でも 0 で終わる。ここでは git が失敗する場所 (作業ツリーでない) で、
@@ -193,6 +199,23 @@ describe("dev-ports の assign", () => {
     expect(again.status).toBe(0);
     expect(again.stdout).toContain("slot 1");
     expect(readFileSync(apiFile(dir), "utf8")).toBe(before);
+  });
+
+  // assign は web を先に書く。api の書き込みが失敗すると、web だけが残る。その worktree を「割り当て済み」と報告すると、
+  // api が既定のポートのまま、以後ずっと直らない。
+  it("api の書き込みが失敗して web だけが残った worktree は、次の assign で成功を装わず、終了コード 1 で断ること", () => {
+    const { main, add } = repo();
+    const dir = add();
+    rmSync(join(dir, "apps", "api"), { recursive: true });
+    const first = run(main, "assign", dir);
+    expect(first.status).toBe(2);
+    expect(existsSync(webFile(dir))).toBe(true);
+    mkdirSync(join(dir, "apps", "api"));
+    const second = run(main, "assign", dir);
+    expect(second.status).toBe(1);
+    expect(second.stdout).toBe("");
+    expect(second.stderr).toContain(".env.local");
+    expect(existsSync(apiFile(dir))).toBe(false);
   });
 
   it("すでに .env.local があるときは、上書きせず終了コード 1 で断ること", () => {

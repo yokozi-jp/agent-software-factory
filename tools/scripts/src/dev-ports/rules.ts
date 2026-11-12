@@ -98,9 +98,31 @@ export type Worktree = {
   readonly web: string | undefined;
 };
 
-// 印はどちらのファイルにも書く。片方を消されても、もう片方で、その slot が使われていると分かる。
+// 印はどちらのファイルにも書く。片方を消されても、もう片方で、その slot が使われていると分かる (他の worktree が slot を
+// 選ぶときの読み方)。
 const slotOfWorktree = (worktree: Worktree): number | undefined =>
   slotOf(worktree.api ?? "") ?? slotOf(worktree.web ?? "");
+
+// 割り当て済みとみなすのは、web と api の両方に同じ slot の印があるときだけ。片方だけ、別々の slot、は壊れた組で、
+// 「割り当て済み」と報告すると、api が既定のポートのまま以後ずっと直らない (assign は web を先に書く)。
+const completeSlot = (worktree: Worktree): number | undefined => {
+  const api = slotOf(worktree.api ?? "");
+  const web = slotOf(worktree.web ?? "");
+  return api !== undefined && api === web ? api : undefined;
+};
+
+// ロックを持つ側が解放する前に別の assign が mkdir に失敗したあと、次に何をするか。age はロックを作ってからの
+// ミリ秒で、調べる前に解放されていれば undefined (stat が ENOENT)。保持者は数十ミリ秒で終わるので、待つのは短い。
+const staleLockMs = 60_000;
+export type LockAction = "retry" | "remove" | "wait" | "give-up";
+export function lockAction(state: {
+  readonly age: number | undefined;
+  readonly remainingMs: number;
+}): LockAction {
+  if (state.age === undefined) return "retry";
+  if (state.age > staleLockMs) return "remove";
+  return state.remainingMs > 0 ? "wait" : "give-up";
+}
 
 // 新しく割り当てるときは書くファイルを持ち (kind: "new")、すでに割り当て済みなら何も書かない (kind: "existing")。
 export type AssignPlan =
@@ -122,13 +144,16 @@ export function planAssign(worktrees: readonly Worktree[], target: string): Assi
   const found = others.find((worktree) => worktree.path === target && worktree.exists);
   if (found === undefined)
     return { ok: false, status: 2, message: `${target} は git の worktree ではない` };
-  const existing = slotOfWorktree(found);
-  if (existing !== undefined) return { ok: true, kind: "existing", slot: existing };
+  const complete = completeSlot(found);
+  if (complete !== undefined) return { ok: true, kind: "existing", slot: complete };
+  // 片方だけに印がある、別々の slot の印がある、または印のない .env.local がある。どれも上書きしない。
   if (found.api !== undefined || found.web !== undefined)
     return {
       ok: false,
       status: 1,
-      message: `${target} には .env.local がある。上書きしない (消してからやり直す)`,
+      message:
+        `${target} の .env.local が、slot の割り当てとして完全ではない ` +
+        "(片方がない、印がない、または slot が食い違う)。上書きしない。両方の .env.local を消してからやり直す",
     };
   // main は slot 0。ディレクトリが消えた worktree の slot は、空きとして数える。target は、ここまでの確認で
   // .env.local を持たないと分かっているので、除かなくても slot を持たない。
