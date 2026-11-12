@@ -144,6 +144,21 @@ describe("oxlint.effect.json と未使用の disable の報告", { timeout: 120_
     expect(unrun.output).toContain("effecttsgo(floating-effect)");
   });
 
+  it("flag で報告を切っても、unstable と experimental の API で失敗すること", () => {
+    const unstable = lint(
+      'import { Effect } from "effect";\n\nexport const reported = Effect.withErrorReporting(Effect.succeed(1));\n',
+      ...off,
+    );
+    expect(unstable.status).toBe(1);
+    expect(unstable.output).toContain("effecttsgo(unstable-api-usage)");
+    const experimental = lint(
+      'import { Schema } from "effect";\n\nexport const domain = Schema.DomainName;\n',
+      ...off,
+    );
+    expect(experimental.status).toBe(1);
+    expect(experimental.output).toContain("effecttsgo(experimental-api-usage)");
+  });
+
   it("flag で報告を切っても、型つきの規則の違反で失敗すること", () => {
     const result = lint("export const value = (JSON.parse('1') as number) + 1;\n", ...off);
     expect(result.status).toBe(1);

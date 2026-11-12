@@ -16,12 +16,12 @@ import {
 import { apiManifest, failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   dbDependencies,
+  effecttsgoRulesStayInFixtures,
   eventsPackages,
   modulePackageNames,
   modulesAreRegistered,
   modulesDependOneWay,
   modulesHaveLayers,
-  effecttsgoDisablesOnlyInFixtures,
   modulesLintEffect,
   noResolutionBypass,
   packageManifests,
@@ -1078,10 +1078,10 @@ describe("ADR 0028: すべてのモジュールが Effect の lint を実行す�
   });
 });
 
-describe("#517: effecttsgo の規則の disable が fixture にだけあること", () => {
-  const violations = failuresOf(effecttsgoDisablesOnlyInFixtures);
+describe("#517: effecttsgo の規則の名前が module-fixtures の fixture にだけあること", () => {
+  const violations = failuresOf(effecttsgoRulesStayInFixtures);
   const message = (path: string) =>
-    `${path} names an effecttsgo rule. \`vp check\` does not load the plugin, so a disable comment of the rule is reported as unused: fix the code that the rule stops, and keep the comments in __fixtures__/ (docs/tooling/effect-lint.md, #517).`;
+    `${path} names an effecttsgo rule. \`vp check\` does not load the plugin, so a disable comment of the rule is reported as unused: fix the code that the rule stops, and keep the comments in packages/module-fixtures/src/*/__fixtures__/ (docs/tooling/effect-lint.md, #517).`;
 
   it.each([
     [
@@ -1104,7 +1104,9 @@ describe("#517: effecttsgo の規則の disable が fixture にだけあるこ�
     ],
   ])("%s の disable を application のコードで拒否すること", (_, source) => {
     const path = "packages/claim/src/application/use-case.ts";
-    expect(violations(repo({ [path]: source }))).toEqual([message(path)]);
+    expect(violations(repo({ [path]: source })).filter((m) => m === message(path))).toEqual([
+      message(path),
+    ]);
   });
 
   it.each([
@@ -1113,13 +1115,17 @@ describe("#517: effecttsgo の規則の disable が fixture にだけあるこ�
     "packages/shared-kernel/src/clock.ts",
     "apps/api/src/app.ts",
     "packages/claim/src/application/view.tsx",
+    "packages/claim/src/application/view.mts",
+    // oxlint.effect.json lints effect-tsgo.ts of any package, and the module's script turns the report off.
+    "packages/claim/src/application/__fixtures__/effect-tsgo.ts",
+    "apps/api/src/__fixtures__/effect-tsgo.ts",
   ])("%s の disable を拒否すること", (path) => {
-    expect(violations(repo({ [path]: "// oxlint-disable effecttsgo/floating-effect\n" }))).toEqual([
-      message(path),
-    ]);
+    expect(
+      violations(repo({ [path]: "// oxlint-disable-next-line effecttsgo/floating-effect\n" })),
+    ).toEqual([message(path)]);
   });
 
-  it("__fixtures__/ の disable を通し、effecttsgo と書かない disable を通すこと", () => {
+  it("module-fixtures の __fixtures__/ の disable を通し、effecttsgo と書かない disable を通すこと", () => {
     expect(
       violations(
         repo({
@@ -1127,6 +1133,25 @@ describe("#517: effecttsgo の規則の disable が fixture にだけあるこ�
             "// oxlint-disable-next-line effecttsgo/floating-effect -- fixture\n",
           "packages/claim/src/application/use-case.ts":
             "// oxlint-disable-next-line no-restricted-imports -- reason\n",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("module-fixtures の __fixtures__/ の外の disable を拒否すること", () => {
+    const path = "packages/module-fixtures/src/application/use-case.ts";
+    expect(
+      violations(repo({ [path]: "// oxlint-disable-next-line effecttsgo/floating-effect\n" })),
+    ).toEqual([message(path)]);
+  });
+
+  it("規則名のある disable と、ソースでないファイルの名前を通すこと", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/application/use-case.ts":
+            "// oxlint-disable-next-line no-restricted-imports -- reason\n/* oxlint-disable no-console */\n",
+          "packages/claim/src/application/notes.md": "effecttsgo/floating-effect\n",
         }),
       ),
     ).toEqual([]);
