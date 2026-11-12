@@ -138,6 +138,19 @@ describe("リクエストの ID (hono/request-id)", () => {
     expect(lines()[0]?.["http.request.id"]).toBe(res.headers.get("x-request-id"));
   });
 
+  it("ちょうど 255 文字の X-Request-Id は使う", async () => {
+    const id = "a".repeat(255);
+    const res = await appWithoutDatabase().request("/a", { headers: { "x-request-id": id } });
+    expect(res.headers.get("x-request-id")).toBe(id);
+  });
+
+  it("「.」を含む X-Request-Id は使わず、採番する (hono/request-id は [\\w\\-=] だけを通す)", async () => {
+    const res = await appWithoutDatabase().request("/a", {
+      headers: { "x-request-id": "req-abc.1" },
+    });
+    expect(res.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   it("X-Request-Id がなければ採番し、応答に付ける", async () => {
     const { logger, lines } = memoryLogger();
     const res = await appWithoutDatabase({ logger }).request("/a");
