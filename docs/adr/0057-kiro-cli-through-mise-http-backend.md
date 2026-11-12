@@ -1,11 +1,11 @@
 ---
 type: ADR
-title: "ADR 0056: Kiro CLI は mise の http backend で入れ、公式の index.json の sha256 を mise.lock に記録する"
+title: "ADR 0057: Kiro CLI は mise の http backend で入れ、公式の index.json の sha256 を mise.lock に記録する"
 description: Kiro CLI を mise.toml と mise.lock で固定して入れる決定。mise のレジストリに kiro がないので http backend で公式の zip を取り、公式の index.json の sha256 を mise.lock に記録する。PGP 署名は検証しない。版の更新は Renovate の regex manager で検出し、人が merge する。mise の http backend を使うとき、mise.toml の kiro-cli を変えるとき、CI で kiro-cli を動かすときに読む。
 tags: [adr, tooling, mise, kiro, renovate]
 ---
 
-# ADR 0056: Kiro CLI は mise の http backend で入れ、公式の index.json の sha256 を mise.lock に記録する
+# ADR 0057: Kiro CLI は mise の http backend で入れ、公式の index.json の sha256 を mise.lock に記録する
 
 Kiro CLI は、開発者が手元で動かし、CI でも動かしたい道具です。入れ方は、公式のインストーラー (`curl -fsSL https://cli.kiro.dev/install | bash`) か `kiro-cli update` で、版を固定できず、開発者ごと、CI の実行ごとに版が変わります。agent の権限の hook や agent の設定 ([エージェントの権限](../tooling/agent-permissions.md)) は Kiro の版で動きが変わるので、開発環境と CI で同じ版にしたいと考えました。そこで、ほかの CLI ツールと同じく、`mise.toml` に版を書き、`mise.lock` に checksum を記録して入れます ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。
 

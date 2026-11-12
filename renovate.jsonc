@@ -97,7 +97,7 @@
     {
       // The Node.js runtime is set together with the Lambda runtime (ADR 0013). pnpm runs every check, so a person
       // reads its update (a judgement). The authentication libraries are read by a person even when the tests pass.
-      // kiro-cli is the coding agent itself, and its release notes are read before it runs in CI (docs/adr/0056).
+      // kiro-cli is the coding agent itself, and its release notes are read before it runs in CI (docs/adr/0057).
       "description": "A person merges Node.js, pnpm, kiro-cli and the authentication libraries",
       "matchDepNames": ["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"],
       "automerge": false,
@@ -109,7 +109,7 @@
       "automerge": false,
     },
   ],
-  // The official version list of Kiro CLI (docs/adr/0056). The official installer reads this index.json (not GitHub
+  // The official version list of Kiro CLI (docs/adr/0057). The official installer reads this index.json (not GitHub
   // Releases), so it is the registry URL. The list is newest first and has no pre-release versions (checked 2026-11-12).
   "customDatasources": {
     "kiro-cli": {
