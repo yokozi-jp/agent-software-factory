@@ -16,11 +16,11 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
     "packages/claim/package.json": packageJson("claim", fields),
   });
   const testScriptMessage = (path: string, project: string) =>
-    `${path} must have a test script that runs "vp test run" with --coverage, so that ${project} writes coverage/coverage-final.json and the merged check counts its files (docs/adr/0053, docs/tooling/ci.md).`;
+    `${path} must have a test script that starts with "vp test run" and has --coverage, as one command, so that ${project} writes coverage/coverage-final.json and the merged check counts its files (docs/adr/0053, docs/tooling/ci.md).`;
   const providerMessage = (path: string) =>
     `${path} must have @vitest/coverage-v8 in devDependencies ("catalog:"), the provider that writes the record (docs/adr/0053).`;
   const configMessage = (path: string, project: string) =>
-    `${path} must call recordCoverage or recordOnlyConfig of vitest-coverage.ts, so that ${project} writes its record (docs/adr/0053).`;
+    `${path} must import recordCoverage or recordOnlyConfig from vitest-coverage.ts and use it as the default export or in \`coverage\`, so that ${project} writes its record (docs/adr/0053).`;
 
   it("passes a repository where every project with code writes its record", () => {
     expect(violations(repo())).toEqual([]);
@@ -32,6 +32,12 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       'vp test run --coverage --exclude "**/__fixtures__/**"',
       "vp test run --exclude x --coverage",
       "vp test run\t--coverage",
+      "vp test run --coverage --coverage.include=src/**/*.ts",
+      "vp test run --coverage --coverage.enabled=true",
+      "vp  test   run  --coverage",
+      "vp test run --coverage --exclude=--no-coverage",
+      "vp test run --coverage --no-coverage-reporter",
+      "vp test run --coverage --coverage.enabled=falsey",
     ])("passes %j", (script) => {
       expect(violations(repo(manifest({ scripts: { test: script } })))).toEqual([]);
     });
@@ -47,6 +53,17 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       "vp test run --coverage-x",
       "vp test runx --coverage",
       "pnpm exec vp test run --coverage",
+      "vp test run && echo --coverage",
+      "vp test run # --coverage",
+      "vp test run; echo --coverage",
+      "vp test run | tee --coverage",
+      "vp test run $(echo --coverage)",
+      "vp test run `echo --coverage`",
+      "vp test run > --coverage",
+      "vp test run\n--coverage",
+      "vp test run --coverage --no-coverage",
+      "vp test run --coverage --coverage=false",
+      "vp test run --coverage --coverage.enabled=false",
     ])("names a test script of %j", (script) => {
       expect(violations(repo(manifest({ scripts: { test: script } })))).toEqual([
         testScriptMessage("packages/claim/package.json", "packages/claim"),
@@ -83,11 +100,21 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
     const withConfig = (source: string | undefined) => ({
       "packages/claim/vite.config.ts": source,
     });
+    const importOf = (name: string) => `import { ${name} } from "../../vitest-coverage.ts";\n`;
 
     it.each([
-      "export default recordOnlyConfig();",
-      'export default defineConfig({ test: { coverage: { ...recordCoverage({ own: "src/**/*.ts" }) } } });',
-      'export default { include: ["src/**/*.ts"], ...recordOnlyConfig() };',
+      `${importOf("recordOnlyConfig")}export default recordOnlyConfig();`,
+      `${importOf("recordOnlyConfig")}export default recordOnlyConfig("src/**/*.{ts,tsx}");`,
+      `${importOf("recordOnlyConfig")}export default  recordOnlyConfig();`,
+      'import{ recordOnlyConfig } from "../../vitest-coverage.ts";\nexport default recordOnlyConfig();',
+      'import { recordOnlyConfig }from "../../vitest-coverage.ts";\nexport default recordOnlyConfig();',
+      'import { recordOnlyConfig } from"../../vitest-coverage.ts";\nexport default recordOnlyConfig();',
+      `${importOf("recordCoverage")}export default defineConfig({ test: { coverage: { ...recordCoverage({ own: "src/**/*.ts" }) } } });`,
+      `${importOf("recordCoverage")}export default { include: ["src/**/*.ts"], test: { coverage: recordCoverage() } };`,
+      `${importOf("recordCoverage")}export default { test: { coverage:\n recordCoverage() } };`,
+      `import { ownFilesMinimum, recordCoverage } from "../../vitest-coverage.ts";\nexport default { test: { coverage: { ...recordCoverage(), thresholds: ownFilesMinimum } } };`,
+      `import {\n  recordCoverage,\n} from '../../vitest-coverage.ts';\nexport default { test: { coverage: { ...recordCoverage() } } };`,
+      `import { recordOnlyConfig } from "../../../vitest-coverage.ts";\nexport default recordOnlyConfig();`,
     ])("passes %j", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([]);
     });
@@ -101,10 +128,19 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
     it.each([
       "export default {};",
       "export default defineConfig({ test: { passWithNoTests: true } });",
-      "import { recordCoverage } from './x.ts';\nexport default {};",
-      "export default recordCoverageOf();",
-      "export default myrecordOnlyConfig();",
-      "export default recordOnlyConfig;",
+      // The import without the call, and the call without the import.
+      `${importOf("recordCoverage")}export default {};`,
+      "export default recordOnlyConfig();",
+      // Another name, another file, or a name that only contains the helper's.
+      `${importOf("recordCoverageOf")}export default recordCoverageOf();`,
+      `${importOf("recordOnlyConfig")}export default myrecordOnlyConfig();`,
+      'import { recordOnlyConfig } from "./other.ts";\nexport default recordOnlyConfig();',
+      'import { recordOnlyConfig } from "vitest-coverage.ts";\nexport default recordOnlyConfig();',
+      'import { recordOnlyConfig } from "../../vitest-coverage.js";\nexport default recordOnlyConfig();',
+      // The helper without a call, and a call whose result is dropped.
+      `${importOf("recordOnlyConfig")}export default recordOnlyConfig;`,
+      `${importOf("recordCoverage")}recordCoverage();\nexport default { test: { coverage: { enabled: false } } };`,
+      `${importOf("recordCoverage")}const options = recordCoverage();\nexport default {};`,
     ])("names a vite.config.ts of %j", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([
         configMessage("packages/claim/vite.config.ts", "packages/claim"),

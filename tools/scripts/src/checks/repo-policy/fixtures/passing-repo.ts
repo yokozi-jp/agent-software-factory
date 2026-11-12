@@ -283,7 +283,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   }),
   // The build target is read by oneNodeMajor (docs/adr/0013); recordCoverage() by projectsWriteCoverage (docs/adr/0053).
   "apps/api/vite.config.ts":
-    'export default { build: { target: "node24" }, test: { coverage: recordCoverage() } };\n',
+    'import { recordCoverage } from "../../vitest-coverage.ts";\nexport default { build: { target: "node24" }, test: { coverage: recordCoverage() } };\n',
   // apps/api imports each module in the file that assembles them.
   "apps/api/src/app.ts": modules
     .map((name) => `import "@agent-software-factory/${name}";\n`)
