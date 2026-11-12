@@ -20,7 +20,7 @@ GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterl
 | npm (catalog) の minor と patch                           | 現在の版が 1.0 以上。公開から 3 日たっている |
 | GitHub Action と mise の道具の patch (betterleaks を含む) | 公開から 3 日たっている                      |
 
-人が merge する PR: メジャー版、0.x、`better-auth`、`oidc-provider`、Node.js、pnpm、`kiro-cli`、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
+人が merge する PR: メジャー版、0.x (`oxc-transform-react` は `renovate.jsonc` の `allowedVersions` で、`@vitejs/plugin-react` の peer の範囲を超える更新も出さない。[ADR 0056](../adr/0056-react-compiler-via-oxc-transform-react.md))、`better-auth`、`oidc-provider`、Node.js、pnpm、`kiro-cli`、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
 
 自動にする PR で CI が落ちたら、PR は open のまま残ります。直して push すれば、CI が通った時点で merge されます。自動にした PR が main を壊したら、その PR を revert します。止めたいときは、`renovate.jsonc` の自動にする規則を消すか、`gh repo edit --enable-auto-merge=false` を実行します。
 本文が `Automerge: Disabled by config` なら、規則が効いていません。
