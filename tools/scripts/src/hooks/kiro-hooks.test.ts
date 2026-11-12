@@ -17,8 +17,8 @@ const entry = (name: string): string => `tools/scripts/src/hooks/${name}/cli.ts`
 const command = (name: string): string =>
   `NODE_COMPILE_CACHE="\${TMPDIR:-/tmp}/node-compile-cache" node ${entry(name)}`;
 
-describe(".kiro/hooks", () => {
-  it("has one hook per trigger, each starting its entry point with node and a compile cache", () => {
+describe(".kiro/hooks の設定", () => {
+  it("trigger ごとに 1 つの hook を持ち、それぞれが node と compile cache で入口を起動すること", () => {
     const documents = readdirSync(hooksDir)
       .sort()
       .map((name): unknown => JSON.parse(readFileSync(join(hooksDir, name), "utf8")));
@@ -64,10 +64,7 @@ describe(".kiro/hooks", () => {
     ]);
   });
 
-  it.each(["pre-tool-use", "session-start", "stop"])(
-    "names an entry point that exists: %s",
-    (name) => {
-      expect(existsSync(join(workspace, entry(name)))).toBe(true);
-    },
-  );
+  it.each(["pre-tool-use", "session-start", "stop"])("存在する入口を指すこと: %s", (name) => {
+    expect(existsSync(join(workspace, entry(name)))).toBe(true);
+  });
 });

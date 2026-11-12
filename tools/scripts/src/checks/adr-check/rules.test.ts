@@ -6,7 +6,7 @@ const guideUrl =
   "https://github.com/yokozi-jp/agent-software-factory/blob/main/docs/knowledge/documentation-authoring.md#adr-を書くかどうか";
 
 describe("warning", () => {
-  it("prints the files, the criteria and how to silence it on stderr, outside GitHub Actions", () => {
+  it("GitHub Actions の外では、ファイル、基準、抑え方を stderr に出力すること", () => {
     expect(warning(["mise.toml", "package.json"], {})).toEqual({
       stdout: "",
       stderr: [
@@ -20,7 +20,7 @@ describe("warning", () => {
     });
   });
 
-  it("writes a ::warning:: annotation that names the files and links to the criteria in GitHub Actions", () => {
+  it("GitHub Actions では、ファイルを挙げ基準へのリンクを付けた ::warning:: annotation を書くこと", () => {
     expect(warning(["mise.toml", "package.json"], { GITHUB_ACTIONS: "true" })).toEqual({
       stdout: [
         "This change touches files that often record a decision, and adds no ADR (docs/adr/NNNN-*.md):",
@@ -34,7 +34,7 @@ describe("warning", () => {
     });
   });
 
-  it("links to the repository that runs the workflow", () => {
+  it("workflow を実行するリポジトリへリンクすること", () => {
     const env = {
       GITHUB_ACTIONS: "true",
       GITHUB_SERVER_URL: "https://ghe.example.com",
@@ -45,7 +45,7 @@ describe("warning", () => {
     );
   });
 
-  it("escapes the characters that end or break an annotation", () => {
+  it("annotation を終わらせる文字と壊す文字をエスケープすること", () => {
     const { stdout } = warning(["apps/100%/package.json", "a\r\nb/package.json"], {
       GITHUB_ACTIONS: "true",
     });
@@ -54,14 +54,14 @@ describe("warning", () => {
 });
 
 describe("skipped", () => {
-  it("says why on stderr, outside GitHub Actions", () => {
+  it("GitHub Actions の外では、理由を stderr に出力すること", () => {
     expect(skipped("No base.", {})).toEqual({
       stdout: "",
       stderr: "adr-check: skipped. No base.\n",
     });
   });
 
-  it("is a ::notice:: in GitHub Actions", () => {
+  it("GitHub Actions では ::notice:: にすること", () => {
     expect(skipped("No base.", { GITHUB_ACTIONS: "true" })).toEqual({
       stdout: "::notice title=adr-check::skipped. No base.\n",
       stderr: "",
@@ -71,22 +71,22 @@ describe("skipped", () => {
 
 describe("warnedPaths", () => {
   // Each argument is the `git diff --name-status --no-renames` output of one pushed commit.
-  it("lists the decision files that a commit changes", () => {
+  it("commit が変える判断のファイルを一覧にすること", () => {
     expect(warnedPaths(["M\tpackage.json\nM\tREADME.md\nA\t.github/workflows/new.yml\n"])).toEqual([
       ".github/workflows/new.yml",
       "package.json",
     ]);
   });
 
-  it("lists nothing when no decision file changed", () => {
+  it("判断のファイルが変わらないとき、何も一覧にしないこと", () => {
     expect(warnedPaths(["M\tREADME.md\nM\tapps/web/src/index.ts\n"])).toEqual([]);
   });
 
-  it("lists nothing when the commit adds an ADR", () => {
+  it("commit が ADR を足すとき、何も一覧にしないこと", () => {
     expect(warnedPaths(["M\tpackage.json\nA\tdocs/adr/0002-new.md\n"])).toEqual([]);
   });
 
-  it("still warns when the commit only edits or deletes an ADR", () => {
+  it("commit が ADR を編集または削除するだけのときは、警告すること", () => {
     expect(
       warnedPaths(["M\tpackage.json\nM\tdocs/adr/0001-a.md\nD\tdocs/adr/0003-b.md\n"]),
     ).toEqual(["package.json"]);
@@ -97,17 +97,17 @@ describe("warnedPaths", () => {
     "docs/adr/12-x.md",
     "apps/docs/adr/0002-x.md",
     "docs/adr/0002-x.md.orig",
-  ])("does not count %s as an ADR", (path) => {
+  ])("%s を ADR に数えないこと", (path) => {
     expect(warnedPaths([`M\tpackage.json\nA\t${path}\n`])).toEqual(["package.json"]);
   });
 
-  it("judges each commit on its own: an ADR on one does not cover another", () => {
+  it("commit ごとに判断し、ある commit の ADR がほかの commit を覆わないこと", () => {
     const withAdr = "M\tnx.json\nA\tdocs/adr/0002-new.md\n";
     const withoutAdr = "M\tpackage.json\n";
     expect(warnedPaths([withAdr, withoutAdr])).toEqual(["package.json"]);
   });
 
-  it("lists a file changed by two commits once", () => {
+  it("2 つの commit が変えたファイルを 1 回だけ一覧にすること", () => {
     expect(warnedPaths(["M\tpackage.json\n", "M\tpackage.json\n"])).toEqual(["package.json"]);
   });
 });
@@ -131,7 +131,7 @@ describe("isDecisionPath", () => {
     ".github/rulesets/protect-main.json",
     ".kiro/hooks/x.sh",
     ".kiro/settings/mcp.json",
-  ])("counts %s as a file that often records a decision", (path) => {
+  ])("%s を判断を記録することの多いファイルに数えること", (path) => {
     expect(isDecisionPath(path)).toBe(true);
   });
 
@@ -143,7 +143,7 @@ describe("isDecisionPath", () => {
     "docs/adr/0001-a.md",
     ".github/CODEOWNERS",
     "tools/scripts/src/checks/adr-check/rules.ts",
-  ])("does not count %s", (path) => {
+  ])("%s を数えないこと", (path) => {
     expect(isDecisionPath(path)).toBe(false);
   });
 
@@ -161,7 +161,7 @@ describe("isDecisionPath", () => {
     "apps/api/__tests__/package.json",
     "apps/api/vite.config.test.ts",
     "apps/api/package.spec.json",
-  ])("does not count %s, a test or fixture, even when its name matches", (path) => {
+  ])("名前が合っていても、テストや fixture である %s を数えないこと", (path) => {
     expect(isDecisionPath(path)).toBe(false);
   });
 });

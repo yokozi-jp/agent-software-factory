@@ -47,18 +47,18 @@ beforeEach(() => {
 });
 
 describe("repo-policy", () => {
-  it("is silent and exits 0 on a repository that keeps every rule, in both modes", () => {
+  it("すべての規則を守るリポジトリで、どちらのモードでも何も出力せず 0 で終了すること", () => {
     expect(policy()).toEqual({ status: 0, stdout: "", stderr: "" });
     expect(policy(["staged"])).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("checks the whole repository when run from a subdirectory", () => {
+  it("サブディレクトリから実行しても、リポジトリ全体を検査すること", () => {
     write("docs/adr/0001-duplicate.md", "# x\n");
     git("add", "-A");
     expect(policy([], join(repo, "apps/api")).status).toBe(1);
   });
 
-  it("prints each failure on stderr and exits 1", () => {
+  it("失敗ごとに stderr に出力して 1 で終了すること", () => {
     write("docs/adr/0002-duplicate.md", "# x\n");
     write(".node-version", "25\n");
     git("add", "-A");
@@ -73,7 +73,7 @@ describe("repo-policy", () => {
     );
   });
 
-  it("checks the working tree without staged, and only what is staged with it", () => {
+  it("staged なしでは作業ツリーを、staged ありではステージしたものだけを検査すること", () => {
     // Someone is rewriting setup.md and has not staged it: the heading that lefthook.yml cites is gone.
     write("docs/local-env-setup/setup.md", "# Setup\n\n## 3. 書き直し中\n");
     expect(policy()).toEqual({ status: 1, stdout: "", stderr: missingHeading });
@@ -82,7 +82,7 @@ describe("repo-policy", () => {
     expect(policy(["staged"])).toEqual({ status: 1, stdout: "", stderr: missingHeading });
   });
 
-  it("reads the mode of a shell script from the index in both modes", () => {
+  it("どちらのモードでも、シェルスクリプトのモードを index から読むこと", () => {
     const message =
       "repo-policy: tools/scripts/sh/guard-push.sh is not executable in git. Run `chmod +x tools/scripts/sh/guard-push.sh` and stage it again.\n";
     chmodSync(join(repo, "tools/scripts/sh/guard-push.sh"), 0o644);
@@ -92,7 +92,7 @@ describe("repo-policy", () => {
     expect(policy(["staged"])).toEqual({ status: 1, stdout: "", stderr: message });
   });
 
-  it("refuses an untracked .vite-hooks directory", () => {
+  it("追跡されていない .vite-hooks ディレクトリを拒否すること", () => {
     mkdirSync(join(repo, ".vite-hooks"));
     expect(policy()).toEqual({
       status: 1,
@@ -102,7 +102,7 @@ describe("repo-policy", () => {
     });
   });
 
-  it("checks untracked steering files in both modes, but not ignored ones", () => {
+  it("追跡されていない steering ファイルを両モードで検査し、無視されたものは検査しないこと", () => {
     write(".kiro/steering/broken.md", "no frontmatter\n");
     const message =
       "repo-policy: .kiro/steering/broken.md: must start with a frontmatter block (docs/knowledge/steering-authoring.md)\n";
@@ -113,7 +113,7 @@ describe("repo-policy", () => {
     expect(policy(["staged"])).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("copies an untracked steering file in a subdirectory into the staged tree", () => {
+  it("サブディレクトリの追跡されていない steering ファイルを、ステージしたツリーにコピーすること", () => {
     write(".kiro/steering/sub/broken.md", "no frontmatter\n");
     expect(policy(["staged"])).toEqual({
       status: 1,
@@ -123,7 +123,7 @@ describe("repo-policy", () => {
     });
   });
 
-  it("refuses an unknown argument", () => {
+  it("未知の引数を拒否すること", () => {
     expect(policy(["stage"])).toEqual({
       status: 2,
       stdout: "",

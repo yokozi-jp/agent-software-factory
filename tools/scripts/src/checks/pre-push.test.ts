@@ -6,7 +6,7 @@ const a = "a".repeat(40);
 const b = "b".repeat(40);
 
 describe("parsePrePush", () => {
-  it("reads the four fields of each ref that git passes to pre-push", () => {
+  it("git が pre-push に渡す各 ref の 4 つの項目を読むこと", () => {
     expect(parsePrePush(`refs/heads/x ${a} refs/heads/y ${b}\n`)).toEqual([
       {
         localRef: "refs/heads/x",
@@ -19,7 +19,7 @@ describe("parsePrePush", () => {
     ]);
   });
 
-  it("marks a deleted ref (local object name all zeros) and a new ref (remote object name all zeros)", () => {
+  it("削除された ref (local の object 名がすべて 0) と新しい ref (remote の object 名がすべて 0) を印付けること", () => {
     const [deleted, created] = parsePrePush(
       `(delete) ${zero} refs/heads/x ${a}\nrefs/heads/y ${b} refs/heads/z ${zero}\n`,
     );
@@ -27,13 +27,13 @@ describe("parsePrePush", () => {
     expect(created).toMatchObject({ deleted: false, created: true });
   });
 
-  it("treats an object name as zero only when every character is zero", () => {
+  it("すべての文字が 0 のときだけ、object 名を 0 とみなすこと", () => {
     expect(parsePrePush(`r ${"0".repeat(63)}1 r ${zero}`)[0]).toMatchObject({ deleted: false });
     expect(parsePrePush(`r ${"0".repeat(64)} r ${a}`)[0]).toMatchObject({ deleted: true });
     expect(parsePrePush(`r ${a} r 1${"0".repeat(39)}`)[0]).toMatchObject({ created: false });
   });
 
-  it("skips a line that does not have exactly four fields, and empty input", () => {
+  it("項目がちょうど 4 つではない行と、空の入力を読み飛ばすこと", () => {
     expect(parsePrePush("")).toEqual([]);
     expect(parsePrePush("\n\n")).toEqual([]);
     expect(parsePrePush(`r ${a} r\nr ${a} r ${zero} x\n`)).toEqual([]);
@@ -41,16 +41,16 @@ describe("parsePrePush", () => {
 });
 
 describe("pushedTips", () => {
-  it("takes the local object name of each ref that is pushed", () => {
+  it("push する各 ref の local の object 名を採ること", () => {
     const stdin = `refs/heads/x ${a} refs/heads/x ${zero}\nrefs/heads/y ${b} refs/heads/y ${a}\n`;
     expect(pushedTips(stdin)).toEqual([a, b]);
   });
 
-  it("skips a deleted ref: there is nothing to compare", () => {
+  it("削除された ref を読み飛ばすこと: 比べるものがない", () => {
     expect(pushedTips(`(delete) ${zero} refs/heads/x ${a}\n`)).toEqual([]);
   });
 
-  it("reads nothing from empty input", () => {
+  it("空の入力から何も読まないこと", () => {
     expect(pushedTips("")).toEqual([]);
   });
 });

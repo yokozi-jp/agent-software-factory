@@ -5,7 +5,7 @@ import { isBranchListLine, preview } from "./rules.ts";
 const branches = (value: unknown): string => JSON.stringify({ msg: "branches", branches: value });
 
 describe("preview", () => {
-  it("lists each branch with its PR title and upgrades, and counts the branches", () => {
+  it("各ブランチを PR の title と upgrade つきで一覧にし、ブランチを数えること", () => {
     const log = [
       "not json",
       branches([
@@ -36,7 +36,7 @@ describe("preview", () => {
     );
   });
 
-  it("reads the last branch list of the log", () => {
+  it("ログの最後のブランチの一覧を読むこと", () => {
     const log = [
       branches([{ branchName: "old", prTitle: "old" }]),
       JSON.stringify({ msg: "other", branches: [] }),
@@ -52,7 +52,7 @@ describe("preview", () => {
     expect(preview(log)).toBe("a\n  A\n  automerge: no\nb\n  B\n  automerge: no\n\n2 branch(es)\n");
   });
 
-  it("falls back to the current and new values, then to ?, and lists a dependency once", () => {
+  it("current と new の値、次に ? へフォールバックし、依存を 1 回だけ一覧にすること", () => {
     const upgrade = { depName: "node", currentValue: "24", newValue: "26", updateType: "major" };
     const log = branches([
       {
@@ -75,7 +75,7 @@ describe("preview", () => {
     );
   });
 
-  it("skips a version that is not a string, and an upgrade without a name", () => {
+  it("文字列ではない version と、名前のない upgrade を読み飛ばすこと", () => {
     const log = branches([
       {
         branchName: 7,
@@ -98,12 +98,12 @@ describe("preview", () => {
     expect(preview(log)).toBe("7\n  t\n  automerge: no\n    d: 1 -> 2 (major)\n\n1 branch(es)\n");
   });
 
-  it("lists no upgrades when they are not a list", () => {
+  it("リストではないとき、upgrade を一覧にしないこと", () => {
     const log = branches([{ branchName: "b", prTitle: "t", upgrades: { depName: "d" } }]);
     expect(preview(log)).toBe("b\n  t\n  automerge: no\n\n1 branch(es)\n");
   });
 
-  it("prefers the version to the value", () => {
+  it("value より version を優先すること", () => {
     const log = branches([
       {
         branchName: "b",
@@ -123,7 +123,7 @@ describe("preview", () => {
     expect(preview(log)).toContain("    d: 1.0.0 -> 2.0.0 (major)\n");
   });
 
-  it("shows whether Renovate merges the PR itself, and the release age it waits for", () => {
+  it("Renovate が PR を自分で merge するかと、待つリリースからの経過時間を示すこと", () => {
     const upgrade = (minimumReleaseAge?: string) => ({ depName: "d", minimumReleaseAge });
     const log = branches([
       { branchName: "a", prTitle: "A", automerge: true, upgrades: [upgrade("3 days")] },
@@ -147,13 +147,13 @@ describe("preview", () => {
     ]);
   });
 
-  it("recognises the line that the branch list is logged as, and no other", () => {
+  it("ブランチの一覧として記録される行を認識し、ほかの行を認識しないこと", () => {
     expect(isBranchListLine(branches([]))).toBe(true);
     expect(isBranchListLine(JSON.stringify({ msg: "other", branches: [] }))).toBe(false);
     expect(isBranchListLine("not json")).toBe(false);
   });
 
-  it("returns undefined when the log has no branch list", () => {
+  it("ログにブランチの一覧がないとき、undefined を返すこと", () => {
     expect(preview('not json\n{"msg":"other"}\n')).toBeUndefined();
     expect(preview(JSON.stringify({ msg: "branches" }))).toBeUndefined();
     expect(preview("")).toBeUndefined();

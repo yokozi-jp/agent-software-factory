@@ -50,7 +50,7 @@ afterAll(() => {
 });
 
 describe("test-weakening", () => {
-  it("is silent and exits 0 when tests are added or code changes", () => {
+  it("テストが足された、またはコードが変わったとき、何も出力せず 0 で終了すること", () => {
     change(() => {
       write("src/a.test.ts", tests("a1", "a2", "a3"));
       write("src/c.test.ts", tests("c1"));
@@ -59,7 +59,7 @@ describe("test-weakening", () => {
     expect(check(repo)).toEqual(silent);
   });
 
-  it("warns on stderr and still exits 0 when a test file is deleted or loses test cases", () => {
+  it("テストファイルが削除された、またはテストケースが減ったとき、stderr に警告して 0 で終了すること", () => {
     change(() => {
       rmSync(join(repo, "src/a.test.ts"));
       write("src/b.test.ts", tests("b1"));
@@ -73,7 +73,7 @@ describe("test-weakening", () => {
     );
   });
 
-  it("compares a renamed test file with the file it came from", () => {
+  it("名前を変えたテストファイルを、元のファイルと比べること", () => {
     change(() => {
       git("mv", "src/b.test.ts", "src/renamed.test.ts");
       write("src/renamed.test.ts", tests("b1", "b2"));
@@ -83,14 +83,14 @@ describe("test-weakening", () => {
     expect(result.stderr).not.toContain("deleted");
   });
 
-  it("is silent with TESTS_ACK=1", () => {
+  it("TESTS_ACK=1 のとき、何も出力しないこと", () => {
     change(() => {
       rmSync(join(repo, "src/a.test.ts"));
     });
     expect(check(repo, [], { TESTS_ACK: "1" })).toEqual(silent);
   });
 
-  it("compares with origin/$GITHUB_BASE_REF and writes an annotation in GitHub Actions", () => {
+  it("origin/$GITHUB_BASE_REF と比べ、GitHub Actions では annotation を書くこと", () => {
     change(() => {
       rmSync(join(repo, "src/a.test.ts"));
     });
@@ -100,7 +100,7 @@ describe("test-weakening", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("pre-push compares each pushed commit from stdin, not HEAD", () => {
+  it("pre-push は HEAD ではなく、stdin の push する commit ごとに比べること", () => {
     const deletes = change(() => {
       rmSync(join(repo, "src/a.test.ts"));
     });
@@ -120,7 +120,7 @@ describe("test-weakening", () => {
     );
   });
 
-  it("says why and passes when origin/main does not exist", () => {
+  it("origin/main がないとき、理由を述べて通すこと", () => {
     const other = join(box.root, "no-origin");
     gitIn(other, ["init", "-q", "-b", "main"]);
     gitIn(other, ["commit", "-q", "--allow-empty", "-m", "base"]);
@@ -131,7 +131,7 @@ describe("test-weakening", () => {
     expect(ci.stdout).toContain("::notice title=test-weakening::skipped.");
   });
 
-  it("says why and passes in a shallow clone that lacks the merge base", () => {
+  it("merge base のない浅い clone のとき、理由を述べて通すこと", () => {
     // origin/main moves on, so the branch's parent is not in a depth-1 clone.
     git("switch", "-q", "main");
     write("more.txt", "more\n");

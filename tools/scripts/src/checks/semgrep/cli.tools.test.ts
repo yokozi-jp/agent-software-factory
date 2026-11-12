@@ -64,13 +64,13 @@ afterAll(() => {
   box.remove();
 });
 
-describe("semgrep with the real Semgrep", () => {
-  it("fails on an ERROR finding that the branch adds", () => {
+describe("本物の Semgrep による semgrep", () => {
+  it("ブランチが足した ERROR の指摘で失敗すること", () => {
     change({ "bad.ts": "export const run = (s: string) => eval(s);\n" });
     expect(scan()).toMatchObject({ status: 1 });
   }, 300_000);
 
-  it("passes a WARNING finding, a finding silenced with nosemgrep, and a finding already on the base", () => {
+  it("WARNING の指摘、nosemgrep で黙らせた指摘、base にすでにある指摘を通すこと", () => {
     change({
       "warn.ts": 'console.log("hi");\n',
       "ignored.ts":
@@ -79,7 +79,7 @@ describe("semgrep with the real Semgrep", () => {
     expect(scan()).toMatchObject({ status: 0 });
   }, 300_000);
 
-  it("reports a broken rule file with Semgrep's exit code, which the pre-push hook does not take for a finding", () => {
+  it("壊れた規則ファイルを Semgrep の終了コードで報告し、pre-push hook がそれを指摘と取らないこと", () => {
     const broken = join(box.root, "broken.yml");
     writeFileSync(broken, "rules: [\n");
     expect(scan(broken)).toMatchObject({ status: 7 });

@@ -6,18 +6,18 @@
 import { expect, it } from "vite-plus/test";
 
 // oxlint-disable-next-line vitest/expect-expect -- fixture: a test with no expect
-it("checks nothing", () => {
+it("何も検査しないこと", () => {
   JSON.parse("{}");
 });
 
-it("checks only on one branch", () => {
+it("1 つの分岐でだけ検査すること", () => {
   const value = JSON.parse("1") === 1;
   expect(typeof value).toBe("boolean");
   // oxlint-disable-next-line vitest/no-conditional-expect -- fixture: an expect that may not run
   if (value) expect(value).toBe(true);
 });
 
-it("asserts nothing with its expect", () => {
+it("expect で何も表明しないこと", () => {
   // oxlint-disable-next-line vitest/valid-expect -- fixture: an expect without a matcher
   expect(JSON.parse("1"));
 });

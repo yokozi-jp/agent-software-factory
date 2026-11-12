@@ -59,7 +59,7 @@ afterAll(() => {
 });
 
 describe("check-root-files.sh", () => {
-  it("runs vp check on the tracked files outside the packages and the skills, and only on them", () => {
+  it("packages と skills の外の追跡されたファイルにだけ vp check を実行すること", () => {
     expect(check(repo).status).toBe(0);
     expect(checked()).toEqual([
       "exec",
@@ -75,12 +75,12 @@ describe("check-root-files.sh", () => {
     ]);
   });
 
-  it("lists the same files from a subdirectory", () => {
+  it("サブディレクトリから同じファイルを一覧にすること", () => {
     expect(check(join(repo, "guides")).status).toBe(0);
     expect(checked()).toContain("package.json");
   });
 
-  it("fails when vp check fails", () => {
+  it("vp check が失敗したとき失敗すること", () => {
     expect(check(repo, 1).status).not.toBe(0);
   });
 });

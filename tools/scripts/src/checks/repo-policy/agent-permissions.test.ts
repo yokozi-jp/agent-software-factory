@@ -8,7 +8,7 @@ import { agentPermissions } from "./agent-permissions.ts";
 
 const base = passingRepo;
 
-describe("the permissions of the agents (docs/tooling/agent-permissions.md)", () => {
+describe("agent の権限 (docs/tooling/agent-permissions.md)", () => {
   const violations = failuresOf(agentPermissions);
   const agent = ".kiro/agents/factory.json";
   const doc = "docs/tooling/agent-permissions.md";
@@ -35,7 +35,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     match,
   });
 
-  it("passes a repository without an agent", () => {
+  it("agent のないリポジトリを通すこと", () => {
     const rows = (base[catalogPath] ?? "")
       .split("\n")
       .filter((line) => !line.includes("kiro-agent"));
@@ -43,7 +43,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(violations(repo({ ...without, [catalogPath]: rows.join("\n") }))).toEqual([]);
   });
 
-  it("takes only .kiro/agents/<name>.json for an agent", () => {
+  it("agent として .kiro/agents/<name>.json だけを採ること", () => {
     const files = {
       ".kiro/agents/sub/x.json": "{}",
       "docs/.kiro/agents/y.json": "{}",
@@ -52,14 +52,14 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(violations(repo(files))).toEqual([]);
   });
 
-  it("does not hold a rule of another capability to the pairs", () => {
+  it("ほかの capability の規則を、組に当てはめないこと", () => {
     const rules = [{ capability: "fs_read", effect: "allow", match: ["git push*"] }];
     const table =
       "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `hook: block-force-push` |\n";
     expect(violations(repo({ ...withRules(rules), [doc]: table }))).toEqual([]);
   });
 
-  describe("a deny of a file tool that mixes paths of ~/ with other paths", () => {
+  describe("~/ の path とほかの path を混ぜたファイル tool の deny", () => {
     // Only this check: the other checks compare the rules with the table of the doc.
     const mixing = (rules: readonly unknown[]): string[] =>
       violations(repo(withRules([...original.permissions.rules, ...rules]))).filter((line) =>
@@ -78,13 +78,13 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     const message = (capability: string): string =>
       `${agent}: rule ${index} is a deny of ${capability} that lists a path of ~/ with other paths. Kiro 2.34.0 then skips the whole rule without a word, so none of its paths is denied. Put the paths of ~/ in a rule of their own (docs/tooling/agent-permissions.md).`;
 
-    it.each(["fs_read", "fs_write"])("refuses it for %s", (capability) => {
+    it.each(["fs_read", "fs_write"])("%s に対して拒否すること", (capability) => {
       expect(mixing([rule(capability, "deny", ["~/.aws/**", "**/secret"])])).toEqual([
         message(capability),
       ]);
     });
 
-    it("passes paths of ~/ alone, and other paths alone", () => {
+    it("~/ の path だけ、ほかの path だけを通すこと", () => {
       const rules = [
         rule("fs_read", "deny", ["~/.aws/**", "~/.ssh/**"]),
         rule("fs_read", "deny", ["**/secret"]),
@@ -92,19 +92,19 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
       expect(mixing(rules)).toEqual([]);
     });
 
-    it("does not hold an allow, or another capability, to it", () => {
+    it("allow やほかの capability を、それに当てはめないこと", () => {
       expect(mixing([rule("fs_read", "allow", ["~/x", "y"])])).toEqual([]);
       expect(mixing([rule("shell", "deny", ["~/x", "y"])])).toEqual([]);
     });
   });
 
-  it("refuses an agent without tools, which can use none", () => {
+  it("使える tool が 1 つもない agent を拒否すること", () => {
     expect(violations(repo(withRules(original.permissions.rules, [])))).toEqual([
       `${agent} must have "tools": ["*"]. An agent without tools can use none (docs/tooling/agent-permissions.md).`,
     ]);
   });
 
-  it("refuses a capability Kiro does not know, which it skips without a word", () => {
+  it("Kiro が知らず黙って読み飛ばす capability を拒否すること", () => {
     const failures = violations(
       repo(withRules([...original.permissions.rules, rule({ capability: "shel" })])),
     );
@@ -113,7 +113,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("refuses an effect that Kiro does not accept", () => {
+  it("Kiro が受け付けない effect を拒否すること", () => {
     expect(
       violations(repo(withRules([...original.permissions.rules, rule({ effect: "block" })]))),
     ).toEqual([`${agent}: rule 3 has the effect "block". Use allow, deny, ask or evaluate.`]);
@@ -125,14 +125,14 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     { match: [1] },
     { match: ["docs.github.com", 1] },
     { exclude: "x" },
-  ])("refuses fields Kiro rejects: %j", (extra) => {
+  ])("Kiro が拒否する項目を拒否すること: %j", (extra) => {
     const failures = violations(repo(withRules([...original.permissions.rules, rule(extra)])));
     expect(failures).toEqual([
       `${agent}: rule 3 has fields Kiro rejects. A rule has capability, effect, and match and exclude as arrays of strings.`,
     ]);
   });
 
-  it("accepts every capability and effect that Kiro knows", () => {
+  it("Kiro が知るすべての capability と effect を受け付けること", () => {
     const capabilities = [
       "all",
       "builtin",
@@ -166,7 +166,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ).toEqual([]);
   });
 
-  it("refuses a web_fetch allow for a host that external-docs.md does not list", () => {
+  it("external-docs.md に載っていない host への web_fetch の allow を拒否すること", () => {
     expect(
       violations(
         repo(
@@ -181,7 +181,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("refuses a web_fetch allow without a match, which allows every host", () => {
+  it("すべての host を許す、一致のない web_fetch の allow を拒否すること", () => {
     expect(
       violations(
         repo(
@@ -196,7 +196,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("does not hold a web_fetch ask or deny to the list of hosts", () => {
+  it("web_fetch の ask や deny を、host の一覧に当てはめないこと", () => {
     const rules = [...original.permissions.rules, rule({ effect: "ask", match: ["example.com"] })];
     expect(violations(repo(withRules(rules)))).toEqual([]);
   });
@@ -209,7 +209,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ["git push*", "+"],
     ["git push*", " -f"],
     ["git commit*", "--no-verify"],
-  ])("refuses the allow %j without a deny that has %j", (allow, word) => {
+  ])("allow %j を、%j を持つ deny のないまま拒否すること", (allow, word) => {
     const deny = {
       ...shellRules[1],
       match: (shellRules[1]?.match ?? []).filter(
@@ -224,7 +224,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("does not ask for a deny when the allow does not end with *, or is another command", () => {
+  it("allow が * で終わらないとき、または別のコマンドのとき、deny を求めないこと", () => {
     const rules = [
       shellRule("allow", ["git push", "git status*"]),
       shellRule("deny", ["git push*main*"]),
@@ -233,7 +233,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(violations(repo(withRules(rules)))).toEqual([]);
   });
 
-  it("looks for the deny among the denies only", () => {
+  it("deny を deny の中だけで探すこと", () => {
     const asks = { ...shellRules[1], effect: "ask" };
     const failures = violations(
       repo(withRules([shellRules[0], asks, original.permissions.rules[2]])),
@@ -241,18 +241,18 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     expect(failures.filter((failure) => failure.includes("has no deny"))).toHaveLength(7);
   });
 
-  it.each([undefined, "other", 1])("refuses chat.defaultAgent %j", (value) => {
+  it.each([undefined, "other", 1])("chat.defaultAgent %j を拒否すること", (value) => {
     const failures = violations(repo({ [settings]: json({ "chat.defaultAgent": value }) }));
     expect(failures).toEqual([
       `${settings} must set "chat.defaultAgent" to the name of an agent of .kiro/agents/, so that the rules apply without --agent.`,
     ]);
   });
 
-  it("refuses a missing cli.json", () => {
+  it("cli.json がないことを拒否すること", () => {
     expect(violations(repo({ [settings]: undefined }))).toHaveLength(1);
   });
 
-  it("refuses a missing table, and a table without the columns", () => {
+  it("表がないことと、列のない表を拒否すること", () => {
     const message = `${doc} has no table with the columns 区分 and 実装. It lists every operation of the agents, and repo-policy compares it with the agents and the hooks.`;
     expect(violations(repo({ [doc]: undefined }))).toEqual([message]);
     expect(
@@ -273,7 +273,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("refuses a hook that does not exist", () => {
+  it("存在しない hook を拒否すること", () => {
     const table =
       "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `hook: block-gone`、`agent: shell` |\n";
     expect(violations(repo({ [doc]: table }))).toEqual([
@@ -281,7 +281,7 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("refuses an agent capability without a deny rule", () => {
+  it("deny の規則のない agent の capability を拒否すること", () => {
     const table =
       "| 操作 | 区分 | 実装 |\n| --- | --- | --- |\n| a | 禁止 | `agent: shell`、`agent: fs_write` |\n";
     expect(violations(repo({ [doc]: table }))).toEqual([
@@ -297,12 +297,12 @@ describe("the permissions of the agents (docs/tooling/agent-permissions.md)", ()
     ]);
   });
 
-  it("reads a row without the closing pipe", () => {
+  it("閉じの縦棒のない行を読むこと", () => {
     const table = "| 操作 | 区分 | 実装\n| --- | --- | ---\n| a | 禁止 | `agent: shell`\n";
     expect(violations(repo({ [doc]: table }))).toEqual([]);
   });
 
-  it("reads the columns by their names, and stops at the end of the table", () => {
+  it("列を名前で読み、表の終わりで止まること", () => {
     const table =
       "| 実装 | 区分 |\n| --- | --- |\n| `agent: shell` | 禁止 |\n\ntext\n\n| 実装 | 区分 |\n| --- | --- |\n| `hook: block-gone` | 禁止 |\n";
     expect(violations(repo({ [doc]: table }))).toEqual([]);

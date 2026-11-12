@@ -43,7 +43,7 @@ const renovate = (args: string[], code: number, env: Record<string, string> = {}
 };
 
 describe("renovate.sh", () => {
-  it("refuses a missing or unknown subcommand with exit 2", () => {
+  it("ない、または未知のサブコマンドを終了コード 2 で拒否すること", () => {
     for (const args of [[], ["apply"]]) {
       const result = renovate(args, 0);
       expect(result.status).toBe(2);
@@ -51,7 +51,7 @@ describe("renovate.sh", () => {
     }
   });
 
-  it("validate: runs the pinned renovate-config-validator --strict, and passes its exit code on", () => {
+  it("validate: 固定した renovate-config-validator --strict を実行し、その終了コードを渡すこと", () => {
     expect(renovate(["validate"], 0).status).toBe(0);
     expect(readFileSync(record, "utf8")).toMatch(
       /^dlx --allow-build=re2 --package=renovate@\d+\.\d+\.\d+ renovate-config-validator --strict\n/,
@@ -59,26 +59,26 @@ describe("renovate.sh", () => {
     expect(renovate(["validate"], 1).status).toBe(1);
   });
 
-  it("preview: runs Renovate in local mode at trace level with the token of gh", () => {
+  it("preview: gh の token で、Renovate を trace レベルの local モードで実行すること", () => {
     renovate(["preview"], 0);
     expect(readFileSync(record, "utf8")).toMatch(
       /renovate --platform=local\ntrace json token-from-gh\n$/,
     );
   });
 
-  it("preview: keeps the token that is set", () => {
+  it("preview: 設定されている token を残すこと", () => {
     renovate(["preview"], 0, { GITHUB_COM_TOKEN: "mine" });
     expect(readFileSync(record, "utf8")).toMatch(/\ntrace json mine\n$/);
   });
 
-  it("preview: says so, with the end of the log, when Renovate fails", () => {
+  it("preview: Renovate が失敗したとき、ログの終わりとともにそう述べること", () => {
     const result = renovate(["preview"], 3, {}, "boom");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("boom");
     expect(result.stderr).toContain("renovate: Renovate failed (see above).");
   });
 
-  it("preview: hands the log to renovate-preview, which fails on a log without a branch list", () => {
+  it("preview: ログを renovate-preview に渡し、ブランチの一覧のないログで失敗すること", () => {
     const result = renovate(["preview"], 0, {}, "not a branch list");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("renovate-preview: no branch list in the log");

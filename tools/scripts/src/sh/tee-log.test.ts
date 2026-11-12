@@ -20,13 +20,13 @@ const tee = (args: string[]) =>
 const log = (name: string): string => readFileSync(join(box.root, "logs", `${name}.log`), "utf8");
 
 describe("tee-log.sh", () => {
-  it("passes the output through on stdout (stderr merged), keeps it in the log, and exits 0", () => {
+  it("出力を stdout にそのまま渡し (stderr を合わせる)、ログに残して 0 で終了すること", () => {
     const result = tee(["ok", "sh", "-c", "echo out; echo err >&2"]);
     expect(result).toMatchObject({ status: 0, stdout: "out\nerr\n", stderr: "" });
     expect(log("ok")).toBe("out\nerr\n");
   });
 
-  it("exits with the status of the command, and says where the log is", () => {
+  it("コマンドの終了コードで終了し、ログの場所を述べること", () => {
     const result = tee(["bad", "sh", "-c", "echo broken; exit 3"]);
     expect(result.status).toBe(3);
     expect(result.stdout).toContain("broken");
@@ -36,13 +36,13 @@ describe("tee-log.sh", () => {
     expect(log("bad")).toBe("broken\n");
   });
 
-  it("overwrites the log of the previous run", () => {
+  it("前の実行のログを上書きすること", () => {
     tee(["again", "echo", "first"]);
     tee(["again", "echo", "second"]);
     expect(log("again")).toBe("second\n");
   });
 
-  it("is a usage error without a name and a command", () => {
+  it("名前とコマンドがないとき、使い方の誤りとすること", () => {
     expect(tee([]).status).toBe(2);
     expect(tee(["only-a-name"]).status).toBe(2);
   });

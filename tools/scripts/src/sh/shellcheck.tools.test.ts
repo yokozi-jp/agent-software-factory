@@ -33,12 +33,12 @@ afterAll(() => {
   box.remove();
 });
 
-describe("shellcheck.sh with the real shellcheck", () => {
-  it("passes a clean script", () => {
+describe("本物の shellcheck による shellcheck.sh", () => {
+  it("きれいなスクリプトを通すこと", () => {
     expect(lint()).toMatchObject({ status: 0 });
   }, 300_000);
 
-  it("finds an unquoted variable in a tracked script", () => {
+  it("追跡されたスクリプトの引用符のない変数を見つけること", () => {
     put("bad.sh", "#!/usr/bin/env sh\necho $HOME\n");
     git("add", "bad.sh");
     // xargs exits with 123 when shellcheck fails.
@@ -48,7 +48,7 @@ describe("shellcheck.sh with the real shellcheck", () => {
     expect(result.stdout).toContain("bad.sh");
   }, 300_000);
 
-  it("finds a problem in a staged script that is not committed yet", () => {
+  it("まだ commit していないステージ済みのスクリプトの問題を見つけること", () => {
     git("commit", "-qm", "bad");
     git("rm", "-q", "bad.sh");
     git("commit", "-qm", "remove bad");
@@ -59,7 +59,7 @@ describe("shellcheck.sh with the real shellcheck", () => {
     expect(result.stdout).toContain("staged.sh");
   }, 300_000);
 
-  it("does not lint .agents/, which holds upstream skills, nor an untracked script", () => {
+  it("upstream の skill を持つ .agents/ と、追跡されていないスクリプトを lint しないこと", () => {
     git("rm", "-qf", "staged.sh");
     put(".agents/skills/s/upstream.sh", "#!/usr/bin/env sh\necho $HOME\n");
     git("add", "-A");

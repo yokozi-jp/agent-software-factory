@@ -51,7 +51,7 @@ afterAll(() => {
 });
 
 describe("factory-metrics", () => {
-  it("is a usage error without a period or a boundary", () => {
+  it("期間も境界もないとき、使い方の誤りとすること", () => {
     const result = metrics();
     expect(result.status).toBe(2);
     expect(result.stderr).toBe(
@@ -61,7 +61,7 @@ describe("factory-metrics", () => {
     );
   });
 
-  it("fails, after trying again, when gh fails", () => {
+  it("gh が失敗したとき、再試行した後に失敗すること", () => {
     const result = metrics("--since", "2026-10-01");
     expect(result.status).toBe(1);
     expect(result.stdout).toBe("");
@@ -70,7 +70,7 @@ describe("factory-metrics", () => {
     );
   });
 
-  it("prints the metrics of a period from the API responses", () => {
+  it("API の応答から期間の指標を出力すること", () => {
     respond(
       `${repo}/pulls?state=closed&per_page=100`,
       [
@@ -104,13 +104,13 @@ describe("factory-metrics", () => {
     expect(result.stdout).toContain("| 2026-09-28 | — | 中央値 2.0 分、p90 2.0 分 (push 1) |\n");
   });
 
-  it("fails for a boundary that is not a merged pull request", () => {
+  it("merge された pull request でない境界で失敗すること", () => {
     const result = metrics("--pr", "4", "--count", "2");
     expect(result.status).toBe(1);
     expect(result.stderr).toBe("factory-metrics: #4 is not a merged pull request\n");
   });
 
-  it("prints the metrics before and after a boundary", () => {
+  it("境界の前後の指標を出力すること", () => {
     const result = metrics("--pr", "2", "--count", "5");
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("# 工場の成果の指標: #2 の前後 5 件\n");

@@ -3,7 +3,7 @@ import { settingsWriteRefusal } from "./settings-writes.ts";
 
 describe("settingsWriteRefusal", () => {
   it.each([".kiro/settings", ".kiro/settings/cli.json", ".kiro/settings/mcp.json"])(
-    "refuses a write to %s",
+    "%s への書き込みを拒否すること",
     (rel) => {
       const message = settingsWriteRefusal("fs_write", rel);
       expect(message).toMatch(/^block-settings-writes: refused fs_write on /);
@@ -19,7 +19,7 @@ describe("settingsWriteRefusal", () => {
     ".kiro/settings-notes.md",
     "docs/.kiro/settings/cli.json",
     "README.md",
-  ])("allows a write to %s", (rel) => {
+  ])("%s への書き込みを許可すること", (rel) => {
     expect(settingsWriteRefusal("str_replace", rel)).toBeUndefined();
   });
 });

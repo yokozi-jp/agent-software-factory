@@ -24,7 +24,7 @@ describe("refusesIweCommand", () => {
     'sh -c "iwe normalize"',
     "(cd docs; iwe normalize)",
     "bash <<EOF\niwe normalize\nEOF",
-  ])("refuses the normalize subcommand in command position: %j", (command) => {
+  ])("コマンドの位置にある normalize サブコマンドを拒否すること: %j", (command) => {
     expect(refusesIweCommand(command)).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe("refusesIweCommand", () => {
     "iwec normalize",
     "pnpm iwe find normalize",
     "mise x iwe stats",
-  ])("allows another subcommand or program: %j", (command) => {
+  ])("ほかのサブコマンドやプログラムを許可すること: %j", (command) => {
     expect(refusesIweCommand(command)).toBe(false);
   });
 
@@ -50,7 +50,7 @@ describe("refusesIweCommand", () => {
     'gh pr create --body "never run iwe normalize"',
     'git commit -m "fix: refuse pnpm iwe normalize"',
     "cat > notes.md <<'EOF'\nyarn iwe normalize\nmise x iwe normalize\nEOF",
-  ])("allows text that only mentions it: %j", (command) => {
+  ])("言及するだけの文章を許可すること: %j", (command) => {
     expect(refusesIweCommand(command)).toBe(false);
   });
 });
@@ -62,11 +62,11 @@ describe("refusesIweTool", () => {
     "IWE_NORMALIZE",
     "iwe::normalize",
     "normalize_for_iwe",
-  ])("refuses an iwe tool named for normalize: %j", (name) => {
+  ])("normalize を指す iwe の tool を拒否すること: %j", (name) => {
     expect(refusesIweTool(name)).toBe(true);
   });
 
-  it.each(["@iwe/iwe_find", "normalize", "iwe", "execute_bash"])("allows %j", (name) => {
+  it.each(["@iwe/iwe_find", "normalize", "iwe", "execute_bash"])("%j を許可すること", (name) => {
     expect(refusesIweTool(name)).toBe(false);
   });
 });

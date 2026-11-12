@@ -6,16 +6,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { harnessEntry, harnessMarker, migrationsDirectory, seedEntry } from "./rules.ts";
 
-describe("the files of the base that the rules look for", () => {
+describe("規則が探す base のファイル", () => {
   // Without this, renaming the variable or moving the harness would make every pull request pass with a notice.
   const root = join(import.meta.dirname, "../../../../..");
 
-  it("exist in this repository, and the harness reads the variable that cli.ts passes", () => {
+  it("このリポジトリにあり、harness が cli.ts の渡す変数を読むこと", () => {
     expect(readFileSync(join(root, seedEntry), "utf8")).not.toBe("");
     expect(readFileSync(join(root, harnessEntry), "utf8")).toContain(harnessMarker);
   });
 
-  it("include a migrations directory that has migrations", () => {
+  it("migration のある migrations ディレクトリを含むこと", () => {
     expect(readdirSync(join(root, migrationsDirectory)).length).toBeGreaterThan(0);
   });
 });
