@@ -4,19 +4,14 @@ import {
 } from "@agent-software-factory/shared-kernel/problem";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
+import { requestId } from "hono/request-id";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Auth } from "../auth/auth.ts";
 import { memoryLogger } from "../../test/memory-logger.ts";
 import { validationHook } from "./validation-hook.ts";
 import { appWithoutDatabase } from "../../test/app-without-database.ts";
-import {
-  accessLog,
-  logUnexpectedError,
-  requestContext,
-  requestLogContext,
-  type ApiVariables,
-} from "./logging.ts";
+import { accessLog, logUnexpectedError, requestLogContext, type ApiVariables } from "./logging.ts";
 
 /** 文脈の middleware だけを付けた app。 */
 function contextApp({ validation = false } = {}) {
@@ -24,7 +19,7 @@ function contextApp({ validation = false } = {}) {
     validation ? { defaultHook: validationHook } : {},
   );
   app.use(contextStorage());
-  app.use(requestContext());
+  app.use(requestId());
   return app;
 }
 
@@ -113,21 +108,62 @@ describe("アクセスログ (docs/logging/web-api.md)", () => {
   });
 });
 
-describe("リクエストの ID", () => {
-  it("形が合う X-Request-Id はそのまま使う", async () => {
+describe("リクエストの ID (hono/request-id)", () => {
+  it("形が合う X-Request-Id はそのまま使い、ログにも応答にも同じ値を出す", async () => {
     const { logger, lines } = memoryLogger();
-    await appWithoutDatabase({ logger }).request("/a", {
-      headers: { "x-request-id": "req-abc_1.2" },
+    const res = await appWithoutDatabase({ logger }).request("/a", {
+      headers: { "x-request-id": "req-abc_1=2" },
     });
-    for (const line of lines()) expect(line["http.request.id"]).toBe("req-abc_1.2");
+    expect(res.headers.get("x-request-id")).toBe("req-abc_1=2");
+    expect(lines().length).toBeGreaterThan(0);
+    for (const line of lines()) expect(line["http.request.id"]).toBe("req-abc_1=2");
   });
 
   it("形が合わない X-Request-Id は使わず、採番する (ログの汚染を避ける)", async () => {
     const { logger, lines } = memoryLogger();
-    await appWithoutDatabase({ logger }).request("/a", {
+    const res = await appWithoutDatabase({ logger }).request("/a", {
       headers: { "x-request-id": "bad id with spaces" },
     });
-    expect(lines()[0]?.["http.request.id"]).toMatch(/^[0-9a-f-]{36}$/);
+    const issued = res.headers.get("x-request-id");
+    expect(issued).toMatch(/^[0-9a-f-]{36}$/);
+    expect(lines()[0]?.["http.request.id"]).toBe(issued);
+  });
+
+  it("255 文字を超える X-Request-Id は使わず、採番する", async () => {
+    const { logger, lines } = memoryLogger();
+    const res = await appWithoutDatabase({ logger }).request("/a", {
+      headers: { "x-request-id": "a".repeat(256) },
+    });
+    expect(res.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
+    expect(lines()[0]?.["http.request.id"]).toBe(res.headers.get("x-request-id"));
+  });
+
+  it("X-Request-Id がなければ採番し、応答に付ける", async () => {
+    const { logger, lines } = memoryLogger();
+    const res = await appWithoutDatabase({ logger }).request("/a");
+    const issued = res.headers.get("x-request-id");
+    expect(issued).toMatch(/^[0-9a-f-]{36}$/);
+    expect(lines()[0]?.["http.request.id"]).toBe(issued);
+  });
+
+  it("401 の応答にも付く", async () => {
+    const res = await appWithoutDatabase({ auth: fakeAuth(signedOut) }).request("/api/me", {
+      headers: { "x-request-id": "req-401" },
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("x-request-id")).toBe("req-401");
+  });
+
+  it("5xx (app.onError) の応答にも付く", async () => {
+    const { logger } = memoryLogger();
+    const app = contextApp();
+    app.onError(problemErrorHandler(logUnexpectedError(logger)));
+    app.get("/boom", () => {
+      throw new Error("boom");
+    });
+    const res = await app.request("/boom", { headers: { "x-request-id": "req-500" } });
+    expect(res.status).toBe(500);
+    expect(res.headers.get("x-request-id")).toBe("req-500");
   });
 });
 

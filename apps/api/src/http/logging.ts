@@ -7,39 +7,26 @@ import {
 import { commonProblemTypes } from "@agent-software-factory/shared-kernel/problem";
 import type { Context, MiddlewareHandler } from "hono";
 import { tryGetContext } from "hono/context-storage";
+import type { RequestIdVariables } from "hono/request-id";
 
 import type { SessionVariables } from "../auth/session.ts";
 
 // API のロギング (docs/adr/0049、docs/logging/web-api.md)。ロガーの実装は packages/logging にあり、ここは Hono との接点だけを持つ。
-// middleware の順序は app.ts にある: contextStorage() → @hono/otel → requestContext() → accessLog() の順で、
+// middleware の順序は app.ts にある: contextStorage() → @hono/otel → requestId() → accessLog() の順で、
 // otel の後ろに置かないとログに trace_id が付かない。
-interface LoggingVariables {
-  /** `requestContext()` が入れる。ログの `http.request.id`。 */
-  requestId: string;
+//
+// リクエストの ID は hono/request-id が決める (docs/logging/web-api.md)。`X-Request-Id` が `[\w\-=]` で 255 文字までなら使い、
+// 合わなければ・なければ採番して、`c.set("requestId")` と応答の `X-Request-Id` に入れる。形の検査があるので、改行や空白は通らない。
+// この ID は相関のためだけに使う。クライアントが決められる値なので、認可や冪等性の鍵にしない。
+// web と API は同じオリジンなので、ブラウザーの JS は応答の X-Request-Id を読める。別のオリジンから呼ぶ構成にするときは、
+// hono/cors に `exposeHeaders: ["X-Request-Id"]` を足す。
+interface LoggingVariables extends RequestIdVariables {
   /** テナントを決める middleware が入れる (今は入れるものがない)。ログの `tenant_id`。 */
   tenantId?: string;
 }
 
 export type ApiVariables = SessionVariables & LoggingVariables;
 type ApiEnv = { Variables: ApiVariables };
-
-// 受け取った ID をそのままログに載せない。改行や長い文字列でログを読みにくくされないよう、形が合うときだけ使う。
-const acceptedRequestId = /^[A-Za-z0-9._-]{1,128}$/;
-
-/**
- * リクエストの ID を決めて `c.set` する。`X-Request-Id` が形に合えばそれを、なければ採番する。
- * ログの文脈 (`requestLogContext`) が、`user.id` とともに毎行に付ける。
- */
-export function requestContext(): MiddlewareHandler<ApiEnv> {
-  return async (c, next) => {
-    const received = c.req.header("x-request-id");
-    c.set(
-      "requestId",
-      received !== undefined && acceptedRequestId.test(received) ? received : crypto.randomUUID(),
-    );
-    await next();
-  };
-}
 
 /**
  * ロガーが毎行に付ける文脈。`hono/context-storage` から今のリクエストを読む。リクエストの外 (起動のとき) は undefined。
