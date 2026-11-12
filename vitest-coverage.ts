@@ -17,34 +17,33 @@ import policy from "./coverage-policy.json" with { type: "json" };
 // the kinds of files that never count, and `entries` the files that only start the program (a project's own minimum
 // would count them at 0%, and the merged check does not). A file is added in one place, and the two cannot differ.
 //
-// Vitest matches a file inside the root of the project by its path from the root, and a file outside the root by its
-// absolute path (or one that starts with "../"), so an entry is written in both forms: the absolute path, and the path
-// from the project when the entry is in it.
+// Vitest matches a file inside the root of the project by its path from the root ("Patterns are matched against each file's
+// path relative to the project root", https://vitest.dev/config/coverage). For a file outside the root it also tries the
+// absolute path and the path from the root that starts with "../" (the `isIncluded` of @vitest/coverage-v8 5.1.0, read on
+// 2026-11-12), so an entry is written in both forms: the absolute path, and the path from the project when the entry is in
+// it. vitest-coverage.tools.test.ts shows that each form is needed.
 const ownFiles = "src/**/*.ts";
 
-// A path in the table to the patterns that Vitest matches: the absolute path, and the path from `project` if it is in it.
-function entryPatterns(entry: string, project: string): string[] {
+// The characters that picomatch reads in a glob, escaped in the part of an absolute path that is not from the table.
+const escapeGlob = (text: string): string => text.replaceAll(/[\\*?[\]{}()!+@]/gu, String.raw`\$&`);
+
+// A path of the table to the patterns that Vitest matches. The project is the directory Vitest runs in: the root defaults to
+// the working directory, and Nx runs `vp test run` from the project (a different root would leave an entry of the project
+// counted at 0%, which the project's own minimum reports).
+function entryPatterns(entry: string): string[] {
   const absolute = join(import.meta.dirname, entry);
-  const own = relative(project, absolute);
-  return own.startsWith("..") ? [absolute] : [absolute, own];
+  const fromProject = relative(process.cwd(), absolute);
+  const outside = fromProject === ".." || fromProject.startsWith("../");
+  const pattern = join(escapeGlob(import.meta.dirname), entry);
+  return outside ? [pattern] : [pattern, fromProject];
 }
 
-export function recordCoverage({
-  own = ownFiles,
-  project = process.cwd(),
-}: {
-  readonly own?: string;
-  // The directory of the project: Vitest's root, the working directory of `vp test run`.
-  readonly project?: string;
-} = {}) {
+export function recordCoverage({ own = ownFiles }: { readonly own?: string } = {}) {
   return {
     provider: "v8" as const,
     allowExternal: true,
     include: [own, ...policy.projects.map((glob) => `**/${glob}/src/**/*.{ts,tsx}`)],
-    exclude: [
-      ...policy.notMeasured,
-      ...Object.keys(policy.entries).flatMap((entry) => entryPatterns(entry, project)),
-    ],
+    exclude: [...policy.notMeasured, ...Object.keys(policy.entries).flatMap(entryPatterns)],
   };
 }
 

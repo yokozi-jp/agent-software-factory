@@ -9,11 +9,12 @@
 // The rules are in rules.ts; this file reads the files and prints.
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join, matchesGlob, relative } from "node:path";
+import { join, relative } from "node:path";
 import { tryGit } from "../git.ts";
 import { isObject } from "../json.ts";
 import {
   isMeasured,
+  matchesAny,
   addFile,
   parseFileCoverage,
   parsePolicy,
@@ -71,10 +72,14 @@ function nxRoots(top: string): ReadonlyMap<string, string> | undefined {
 // `nx affected -t test` then writes no record, and that is not a failure.
 // `--projects` makes `nx show projects` ignore `--affected` (it prints every matching project), so the directories are
 // asked separately and the two answers are intersected.
-function recordRoots(
-  top: string,
-  projects: readonly string[],
-): { readonly candidates: string[]; readonly affected: string[] } | undefined {
+interface RecordRoots {
+  // Every Nx project that can write a record: its root matches a glob of `projects`.
+  readonly candidates: string[];
+  // Of those, the ones that `test` runs for in this change.
+  readonly affected: string[];
+}
+
+function recordRoots(top: string, projects: readonly string[]): RecordRoots | undefined {
   const affected = nxProjects(top, ["--affected", "--with-target", "test"]);
   const withRecord = nxProjects(top, [
     "--with-target",
@@ -90,9 +95,7 @@ function recordRoots(
     directories.push(root);
   }
   return {
-    candidates: [...roots.values()].filter((root) =>
-      projects.some((glob) => matchesGlob(root, glob)),
-    ),
+    candidates: [...roots.values()].filter((root) => matchesAny(root, projects)),
     affected: directories,
   };
 }
@@ -122,12 +125,12 @@ function main(): string[] {
   if (projects.length === 0) {
     if (affectedRoots.length === 0) {
       process.stdout.write(
-        "merged-coverage: no affected project of apps/* or packages/* has a test target; nothing to check.\n",
+        `merged-coverage: no affected project of ${policy.projects.join(", ")} has a test target; nothing to check.\n`,
       );
       return [];
     }
     throw new CannotRun(
-      `no coverage-final.json under apps/*/coverage or packages/*/coverage for the affected projects (${affectedRoots.join(", ")}). Run \`pnpm exec nx affected -t test\` first.`,
+      `no coverage-final.json under ${policy.projects.map((glob) => `${glob}/coverage`).join(" or ")} for the affected projects (${affectedRoots.join(", ")}). Run \`pnpm exec nx affected -t test\` first.`,
     );
   }
 

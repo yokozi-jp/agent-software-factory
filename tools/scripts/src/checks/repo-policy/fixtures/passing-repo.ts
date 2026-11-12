@@ -303,7 +303,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
     .map((name) => `import "@agent-software-factory/${name}";\n`)
     .join(""),
   "packages/db/migrations/20260101000000_create_x.sql": migration(),
-  "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
+  "pnpm-workspace.yaml":
+    'packages:\n  - apps/*\n  - packages/*\n  - packages/*/events\n  - tools/*\n\ncatalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   // What `mise lock --platform linux-x64` writes: one platform per tool (docs/adr/0009).
   "mise.lock": [

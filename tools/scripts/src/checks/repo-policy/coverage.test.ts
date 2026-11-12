@@ -181,6 +181,27 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       ).toEqual([]);
     });
 
+    it("names a directory of `projects` that the workspace does not list", () => {
+      const message = (glob: string) =>
+        `pnpm-workspace.yaml must list "${glob}" in packages, as coverage-policy.json does in projects: a directory that is not a workspace package is not run by Nx, so it writes no coverage record (docs/adr/0053).`;
+      expect(
+        violations(
+          repo({
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tools/*\n",
+          }),
+        ),
+      ).toEqual([message("packages/*"), message("packages/*/events")]);
+      expect(violations(repo({ "pnpm-workspace.yaml": "catalog: {}\n" }))).toHaveLength(3);
+      expect(
+        violations(
+          repo({
+            "coverage-policy.json": json({ ...coveragePolicy, projects: ["apps/*"] }),
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n",
+          }),
+        ),
+      ).toEqual([]);
+    });
+
     it("names a repository without the table", () => {
       expect(violations(repo({ "coverage-policy.json": undefined }))).toEqual([
         "coverage-policy.json is missing (docs/adr/0053).",

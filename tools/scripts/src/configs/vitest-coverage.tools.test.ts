@@ -29,6 +29,7 @@ const table = {
     "apps/a/src/main.ts": "starts apps/a",
     "apps/a/src/loaded.ts": "starts apps/a, and a test loads it",
     "packages/b/src/entry.ts": "starts packages/b",
+    "packages/b/src/cmd/**": "commands that packages/b runs by hand",
   },
   exceptions: {},
 };
@@ -65,7 +66,8 @@ function record(project: string): {
 
 beforeAll(() => {
   box = sandbox();
-  repo = join(box.root, "repo");
+  // The characters that a glob reads are in the path of the checkout: the entries are escaped in the absolute patterns.
+  repo = join(box.root, "repo [1] (a)");
   put("package.json", '{"type":"module"}');
   cpSync(join(workspace, "vitest-coverage.ts"), join(repo, "vitest-coverage.ts"));
   put("coverage-policy.json", JSON.stringify(table));
@@ -89,11 +91,14 @@ beforeAll(() => {
   put("apps/a/src/unloaded.ts", "export const unloaded = (): number => 2;\n");
   put(
     "apps/a/src/a.test.ts",
-    'import { expect, it } from "vite-plus/test";\nimport { used } from "../../../packages/b/src/b.ts";\nimport { entry } from "../../../packages/b/src/entry.ts";\nimport { a } from "./a.ts";\nimport { loaded } from "./loaded.ts";\nit("runs b", () => {\n  expect(used() + a() + entry() + loaded()).toBe(4);\n});\n',
+    'import { expect, it } from "vite-plus/test";\nimport { used } from "../../../packages/b/src/b.ts";\nimport { entry } from "../../../packages/b/src/entry.ts";\nimport { run } from "../../../packages/b/src/cmd/run.ts";\nimport { a } from "./a.ts";\nimport { dotted } from "./.dotted.ts";\nimport { loaded } from "./loaded.ts";\nit("runs b", () => {\n  expect(used() + a() + entry() + loaded() + dotted() + run()).toBe(6);\n});\n',
   );
   put("apps/a/src/main.ts", "export const main = (): number => 4;\n");
   put("apps/a/src/loaded.ts", "export const loaded = (): number => 1;\n");
+  // A name that starts with a dot: Vitest records it (dot: true), so the check has to count it.
+  put("apps/a/src/.dotted.ts", "export const dotted = (): number => 1;\n");
   put("packages/b/src/entry.ts", "export const entry = (): number => 1;\n");
+  put("packages/b/src/cmd/run.ts", "export const run = (): number => 1;\n");
   // packages/b: no test of its own, as the modules and the events packages have none.
   put(
     "packages/b/vite.config.ts",
@@ -125,6 +130,7 @@ describe("recordCoverage", { timeout: 120_000 }, () => {
     const { files } = record("apps/a");
 
     expect(Object.keys(files).toSorted()).toEqual([
+      "apps/a/src/.dotted.ts",
       "apps/a/src/a.ts",
       "apps/a/src/unloaded.ts",
       "packages/b/src/b.ts",
@@ -148,6 +154,7 @@ describe("the table of coverage-policy.json", { timeout: 120_000 }, () => {
       "apps/a/src/main.ts",
       "apps/a/src/loaded.ts",
       "packages/b/src/entry.ts",
+      "packages/b/src/cmd/run.ts",
       "apps/a/src/a.test.ts",
     ]) {
       expect(isMeasured(path, policy)).toBe(false);

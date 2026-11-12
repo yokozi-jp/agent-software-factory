@@ -8,7 +8,7 @@ import { isObject } from "../json.ts";
 // What coverage counts, in coverage-policy.json. vitest-coverage.ts reads the same table to make the `include` and
 // `exclude` of every project's record, so the files that a project writes and the files that this check counts cannot
 // differ (#577). Paths and globs are from the repository root.
-export interface Scope {
+export interface MeasuredFiles {
   // The directories of the Nx projects that write a record (globs); their `src` is what counts.
   readonly projects: readonly string[];
   // Kinds of files that are never counted: tests, fixtures that break the lint on purpose, generated files, stories.
@@ -17,7 +17,7 @@ export interface Scope {
   readonly entries: ReadonlyMap<string, string>;
 }
 
-export interface Policy extends Scope {
+export interface Policy extends MeasuredFiles {
   readonly minimum: { readonly lines: number; readonly branches: number };
   // Measured files that are left out, for now: path from the repository root to the reason. A row is removed when the
   // tests reach the minimum, unlike an entry, which stays.
@@ -42,18 +42,32 @@ export interface Summary {
   readonly branches: Ratio;
 }
 
+// Whether the path matches one of the globs. Vitest matches with picomatch and `dot: true` (vitest-coverage.ts), but
+// path.matchesGlob (stable since Node.js 24.8.0, https://nodejs.org/api/path.html#pathmatchesglobpath-pattern) does not let
+// `*` or `**` match a name that starts with a dot (checked on Node.js 24.22.3, 2026-11-12). A leading dot is replaced before
+// matching, so a file such as `src/.local.ts` is counted when Vitest records it. A glob that names a dot file itself would
+// not match; the table uses wildcards only.
+export const matchesAny = (path: string, globs: readonly string[]): boolean => {
+  const asName = path.replace(/(^|\/)\./gu, "$1_");
+  return globs.some((glob) => matchesGlob(asName, glob));
+};
+
 // The `src` of each project (`.ts` and `.tsx`) is where the files that count are. vitest-coverage.ts makes the same globs,
-// one for each project: a single name in braces would not be expanded.
+// one for each project: a single name in braces is not expanded by path.matchesGlob or by picomatch (checked with Node.js
+// 24.22.3 and picomatch 4.0.7, 2026-11-12).
 const sourcesOf = (project: string): string => `${project}/src/**/*.{ts,tsx}`;
 
-const inSources = (path: string, { projects }: Scope): boolean =>
-  projects.some((project) => matchesGlob(path, sourcesOf(project)));
+const inSources = (path: string, { projects }: MeasuredFiles): boolean =>
+  matchesAny(path, projects.map(sourcesOf));
 
-const leftOut = (scope: Scope): string[] => [...scope.notMeasured, ...scope.entries.keys()];
+const excludedGlobs = (files: MeasuredFiles): string[] => [
+  ...files.notMeasured,
+  ...files.entries.keys(),
+];
 
 // The files that count: the code of the projects, except what the table says is not measured.
-export const isMeasured = (path: string, scope: Scope): boolean =>
-  inSources(path, scope) && !leftOut(scope).some((glob) => matchesGlob(path, glob));
+export const isMeasured = (path: string, files: MeasuredFiles): boolean =>
+  inSources(path, files) && !matchesAny(path, excludedGlobs(files));
 
 // The Nx projects that write a record: apps/<x>, packages/<x> and packages/<x>/events. A file belongs to the project
 // whose directory it is under, and a project is in scope when its record exists (the affected projects ran `test`).
@@ -75,7 +89,7 @@ export function scopeOf(
 }
 
 // A table of reasons (`exceptions`, `entries`): a path or a glob to why. A row without a reason is a row nobody can judge.
-function reasons(value: unknown, table: string, kind: string): Map<string, string> | string {
+function reasonTable(value: unknown, table: string, kind: string): Map<string, string> | string {
   if (!isObject(value)) return `coverage-policy.json: ${table} is not an object`;
   const entries: [string, string][] = [];
   for (const [path, reason] of Object.entries(value)) {
@@ -88,7 +102,7 @@ function reasons(value: unknown, table: string, kind: string): Map<string, strin
 }
 
 // A list of globs, none empty.
-const globs = (value: unknown, name: string): string[] | string =>
+const globList = (value: unknown, name: string): string[] | string =>
   Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim() !== "")
     ? value.map(String)
     : `coverage-policy.json: ${name} needs a list of globs`;
@@ -103,14 +117,14 @@ export function parsePolicy(value: unknown): Policy | string {
   ) {
     return "coverage-policy.json: minimum needs numbers for lines and branches";
   }
-  const projects = globs(value.projects, "projects");
+  const projects = globList(value.projects, "projects");
   if (typeof projects === "string") return projects;
   if (projects.length === 0) return "coverage-policy.json: projects needs a list of globs";
-  const notMeasured = globs(value.notMeasured, "notMeasured");
+  const notMeasured = globList(value.notMeasured, "notMeasured");
   if (typeof notMeasured === "string") return notMeasured;
-  const entries = reasons(value.entries, "entries", "entry");
+  const entries = reasonTable(value.entries, "entries", "entry");
   if (typeof entries === "string") return entries;
-  const exceptions = reasons(value.exceptions, "exceptions", "exception");
+  const exceptions = reasonTable(value.exceptions, "exceptions", "exception");
   if (typeof exceptions === "string") return exceptions;
   return {
     minimum: { lines: minimum.lines, branches: minimum.branches },
@@ -224,7 +238,7 @@ export function violations({ policy, tracked, projects, coverage }: Input): stri
   // An entry is never counted, so a row that no file of a project's `src` matches (the entry was renamed or deleted)
   // is a row to remove, as for an exception.
   for (const glob of policy.entries.keys()) {
-    if (!tracked.some((path) => inSources(path, policy) && matchesGlob(path, glob))) {
+    if (!tracked.some((path) => inSources(path, policy) && matchesAny(path, [glob]))) {
       failures.push(`${glob}: the entry matches no file. Remove its row.`);
     }
   }

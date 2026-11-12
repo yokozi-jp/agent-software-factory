@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   addFile,
   isMeasured,
+  matchesAny,
   mergeFileCoverage,
   parseFileCoverage,
   parsePolicy,
@@ -11,7 +12,7 @@ import {
   violations,
   type FileCoverage,
   type Policy,
-  type Scope,
+  type MeasuredFiles,
 } from "./rules.ts";
 
 // A file of coverage-final.json: one statement per line, `hits[n]` for line n + 1, and one branch (an `if`) per entry
@@ -38,7 +39,7 @@ function file(hits: number[], branches: number[][] = []): FileCoverage {
 }
 
 // The table as coverage-policy.json has it, except that its exceptions are the one file that most tests use.
-const scope: Scope = {
+const scope: MeasuredFiles = {
   projects: ["apps/*", "packages/*", "packages/*/events"],
   notMeasured: [
     "**/*.test.{ts,tsx}",
@@ -92,7 +93,7 @@ describe("isMeasured", () => {
   });
 
   it("does not count an entry, by its path or by a glob, and counts the files next to it", () => {
-    const withEntries: Scope = {
+    const withEntries: MeasuredFiles = {
       ...scope,
       entries: new Map([
         ["apps/api/src/server.ts", "x"],
@@ -106,19 +107,42 @@ describe("isMeasured", () => {
     expect(isMeasured("apps/web/src/server.ts", withEntries)).toBe(true);
   });
 
+  it("counts a file whose name starts with a dot, as Vitest records it (dot: true)", () => {
+    expect(isMeasured("apps/api/src/.local.ts", scope)).toBe(true);
+    expect(isMeasured("apps/api/src/.hidden/app.ts", scope)).toBe(true);
+    expect(isMeasured("apps/api/src/.local.test.ts", scope)).toBe(false);
+    expect(isMeasured("apps/api/src/.__fixtures__/a.ts", scope)).toBe(true);
+    expect(isMeasured("apps/api/src/__fixtures__/.a.ts", scope)).toBe(false);
+  });
+
   it("does not count the kinds of files that the table says are not measured", () => {
-    const only: Scope = { ...scope, notMeasured: ["**/*.mock.ts"] };
+    const only: MeasuredFiles = { ...scope, notMeasured: ["**/*.mock.ts"] };
     expect(isMeasured("apps/api/src/db.mock.ts", only)).toBe(false);
     expect(isMeasured("apps/api/src/app.test.ts", only)).toBe(true);
   });
 
   it("counts the `src` of the directories of `projects`, and no others", () => {
-    const apps: Scope = { ...scope, projects: ["apps/*"] };
+    const apps: MeasuredFiles = { ...scope, projects: ["apps/*"] };
     expect(isMeasured("apps/api/src/app.ts", apps)).toBe(true);
     expect(isMeasured("packages/db/src/a.ts", apps)).toBe(false);
-    const two: Scope = { ...scope, projects: ["apps/*", "libs/*"] };
+    const two: MeasuredFiles = { ...scope, projects: ["apps/*", "libs/*"] };
     expect(isMeasured("libs/a/src/a.ts", two)).toBe(true);
     expect(isMeasured("apps/api/src/app.ts", two)).toBe(true);
+  });
+});
+
+describe("matchesAny", () => {
+  it("matches one of the globs, with a wildcard standing for a name that starts with a dot", () => {
+    expect(matchesAny("a/b.ts", ["x/*", "a/*.ts"])).toBe(true);
+    expect(matchesAny("a/.b.ts", ["a/*.ts"])).toBe(true);
+    expect(matchesAny("a/.b/c.ts", ["a/**/*.ts"])).toBe(true);
+    expect(matchesAny(".a/b.ts", ["*/b.ts"])).toBe(true);
+    expect(matchesAny("a/b.ts", [])).toBe(false);
+  });
+
+  it("does not expand a single name in braces", () => {
+    expect(matchesAny("apps/api/src/a.ts", ["{apps/*}/src/**"])).toBe(false);
+    expect(matchesAny("apps/api/src/a.ts", ["{apps/*,libs/*}/src/**"])).toBe(true);
   });
 });
 
