@@ -18,7 +18,7 @@ pre-commit:
   # cached result still holds, and their globs skip them when nothing they read changed.
   piped: true
   jobs:
-    # The checks that finish in seconds (secret-scan 7 s, jscpd 7 s, repo-policy 1 to 4 s; docs-check, vp check and Knip
+    # The checks that finish in seconds (secret-scan 7 s, jscpd 7 s, repo-policy 1.2 to 3.7 s; docs-check, vp check and Knip
     # take 2 to 2.5 minutes). A parallel group reports a failure only after its slowest job, so a clone that jscpd finds in seconds
     # waited for Knip. These run first; if one fails, the commit stops before the slow checks start.
     - name: quick-checks
@@ -36,9 +36,9 @@ pre-commit:
               - ".jscpd.json"
             run: pnpm lint:dup
           # No glob: the rules read files of every kind (configs at the root, .tsx, .sql, the paths that docs name), and a glob is a
-          # second, hand-copied list of them. It missed files three times (#515, #549, #551), and lefthook's own matching
-          # differs from what a test can reproduce (`**` needs at least one directory under glob_matcher: gobwas; Issue #580).
-          # The check takes 1.2 to 3.7 s, inside quick-checks, so it runs on every commit.
+          # second, hand-copied list of them. It missed files three times (#515, #549, #551). Its matching also differs from what a
+          # test can reproduce: lefthook's glob doc says `**` matches one or more directories under glob_matcher: gobwas, the
+          # default (Issue #580, which read the doc at lefthook 2.2.2). The check is fast (see the times above), so it runs on every commit.
           - name: repo-policy
             # Check what is staged, so unstaged edits to other files cannot fail the commit.
             run: node tools/scripts/src/checks/repo-policy/cli.ts staged
