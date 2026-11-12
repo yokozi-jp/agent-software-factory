@@ -8,6 +8,11 @@
   "extends": ["config:best-practices", ":semanticCommitTypeAll(chore)"],
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
+  // Renovate merges some of its PRs itself (docs/adr/0055). It uses GitHub's auto-merge, which merges once the
+  // required checks of protect-main pass (.github/rulesets/protect-main.json), so the repository setting
+  // "Allow auto-merge" must be on. The rules below turn automerge on; the last one turns it off again for what stays
+  // with a person. A PR that fails a check is left open as before.
+  "lockFileMaintenance": { "automerge": true },
   "packageRules": [
     {
       // ADR 0003: stay on betterleaks v1 until v2 is stable and the ADR is revisited.
@@ -66,6 +71,40 @@
       "description": "Update the Renovate in tools/scripts/sh/renovate.sh once a week",
       "matchDepNames": ["renovate"],
       "schedule": ["before 4am on monday"],
+    },
+    {
+      // Renovate's own guidance: automerge what you would merge anyway, and keep the major versions and the 0.x
+      // versions (which may break at any time) for a person. CI exercises these, so a failing update stays open.
+      "description": "Automerge minor and patch updates of npm packages that are 1.0 or later",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+    },
+    {
+      // These run in CI on the pull request, so a broken update fails there. A scanner that stops finding things
+      // looks the same as a pass, so only patch updates are merged by Renovate, and only after the release is 3
+      // days old (npm already waits through config:best-practices). The betterleaks of .betterleaks.toml belongs to
+      // a regex manager and moves in one PR with mise.toml, so that manager is listed too.
+      "description": "Automerge patch updates of GitHub Actions and mise tools 3 days after the release",
+      "matchUpdateTypes": ["patch"],
+      "matchManagers": ["github-actions", "mise", "custom.regex"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days",
+    },
+    // The next two come last, so that they win over the rules above.
+    {
+      // The Node.js runtime and pnpm are set together with the Lambda runtime and the lock file format (ADR 0013).
+      // The authentication libraries are read by a person even when the tests pass.
+      "description": "A person merges Node.js, pnpm and the authentication libraries",
+      "matchDepNames": ["node", "pnpm", "better-auth", "oidc-provider"],
+      "automerge": false,
+    },
+    {
+      // ADR 0028: the PR of @effect/tsgo and Vite+ must fit the range of Oxlint, and a person checks that.
+      "description": "A person merges the PR of @effect/tsgo and Vite+",
+      "matchPackageNames": ["@effect/tsgo", "vite-plus", "@voidzero-dev/vite-plus-core"],
+      "automerge": false,
     },
   ],
   "customManagers": [

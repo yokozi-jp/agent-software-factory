@@ -21,8 +21,11 @@ gh repo edit yokozi-jp/agent-software-factory \
   --squash-merge-commit-message pr-title-description \
   --enable-merge-commit=false \
   --enable-rebase-merge=false \
-  --delete-branch-on-merge
+  --delete-branch-on-merge \
+  --enable-auto-merge
 ```
+
+`--enable-auto-merge` (Allow auto-merge) は、Renovate が必須チェックの通った PR を自分で merge するために要ります ([ADR 0055](../adr/0055-renovate-automerge-by-ci.md))。必須チェックは次の 2 の ruleset が強制するので、通らない PR は merge されません。
 
 ## 2. main の保護 (ruleset)
 
@@ -94,7 +97,7 @@ CODEOWNERS の設定は GitHub の側にはなく、ファイルを main に置�
 ## 6. 設定を確かめる
 
 ```sh
-gh api repos/yokozi-jp/agent-software-factory --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, squash_merge_commit_title, squash_merge_commit_message, delete_branch_on_merge}'
+gh api repos/yokozi-jp/agent-software-factory --jq '{allow_auto_merge, allow_squash_merge, allow_merge_commit, allow_rebase_merge, squash_merge_commit_title, squash_merge_commit_message, delete_branch_on_merge}'
 gh api repos/yokozi-jp/agent-software-factory/rules/branches/main --jq '.[].type'
 gh api repos/yokozi-jp/agent-software-factory/private-vulnerability-reporting
 gh api repos/yokozi-jp/agent-software-factory/codeowners/errors
