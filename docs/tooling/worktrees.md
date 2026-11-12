@@ -37,6 +37,7 @@ cd "$(tools/scripts/sh/worktree.sh add feat/example)"   # origin/main からブ�
 `add` は、標準出力に worktree の絶対 path だけを出します。node_modules は worktree ごとに入れ、Git hook は全ての worktree で共有されます。
 Kiro の file tool (読む、書く、編集する) は、相対 path を worktree ではなく workspace root (main の作業ツリー) に対して解決します。worktree のファイルは絶対 path で渡します。相対 path のまま書くと、別のセッションが使っている main の作業ツリーのファイルを書き換えます。shell のコマンドは、`cwd` に worktree を指定すれば相対 path で構いません。
 検索の tool (`grep_search`、`file_search`) も、探すのは main の作業ツリーだけで、worktree の中の変更は結果に出ません。worktree のコードを探すときは、shell の `cwd` に worktree を指定して `rg` を使います。
+`add` は Playwright のブラウザを入れません。ブラウザは `~/.cache/ms-playwright` にあり、worktree で共有しますが、`web` の Playwright が求める版が無いと `web:test` が止まります (2026-11-12 に `chromium_headless_shell-1254` が無くて止まりました)。止まったときは、`pnpm --filter @agent-software-factory/web exec playwright install chromium` を実行します (手順は[開発コマンド](commands.md))。出力は、coverage の `0% does not meet threshold` が大量に先に出て、原因の `Executable doesn't exist at …/ms-playwright/…` は最後に出ます。上の行だけを見て、テストや下限の問題と取り違えません。
 作業の手順そのものは `using-git-worktrees` skill に従います。
 
 ## 開発サーバーを動かす
