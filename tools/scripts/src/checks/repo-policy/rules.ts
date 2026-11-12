@@ -116,10 +116,3 @@ function run(tree: Tree): string[] {
 
 // Every failure of the repository.
 export const violations = (repo: Repo): string[] => run(new Tree(repo));
-
-// The paths the checks read from the repository (a name for `named`), including the files it does not have.
-export function readPaths(repo: Repo): string[] {
-  const tree = new Tree(repo);
-  run(tree);
-  return tree.readPaths;
-}

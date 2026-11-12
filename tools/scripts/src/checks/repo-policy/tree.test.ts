@@ -1,5 +1,4 @@
-// The tree the rules read: a file that does not parse is reported once and reads as empty, and the paths asked for
-// are recorded (lefthook-inputs.tools.test.ts compares them with the glob of the pre-commit job).
+// The tree the rules read: a file that does not parse is reported once and reads as empty.
 import { describe, expect, it } from "vite-plus/test";
 import { repo } from "./fixtures/repo.ts";
 import { Tree } from "./tree.ts";
@@ -67,16 +66,7 @@ describe("configuration files that cannot be parsed: the messages", () => {
   });
 });
 
-describe("the paths asked for", () => {
-  it("records the path of read, maybe and parsed, and the name of named, whether the tree has the file or not", () => {
-    const tree = new Tree(repo());
-    tree.named("package.json");
-    tree.parsed("c.json");
-    tree.maybe("b.txt");
-    tree.read("a.txt");
-    expect(tree.readPaths).toEqual(["a.txt", "b.txt", "c.json", "package.json"]);
-  });
-
+describe("a file the tree lacks", () => {
   it("reads a file that the tree lacks as empty, or as undefined", () => {
     const tree = new Tree(repo());
     expect(tree.read("missing.txt")).toBe("");

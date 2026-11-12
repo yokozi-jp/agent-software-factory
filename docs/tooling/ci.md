@@ -130,15 +130,15 @@ project ごとの下限は、その project の `src` だけを数えます。sh
 1. コマンド: リポジトリ全体を見る検査は、`tools/scripts/src/checks/<name>/` の TypeScript (`node tools/scripts/src/checks/<name>/cli.ts` で実行) か、ルートの `package.json` の script にします。1 つの CLI に引数を渡すだけなら、`tools/scripts/sh/<name>.sh` の sh でも構いません ([ADR 0024](../adr/0024-scripts-and-hooks-in-typescript.md))。プロジェクトごとの検査は、そのプロジェクトの `package.json` の script にし、Nx の target として動かします。どちらも `vp run` は使いません ([ADR 0002](../adr/0002-nx-orchestrates-vite-plus.md))。道具の版は、npm で配られるものは `pnpm-workspace.yaml` の catalog で、それ以外は `mise.toml` で固定します ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。
 2. `ci.yml` の job に step を足します。mise の道具を使う検査と `test-tools` は `scripts` に、それ以外でリポジトリ全体を見る検査は `checks` に、プロジェクトごとの検査は `nx` に入れます。新しい job を作るなら `main` の `needs` に足します。
 3. `lefthook.yml` の `pre-commit` に job を足します。`glob` には、検査の対象のファイルと、道具の版を固定するファイル (`pnpm-workspace.yaml` か `mise.toml` と `mise.lock`) を入れます。
+   例外は repo-policy で、`glob` を持たず、どの commit でも流れます。規則が読むファイルは多岐にわたり、`glob` は手で写した 2 つ目の一覧になって、漏れを繰り返したためです (#515、#549、#551、[#580](https://github.com/yokozi-jp/agent-software-factory/issues/580))。1.2〜3.7 秒で終わるので (Issue #580 の測定。`repo-policy/cli.ts staged` を直接流すと 1.24〜1.83 秒、負荷の高いときに lefthook 経由で 3.68 秒)、毎回流しても費用は小さいです。
 4. [保証カタログ](assurance-catalog.md) に行を足します。名前の列は設定の名前 (`ci.yml: <step の name>` など) にし、lefthook の job は写す行の「ローカルの写し」の列に書きます。Kiro の hook の検査は、ファイルの 1 行目を `// block-<名前>:` か `// warn-<名前>:` で始め、`kiro: <hook>/<名前>` の行を足します。行を書き忘れると repo-policy が止めます。「検出力の確かめ方」には、下の 5 で書くテストのファイルを書きます。GitHub の上でだけ動くもの (ruleset の規則、必須チェック) は、repo-policy の静的な検査と、その PR で手で一度止まることを確かめたことを書きます。lint の規則か tsconfig のフラグを足すときは、下の「lint の規則と tsconfig のフラグの fixture」に従って fixture に 1 行足し、その fixture を「検出力の確かめ方」に書きます。
 5. 止めるべき入力で失敗し、通すべき入力で通ることを確かめます。TypeScript の検査は `tools/scripts` の Vitest のテスト (下の「スクリプトのテスト」) にします。sh のラッパーは `tools/scripts/src/sh/<name>.test.ts` に、止める入力と通す入力を stub の道具 (`src/test/stubs.ts`) で確かめるプロセスのテストを書きます。ラッパーにこのテストがないと、repo-policy が止めます。本物の道具と設定を使うテストは `*.tools.test.ts` にし、読む設定を `test-tools` の `inputs` に書きます。実行権限の付け忘れは repo-policy が止めます。
 6. docs: この文書の「ci.yml の検証」に実行のしかたを、[開発コマンド](commands.md) の構成とコマンドの表に、手で実行するコマンドを書きます。`ci.yml` の Nx の target がコマンドの表にないと、repo-policy が失敗します。
 7. 道具や設定を選んだ理由は ADR に書きます。番号は `node tools/scripts/src/checks/check-adr-number/cli.ts` で決めます ([並行作業と worktree](worktrees.md#pr-を出す))。
 
-既存の repo-policy に規則を 1 つ足すだけなら、上の 1 から 3 と 7 は済んでいます。直す場所は次の 5 つです (PR #538 が例です)。
+既存の repo-policy に規則を 1 つ足すだけなら、上の 1 から 3 と 7 は済んでいます。直す場所は次の 4 つです (PR #538 が例です)。lefthook の `glob` は直しません (上の 3)。
 
 - `tools/scripts/src/checks/repo-policy/` の、主題に合う `*.ts` (規則の置き場は `rules.ts` の先頭のコメント) に規則を書き、`rules.ts` の `violations` に並べます。
-- 規則が読むファイルを、`lefthook.yml` の `pre-commit` の `repo-policy` の `glob` に足します。`Tree` の `read`、`maybe`、`parsed`、`named` は、規則が読もうとした path を記録します (ファイルがなくても記録します)。`lefthook-inputs.tools.test.ts` が、`passing-repo` に対して記録した path を `glob` と突き合わせて、足し忘れを止めます。path を変数で作っても記録されます。ファイルの内容は `Tree` を通して読みます (`tree.repo.read` は使いません)。
 - `fixtures/passing-repo.ts` に、規則を通す最小のファイルを足します。
 - 主題に合う `<主題>.test.ts` (`tooling.test.ts`、`modules.test.ts` など。`*.ts` と同じ名前) に、止める入力と通す入力のテストを足します。`fixtures/repo.ts` の `failuresOf(規則)` でその規則だけを呼び、期待する message は、その規則の失敗だけを並べます。`violations` を通すテストは、`rules.test.ts` の「`passing-repo` では失敗がない」だけです。
 - この文書の repo-policy の項に、確かめる内容を足します。
