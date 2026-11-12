@@ -3,7 +3,8 @@ import type { TestDatabase } from "@agent-software-factory/db/testing";
 import { randomUUID } from "node:crypto";
 
 import type { createApp } from "../src/app.ts";
-import { requireSession } from "../src/auth/session.ts";
+import { requireSession } from "../src/http/middleware/session.ts";
+import { createRouter } from "../src/http/route/router.ts";
 import type { ResourceContext, ResourceFactory } from "./bola.ts";
 
 // BOLA のテストの検出力を確かめる fixture (docs/adr/0045)。メモを持ち主ごとに持つ route を、アプリに足す。
@@ -59,7 +60,9 @@ export async function addNoteRoutes(
   );
   app.use("/api/notes/*", requireSession());
 
-  app.openapi(getNote, async (c) => {
+  // 業務の route と同じく sub-app に書く (検証エラーの hook は createRouter が持つ)。
+  const notes = createRouter();
+  notes.openapi(getNote, async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("session")?.user.id ?? "";
     const { rows } =
@@ -77,7 +80,7 @@ export async function addNoteRoutes(
     return c.json(found, 200);
   });
 
-  app.openapi(putNote, async (c) => {
+  notes.openapi(putNote, async (c) => {
     const { id } = c.req.valid("param");
     const { body } = c.req.valid("json");
     const userId = c.get("session")?.user.id ?? "";
@@ -96,6 +99,7 @@ export async function addNoteRoutes(
     }
     return c.json({ id, body }, 200);
   });
+  app.route("/", notes);
 }
 
 /** 持ち主のメモを 1 行作る。 */

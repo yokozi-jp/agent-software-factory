@@ -5,7 +5,7 @@ import { registeredConsumers } from "@agent-software-factory/shared-kernel/messa
 import { describe, expect, it } from "vite-plus/test";
 
 import { consumerProblems } from "../../test/consumer-check.ts";
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // 受信の処理の全件テスト (Issue #269、docs/adr/0029): defineConsumer で登録した処理の一覧を全件回し、各処理に同じ
 // メッセージを 2 回渡して、2 回目が Duplicate になり、行が増えも変わりもしないことを確かめる。
@@ -22,7 +22,7 @@ describe("受信の処理の全件テスト", () => {
       consumers: registeredConsumers(),
       examples,
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 

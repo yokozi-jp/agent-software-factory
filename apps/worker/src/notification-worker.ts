@@ -34,11 +34,9 @@ export const createNotificationHandler =
         const now = yield* currentInstant;
         yield* handleNotification(body, {
           now,
-          write: {
-            actor: "notification-worker",
-            pgmCd: "approval.notification",
-            txId: message.messageId,
-          },
+          actor: "notification-worker",
+          pgmCd: "approval.notification",
+          txId: message.messageId,
         });
       }),
     );

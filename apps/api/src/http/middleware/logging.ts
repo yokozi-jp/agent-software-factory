@@ -9,7 +9,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { tryGetContext } from "hono/context-storage";
 import type { RequestIdVariables } from "hono/request-id";
 
-import type { SessionVariables } from "../auth/session.ts";
+import type { SessionVariables } from "./session.ts";
 
 // API のロギング (docs/adr/0049、docs/logging/web-api.md)。ロガーの実装は packages/logging にあり、ここは Hono との接点だけを持つ。
 // middleware の順序は app.ts にある: contextStorage() → @hono/otel → requestId() → accessLog() の順で、

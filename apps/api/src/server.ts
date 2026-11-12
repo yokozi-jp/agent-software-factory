@@ -15,7 +15,7 @@ import { Pool } from "pg";
 import { createApp } from "./app.ts";
 import { createAuth } from "./auth/auth.ts";
 import { loadEnv, loadLoggerSettings } from "./env.ts";
-import { requestLogContext } from "./http/logging.ts";
+import { requestLogContext } from "./http/middleware/logging.ts";
 import { createApiRuntime } from "./runtime.ts";
 import { stopGracefully, type StopSteps } from "./shutdown.ts";
 

@@ -2,6 +2,7 @@ import {
   purgeExpiredIdempotencyKeys,
   type PurgeResult,
 } from "@agent-software-factory/shared-kernel/idempotency-db";
+import { currentInstant } from "@agent-software-factory/shared-kernel/time";
 import {
   type Database,
   type ModuleName,
@@ -40,12 +41,15 @@ export type PurgeJobResult = Readonly<Partial<Record<ModuleName, PurgeResult>>>;
 
 export const runPurgeJob = (input: PurgeJobInput): Effect.Effect<PurgeJobResult, never, Database> =>
   Effect.gen(function* () {
+    // 1 回の実行で 1 回だけ読み、全モジュール、全バッチの共通カラムと期限の基準にする (docs/adr/0043)。
+    const now = yield* currentInstant;
     const results: Partial<Record<ModuleName, PurgeResult>> = {};
     for (const tx of input.modules) {
       results[tx.module] = yield* purgeExpiredIdempotencyKeys(
         tx,
         {
           tenantId: input.tenantId,
+          now,
           actor: PURGE_PGM_CD,
           pgmCd: PURGE_PGM_CD,
           txId: input.txId,

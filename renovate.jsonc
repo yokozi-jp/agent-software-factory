@@ -8,11 +8,18 @@
   "extends": ["config:best-practices", ":semanticCommitTypeAll(chore)"],
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
-  // Renovate merges some of its PRs itself (docs/adr/0055). It uses GitHub's auto-merge, which merges once the
-  // required checks of protect-main pass (.github/rulesets/protect-main.json), so the repository setting
-  // "Allow auto-merge" must be on. The rules below turn automerge on; the last one turns it off again for what stays
-  // with a person. A PR that fails a check is left open as before.
-  "lockFileMaintenance": { "automerge": true },
+  // Renovate merges some of its PRs itself (docs/adr/0055): lock file maintenance, and the minor and patch updates of
+  // npm packages that are 1.0 or later. It uses GitHub's auto-merge, which merges once the required checks of
+  // protect-main pass (.github/rulesets/protect-main.json), so the repository setting "Allow auto-merge" must be on.
+  // The rules below turn automerge on; the last rules turn it off again for what stays with a person. A PR that fails
+  // a check is left open as before. Every PR that is merged by itself carries the label `automerge`, so that a revert
+  // can be traced to it (docs/tooling/renovate.md). `labels` is not merged between rules: the last matching rule
+  // wins, so the rules for a person's PRs set `labels` to [].
+  // To stop all automerge, add { "matchPackageNames": ["*"], "automerge": false, "labels": [] } as the last rule and set
+  // lockFileMaintenance to { "automerge": false, "labels": [] } (docs/tooling/renovate.md). Do not rely on turning
+  // off "Allow auto-merge": Renovate's platformAutomerge falls back to Renovate's own automerge.
+  // tools/scripts/src/checks/repo-policy/tooling.ts keeps this bounded.
+  "lockFileMaintenance": { "automerge": true, "labels": ["automerge"] },
   "packageRules": [
     {
       // ADR 0003: stay on betterleaks v1 until v2 is stable and the ADR is revisited.
@@ -88,18 +95,11 @@
       "matchUpdateTypes": ["minor", "patch"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true,
+      "labels": ["automerge"],
     },
-    {
-      // These run in CI on the pull request, so a broken update fails there. A scanner that stops finding things
-      // looks the same as a pass, so only patch updates are merged by Renovate, and only after the release is 3
-      // days old (npm already waits through config:best-practices). The betterleaks of .betterleaks.toml belongs to
-      // a regex manager and moves in one PR with mise.toml, so that manager is listed too.
-      "description": "Automerge patch updates of GitHub Actions and mise tools 3 days after the release",
-      "matchUpdateTypes": ["patch"],
-      "matchManagers": ["github-actions", "mise", "custom.regex"],
-      "automerge": true,
-      "minimumReleaseAge": "3 days",
-    },
+    // GitHub Actions and mise tools are not merged by Renovate at any version. An Action runs inside CI and its update
+    // changes .github/workflows. A scanner (betterleaks, zizmor, osv-scanner, semgrep) that stops finding things looks the
+    // same as a pass. A person reads these PRs (docs/adr/0055).
     // The next two come last, so that they win over the rules above.
     {
       // The Node.js runtime is set together with the Lambda runtime (ADR 0013). pnpm runs every check, so a person
@@ -108,12 +108,14 @@
       "description": "A person merges Node.js, pnpm, kiro-cli and the authentication libraries",
       "matchDepNames": ["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"],
       "automerge": false,
+      "labels": [],
     },
     {
       // ADR 0028: the PR of @effect/tsgo and Vite+ must fit the range of Oxlint, and a person checks that.
       "description": "A person merges the PR of @effect/tsgo and Vite+",
       "matchPackageNames": ["@effect/tsgo", "vite-plus", "@voidzero-dev/vite-plus-core"],
       "automerge": false,
+      "labels": [],
     },
   ],
   // The official version list of Kiro CLI (docs/adr/0057). The official installer reads this index.json, so it is the
