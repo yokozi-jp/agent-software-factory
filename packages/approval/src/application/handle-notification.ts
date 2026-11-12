@@ -1,5 +1,5 @@
 import { notificationRequested } from "@agent-software-factory/approval-events";
-import type { WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
+import type { WriteContext } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 
 import { MailSender } from "./mail-sender.ts";
@@ -7,14 +7,11 @@ import { NotificationStore } from "./notification-store.ts";
 import { renderNotificationMail } from "./notification-mail.ts";
 
 /**
- * What the entry file gives with each message. `now` is read once per message from the `Clock` (`currentInstant`), so
- * the mail and the test see one moment (docs/adr/0043). `write` is who writes and with which program, for the common
- * columns of `processed_message`.
+ * What the entry file gives with each message: the common-column values of `processed_message` (`WriteContext`: who
+ * writes, with which program, in which call) and `now`, read once per message from the `Clock` (`currentInstant`,
+ * docs/adr/0043). It is one value, so the mail and the common columns of both transactions see one moment.
  */
-export interface NotificationContext {
-  readonly now: Temporal.Instant;
-  readonly write: WriteActor;
-}
+export type NotificationContext = WriteContext;
 
 /** `Sent`: the mail went out and the message is recorded. `Duplicate`: it was recorded before, so nothing was sent. */
 export type NotificationResult = { readonly _tag: "Sent" } | { readonly _tag: "Duplicate" };
@@ -33,8 +30,9 @@ export type NotificationResult = { readonly _tag: "Sent" } | { readonly _tag: "D
  * row, so the next delivery sends again. A message that does not parse, or lacks an item of its template, is a defect:
  * it can never succeed, so it goes on to the DLQ after `maxReceiveCount` deliveries.
  *
- * `now` is the one moment of this message; `inTenantTransaction` reads the clock again for the common columns of each of
- * its transactions (Issue #506). How this receiver relates to the registry of `defineConsumer` is Issue #505.
+ * `now` is the one moment of this message: the mail and the common columns of both transactions take it
+ * (`inTenantTransaction` does not read the clock). How this receiver relates to the registry of `defineConsumer` is
+ * Issue #505.
  *
  * It does not use `defineConsumer`: that function writes the row first and calls its handler in the same transaction,
  * which holds a transaction open for the whole send.
@@ -46,7 +44,7 @@ export const handleNotification = Effect.fn("handleNotification")(function* (
   const parsed = yield* Effect.sync(() => notificationRequested.schema.parse(message));
   const store = yield* NotificationStore;
 
-  if (yield* store.isProcessed(parsed, context.write)) {
+  if (yield* store.isProcessed(parsed, context)) {
     return { _tag: "Duplicate" } as const satisfies NotificationResult;
   }
 
@@ -54,6 +52,6 @@ export const handleNotification = Effect.fn("handleNotification")(function* (
   const sender = yield* MailSender;
   yield* sender.send(mail);
 
-  yield* store.markProcessed(parsed, context.write);
+  yield* store.markProcessed(parsed, context);
   return { _tag: "Sent" } as const satisfies NotificationResult;
 });
