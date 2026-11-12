@@ -71,6 +71,15 @@ const runtimeImports = {
   patterns: [{ group: ["bun:*"], message: runtimeImportMessage }, otelSdkPattern],
 };
 
+// Hono and its packages (docs/adr/0026) are imported in an HTTP part only: a src/http/ directory (packages/*/src/http for a
+// module, apps/api/src/http for the app), apps/api/src/app.ts and the entry file server.ts. The other code takes and returns
+// plain values, so that the business rules do not depend on the HTTP framework. `values` of `hono` in the table lists the
+// ones this repository uses; the pattern stops every `@hono/` package. The files that may import Hono carry no honoPattern:
+// the http layer of a module, apps/api/src/http and app.ts (apiHttpFiles below), the entry files and the tests of apps/api,
+// and shared-kernel, whose entries `problem` and `idempotency-http` are listed for Hono in sharedKernelEntries (docs/adr/0051).
+const apiHttpFiles = ["apps/api/src/app.ts", "apps/api/src/http/**"];
+const honoPattern = { regex: "^(?:hono(?:/|$)|@hono/)", message: restrictions.hono.message };
+
 // Imports that bypass the Outbox and the transaction (docs/adr/0029). A request or a module that calls SQS, SES and the
 // like directly sends before the transaction commits, or twice on a retry; a module that opens a connection of its own
 // skips the tenant setting and the module role of inTenantTransaction. The names are the values of `outbox` and
@@ -353,16 +362,18 @@ const testDeepImports = [
 // files outside the layers, and shared-kernel). Oxlint keeps only the last override that sets a rule for a file, so each
 // override carries all the restrictions of its files.
 // `shared` is not a module: it owns the SQL of the transaction helper, so it may import `sql` (sqlPaths).
-// `allowSql`: the file may import `sql` (shared-kernel and the apps, see sqlPaths). `isTest`: a test file of a layer, which may
+// `allowSql`: the file may import `sql` (shared-kernel and the apps, see sqlPaths). `allowHono`: the file may import Hono
+// (shared-kernel, see honoPattern). `isTest`: a test file of a layer, which may
 // import testing/. `noEffect`: the layer of a driver, which does not import Effect.
 interface ImportOptions {
   readonly allowSql?: boolean;
+  readonly allowHono?: boolean;
   readonly isTest?: boolean;
   readonly noEffect?: boolean;
 }
 function moduleImports(
   layer?: string,
-  { allowSql = false, isTest = false, noEffect = false }: ImportOptions = {},
+  { allowSql = false, allowHono = false, isTest = false, noEffect = false }: ImportOptions = {},
 ) {
   const patterns: Record<string, unknown>[] = [...runtimeImports.patterns];
   // The patterns of domain go before deepImports, whose negated groups end the check of an entry of shared-kernel.
@@ -381,6 +392,8 @@ function moduleImports(
   // The application and http of a module do not import a driver (domain is stopped by its ban on every library). This goes
   // before deepImports, whose negated groups end the check of the entries that a module may import (db/node, hr-system/client).
   if (layer === "application" || layer === "http") patterns.push(driverInModulePattern);
+  // Hono is for the http layer (domain is stopped by its ban on every library). Before deepImports, for the reason above.
+  if (layer !== "http" && layer !== "domain" && !allowHono) patterns.push(honoPattern);
   patterns.push(...deepImports);
   if (layer !== undefined) {
     const other = Object.keys(layers).filter((l) => l !== layer && !layers[layer]?.includes(l));
@@ -420,7 +433,7 @@ function moduleImports(
 // The options of no-restricted-imports for a file of one entry of shared-kernel: the restrictions of shared-kernel, and a
 // ban on the libraries (and their subpaths, `hono/client`) that the entry is not listed for.
 function sharedKernelEntryImports(entry: string, allowed: readonly string[]) {
-  const base = moduleImports(undefined, { allowSql: true });
+  const base = moduleImports(undefined, { allowSql: true, allowHono: true });
   const banned = sharedKernelLibraries.filter((library) => !allowed.includes(library));
   const message =
     `${entry === "." ? "The entry `.`" : `The entry \`${entry}\``} of shared-kernel imports ${allowed.join(", ")} and no other ` +
@@ -566,6 +579,7 @@ const webDrivers = ["hr-system", "i18n"];
 function nodeDriverImports(workspaceTypesOnly: boolean, isTest: boolean) {
   // infrastructure/ imports domain/ and itself, not application/ or http/ (a driver has neither) and not testing/.
   const patterns: Record<string, unknown>[] = [
+    honoPattern,
     ...deepImports,
     driverEffectPattern,
     relativeDirsPattern(["application", "http"]),
@@ -701,10 +715,27 @@ export default defineConfig({
             "error",
             {
               paths: [...runtimeImports.paths, ...bypassPaths],
-              patterns: [...runtimeImports.patterns, ...deepImports],
+              patterns: [...runtimeImports.patterns, honoPattern, ...deepImports],
             },
           ],
           ...runtimeGlobalLintRules,
+        },
+      },
+      // The HTTP parts of apps/api (docs/adr/0026): the sub-apps, the middleware and the hooks in http/, and app.ts, which
+      // puts them together. They leave the ban on Hono and keep the rest of the override above. The entry file server.ts and the
+      // tests are in the override of the entry files below, which has no ban on Hono either. The fixtures are
+      // apps/api/src/__fixtures__/hono.ts (stopped) and apps/api/src/http/__fixtures__/hono.ts (let through).
+      {
+        files: apiHttpFiles,
+        plugins: ["import"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [...runtimeImports.paths, ...bypassPaths],
+              patterns: [...runtimeImports.patterns, ...deepImports],
+            },
+          ],
         },
       },
       // A cycle between the files of a package or an app (docs/adr/0026). This override sets import/no-cycle and
@@ -778,7 +809,12 @@ export default defineConfig({
       // It keeps every other restriction of the modules.
       {
         files: ["packages/shared-kernel/src/**"],
-        rules: { "no-restricted-imports": ["error", moduleImports(undefined, { allowSql: true })] },
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            moduleImports(undefined, { allowSql: true, allowHono: true }),
+          ],
+        },
       },
       // Each entry of shared-kernel imports only the libraries it is listed for in sharedKernelEntries (docs/adr/0051), so that
       // the import path of an entry says which libraries it pulls in. These overrides carry the restrictions of the one above,

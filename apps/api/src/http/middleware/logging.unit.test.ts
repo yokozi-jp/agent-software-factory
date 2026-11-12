@@ -7,10 +7,10 @@ import { contextStorage } from "hono/context-storage";
 import { requestId } from "hono/request-id";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { Auth } from "../auth/auth.ts";
-import { memoryLogger } from "../../test/memory-logger.ts";
-import { validationHook } from "./validation-hook.ts";
-import { appWithoutDatabase } from "../../test/app-without-database.ts";
+import type { Auth } from "../../auth/auth.ts";
+import { memoryLogger } from "../../../test/memory-logger.ts";
+import { validationHook } from "../hook/validation-hook.ts";
+import { appWithoutDatabase } from "../../../test/app-without-database.ts";
 import { accessLog, logUnexpectedError, requestLogContext, type ApiVariables } from "./logging.ts";
 
 /** 文脈の middleware だけを付けた app。 */

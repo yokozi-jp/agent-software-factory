@@ -197,7 +197,7 @@ lint の規則 (`vite.config.ts` で `"error"` にしたもの) か、tsconfig �
 
 lint で止める import と呼び出しのうち、値ごとに確かめるものは、ルートの `lint-restrictions.json` (禁止の表) に並べます ([ADR 0050](../adr/0050-lint-restrictions-table-in-json.md))。`vite.config.ts` は表を import して override を組み、repo-policy (`lint-restrictions.ts`) が表と fixture を両方向に突き合わせます。JSON にはコメントを書けないので、列の意味はここに書きます。
 
-表は、禁止ごとの欄 (キー) を持ちます。今の欄は `outbox` (SQS などの SDK のクライアント)、`connection` (`pg`)、`raw-sql` (Kysely の `sql` と `CompiledQuery`)、`with-tables`、`session-setting` (ロールとテナントを変える SQL)、`otel-sdk`、`telemetry-node`、`pino`、`console`、`db-imports` (`packages/db` からの値の import) です。
+表は、禁止ごとの欄 (キー) を持ちます。今の欄は `outbox` (SQS などの SDK のクライアント)、`connection` (`pg`)、`raw-sql` (Kysely の `sql` と `CompiledQuery`)、`with-tables`、`session-setting` (ロールとテナントを変える SQL)、`otel-sdk`、`telemetry-node`、`pino`、`console`、`hono` (HTTP の部品の外の Hono の import)、`db-imports` (`packages/db` からの値の import) です。
 
 | 列               | 意味                                                                                                                                                                                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

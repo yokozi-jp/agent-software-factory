@@ -1,7 +1,7 @@
 import { commonProblemTypes, problemResponse } from "@agent-software-factory/shared-kernel/problem";
 import type { MiddlewareHandler } from "hono";
 
-import type { Auth } from "./auth.ts";
+import type { Auth } from "../../auth/auth.ts";
 
 type Session = NonNullable<Awaited<ReturnType<Auth["betterAuth"]["api"]["getSession"]>>>;
 
