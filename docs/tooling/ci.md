@@ -134,7 +134,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 対象から外すのは、実行環境ごとの入口 (`apps/api/src/server.ts`、トレースを始める `apps/api/src/telemetry.ts`、`vp dev` の入口の `apps/api/src/index.ts`、`tools/scripts` の `cli.ts`)、テストファイル、lint の検出力を確かめる fixture (`apps/api/src/__fixtures__/`) です。fixture はわざと規則に違反する文を持ち、どこからも import されないので、0% と数えられて下限を割ります。`apps/web` は、`src/` の `*.test.ts` (unit) と story (`play`) の両方が通した行を数えます。対象から外すのは、生成物 (`routeTree.gen.ts`)、入口 (`main.tsx`)、story です。`src/routes/` の route も数えます ([Issue #406](https://github.com/yokozi-jp/agent-software-factory/issues/406))。route の HMR 用のコードは、テストでは動かず route のファイルの最後の行が未通過と数えられるので、`vite.config.ts` が `VITEST` の環境変数があるとき (テスト) だけ外します。`packages/ui` の部品は、story で確かめますが coverage には数えません (`packages/ui` に専用のテストは書かない。[ADR 0033](../adr/0033-shadcn-base-ui-tailwind-v4-storybook.md))。
 
-ファイルごとの下限で止まったら、そのファイルの、通っていない行と分岐を確かめるテストを足します。下限を下げたり、ファイルを `exclude` に足したりはしません。テストで通せない分岐 (型のためだけの `??` など) には、理由を添えて `/* v8 ignore next -- <理由> */` を書きます。
+ファイルごとの下限で止まったら、そのファイルの、通っていない行と分岐を確かめるテストを足します。通っていない行は `nx test <project>` の出力の `Uncovered Line #s` に、分岐は `<project>/coverage/index.html` に出ます (Vitest の `coverage.reporter` の既定が `text` と `html` を含むため。[Vitest の coverage の設定](https://vitest.dev/config/coverage))。`coverage/` は最後に流した `test` の結果なので、直した後は `nx test <project>` を流してから読みます。下限を下げたり、ファイルを `exclude` に足したりはしません。テストで通せない分岐 (型のためだけの `??` など) には、理由を添えて `/* v8 ignore next -- <理由> */` を書きます。
 
 ### 合わせた検査
 
