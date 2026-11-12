@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { gitIn, runIn, sandbox, type Sandbox } from "../test/sandbox.ts";
 
 const script = join(import.meta.dirname, "../../sh/worktree.sh");
+const cliPath = join(import.meta.dirname, "../dev-ports/cli.ts");
 
 let box: Sandbox;
 let main: string;
@@ -119,6 +120,34 @@ describe("worktree.sh add の採番 (Issue #184)", () => {
     const result = runIn(sub, "sh", [relative(sub, script), "add", "feat/rel", "--no-install"]);
     expect(result.status).toBe(0);
     expect(result.stderr).toContain("slot 1");
+  });
+
+  // post-checkout の hook が worktree add の最中に割り当てた後、worktree.sh add の assign が続く。警告にしない。
+  // hook が動いたことは、hook の出力に付けた目印で確かめる。目印がなければ、worktree.sh 自身が割り当てただけかもしれない。
+  it("hook が先に割り当てた worktree でも、警告を出さず、同じ slot を出すこと", () => {
+    const own = makeMain("ports-hook", true);
+    writeFileSync(
+      join(own, ".git", "hooks", "post-checkout"),
+      `#!/bin/sh\necho "hook-ran" >&2\nnode ${JSON.stringify(cliPath)} hook "$1" >&2\nexit 0\n`,
+      { mode: 0o755 },
+    );
+    const result = worktree(own, "add", "feat/by-hook", "--no-install");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(`${join(box.root, "ports-hook-worktrees")}/feat/by-hook\n`);
+    // 目印は 1 回: hook が割り当てた。worktree.sh の assign は、すでにあるので slot を出力するだけ。
+    expect(result.stderr.match(/hook-ran/g)).toHaveLength(1);
+    expect(result.stderr.match(/^slot 1$/gm)).toHaveLength(2);
+    expect(result.stderr).not.toContain("warning: dev-ports");
+    expect(
+      readFileSync(join(box.root, "ports-hook-worktrees/feat/by-hook/apps/api/.env.local"), "utf8"),
+    ).toContain("PORT=3010");
+  });
+
+  it("hook がなければ、worktree.sh の assign だけが割り当てること (上のテストの対照)", () => {
+    const own = makeMain("ports-nohook", true);
+    const result = worktree(own, "add", "feat/no-hook", "--no-install");
+    expect(result.stderr).not.toContain("hook-ran");
+    expect(result.stderr.match(/^slot 1$/gm)).toHaveLength(1);
   });
 
   // 採番に失敗しても worktree は使える。strictPort が衝突を失敗にする。

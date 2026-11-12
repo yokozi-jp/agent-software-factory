@@ -71,7 +71,7 @@ IdP を `127.0.0.1`、web を `localhost` にしているのは、API が IdP �
 ## うまくいかないとき
 
 - 起動直後の `Rate limiting could not determine a client IP` の警告は、Better Auth の rate limit が接続元の IP を取れないときの警告 (出所は Better Auth)。ローカルでは 1 人で使うので無視できる (判断)。
-- ポート 9000 を別のものが使っている: worktree では `worktree.sh add` が `apps/api/` の `.env.local` に `IDP_PORT` と `OIDC_DISCOVERY_URL` を書くので、ポートは重なりません ([並行作業と worktree](worktrees.md))。main の checkout で重なるときは、同じ `.env.local` に `IDP_PORT` を書き、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
+- ポート 9000 を別のものが使っている: worktree を作ると、その worktree の `apps/api/` の `.env.local` に `IDP_PORT` と `OIDC_DISCOVERY_URL` が書かれるので、ポートは重なりません ([並行作業と worktree](worktrees.md))。main の checkout で重なるときは、同じ `.env.local` に `IDP_PORT` を書き、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
 - `__Host-` の Cookie は `Secure` が要る。ブラウザは `http://localhost` を安全な文脈 (potentially trustworthy origin) として扱う ([MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts))。Chromium 158 (Playwright 1.65.0) で `http://localhost:5183` (worktree の slot 1) を開いて確かめると、`__Host-session_token` を受け付けた (2026-11-12。属性は `Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なし)。Firefox と WebKit は確かめていない ([Issue #532](https://github.com/yokozi-jp/agent-software-factory/issues/532))。
 
 ## この手順で確かめたものと、確かめていないもの

@@ -88,7 +88,7 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 
 `/wayfinder` の `research` チケットは、チケットごとにサブエージェントに渡します。成果物は、merge しない `research/<名前>` ブランチの `research/<名前>.md` 1 つです。親は、サブエージェントを起動する前にチケットを claim します (`gh issue edit <n> --add-assignee @me`)。
 
-親が先に worktree を作ります。調査の worktree は docs だけなので、`pnpm install` まで行う `worktree.sh add` ではなく `git worktree add` を使います。
+親が先に worktree を作ります。調査の worktree は docs だけなので、`pnpm install` まで行う `worktree.sh add` ではなく `git worktree add` を使います。`git worktree add` でも `post-checkout` の hook が動き、調査の worktree が開発サーバーのポートの slot を 1 つ使います (7 個。[並行作業と worktree](../tooling/worktrees.md))。調査は短命で、終わったら下のとおり worktree を消すので、slot は空きます。消し忘れが重なって slot が尽きると、後から作る worktree に slot が付かないので、先に片付けます。
 
 ```sh
 git fetch origin

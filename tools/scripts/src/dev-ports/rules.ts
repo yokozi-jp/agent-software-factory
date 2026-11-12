@@ -98,15 +98,41 @@ export type Worktree = {
   readonly web: string | undefined;
 };
 
-// 印はどちらのファイルにも書く。片方を消されても、もう片方で、その slot が使われていると分かる。
+// 印はどちらのファイルにも書く。片方を消されても、もう片方で、その slot が使われていると分かる (他の worktree が slot を
+// 選ぶときの読み方)。
 const slotOfWorktree = (worktree: Worktree): number | undefined =>
   slotOf(worktree.api ?? "") ?? slotOf(worktree.web ?? "");
 
+// 割り当て済みとみなすのは、web と api の両方に同じ slot の印があるときだけ。片方だけ、別々の slot、は壊れた組で、
+// 「割り当て済み」と報告すると、api が既定のポートのまま以後ずっと直らない (assign は web を先に書く)。
+const completeSlot = (worktree: Worktree): number | undefined => {
+  const api = slotOf(worktree.api ?? "");
+  const web = slotOf(worktree.web ?? "");
+  return api !== undefined && api === web ? api : undefined;
+};
+
+// ロックを持つ側が解放する前に別の assign が mkdir に失敗したあと、次に何をするか。age はロックを作ってからの
+// ミリ秒で、調べる前に解放されていれば undefined (stat が ENOENT)。保持者は数十ミリ秒で終わるので、待つのは短い。
+const staleLockMs = 60_000;
+export type LockAction = "retry" | "remove" | "wait" | "give-up";
+export function lockAction(state: {
+  readonly age: number | undefined;
+  readonly remainingMs: number;
+}): LockAction {
+  if (state.age === undefined) return "retry";
+  if (state.age > staleLockMs) return "remove";
+  return state.remainingMs > 0 ? "wait" : "give-up";
+}
+
+// 新しく割り当てるときは書くファイルを持ち (kind: "new")、すでに割り当て済みなら何も書かない (kind: "existing")。
 export type AssignPlan =
-  | { readonly ok: true; readonly slot: number; readonly files: EnvFiles }
+  | { readonly ok: true; readonly kind: "new"; readonly slot: number; readonly files: EnvFiles }
+  | { readonly ok: true; readonly kind: "existing"; readonly slot: number }
   | { readonly ok: false; readonly status: 1 | 2; readonly message: string };
 
 // worktrees の先頭は main の checkout。target に割り当てる slot とファイルを決める。
+// すでに slot の印がある target には、何も書かせず、その slot を返す。post-checkout の hook が
+// 先に割り当てた worktree に worktree.sh add が続けて割り当てても、失敗にならない。
 export function planAssign(worktrees: readonly Worktree[], target: string): AssignPlan {
   const [main, ...others] = worktrees;
   if (main === undefined || target === main.path)
@@ -118,11 +144,16 @@ export function planAssign(worktrees: readonly Worktree[], target: string): Assi
   const found = others.find((worktree) => worktree.path === target && worktree.exists);
   if (found === undefined)
     return { ok: false, status: 2, message: `${target} は git の worktree ではない` };
+  const complete = completeSlot(found);
+  if (complete !== undefined) return { ok: true, kind: "existing", slot: complete };
+  // 片方だけに印がある、別々の slot の印がある、または印のない .env.local がある。どれも上書きしない。
   if (found.api !== undefined || found.web !== undefined)
     return {
       ok: false,
       status: 1,
-      message: `${target} には .env.local がある。上書きしない (消してからやり直す)`,
+      message:
+        `${target} の .env.local が、slot の割り当てとして完全ではない ` +
+        "(片方がない、印がない、または slot が食い違う)。上書きしない。両方の .env.local を消してからやり直す",
     };
   // main は slot 0。ディレクトリが消えた worktree の slot は、空きとして数える。target は、ここまでの確認で
   // .env.local を持たないと分かっているので、除かなくても slot を持たない。
@@ -134,12 +165,28 @@ export function planAssign(worktrees: readonly Worktree[], target: string): Assi
   ];
   const slot = lowestFreeSlot(used);
   if (slot === undefined) return { ok: false, status: 2, message: noFreeSlot };
-  return { ok: true, slot, files: envFiles(slot) };
+  return { ok: true, kind: "new", slot, files: envFiles(slot) };
 }
 
 export type ShowPlan =
   | { readonly ok: true; readonly slot: number; readonly warning: string | undefined }
   | { readonly ok: false; readonly status: 1; readonly message: string };
+
+// post-checkout の第 1 引数 (前の HEAD) が null ref、つまりゼロだけの ID か。git worktree add と git clone が、
+// null ref を渡す。通常の checkout と switch は、前の HEAD を渡す (https://git-scm.com/docs/githooks)。
+// オブジェクトの名前は、SHA-1 なら 16 進数の 40 桁、SHA-256 なら 64 桁 (https://git-scm.com/docs/hash-function-transition。
+// 2026-11-12 に読んだ)。null ref はその長さのゼロだと判断して、どちらも受け付ける (SHA-256 のリポジトリでは確かめていない)。
+export const isNullRef = (previousHead: string): boolean => /^(?:0{40}|0{64})$/.test(previousHead);
+
+// post-checkout で、current (今の worktree の path) に slot を割り当てるか。null ref のときだけ割り当てる。
+// main の checkout は slot 0 で、割り当てない (git clone でも null ref が来る)。
+export function shouldAssignOnCheckout(
+  previousHead: string,
+  current: string,
+  mainCheckout: string,
+): boolean {
+  return isNullRef(previousHead) && current !== mainCheckout;
+}
 
 // current の slot。同時に worktree を作って同じ slot を取った worktree があれば、警告を添える。
 export function planShow(worktrees: readonly Worktree[], current: string): ShowPlan {

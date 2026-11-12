@@ -1,17 +1,100 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   envFiles,
+  isNullRef,
   localOrigin,
+  lockAction,
   lowestFreeSlot,
   planAssign,
   planShow,
   portsFor,
+  shouldAssignOnCheckout,
   slotCount,
   slotOf,
   summary,
   worktreePaths,
   type Worktree,
 } from "./rules.ts";
+
+const nullRef = "0".repeat(40);
+const someCommit = "14c74576e7421e12e79ab2546d7135e353a4a56f";
+
+describe("lockAction", () => {
+  // mkdir が EEXIST で失敗したあと、ロックの年齢を調べるまでの間に、保持者が解放することがある。
+  // そのときは stat が ENOENT になる。待たずに、もう一度 mkdir する。
+  it("ロックがもう無いとき (調べる前に解放された)、すぐ再試行すること", () => {
+    expect(lockAction({ age: undefined, remainingMs: 1500 })).toBe("retry");
+  });
+
+  it("60 秒より古いロックは、残された (保持者が殺された) ものとして消すこと", () => {
+    expect(lockAction({ age: 60_001, remainingMs: 1500 })).toBe("remove");
+  });
+
+  it("新しいロックは、待つ時間が残っていれば待つこと", () => {
+    expect(lockAction({ age: 100, remainingMs: 1500 })).toBe("wait");
+  });
+
+  it("新しいロックでも、待つ時間がなければ諦めること", () => {
+    expect(lockAction({ age: 100, remainingMs: 0 })).toBe("give-up");
+    expect(lockAction({ age: 100, remainingMs: -5 })).toBe("give-up");
+  });
+
+  // 解放された (age が undefined) ロックは、待つ時間がなくても再試行する: 取れるかもしれない。
+  it("ロックが無ければ、待つ時間がなくても再試行すること", () => {
+    expect(lockAction({ age: undefined, remainingMs: 0 })).toBe("retry");
+  });
+
+  it("ちょうど 60 秒のロックは、まだ古くないこと", () => {
+    expect(lockAction({ age: 60_000, remainingMs: 1500 })).toBe("wait");
+  });
+});
+
+describe("isNullRef", () => {
+  it("ゼロだけの 40 桁 (SHA-1) と 64 桁 (SHA-256) を null ref とすること", () => {
+    expect(isNullRef(nullRef)).toBe(true);
+    expect(isNullRef("0".repeat(64))).toBe(true);
+  });
+
+  it.each([
+    ["通常の commit ID", someCommit],
+    ["空", ""],
+    ["0 が 1 つ", "0"],
+    ["39 桁のゼロ", "0".repeat(39)],
+    ["41 桁のゼロ", "0".repeat(41)],
+    ["ゼロ 40 桁と改行", `${nullRef}\n`],
+    ["ゼロ 40 桁の後に 1 つ", `${nullRef}1`],
+  ])("%s は null ref でないこと", (_, value) => {
+    expect(isNullRef(value)).toBe(false);
+  });
+});
+
+describe("shouldAssignOnCheckout", () => {
+  // git worktree add と git clone は、post-checkout の第 1 引数に null ref を渡す (https://git-scm.com/docs/githooks)。
+  it("前の HEAD が null ref のとき、main でない worktree では割り当てること", () => {
+    expect(shouldAssignOnCheckout(nullRef, "/w/a", "/w/app")).toBe(true);
+  });
+
+  it("通常の checkout や switch (前の HEAD がある) では、割り当てないこと", () => {
+    expect(shouldAssignOnCheckout(someCommit, "/w/a", "/w/app")).toBe(false);
+  });
+
+  it("main の checkout (clone) では、null ref でも割り当てないこと", () => {
+    expect(shouldAssignOnCheckout(nullRef, "/w/app", "/w/app")).toBe(false);
+  });
+
+  // 空や欠けた引数を null ref とみなすと、手で hook を呼んだだけで割り当ててしまう。
+  it.each(["", "0", "0".repeat(39), "0".repeat(64) + "1"])(
+    "null ref の形でない引数 %j では、割り当てないこと",
+    (previous) => {
+      expect(shouldAssignOnCheckout(previous, "/w/a", "/w/app")).toBe(false);
+    },
+  );
+
+  // SHA-256 のリポジトリでは、ID が 64 桁になる。
+  it("64 桁のゼロ (SHA-256 の null ref) も、null ref として扱うこと", () => {
+    expect(shouldAssignOnCheckout("0".repeat(64), "/w/a", "/w/app")).toBe(true);
+  });
+});
 
 // main と、そのほかの worktree。files は apps/web と apps/api の .env.local の中身 (なければ undefined)。
 const main: Worktree = { path: "/w/app", exists: true, api: undefined, web: undefined };
@@ -33,6 +116,7 @@ describe("planAssign", () => {
   it("まだ割り当てのない worktree に、使われていない最小の slot とそのファイルを返すこと", () => {
     expect(planAssign([main, fresh("/w/a"), assigned("/w/b", 1)], "/w/a")).toEqual({
       ok: true,
+      kind: "new",
       slot: 2,
       files: envFiles(2),
     });
@@ -59,6 +143,47 @@ describe("planAssign", () => {
     const onlyWeb: Worktree = { path: "/w/a", exists: true, api: undefined, web: "X=1\n" };
     expect(planAssign([main, onlyApi], "/w/a")).toMatchObject({ ok: false, status: 1 });
     expect(planAssign([main, onlyWeb], "/w/a")).toMatchObject({ ok: false, status: 1 });
+  });
+
+  // post-checkout の hook が先に割り当てた worktree に、worktree.sh add が続けて assign しても、失敗にしない。
+  it("すでに slot の印がある worktree では、何も書かずに、その slot を返すこと", () => {
+    expect(planAssign([main, assigned("/w/a", 3)], "/w/a")).toEqual({
+      ok: true,
+      kind: "existing",
+      slot: 3,
+    });
+  });
+
+  // 片方だけ印があるのは、assign が web を書いたあとで api の書き込みに失敗した状態 (または、片方を消された状態)。
+  // 「割り当て済み」と報告すると、api が既定のポートのまま、以後ずっと直らない。
+  it("印が web か api の片方にしかないとき、成功と報告せず、直し方を伝えて終了コード 1 で断ること", () => {
+    const onlyWebMarked: Worktree = {
+      path: "/w/a",
+      exists: true,
+      api: undefined,
+      web: envFiles(4).web,
+    };
+    const onlyApiMarked: Worktree = {
+      path: "/w/a",
+      exists: true,
+      api: envFiles(4).api,
+      web: undefined,
+    };
+    for (const half of [onlyWebMarked, onlyApiMarked]) {
+      const plan = planAssign([main, half], "/w/a");
+      expect(plan).toMatchObject({ ok: false, status: 1 });
+      expect(plan.ok ? "" : plan.message).toContain(".env.local");
+    }
+  });
+
+  it("両方に別々の slot の印があるとき、断ること", () => {
+    const mixed: Worktree = {
+      path: "/w/a",
+      exists: true,
+      api: envFiles(2).api,
+      web: envFiles(3).web,
+    };
+    expect(planAssign([main, mixed], "/w/a")).toMatchObject({ ok: false, status: 1 });
   });
 
   // git は、ディレクトリを手で消した worktree を prunable として一覧に残す。その slot は使われていない。

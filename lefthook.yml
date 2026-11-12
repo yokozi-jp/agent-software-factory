@@ -235,3 +235,21 @@ pre-push:
     # Warns only. dependency review in CI is the gate for dependencies (docs/adr/0021).
     osv-scanner:
       run: tools/scripts/sh/osv-scanner.sh
+
+# git worktree add runs post-checkout with the null ref (zeros only) as the first argument; a checkout or a switch passes the
+# previous HEAD (https://git-scm.com/docs/githooks). So a worktree gets its dev-server ports (Issue #184, #740) whoever made it
+# and however: `git worktree add` by hand, a skill, tools/scripts/sh/worktree.sh. The hook runs in the new worktree, with the
+# lefthook.yml of the commit it was made from, so a worktree made from a commit without this job gets no ports from it;
+# worktree.sh add assigns them afterwards (docs/tooling/worktrees.md ("開発サーバーを動かす")).
+# It runs on every checkout and switch, so `case` skips node unless the argument is zeros only. Measured on 2026-11-12 (git
+# 2.53.0, lefthook 2.2.2, the mean of 10 switches, on a loaded machine): 0.003 s with no hook, 0.156 s when the job always started
+# node, 0.071 to 0.085 s with this `case`. Most of the rest is lefthook itself (0.097 s with a job that only runs `true`).
+# Only the shape is checked here; the entry checks the length
+# (isNullRef in dev-ports/rules.ts). The entry exits with 0 on any failure after it starts: git 2.53.0 makes a failing
+# post-checkout fail `git worktree add` (the worktree is still made; checked by experiment on 2026-11-12, githooks does not
+# say it), and a worktree without ports only means that a clash fails at startup (strictPort). `|| true` covers what the
+# entry cannot: node does not start, or the file is missing. configs/lefthook-post-checkout.tools.test.ts runs this string.
+post-checkout:
+  jobs:
+    - name: dev-ports
+      run: case "{1}" in *[!0]* | "") ;; *) node tools/scripts/src/dev-ports/cli.ts hook "{1}" ;; esac || true
