@@ -36,11 +36,11 @@ const merged = (...args: Parameters<typeof pull>): Merged => {
 };
 
 describe("items", () => {
-  it("joins the pages of arrays that --slurp prints", () => {
+  it("--slurp が出力する配列のページを連結すること", () => {
     expect(items([[1, 2], [3]])).toEqual([1, 2, 3]);
   });
 
-  it("joins the arrays that each page holds under the key", () => {
+  it("各ページが key の下に持つ配列を連結すること", () => {
     const pages = [
       { total_count: 3, workflow_runs: [1, 2] },
       { total_count: 3, workflow_runs: [3] },
@@ -48,7 +48,7 @@ describe("items", () => {
     expect(items(pages, "workflow_runs")).toEqual([1, 2, 3]);
   });
 
-  it("skips what is not a page of items", () => {
+  it("items のページではないものを読み飛ばすこと", () => {
     expect(items({ workflow_runs: [1] }, "workflow_runs")).toEqual([]);
     expect(items([{ other: [1] }, "page", [2]], "workflow_runs")).toEqual([]);
     expect(items([{ x: 1 }, [2]])).toEqual([2]);
@@ -56,7 +56,7 @@ describe("items", () => {
 });
 
 describe("requiredChecks", () => {
-  it("reads the required status checks and their apps from the ruleset", () => {
+  it("ruleset から必須チェックとその app を読むこと", () => {
     const checks = [
       { context: "main", integration_id: 15368 },
       { context: "commitlint" },
@@ -69,14 +69,14 @@ describe("requiredChecks", () => {
     ]);
   });
 
-  it("finds none in a ruleset without the rule, or in what is not a ruleset", () => {
+  it("規則のない ruleset や、ruleset ではないものからは何も見つけないこと", () => {
     expect(requiredChecks({ rules: [{ type: "deletion" }] })).toEqual([]);
     expect(requiredChecks({ rules: [{ type: "required_status_checks" }] })).toEqual([]);
     expect(requiredChecks([])).toEqual([]);
     expect(requiredChecks(null)).toEqual([]);
   });
 
-  it("skips a check without a name", () => {
+  it("名前のないチェックを読み飛ばすこと", () => {
     const checks = [{ context: 7 }, { context: "main" }];
     const rules = [
       { type: "required_status_checks", parameters: { required_status_checks: checks } },
@@ -86,7 +86,7 @@ describe("requiredChecks", () => {
 });
 
 describe("toPull", () => {
-  it("reads the fields of a pull request", () => {
+  it("pull request の項目を読むこと", () => {
     const raw = pull(12, {
       title: "feat(api): add",
       body: "直す PR: #3",
@@ -107,13 +107,13 @@ describe("toPull", () => {
     });
   });
 
-  it("marks a pull request of a bot, and reads one closed without a merge", () => {
+  it("bot の pull request に印を付け、merge せず閉じたものを読むこと", () => {
     const parsed = toPull(pull(5, { login: "renovate[bot]", mergedAt: null }));
     expect(parsed?.bot).toBe(true);
     expect(parsed?.mergedAt).toBeUndefined();
   });
 
-  it("reads a missing body, title, user, labels and branch as empty", () => {
+  it("ない body、title、user、labels、branch を空として読むこと", () => {
     const raw = { number: 1, created_at: "2026-10-01T00:00:00Z", body: null, labels: [{ id: 1 }] };
     const parsed = toPull(raw);
     expect(parsed).toEqual({
@@ -128,7 +128,7 @@ describe("toPull", () => {
     });
   });
 
-  it("rejects what has no number or creation time", () => {
+  it("番号または作成時刻のないものを拒否すること", () => {
     expect(toPull({ created_at: "2026-10-01T00:00:00Z" })).toBeUndefined();
     expect(toPull({ number: 1 })).toBeUndefined();
     expect(toPull({ number: 1, created_at: "yesterday" })).toBeUndefined();
@@ -136,7 +136,7 @@ describe("toPull", () => {
   });
 });
 
-describe("counted, inPeriod", () => {
+describe("counted と inPeriod", () => {
   const pulls = [
     read(3, { mergedAt: "2026-10-03T00:00:00Z" }),
     read(1, { mergedAt: "2026-10-01T00:00:00Z" }),
@@ -145,11 +145,11 @@ describe("counted, inPeriod", () => {
     read(5, { mergedAt: "2026-10-02T00:00:00Z" }),
   ];
 
-  it("counts the merged pull requests not opened by a bot, in the order they were merged", () => {
+  it("bot が開いていない merge された pull request を、merge された順に数えること", () => {
     expect(counted(pulls).map((p) => p.number)).toEqual([1, 5, 3]);
   });
 
-  it("keeps those merged from since, up to but not at until", () => {
+  it("since 以降 until より前に merge されたものを残すこと", () => {
     const since = at("2026-10-02T00:00:00Z");
     expect(inPeriod(pulls, since, at("2026-10-03T00:00:00Z")).map((p) => p.number)).toEqual([5]);
     expect(inPeriod(pulls, since, at("2026-10-03T00:00:01Z")).map((p) => p.number)).toEqual([5, 3]);
@@ -164,39 +164,39 @@ describe("around", () => {
     }),
   );
 
-  it("takes the pull requests that count, right before and right after the boundary", () => {
+  it("境界の直前と直後の、数える pull request を採ること", () => {
     const sides = around(pulls, 4, 2);
     expect(sides?.boundary.number).toBe(4);
     expect(sides?.before.map((p) => p.number)).toEqual([1, 3]);
     expect(sides?.after.map((p) => p.number)).toEqual([5, 6]);
   });
 
-  it("takes only `count` on each side", () => {
+  it("各側から `count` 件だけを採ること", () => {
     const sides = around(pulls, 4, 1);
     expect(sides?.before.map((p) => p.number)).toEqual([3]);
     expect(sides?.after.map((p) => p.number)).toEqual([5]);
   });
 
-  it("takes fewer when there are not as many", () => {
+  it("足りないとき、少なく採ること", () => {
     const sides = around(pulls, 5, 3);
     expect(sides?.before.map((p) => p.number)).toEqual([1, 3, 4]);
     expect(sides?.after.map((p) => p.number)).toEqual([6]);
   });
 
-  it("has no sides for a pull request that is not merged or not there", () => {
+  it("merge されていない、またはない pull request には、側がないこと", () => {
     expect(around([...pulls, read(7, { mergedAt: null })], 7, 2)).toBeUndefined();
     expect(around(pulls, 8, 2)).toBeUndefined();
   });
 });
 
-describe("isSampleFile, categoryOf", () => {
+describe("isSampleFile と categoryOf", () => {
   it.each([
     "apps/api/src/app.ts",
     "packages/db/migrations/1.sql",
     "apps/web/index.html",
     "packages/shared-kernel/src/index.ts",
     "apps/api/src/lint/x.ts",
-  ])("puts %s, a file of a project in apps/ or packages/, in the sample feature", (path) => {
+  ])("apps/ か packages/ の project のファイルである %s を、sample の機能に分けること", (path) => {
     expect(isSampleFile(path)).toBe(true);
   });
 
@@ -210,24 +210,24 @@ describe("isSampleFile, categoryOf", () => {
     "tools/apps/api/src/x.ts",
     ".github/workflows/ci.yml",
   ])(
-    "puts %s, a lint rule, project config or file outside the projects, in the harness",
+    "lint の規則、project の設定、project の外のファイルである %s を、harness に分けること",
     (path) => {
       expect(isSampleFile(path)).toBe(false);
     },
   );
 
-  it("makes a pull request that touches the sample feature a sample one, even with harness files", () => {
+  it("harness のファイルがあっても、sample の機能に触れる pull request を sample にすること", () => {
     expect(categoryOf([file("README.md"), file("apps/api/src/app.ts")])).toBe("sample");
     expect(categoryOf([file("README.md"), file("apps/api/package.json")])).toBe("harness");
     expect(categoryOf([])).toBe("harness");
   });
 
-  it("reads the old path of a renamed file", () => {
+  it("改名したファイルの元の path を読むこと", () => {
     expect(categoryOf([file("tools/app.ts", "apps/api/src/app.ts")])).toBe("sample");
   });
 });
 
-describe("fixes, reworked", () => {
+describe("fixes と reworked", () => {
   it("reads the 直す PR field, with one or more pull requests", () => {
     expect(fixes(read(9, { body: "## Summary\r\n\r\n直す PR: #3, #5\r\nCloses #7" }))).toEqual([
       3, 5,
@@ -237,7 +237,7 @@ describe("fixes, reworked", () => {
     expect(fixes(read(9, { body: "前の 直す PR: #3 を見る" }))).toEqual([]);
   });
 
-  it("reads GitHub's Reverts line of a revert pull request only", () => {
+  it("revert の pull request の GitHub の Reverts の行だけを読むこと", () => {
     const body = "Reverts yokozi-jp/agent-software-factory#12\n\n直す PR: #13";
     expect(fixes(read(9, { title: "revert: feat: x", body }))).toEqual([13, 12]);
     expect(fixes(read(9, { title: "revert(api)!: feat: x", body: "Reverts #12" }))).toEqual([12]);
@@ -247,7 +247,7 @@ describe("fixes, reworked", () => {
     expect(fixes(read(9, { title: "revert: x", body: "Not Reverts #12" }))).toEqual([]);
   });
 
-  it("marks the pull requests that a later merged pull request fixes, however much later", () => {
+  it("後の merge された pull request が直す pull request に、どれだけ後でも印を付けること", () => {
     const pulls = [
       read(1, { mergedAt: "2026-01-01T00:00:00Z" }),
       read(2, { mergedAt: "2026-10-01T00:00:00Z", body: "直す PR: #1" }),
@@ -269,7 +269,7 @@ describe("fixes, reworked", () => {
 describe("pushes", () => {
   const target = merged(7, { createdAt: "2026-10-01T00:00:00Z", mergedAt: "2026-10-01T05:00:00Z" });
 
-  it("finds each head commit with pull_request runs, pushed when its first run was created", () => {
+  it("pull_request の run を持つ各 head commit を、最初の run が作られた時刻を push の時刻として見つけること", () => {
     const runs = [
       run("b", "2026-10-01T02:00:05Z"),
       run("a", "2026-10-01T00:00:03Z"),
@@ -282,7 +282,7 @@ describe("pushes", () => {
     ]);
   });
 
-  it("keeps the runs of other events and outside the time the pull request was open out", () => {
+  it("ほかのイベントの run と、pull request が open だった時間の外の run を除くこと", () => {
     const runs = [
       run("push", "2026-10-01T01:00:00Z", "push"),
       run("early", "2026-09-30T23:59:59Z"),
@@ -303,7 +303,7 @@ describe("feedbackLoop", () => {
   ];
   const pushedAt = at("2026-10-01T00:00:00Z");
 
-  it("is the time until the last required check finished", () => {
+  it("最後の必須チェックが終わるまでの時間であること", () => {
     const runs = [
       checkRun("main", "2026-10-01T00:03:00Z"),
       checkRun("commitlint", "2026-10-01T00:01:00Z"),
@@ -312,7 +312,7 @@ describe("feedbackLoop", () => {
     expect(feedbackLoop(pushedAt, runs, required)).toBe(3 * 60_000);
   });
 
-  it("takes the first finish of a check that ran again, failed or not, and skips cancelled runs", () => {
+  it("再実行されたチェックの最初の終了を、失敗かどうかにかかわらず採り、cancel された run を読み飛ばすこと", () => {
     const runs = [
       checkRun("main", "2026-10-01T00:05:00Z"),
       checkRun("main", "2026-10-01T00:02:00Z", "failure"),
@@ -322,7 +322,7 @@ describe("feedbackLoop", () => {
     expect(feedbackLoop(pushedAt, runs, required)).toBe(4 * 60_000);
   });
 
-  it("is undefined while a required check runs, or when it was only cancelled", () => {
+  it("必須チェックが実行中、または cancel されただけのとき、undefined であること", () => {
     const main = checkRun("main", "2026-10-01T00:02:00Z");
     expect(
       feedbackLoop(pushedAt, [main, checkRun("commitlint", null, null)], required),
@@ -336,7 +336,7 @@ describe("feedbackLoop", () => {
     ).toBeUndefined();
   });
 
-  it("counts a required check only from the app the ruleset names", () => {
+  it("ruleset が名指す app の必須チェックだけを数えること", () => {
     const runs = [
       checkRun("main", "2026-10-01T00:02:00Z", "success", 1),
       checkRun("commitlint", "2026-10-01T00:01:00Z"),
@@ -351,7 +351,7 @@ describe("feedbackLoop", () => {
     ).toBeUndefined();
   });
 
-  it("is never below zero", () => {
+  it("0 を下回らないこと", () => {
     expect(
       feedbackLoop(pushedAt, [checkRun("commitlint", "2026-09-30T23:59:00Z")], required.slice(1)),
     ).toBe(0);
@@ -370,7 +370,7 @@ describe("summarize", () => {
     loops: loops.map((ms) => ({ pushedAt: 0, ms })),
   });
 
-  it("counts the pull requests of each category, those without rework, and those reworked", () => {
+  it("各カテゴリ、手戻りのないもの、手戻りのあったものの pull request を数えること", () => {
     const samples = [
       sample(1, "sample", ["rework"], [10, 20]),
       sample(2, "sample", ["bug"], [30]),
@@ -384,14 +384,14 @@ describe("summarize", () => {
 });
 
 describe("quantile", () => {
-  it("interpolates between the nearest ranks", () => {
+  it("最も近い順位の間を補間すること", () => {
     expect(quantile([40, 10, 30, 20], 0.5)).toBe(25);
     expect(quantile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 0.9)).toBeCloseTo(9.1);
     expect(quantile([5, 1, 3], 0.5)).toBe(3);
     expect(quantile([7], 0.9)).toBe(7);
   });
 
-  it("has none for no values", () => {
+  it("値がないとき、何も返さないこと", () => {
     expect(quantile([], 0.5)).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@ import {
   commonProblemResponses,
   commonProblemTypes,
   problemErrorHandler,
+  problemMethodNotAllowedHandler,
   problemNotFoundHandler,
   problemResponse,
 } from "@agent-software-factory/shared-kernel/problem";
@@ -15,6 +16,7 @@ import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
+import { methodNotAllowed } from "hono/method-not-allowed";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
@@ -138,6 +140,8 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
       xFrameOptions: false,
     }),
   );
+  // route にある path へ route にない method で来たら、404 を `Allow` 付きの 405 に替える。位置の理由は docs/adr/0035 の 405。
+  base.use(methodNotAllowed({ app: base, onMethodNotAllowed: problemMethodNotAllowedHandler }));
   // エラー応答の変換 4 か所のうちの 2 つ (docs/adr/0035)。残りは defaultHook と route の _tag の switch。
   // 5xx のログはここで書く (docs/adr/0049)。401、403、400 の検証失敗の記録は accessLog にある。
   base.onError(problemErrorHandler(logUnexpectedError(logger)));

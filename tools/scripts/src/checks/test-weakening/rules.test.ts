@@ -26,7 +26,7 @@ describe("isTestFile", () => {
     "x.test.mjs",
     "x.test.cts",
     "x.test.jsx",
-  ])("counts %s as a test file", (path) => {
+  ])("%s をテストファイルに数えること", (path) => {
     expect(isTestFile(path)).toBe(true);
   });
 
@@ -41,11 +41,11 @@ describe("isTestFile", () => {
     "tools/scripts/src/test/fixtures/expect.test.ts",
     "fixtures/a.test.ts",
     "apps/api/__fixtures__/a.test.ts",
-  ])("does not count %s", (path) => {
+  ])("%s を数えないこと", (path) => {
     expect(isTestFile(path)).toBe(false);
   });
 
-  it("counts a directory whose name only contains fixtures", () => {
+  it("名前に fixtures を含むだけのディレクトリを数えること", () => {
     expect(isTestFile("my-fixtures/a.test.ts")).toBe(true);
     expect(isTestFile("fixtures-old/a.test.ts")).toBe(true);
   });
@@ -53,7 +53,7 @@ describe("isTestFile", () => {
 
 describe("testChanges", () => {
   // The argument is the `git diff --name-status --find-renames` output from the merge base to one commit.
-  it("keeps the deleted, modified and renamed test files, in order", () => {
+  it("削除、変更、改名したテストファイルを、順序どおり残すこと", () => {
     const diff = [
       "D\ta.test.ts",
       "M\tsrc/b.test.ts",
@@ -69,27 +69,27 @@ describe("testChanges", () => {
     ]);
   });
 
-  it("treats a test file renamed to a file that is not a test as deleted", () => {
+  it("テストではないファイルに名前を変えたテストファイルを、削除として扱うこと", () => {
     expect(testChanges("R100\ta.test.ts\tfixtures/a.test.ts\n")).toEqual([
       { from: "a.test.ts", to: undefined },
     ]);
   });
 
-  it("leaves out added test files and files that are not tests", () => {
+  it("足したテストファイルと、テストではないファイルを除くこと", () => {
     const diff = "A\tnew.test.ts\nM\tsrc/app.ts\nD\tsrc/old.ts\nR100\tsrc/x.ts\tsrc/x.test.ts\n";
     expect(testChanges(diff)).toEqual([]);
   });
 
-  it("reads nothing from empty input", () => {
+  it("空の入力から何も読まないこと", () => {
     expect(testChanges("")).toEqual([]);
   });
 
-  it("reads only whole lines of the form git prints", () => {
+  it("git が出力する形の行全体だけを読むこと", () => {
     const diff = ["xM\ta.test.ts", "M a.test.ts", "Ma\tb.test.ts", "R1\tc.test.ts\td.test.ts\te"];
     expect(testChanges(diff.join("\n"))).toEqual([]);
   });
 
-  it("keeps paths with spaces and non-ASCII names", () => {
+  it("空白や ASCII でない名前を含む path を残すこと", () => {
     expect(testChanges("M\tsrc/ログイン の.test.ts\n")).toEqual([
       { from: "src/ログイン の.test.ts", to: "src/ログイン の.test.ts" },
     ]);
@@ -97,15 +97,15 @@ describe("testChanges", () => {
 });
 
 describe("countTests", () => {
-  it("counts it and test calls", () => {
+  it("と test の呼び出しを数えること", () => {
     expect(countTests('it("a", () => {});\ntest("b", () => {});\n')).toBe(2);
   });
 
-  it("counts nothing in a file with no tests", () => {
+  it("テストのないファイルでは、何も数えないこと", () => {
     expect(countTests('describe("a", () => {});\nconst x = 1;\n')).toBe(0);
   });
 
-  it("counts a table once", () => {
+  it("表を 1 つと数えること", () => {
     expect(countTests('it.each([1, 2, 3])("a %s", () => {});\ntest.for([1])("b", () => {});')).toBe(
       2,
     );
@@ -119,28 +119,28 @@ describe("countTests", () => {
     "test.runIf(true)",
     "test.skipIf(false)",
     "it.concurrent.each([1])",
-  ])("counts %s as a test that runs", (call) => {
+  ])("%s を実行されるテストとして数えること", (call) => {
     expect(countTests(`${call}("a", () => {});`)).toBe(1);
   });
 
   it.each(["it.skip", "test.todo", "it.concurrent.skip", "test.extend({})", "test.scoped({})"])(
-    "does not count %s",
+    "%s を数えないこと",
     (call) => {
       expect(countTests(`${call}("a", () => {});`)).toBe(0);
     },
   );
 
-  it("does not count methods or properties named it or test", () => {
+  it("や test という名前のメソッドやプロパティを数えないこと", () => {
     expect(
       countTests('if (/x/.test(path)) items.it("a");\nconst $test = 1; mytest("b"); _it("c");'),
     ).toBe(0);
   });
 
-  it("does not count a call with a space before the parenthesis", () => {
+  it("括弧の前に空白のある呼び出しを数えないこと", () => {
     expect(countTests('it ("a", () => {});')).toBe(0);
   });
 
-  it("leaves out line and block comments", () => {
+  it("行コメントとブロックコメントを除くこと", () => {
     const source = [
       '// it("commented out", () => {});',
       '  // test("indented", () => {});',
@@ -152,7 +152,7 @@ describe("countTests", () => {
     expect(countTests(source)).toBe(2);
   });
 
-  it("removes a comment instead of blanking it, so a method call stays a method call", () => {
+  it("コメントを空白で埋めずに取り除くので、メソッド呼び出しがメソッド呼び出しのままであること", () => {
     expect(countTests('items./* note */it("a", () => {});')).toBe(0);
   });
 
@@ -161,7 +161,7 @@ describe("countTests", () => {
     ["a single-quoted string", "const glob = './src/*'; it('a', () => {});"],
     ["a template literal", "const glob = `src/${name}/*`; it('a', () => {});"],
     ["a string with an escaped quote", 'const s = "a\\"/*"; it("a", () => {});'],
-  ])("keeps a test after /* inside %s", (_name, source) => {
+  ])("%s の中の /* の後にあるテストを残すこと", (_name, source) => {
     expect(countTests(source)).toBe(1);
   });
 
@@ -171,23 +171,23 @@ describe("countTests", () => {
     ["double-quoted", '"@/*"', '"*/"'],
     ["single-quoted", "'@/*'", "'*/'"],
     ["template", "`@/*`", "`*/`"],
-  ])("reads a %s string of several characters as one literal", (_name, open, close) => {
+  ])("複数文字の %s の文字列を 1 つのリテラルとして読むこと", (_name, open, close) => {
     expect(countTests(`const a = ${open}; it("a", () => {}); const b = ${close};`)).toBe(1);
   });
 
-  it("counts a declaration written inside a string, as the estimate says", () => {
+  it("見積もりが言うとおり、文字列の中に書いた宣言を数えること", () => {
     expect(countTests("const text = \"it('a', () => {})\";")).toBe(1);
   });
 
-  it("does not take // after code for a comment on a line of its own", () => {
+  it("コードの後の // を、単独の行のコメントと取り違えないこと", () => {
     expect(countTests('const re = /https?:\\/\\//; it("a", () => {});')).toBe(1);
   });
 
-  it("still leaves out a block comment that comes after a string", () => {
+  it("文字列の後に来るブロックコメントを引き続き除くこと", () => {
     expect(countTests('const a = "x"; /* it("b", () => {}); */ it("c", () => {});')).toBe(1);
   });
 
-  it("keeps a test after a URL in a string", () => {
+  it("文字列の中の URL の後にあるテストを残すこと", () => {
     expect(countTests('const url = "https://example.com"; it("a", () => {});')).toBe(1);
   });
 });
@@ -196,14 +196,14 @@ describe("finding", () => {
   const two = 'it("a", () => {});\nit("b", () => {});\n';
   const one = 'it("a", () => {});\n';
 
-  it("reports a deleted test file", () => {
+  it("削除されたテストファイルを報告すること", () => {
     expect(finding({ from: "a.test.ts", to: undefined }, "", "")).toEqual({
       kind: "deleted",
       path: "a.test.ts",
     });
   });
 
-  it("reports fewer test cases under the new name", () => {
+  it("新しい名前でテストケースが減ったことを報告すること", () => {
     expect(finding({ from: "old.test.ts", to: "new.test.ts" }, two, one)).toEqual({
       kind: "fewer",
       path: "new.test.ts",
@@ -212,14 +212,14 @@ describe("finding", () => {
     });
   });
 
-  it("reports nothing when the number stays the same or grows", () => {
+  it("数が変わらない、または増えるとき、何も報告しないこと", () => {
     expect(finding({ from: "a.test.ts", to: "a.test.ts" }, two, two)).toBeUndefined();
     expect(finding({ from: "a.test.ts", to: "a.test.ts" }, one, two)).toBeUndefined();
   });
 });
 
 describe("findingLines", () => {
-  it("describes each finding once, sorted", () => {
+  it("指摘を 1 回ずつ、並べ替えて述べること", () => {
     expect(
       findingLines([
         { kind: "fewer", path: "b.test.ts", before: 3, after: 1 },
@@ -229,7 +229,7 @@ describe("findingLines", () => {
     ).toEqual(["a.test.ts (deleted)", "b.test.ts (3 -> 1 test cases)"]);
   });
 
-  it("describes nothing when nothing was found", () => {
+  it("何も見つからなかったとき、何も述べないこと", () => {
     expect(findingLines([])).toEqual([]);
   });
 });
@@ -237,7 +237,7 @@ describe("findingLines", () => {
 describe("warning", () => {
   const found = ["a.test.ts (deleted)", "b.test.ts (3 -> 1 test cases)"];
 
-  it("prints the findings, what to do and how to silence it on stderr, outside GitHub Actions", () => {
+  it("GitHub Actions の外では、指摘、すべきこと、抑え方を stderr に出力すること", () => {
     expect(warning(found, {})).toEqual({
       stdout: "",
       stderr: [
@@ -251,7 +251,7 @@ describe("warning", () => {
     });
   });
 
-  it("writes a ::warning:: annotation that names the files and links to the review guide in GitHub Actions", () => {
+  it("GitHub Actions では、ファイルを挙げレビューの手引きへリンクする ::warning:: annotation を書くこと", () => {
     expect(warning(found, { GITHUB_ACTIONS: "true" })).toEqual({
       stdout: [
         "This change deletes test files or declares fewer test cases than before:",
@@ -266,7 +266,7 @@ describe("warning", () => {
     });
   });
 
-  it("links to the repository that runs the workflow", () => {
+  it("workflow を実行するリポジトリへリンクすること", () => {
     const env = {
       GITHUB_ACTIONS: "true",
       GITHUB_SERVER_URL: "https://ghe.example.com",
@@ -277,7 +277,7 @@ describe("warning", () => {
     );
   });
 
-  it("escapes the characters that end or break an annotation", () => {
+  it("annotation を終わらせる文字と壊す文字をエスケープすること", () => {
     const { stdout } = warning(["100%.test.ts (deleted)", "a\r\nb.test.ts (deleted)"], {
       GITHUB_ACTIONS: "true",
     });
@@ -286,14 +286,14 @@ describe("warning", () => {
 });
 
 describe("skipped", () => {
-  it("says why on stderr, outside GitHub Actions", () => {
+  it("GitHub Actions の外では、理由を stderr に出力すること", () => {
     expect(skipped("No base.", {})).toEqual({
       stdout: "",
       stderr: "test-weakening: skipped. No base.\n",
     });
   });
 
-  it("is a ::notice:: in GitHub Actions", () => {
+  it("GitHub Actions では ::notice:: にすること", () => {
     expect(skipped("No base.\nMore.", { GITHUB_ACTIONS: "true" })).toEqual({
       stdout: "::notice title=test-weakening::skipped. No base.%0AMore.\n",
       stderr: "",

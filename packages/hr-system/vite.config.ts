@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     environment: "node",
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。
-    // schema.gen.ts は openapi.yaml から作る型だけのファイルで、記録の対象外 (recordCoverage の `*.gen.ts`)。
+    // schema.gen.ts は openapi.yaml から作る型だけのファイルで、記録の対象外 (coverage-policy.json の `notMeasured` の `*.gen.ts`)。
     coverage: { ...recordCoverage(), thresholds: ownFilesMinimum },
     projects: [
       {

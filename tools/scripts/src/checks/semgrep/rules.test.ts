@@ -14,18 +14,18 @@ const fixed = [
 ];
 
 describe("baseRef", () => {
-  it("is origin/main outside a pull request", () => {
+  it("pull request の外では origin/main であること", () => {
     expect(baseRef({})).toBe("origin/main");
     expect(baseRef({ GITHUB_BASE_REF: "" })).toBe("origin/main");
   });
 
-  it("is the base branch of the pull request", () => {
+  it("pull request の base ブランチであること", () => {
     expect(baseRef({ GITHUB_BASE_REF: "release" })).toBe("origin/release");
   });
 });
 
 describe("semgrep", () => {
-  it("scans with the Registry rulesets, only for new ERROR findings, and sends no metrics", () => {
+  it("Registry の規則集合で、新しい ERROR の指摘だけを検査し、metrics を送らないこと", () => {
     expect(semgrep("abc", {})).toEqual([
       "exec",
       "--",
@@ -39,7 +39,7 @@ describe("semgrep", () => {
     ]);
   });
 
-  it("scans with the rules in SEMGREP_RULES instead, when it is set", () => {
+  it("SEMGREP_RULES が設定されているときは、代わりにその規則で検査すること", () => {
     expect(semgrep("abc", { SEMGREP_RULES: "/tmp/rules.yml" })).toEqual([
       "exec",
       "--",

@@ -1,7 +1,7 @@
 # 開発ツール
 
 - [開発コマンド](commands.md)：開発サーバー、check、test、build、依存の追加などのコマンドを探すとき
-- [Git hook](git-hooks.md)：hook で commit や push が止まったとき、Kiro の hook でコマンドが拒否されたとき、hook を飛ばしたいとき、hook を変えるとき
+- [Git hook](git-hooks.md)：hook で commit や push が止まったとき、Kiro の hook でコマンドが拒否されたとき、hook を飛ばしたいとき、hook の出力が長すぎるとき、hook を変えるとき
 - [CI](ci.md)：CI が失敗したとき、workflow や CI の検証を変えるとき、検査を足すとき
 - [保証カタログ](assurance-catalog.md)：何が merge のゲートで保証されているかを確かめるとき、検査、hook、ruleset を足す、変える、消すとき
 - [Effect の検査](effect-lint.md)：`lint-effect` が失敗したとき、Effect の規則で `vp check` が止まったとき、Effect の検査や effect-tsgo の版を変えるとき

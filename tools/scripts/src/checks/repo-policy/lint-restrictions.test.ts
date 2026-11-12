@@ -12,7 +12,7 @@ import {
 import { failuresOf, repo } from "./fixtures/repo.ts";
 import { lintRestrictionsAgree } from "./lint-restrictions.ts";
 
-describe("ADR 0050: the table of lint restrictions and its fixtures agree", () => {
+describe("ADR 0050: lint の禁止の表とその fixture が一致すること", () => {
   const violations = failuresOf(lintRestrictionsAgree);
   type Table = typeof lintRestrictions;
   const tablePath = "lint-restrictions.json";
@@ -44,17 +44,17 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     "docs/adr/0029",
   );
 
-  it("passes when every row has its line, and every line of the fixtures has its row", () => {
+  it("すべての行に対応する行があり、fixture のすべての行に対応する行があるとき通すこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
-  describe("a row of the table", () => {
-    it("asks for the line it stops, below the disable comment of its rule", () => {
+  describe("表の行", () => {
+    it("止める行を、規則の disable コメントの下に求めること", () => {
       expect(failures({ [outbox]: undefined })).toEqual([sqsMissing]);
       expect(failures({ [outbox]: "export const other = 1;\n" })).toEqual([sqsMissing]);
     });
 
-    it("does not count a disable comment that is not on the line above", () => {
+    it("1 行上にない disable コメントを数えないこと", () => {
       const apart = outboxFixture.replace("\nimport", "\n\nimport");
       expect(failures({ [outbox]: apart })).toEqual([
         sqsMissing,
@@ -62,7 +62,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("does not count a disable comment of another rule", () => {
+    it("別の規則の disable コメントを数えないこと", () => {
       const other = outboxFixture.replace("no-restricted-imports", "no-restricted-globals");
       expect(failures({ [outbox]: other })).toEqual([
         sqsMissing,
@@ -70,7 +70,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("asks for the line it lets through, with no disable comment above it", () => {
+    it("通す行を、上に disable コメントのない形で求めること", () => {
       const missing = noPass(connectionTest, '"pg"', "テストは pool を作る", "docs/adr/0029");
       expect(failures({ [connectionTest]: undefined })).toEqual([missing]);
       expect(failures({ [connectionTest]: connectionStopFixture })).toEqual([
@@ -79,7 +79,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("reads the rule among the rules of the comment, before its reason", () => {
+    it("コメントの規則のうち、理由の前にある規則を読むこと", () => {
       const several = outboxFixture.replace(
         "no-restricted-imports -- fixture",
         "a/b, no-restricted-imports -- fixture: no-restricted-globals",
@@ -95,7 +95,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("reads a /* */ comment and an indented one", () => {
+    it("/* */ のコメントと、インデントされたコメントを読むこと", () => {
       const block = outboxFixture.replace(
         "// oxlint-disable-next-line no-restricted-imports -- fixture",
         "  /* oxlint-disable-next-line no-restricted-imports */",
@@ -103,12 +103,12 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       expect(failures({ [outbox]: block })).toEqual([]);
     });
 
-    it("does not tell a type import from a value import: a disable comment above a type import fails `vp check`", () => {
+    it("type の import と値の import を区別しないこと: type の import の上の disable コメントは `vp check` で失敗する", () => {
       const typeOnly = outboxFixture.replace('import "@x/sqs"', 'import type { X } from "@x/sqs"');
       expect(failures({ [outbox]: typeOnly })).toEqual([]);
     });
 
-    it("asks every file of the row", () => {
+    it("行のすべてのファイルを求めること", () => {
       expect(failures({ [outbox]: undefined, [outboxTest]: undefined })).toEqual([
         sqsMissing,
         noStop(outboxTest, "no-restricted-imports", '"@x/sqs"', "Outbox を通す", "docs/adr/0029"),
@@ -116,8 +116,8 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     });
   });
 
-  describe("a line of a fixture of the table", () => {
-    it("is refused when the table drops the row that stops it", () => {
+  describe("表の fixture の行", () => {
+    it("止める行を表が落とすと拒否されること", () => {
       const dropped = table((copy) => {
         copy.console.rows.pop();
       });
@@ -126,7 +126,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("is refused when the table drops the row that lets it through", () => {
+    it("通す行を表が落とすと拒否されること", () => {
       const dropped = table((copy) => {
         copy.connection.rows.pop();
       });
@@ -135,7 +135,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("is read in any file named after a key of the table, also one that no row names", () => {
+    it("表のキーに因む名前のどのファイルでも読み、どの行も名指さないファイルでも読むこと", () => {
       const other = "apps/api/src/routes/__fixtures__/connection.ts";
       expect(failures({ [other]: connectionStopFixture })).toEqual([
         unlistedStop(other, 2, "no-restricted-imports", "connection"),
@@ -145,7 +145,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("is not read in a file of another name, outside __fixtures__/, or in the fixtures of the checks", () => {
+    it("別の名前のファイル、__fixtures__/ の外、検査の fixture の中では読まないこと", () => {
       expect(
         failures({
           "apps/api/src/__fixtures__/connections.ts": connectionStopFixture,
@@ -156,7 +156,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ).toEqual([]);
     });
 
-    it("passes a line of a fixture that has no text of the restriction", () => {
+    it("禁止のテキストがない fixture の行を通すこと", () => {
       expect(
         failures({
           [connectionTest]: `${connectionPassFixture}export const x = 1;\n// a note on "pg"\n`,
@@ -165,8 +165,8 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     });
   });
 
-  describe("the values of a restriction", () => {
-    it("asks each file that stops the restriction for a row of each value", () => {
+  describe("禁止の値", () => {
+    it("禁止を止める各ファイルに、各値の行を求めること", () => {
       const added = table((copy) => {
         copy.outbox.values.push("@x/ses");
       });
@@ -175,7 +175,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       expect(failures({ [tablePath]: added })).toEqual([missing(outbox), missing(outboxTest)]);
     });
 
-    it("counts a value only as a whole name in the text of a row", () => {
+    it("値を、行のテキストの中の完全な名前としてだけ数えること", () => {
       const longer = table((copy) => {
         copy.outbox.values = ["@x/sq"];
       });
@@ -187,11 +187,11 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     });
   });
 
-  describe("the message of a restriction", () => {
+  describe("禁止のメッセージ", () => {
     const noMention = (key: string, mention: string) =>
       `${tablePath} の ${key} の message に \`${mention}\` がない。止められた人が、代わりに書くものと ADR を知るため (${howTo})。`;
 
-    it("names what to write instead, and the ADR", () => {
+    it("代わりに書くものと ADR を挙げること", () => {
       const without = table((copy) => {
         copy.outbox.message = "Do not send from here.";
       });
@@ -201,7 +201,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("is not asked of a restriction without a message", () => {
+    it("メッセージのない禁止には求めないこと", () => {
       const without = table((copy) => {
         copy.console.mentions = ["Logger"];
       });
@@ -209,8 +209,8 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     });
   });
 
-  describe("the files of a row", () => {
-    it("are named after the key, in a __fixtures__/ directory", () => {
+  describe("行のファイル", () => {
+    it("キーに因んで __fixtures__/ ディレクトリに置くこと", () => {
       const renamed = table((copy) => {
         copy.connection.rows[0]?.files.push(
           "apps/api/src/__fixtures__/bypass.ts",
@@ -226,14 +226,14 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
     });
   });
 
-  describe("the table itself", () => {
-    it("is asked for", () => {
+  describe("表そのもの", () => {
+    it("求められること", () => {
       expect(failures({ [tablePath]: undefined })).toEqual([
         `${tablePath} がない。lint で止める import と呼び出しと、その fixture の行を並べる表で、vite.config.ts と repo-policy が読む (${howTo})。`,
       ]);
     });
 
-    it("is reported once when it is not JSON, and asks for nothing", () => {
+    it("JSON でないとき 1 回だけ報告し、何も求めないこと", () => {
       expect(violations(repo({ [tablePath]: "{" }))).toEqual([
         expect.stringMatching(/^lint-restrictions\.json is not valid JSON/),
       ]);
@@ -277,7 +277,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
         "outbox.rows",
         "配列",
       ],
-    ])("refuses %s, and leaves the restriction out", (_, value, where, what) => {
+    ])("%s を拒否し、その禁止を除くこと", (_, value, where, what) => {
       expect(failures({ [tablePath]: JSON.stringify(value) })).toEqual([
         `${tablePath} の ${where} が${what}でない (${howTo})。`,
       ]);
@@ -303,21 +303,21 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
         ".expect",
         '"stop" か "pass"',
       ],
-    ])("refuses %s, and leaves the row out", (_, wrong, field, what) => {
+    ])("%s を拒否し、その行を除くこと", (_, wrong, field, what) => {
       const value = { outbox: { ...lintRestrictions.outbox, rows: [row, wrong] } };
       expect(failures({ [tablePath]: JSON.stringify(value) })).toEqual([
         `${tablePath} の outbox.rows[1]${field} が${what}でない (${howTo})。`,
       ]);
     });
 
-    it("refuses a table that is not an object", () => {
+    it("オブジェクトでない表を拒否すること", () => {
       expect(failures({ [tablePath]: "[]" })).toEqual([
         `${tablePath} の最上位がオブジェクトでない (${howTo})。`,
       ]);
     });
   });
 
-  describe("the lines of a fixture", () => {
+  describe("fixture の行", () => {
     it.each([
       ["no space after //", "//oxlint-disable-next-line no-restricted-imports"],
       ["two spaces before the rule", "// oxlint-disable-next-line  no-restricted-imports"],
@@ -330,17 +330,17 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
         "a reason that is only the separator",
         "// oxlint-disable-next-line no-restricted-imports --",
       ],
-    ])("reads a disable comment with %s", (_, comment) => {
+    ])("%s のある disable コメントを読むこと", (_, comment) => {
       expect(failures({ [outbox]: `${comment}\nimport "@x/sqs";\n` })).toEqual([]);
     });
 
-    it("does not read an empty rule after a comma", () => {
+    it("カンマの後の空の規則を読まないこと", () => {
       const comma =
         '// oxlint-disable-next-line no-restricted-imports, -- fixture\nimport "@x/sqs";\n';
       expect(failures({ [outbox]: comma })).toEqual([]);
     });
 
-    it("does not read a disable comment after code", () => {
+    it("コードの後の disable コメントを読まないこと", () => {
       const after =
         'const a = 1; // oxlint-disable-next-line no-restricted-imports\nimport "@x/sqs";\n';
       expect(failures({ [outbox]: after })).toEqual([
@@ -349,7 +349,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("skips a line of blanks between the comment and the line", () => {
+    it("コメントと行の間の空行を読み飛ばすこと", () => {
       const apart = outboxFixture.replace("\nimport", "\n  \nimport");
       expect(failures({ [outbox]: apart })).toEqual([
         sqsMissing,
@@ -357,7 +357,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ]);
     });
 
-    it("skips the comments, and reads a comment after code as code", () => {
+    it("コメントを読み飛ばし、コードの後のコメントをコードとして読むこと", () => {
       const commented = [
         '// a note on "@x/sqs"',
         '  // an indented note on "@x/sqs"',
@@ -371,12 +371,12 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       expect(failures({ [outbox]: commented })).toEqual([]);
     });
 
-    it("asks for a row of a line that lets through any text of the restriction", () => {
+    it("禁止のどのテキストでも通す行に、行を求めること", () => {
       const bare = `${consoleFixture}export const c: unknown = console;\n`;
       expect(failures({ [consoleFile]: bare })).toEqual([unlistedPass(consoleFile, 5, "console")]);
     });
 
-    it("reads a fixture at the root, and not one with another extension", () => {
+    it("ルートの fixture を読み、別の拡張子のものを読まないこと", () => {
       expect(
         failures({
           "__fixtures__/connection.ts": connectionStopFixture,
@@ -394,7 +394,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ["a re-export", 'export { a } from "node:fs";'],
       ["an import with no space before the path", 'import"node:fs";'],
       ["a re-export with no space before the path", 'export { a } from"node:fs";'],
-    ])("asks for a row of %s that is let through, even when no row has its text", (_, line) => {
+    ])("どの行もそのテキストを持たなくても、通す %s の行を求めること", (_, line) => {
       expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([
         unlistedPass(connectionTest, 2, "connection"),
       ]);
@@ -407,11 +407,11 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ["a dynamic import", 'import("node:fs");'],
       ["an import after other code", 'x import "node:fs";'],
       ["a from that no quote follows", "export const a = b from c;"],
-    ])("does not take %s for an import", (_, line) => {
+    ])("%s を import と取り違えないこと", (_, line) => {
       expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([]);
     });
 
-    it("passes an import that a row lets through, though no other row has its text", () => {
+    it("ほかの行がそのテキストを持たなくても、行が通す import を通すこと", () => {
       const withRow = table((copy) => {
         copy.connection.rows.push({
           files: [connectionTest],
@@ -429,7 +429,7 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ).toEqual([]);
     });
 
-    it("asks the values only of the files that stop them, not of those that let a line through", () => {
+    it("行を通すファイルではなく、止めるファイルの値だけを求めること", () => {
       const other = "apps/api/src/__fixtures__/connection.ts";
       const passOnly = table((copy) => {
         copy.connection.rows.push({

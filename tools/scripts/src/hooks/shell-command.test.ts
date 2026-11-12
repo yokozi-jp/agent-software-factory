@@ -2,11 +2,11 @@ import { describe, expect, it } from "vite-plus/test";
 import { commandLines } from "./shell-command.ts";
 
 describe("commandLines", () => {
-  it("keeps every line of a command without a heredoc", () => {
+  it("heredoc のないコマンドのすべての行を残すこと", () => {
     expect(commandLines("a\nb; c")).toEqual(["a", "b; c"]);
   });
 
-  it("drops the body and the closing line of a heredoc, and keeps the line that starts it", () => {
+  it("heredoc の本体と閉じの行を捨て、始まりの行を残すこと", () => {
     expect(commandLines("cat > f <<EOF\nbody\nEOF\nnext")).toEqual(["cat > f <<EOF", "next"]);
   });
 
@@ -15,32 +15,32 @@ describe("commandLines", () => {
     ["a double-quoted delimiter", 'cat > f <<"EOF"\nbody\nEOF'],
     ["a space before the delimiter", "cat > f << EOF\nbody\nEOF"],
     ["a redirection first on the line", "<<EOF cat > f\nbody\nEOF"],
-  ])("reads %s", (_, command) => {
+  ])("%s を読むこと", (_, command) => {
     expect(commandLines(command)).toEqual([command.split("\n")[0]]);
   });
 
-  it("closes a <<- heredoc at a line indented with tabs", () => {
+  it("タブでインデントした行で <<- の heredoc を閉じること", () => {
     expect(commandLines("cat <<-EOF > f\n\t\tbody\n\t\tEOF\nnext")).toEqual([
       "cat <<-EOF > f",
       "next",
     ]);
   });
 
-  it("does not close a heredoc at a line with more after the delimiter", () => {
+  it("区切りの後に続きのある行では、heredoc を閉じないこと", () => {
     expect(commandLines("cat > f <<EOF\nEOF\t\nbody\nEOF\nnext")).toEqual([
       "cat > f <<EOF",
       "next",
     ]);
   });
 
-  it("drops the bodies of two heredocs in a row", () => {
+  it("連続する 2 つの heredoc の本体を捨てること", () => {
     expect(commandLines("cat > a <<A\nx\nA\ncat > b <<B\ny\nB")).toEqual([
       "cat > a <<A",
       "cat > b <<B",
     ]);
   });
 
-  it("keeps the lines after a heredoc that never closes", () => {
+  it("閉じない heredoc の後の行を残すこと", () => {
     expect(commandLines("cat > a <<A\nx\nA\ncat <<B\ny\nz")).toEqual([
       "cat > a <<A",
       "cat <<B",
@@ -55,11 +55,11 @@ describe("commandLines", () => {
     ["a here-string", "cat <<< x\nbody"],
     ["read by a shell", "bash <<EOF\nbody\nEOF"],
     ["piped to a shell", "cat <<EOF | sh\nbody\nEOF"],
-  ])("keeps the lines after a heredoc marker %s", (_, command) => {
+  ])("heredoc の印 %s の後の行を残すこと", (_, command) => {
     expect(commandLines(command)).toEqual(command.split("\n"));
   });
 
-  it("drops the body after a pair of quotes before the marker", () => {
+  it("印の前の引用符の組の後の本体を捨てること", () => {
     expect(commandLines("echo 'a' \"b\" > f <<EOF\nbody\nEOF")).toEqual([
       "echo 'a' \"b\" > f <<EOF",
     ]);

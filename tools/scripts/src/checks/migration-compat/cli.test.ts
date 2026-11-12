@@ -103,7 +103,7 @@ afterAll(() => {
 });
 
 describe("migration-compat", () => {
-  it("passes without running anything when the pull request adds no migration", () => {
+  it("PR が migration を足さないとき、何も実行せずに通すこと", () => {
     pullRequest({ "README.md": "x\n" });
     const result = check();
     expect(result.status).toBe(0);
@@ -111,7 +111,7 @@ describe("migration-compat", () => {
     expect(calls()).toEqual([]);
   });
 
-  it("fails before running anything when a migration of the base is changed", () => {
+  it("base の migration が変更されたとき、何も実行せずに失敗すること", () => {
     pullRequest({ [`${migrations}/1_base.sql`]: "changed\n" });
     const result = check();
     expect(result.status).toBe(1);
@@ -119,7 +119,7 @@ describe("migration-compat", () => {
     expect(calls()).toEqual([]);
   });
 
-  it("fails before running anything when a migration of the base is deleted", () => {
+  it("base の migration が削除されたとき、何も実行せずに失敗すること", () => {
     n += 1;
     git("switch", "-q", "-C", `case-${n}`, "origin/main");
     git("rm", "-q", `${migrations}/1_base.sql`);
@@ -130,7 +130,7 @@ describe("migration-compat", () => {
     expect(calls()).toEqual([]);
   });
 
-  it("passes with a ::notice:: in GitHub Actions when the base has no seed entry", () => {
+  it("base に seed の入口がないとき、GitHub Actions では ::notice:: を出して通すこと", () => {
     baseWithout(seed);
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check({ GITHUB_ACTIONS: "true" });
@@ -140,7 +140,7 @@ describe("migration-compat", () => {
     expect(calls()).toEqual([]);
   });
 
-  it("passes with a notice when the base's harness does not read the variable", () => {
+  it("base の harness が変数を読まないとき、notice を出して通すこと", () => {
     baseWithout(harness);
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check();
@@ -151,8 +151,8 @@ describe("migration-compat", () => {
 });
 
 // The base has the seed and the harness, so the tests run.
-describe("migration-compat with a base that has the seed and the harness", () => {
-  it("installs in a worktree of the base, runs the integration project with the added files, and removes the worktree", () => {
+describe("seed と harness のある base での migration-compat", () => {
+  it("base の worktree に install し、足したファイルで integration project を実行して、worktree を消すこと", () => {
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check();
     expect(result).toMatchObject({ status: 0, stderr: "" });
@@ -173,7 +173,7 @@ describe("migration-compat with a base that has the seed and the harness", () =>
     expect(git("worktree", "list").split("\n")).toHaveLength(1);
   });
 
-  it("exits 1 and still removes the worktree when the integration tests fail", () => {
+  it("integration のテストが失敗しても、1 で終了して worktree を消すこと", () => {
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check({ STUB_VP_STATUS: "1" });
     expect(result.status).toBe(1);
@@ -182,7 +182,7 @@ describe("migration-compat with a base that has the seed and the harness", () =>
     expect(git("worktree", "list").split("\n")).toHaveLength(1);
   });
 
-  it("exits 2 without running the tests when the install fails", () => {
+  it("install が失敗したとき、テストを実行せずに 2 で終了すること", () => {
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check({ STUB_PNPM_STATUS: "1" });
     expect(result.status).toBe(2);
@@ -190,7 +190,7 @@ describe("migration-compat with a base that has the seed and the harness", () =>
     expect(readdirSync(temp)).toEqual([]);
   });
 
-  it("exits 2 when there is no base to compare with", () => {
+  it("比べる base がないとき、2 で終了すること", () => {
     pullRequest({ [`${migrations}/2_added.sql`]: "x\n" });
     const result = check({ GITHUB_BASE_REF: "no-such-branch" });
     expect(result.status).toBe(2);

@@ -293,27 +293,27 @@ beforeEach(() => {
   populate();
 }, 120_000);
 
-describe("Knip with knip.jsonc", () => {
-  it("passes on the configuration of this repository and small apps", () => {
+describe("knip.jsonc による Knip", () => {
+  it("このリポジトリの設定と小さな app を通すこと", () => {
     expect(knip()).toMatchObject({ status: 0 });
   }, 120_000);
 
   // Each case below also names what Knip reports, so that it cannot pass on an unrelated finding.
-  it("reports an export nothing imports", () => {
+  it("どこからも import されない export を報告すること", () => {
     appendFileSync(join(copy, "apps/api/src/app.ts"), "export const unusedValue = 1;\n");
     const result = knip();
     expect(result.status).toBe(1);
     expect(result.output).toContain("unusedValue");
   }, 120_000);
 
-  it("reports a file nothing imports", () => {
+  it("どこからも import されないファイルを報告すること", () => {
     put("apps/web/src/orphan.ts", "export const orphan = 1;\n");
     const result = knip();
     expect(result.status).toBe(1);
     expect(result.output).toContain("apps/web/src/orphan.ts");
   }, 120_000);
 
-  it("reports a dependency the project does not use", () => {
+  it("project が使わない依存を報告すること", () => {
     edit("apps/web/package.json", (text) =>
       text.replace('"vite-plus": "catalog:"', '"vite-plus": "catalog:", "jscpd": "catalog:"'),
     );
@@ -323,7 +323,7 @@ describe("Knip with knip.jsonc", () => {
   }, 120_000);
 
   // treatConfigHintsAsErrors: an exception that is no longer needed fails, so it gets removed.
-  it("reports an ignoreDependencies entry for a dependency that is used", () => {
+  it("使われている依存の ignoreDependencies の項目を報告すること", () => {
     edit("knip.jsonc", (text) =>
       // apps/api already has an ignoreDependencies (the SDK clients of the fixture of the entry files); add to it.
       text.replace(
@@ -337,7 +337,7 @@ describe("Knip with knip.jsonc", () => {
   }, 120_000);
 
   // An export tagged @public is kept on purpose (docs/adr/0017).
-  it("passes an unused export tagged @public", () => {
+  it("@public を付けた未使用の export を通すこと", () => {
     appendFileSync(
       join(copy, "apps/api/src/app.ts"),
       "/** @public */\nexport const keptValue = 1;\n",
@@ -346,7 +346,7 @@ describe("Knip with knip.jsonc", () => {
   }, 120_000);
 
   // The agent skills under .agents/ are installed from upstream and are not this repository's code.
-  it("ignores a file under .agents/", () => {
+  it(".agents/ の下のファイルを無視すること", () => {
     put(".agents/skills/example/unused.cjs", "module.exports = {};\n");
     expect(knip()).toMatchObject({ status: 0 });
   }, 120_000);

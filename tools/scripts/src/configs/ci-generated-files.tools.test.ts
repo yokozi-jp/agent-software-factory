@@ -48,13 +48,13 @@ afterAll(() => {
   box.remove();
 });
 
-describe("the step Generated files are committed", () => {
-  it("passes when the build changed nothing, and ignores the files that git ignores", () => {
+describe("step「Generated files are committed」の検査", () => {
+  it("build が何も変えないとき通し、git が無視するファイルを無視すること", () => {
     put("apps/web/dist/index.js", "built\n");
     expect(step()).toMatchObject({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("fails, showing the change, when the build changed a tracked file", () => {
+  it("build が追跡されたファイルを変えたとき、変更を示して失敗すること", () => {
     put("apps/web/src/routeTree.gen.ts", "export const routes = [1];\n");
     const result = step();
     expect(result.status).toBe(1);
@@ -64,7 +64,7 @@ describe("the step Generated files are committed", () => {
     git("checkout", "--", "apps/web/src/routeTree.gen.ts");
   });
 
-  it("fails when the build wrote a file that is not committed", () => {
+  it("build が commit されていないファイルを書いたとき失敗すること", () => {
     put("apps/web/src/new.gen.ts", "export {};\n");
     const result = step();
     expect(result.status).toBe(1);

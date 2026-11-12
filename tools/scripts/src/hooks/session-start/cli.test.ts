@@ -54,13 +54,13 @@ afterAll(async () => {
 });
 
 describe("session-start", { timeout: processTimeout }, () => {
-  it("is silent and exits 0 outside a git repository with no other session", () => {
+  it("git リポジトリの外でほかのセッションがないとき、何も言わず終了コード 0 で終了すること", () => {
     const plain = join(box.root, "plain");
     mkdirSync(plain);
     expect(sessionStart(plain)).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("warns about another session in this working tree and about a stale main, in that order", () => {
+  it("この作業ツリーのほかのセッションと古い main を、その順に警告すること", () => {
     const sessions = join(box.root, "sessions");
     for (const [id, pid] of [
       ["sess_me", process.pid],
@@ -82,7 +82,7 @@ describe("session-start", { timeout: processTimeout }, () => {
     );
   });
 
-  it("says when it cannot find this session's record", () => {
+  it("このセッションの記録が見つからないと述べること", () => {
     mkdirSync(join(box.root, "empty-sessions"));
     const result = sessionStart(clone, {
       KIRO_SESSIONS_ROOT: join(box.root, "empty-sessions"),

@@ -26,7 +26,7 @@ describe("sandbox", () => {
   });
 
   it.each(Object.keys(isolatedGitEnv))(
-    "refuses to start when setup.ts has not set %s, as in a run from the root config",
+    "ルートの設定からの実行のように、setup.ts が %s を設定していないとき、起動を拒否すること",
     (name) => {
       vi.stubEnv(name, undefined);
       expect(() => sandbox()).toThrow(
@@ -37,65 +37,65 @@ describe("sandbox", () => {
     },
   );
 
-  it("refuses to start when a variable has another value", () => {
+  it("変数が別の値のとき、起動を拒否すること", () => {
     vi.stubEnv("GIT_CONFIG_GLOBAL", "/home/u/.gitconfig");
     expect(() => sandbox()).toThrow(/not in place \(GIT_CONFIG_GLOBAL\)/);
   });
 });
 
 describe("gitIn", () => {
-  it("creates a repository in the sandbox and runs git in it", () => {
+  it("sandbox にリポジトリを作り、その中で git を実行すること", () => {
     const repo = join(box.root, "repo");
     gitIn(repo, ["init", "-q", "-b", "main"]);
     expect(gitIn(repo, ["rev-parse", "--absolute-git-dir"]).trim()).toBe(join(repo, ".git"));
   });
 
-  it("gives git the sandbox as HOME", () => {
+  it("git に sandbox を HOME として渡すこと", () => {
     const repo = join(box.root, "repo");
     gitIn(repo, ["init", "-q"]);
     // A shell alias sees the environment that git was started with.
     expect(gitIn(repo, ["-c", 'alias.home=!printf %s "$HOME"', "home"])).toBe(box.root);
   });
 
-  it("refuses a directory whose repository is outside the sandbox", () => {
+  it("リポジトリが sandbox の外にあるディレクトリを拒否すること", () => {
     // This test file lives in this repository, outside any sandbox.
     expect(() => gitIn(import.meta.dirname, ["status"])).toThrow(/outside the sandbox/);
   });
 
-  it("refuses to create a repository outside the sandbox", () => {
+  it("sandbox の外にリポジトリを作ることを拒否すること", () => {
     expect(() => gitIn(join(import.meta.dirname, "no-such-repo"), ["init", "-q"])).toThrow(
       /outside the sandbox/,
     );
   });
 
-  it("refuses a directory in the sandbox that is not a repository, instead of finding an outer one", () => {
+  it("外側のものを見つけずに、リポジトリではない sandbox 内のディレクトリを拒否すること", () => {
     const plain = join(box.root, "plain");
     mkdirSync(plain);
     expect(() => gitIn(plain, ["status"])).toThrow(/not a git repository/);
   });
 
-  it("refuses to run before sandbox() is called", () => {
+  it("sandbox() を呼ぶ前の実行を拒否すること", () => {
     box.remove();
     expect(() => gitIn(box.root, ["status"])).toThrow(/call sandbox\(\)/);
   });
 });
 
 describe("runIn", () => {
-  it("refuses a directory outside the sandbox", () => {
+  it("sandbox の外のディレクトリを拒否すること", () => {
     expect(() => runIn(import.meta.dirname, "true", [])).toThrow(/outside the sandbox/);
   });
 
-  it("passes stdin and returns the exit code and output", () => {
+  it("stdin を渡し、終了コードと出力を返すこと", () => {
     const result = runIn(box.root, "sh", ["-c", "cat; echo err >&2; exit 3"], { input: "in" });
     expect(result).toEqual({ status: 3, stdout: "in", stderr: "err\n" });
   });
 
-  it("kills a command that runs past its timeout", () => {
+  it("timeout を過ぎて実行されるコマンドを kill すること", () => {
     const result = runIn(box.root, "sleep", ["5"], { timeout: 200 });
     expect(result.status).toBeNull();
   });
 
-  it("gives the command the sandbox as HOME, and the variables it is given", () => {
+  it("コマンドに sandbox を HOME として、与えられた変数とともに渡すこと", () => {
     const result = runIn(box.root, "sh", ["-c", 'printf "%s %s" "$HOME" "$EXTRA"'], {
       env: { EXTRA: "x" },
     });
@@ -104,7 +104,7 @@ describe("runIn", () => {
 });
 
 describe("miseDirs", () => {
-  it("names the directories mise uses by default under the real home", () => {
+  it("実際のホームの下で mise が既定で使うディレクトリを名付けること", () => {
     expect(miseDirs({}, "/home/u")).toEqual({
       MISE_DATA_DIR: "/home/u/.local/share/mise",
       MISE_CACHE_DIR: "/home/u/.cache/mise",
@@ -112,7 +112,7 @@ describe("miseDirs", () => {
     });
   });
 
-  it("follows the XDG variables, and the MISE variables before them", () => {
+  it("XDG の変数と、それより前の MISE の変数に従うこと", () => {
     const env = {
       XDG_DATA_HOME: "/x/data",
       XDG_CACHE_HOME: "/x/cache",
@@ -126,7 +126,7 @@ describe("miseDirs", () => {
     });
   });
 
-  it("reads the environment and the home of this process by default", () => {
+  it("既定では、このプロセスの環境とホームを読むこと", () => {
     expect(miseDirs().MISE_DATA_DIR).toBe(
       process.env.MISE_DATA_DIR ??
         join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local/share"), "mise"),
@@ -135,17 +135,17 @@ describe("miseDirs", () => {
 });
 
 describe("startIn", () => {
-  it("refuses a directory outside the sandbox", () => {
+  it("sandbox の外のディレクトリを拒否すること", () => {
     expect(() => startIn(import.meta.dirname, "sleep", ["1"])).toThrow(/outside the sandbox/);
   });
 
-  it("throws when the command cannot start", () => {
+  it("コマンドを起動できないとき throw すること", () => {
     expect(() => startIn(box.root, join(box.root, "no-such-command"), [])).toThrow(
       /could not start/,
     );
   });
 
-  it("starts a process that runs until stop()", async () => {
+  it("stop() まで実行されるプロセスを起動すること", async () => {
     const sleeper = startIn(box.root, "sleep", ["60"]);
     expect(() => process.kill(sleeper.pid, 0)).not.toThrow();
     await sleeper.stop();

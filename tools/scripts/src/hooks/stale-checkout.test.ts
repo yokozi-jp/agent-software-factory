@@ -38,11 +38,11 @@ afterAll(() => {
 });
 
 describe("staleCheckoutWarning", () => {
-  it("is silent when main is up to date", () => {
+  it("main が最新のとき、何も言わないこと", () => {
     expect(staleCheckoutWarning(git(clone), undefined, clone)).toBeUndefined();
   });
 
-  it("fetches first, then names how far behind main is and the files that differ", () => {
+  it("先に fetch し、main がどれだけ遅れているかと、違いのあるファイルを述べること", () => {
     commit("b.txt");
     commit("c.txt");
     expect(staleCheckoutWarning(git(clone), undefined, clone)).toBe(
@@ -60,39 +60,39 @@ describe("staleCheckoutWarning", () => {
     );
   });
 
-  it("leaves the working tree alone", () => {
+  it("作業ツリーに触れないこと", () => {
     expect(existsSync(join(clone, "b.txt"))).toBe(false);
   });
 
-  it("lists at most 10 files", () => {
+  it("ファイルを最大 10 件まで一覧にすること", () => {
     commit(...Array.from({ length: 11 }, (_, i) => `f${String(i).padStart(2, "0")}.txt`));
     const warning = staleCheckoutWarning(git(clone), undefined, clone) ?? "";
     expect(warning).toContain("3 commit(s) behind");
     expect(warning).toMatch(/\(first 10\):\nb\.txt\nc\.txt\nf00\.txt\n(f0[1-7]\.txt\n){7}$/);
   });
 
-  it("reads another base from the setting, and uses the ref already here when the fetch fails", () => {
+  it("設定から別の base を読み、fetch が失敗したときはすでにある ref を使うこと", () => {
     // There is no remote named upstream, so only the ref is there.
     gitIn(clone, ["update-ref", "refs/remotes/upstream/main", "origin/main"]);
     const warning = staleCheckoutWarning(git(clone), "upstream/main", clone) ?? "";
     expect(warning).toMatch(/^WARNING: .* is on main, 3 commit\(s\) behind upstream\/main\.\n/);
   });
 
-  it("is silent when the base does not exist", () => {
+  it("base がないとき、何も言わないこと", () => {
     expect(staleCheckoutWarning(git(clone), "nowhere/main", clone)).toBeUndefined();
   });
 
-  it("is silent for a base without a remote", () => {
+  it("remote のない base では、何も言わないこと", () => {
     expect(staleCheckoutWarning(git(clone), "main", clone)).toBeUndefined();
   });
 
-  it("is silent on a feature branch", () => {
+  it("feature ブランチでは、何も言わないこと", () => {
     gitIn(clone, ["checkout", "-q", "-b", "feature"]);
     expect(staleCheckoutWarning(git(clone), undefined, clone)).toBeUndefined();
     gitIn(clone, ["checkout", "-q", "main"]);
   });
 
-  it("is silent outside a git repository", () => {
+  it("git リポジトリの外では、何も言わないこと", () => {
     expect(staleCheckoutWarning(git(box.root), undefined, box.root)).toBeUndefined();
   });
 });

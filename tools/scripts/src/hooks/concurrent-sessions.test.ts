@@ -46,12 +46,12 @@ const v3Session = (
   if (record) write(join(dir, "session.json"), JSON.stringify({ title, cwd: null }));
 };
 
-describe("concurrentSessions (older layout)", () => {
-  it("finds nothing without a sessions directory", () => {
+describe("concurrentSessions (旧い配置)", () => {
+  it("sessions ディレクトリがなければ何も見つけないこと", () => {
     expect(concurrentSessions(env, isLiveKiro)).toBeUndefined();
   });
 
-  it("notes that its own record is missing, since the layout may have changed", () => {
+  it("配置が変わったかもしれないので、自分の記録がないことを注記すること", () => {
     mkdirSync(env.legacy);
     expect(concurrentSessions(env, isLiveKiro)).toEqual({
       kind: "unreadable",
@@ -59,19 +59,19 @@ describe("concurrentSessions (older layout)", () => {
     });
   });
 
-  it("notes an own record without a pid", () => {
+  it("pid のない自分の記録を注記すること", () => {
     write(join(env.legacy, "self.lock"), '{"process":1}');
     write(join(env.legacy, "self.json"), JSON.stringify({ cwd: here }));
     expect(concurrentSessions(env, isLiveKiro)?.kind).toBe("unreadable");
   });
 
-  it("notes an own record without a cwd", () => {
+  it("cwd のない自分の記録を注記すること", () => {
     write(join(env.legacy, "self.lock"), '{"pid":1}');
     write(join(env.legacy, "self.json"), "not json");
     expect(concurrentSessions(env, isLiveKiro)?.kind).toBe("unreadable");
   });
 
-  it("is silent without a live kiro session in this working tree", () => {
+  it("この作業ツリーに生きている kiro セッションがなければ、何も言わないこと", () => {
     legacySession("self", 100, here);
     legacySession("other-dir", 101, "/somewhere/else");
     legacySession("stale", 999, here);
@@ -84,7 +84,7 @@ describe("concurrentSessions (older layout)", () => {
     expect(concurrentSessions(env, isLiveKiro)).toBeUndefined();
   });
 
-  it("finds a live kiro session in this working tree, with the first line of its title", () => {
+  it("この作業ツリーの生きている kiro セッションを、title の最初の行とともに見つけること", () => {
     legacySession("self", 100, here);
     // Made in reverse order: the list is sorted by id.
     legacySession("live2", "102", here, "two");
@@ -98,7 +98,7 @@ describe("concurrentSessions (older layout)", () => {
     });
   });
 
-  it("does not need its own record when the session id is unknown", () => {
+  it("セッション ID が不明なとき、自分の記録を求めないこと", () => {
     legacySession("live", 101, here);
     expect(concurrentSessions({ ...env, self: "" }, isLiveKiro)).toEqual({
       kind: "others",
@@ -107,13 +107,13 @@ describe("concurrentSessions (older layout)", () => {
   });
 });
 
-describe("concurrentSessions (V3 layout)", () => {
+describe("concurrentSessions (V3 の配置)", () => {
   beforeEach(() => {
     v3Session("hashA", "sess_self", 100);
     v3Session("hashB", "sess_elsewhere", 101);
   });
 
-  it("ignores a session in another workspace and a stale one", () => {
+  it("別のワークスペースのセッションと、古いセッションを無視すること", () => {
     v3Session("hashA", "sess_stale", 999);
     v3Session("hashA", "sess_same-process", 100);
     v3Session("hashA", "sess_no-lock", undefined);
@@ -121,7 +121,7 @@ describe("concurrentSessions (V3 layout)", () => {
     expect(concurrentSessions(env, isLiveKiro)).toBeUndefined();
   });
 
-  it("finds a live session in its own workspace directory", () => {
+  it("自分のワークスペースのディレクトリにある生きているセッションを見つけること", () => {
     v3Session("hashA", "sess_peer", 102, "peer\nmore");
     v3Session("hashA", "sess_untitled", 103, null);
     expect(concurrentSessions(env, isLiveKiro)).toEqual({
@@ -133,17 +133,17 @@ describe("concurrentSessions (V3 layout)", () => {
     });
   });
 
-  it("finds its record from an id with the sess_ prefix", () => {
+  it("sess_ の接頭辞のある ID から、自分の記録を見つけること", () => {
     v3Session("hashA", "sess_peer", 102);
     expect(concurrentSessions({ ...env, self: "sess_self" }, isLiveKiro)?.kind).toBe("others");
   });
 
-  it("does not take a session directory without a record for its own", () => {
+  it("記録のないセッションのディレクトリを、自分のものと取らないこと", () => {
     mkdirSync(join(env.root, "hashE", "sess_empty"), { recursive: true });
     expect(concurrentSessions({ ...env, self: "empty" }, isLiveKiro)?.kind).toBe("unreadable");
   });
 
-  it("finds its record from a .lock alone", () => {
+  it(".lock だけから自分の記録を見つけること", () => {
     v3Session("hashD", "sess_lockonly", 100, "", false);
     v3Session("hashD", "sess_peer", 102);
     expect(concurrentSessions({ ...env, self: "lockonly" }, isLiveKiro)).toEqual({
@@ -152,7 +152,7 @@ describe("concurrentSessions (V3 layout)", () => {
     });
   });
 
-  it("finds a non-interactive record, which has session.json but no .lock", () => {
+  it("session.json があり .lock のない、非対話の記録を見つけること", () => {
     v3Session("hashC", "sess_batch", undefined);
     v3Session("hashC", "sess_peer", 102);
     expect(concurrentSessions({ ...env, self: "batch" }, isLiveKiro)).toEqual({
@@ -161,7 +161,7 @@ describe("concurrentSessions (V3 layout)", () => {
     });
   });
 
-  it("also reads the older layout for sessions in this working tree", () => {
+  it("この作業ツリーのセッションについて、旧い配置も読むこと", () => {
     legacySession("old", 101, here);
     expect(concurrentSessions(env, isLiveKiro)).toEqual({
       kind: "others",
@@ -179,7 +179,7 @@ const others = {
 } as const;
 
 describe("sessionsEnv", () => {
-  it("reads the session records under the home directory by default", () => {
+  it("既定ではホームディレクトリの下のセッション記録を読むこと", () => {
     expect(sessionsEnv({}, "/home/u", here)).toEqual({
       root: "/home/u/.kiro/sessions",
       legacy: "/home/u/.kiro/sessions/cli",
@@ -188,7 +188,7 @@ describe("sessionsEnv", () => {
     });
   });
 
-  it("takes the directories and the session id from the environment", () => {
+  it("ディレクトリとセッション ID を環境変数から採ること", () => {
     const vars = { KIRO_SESSIONS_ROOT: "/r", KIRO_SESSIONS_DIR: "/l", KIRO_SESSION_ID: "sess_1" };
     expect(sessionsEnv(vars, "/home/u", here)).toEqual({
       root: "/r",
@@ -198,13 +198,13 @@ describe("sessionsEnv", () => {
     });
   });
 
-  it("puts the older layout under a root from the environment", () => {
+  it("環境変数のルートの下に旧い配置を置くこと", () => {
     expect(sessionsEnv({ KIRO_SESSIONS_ROOT: "/r" }, "/home/u", here).legacy).toBe("/r/cli");
   });
 });
 
 describe("concurrentSessionsWarning", () => {
-  it("lists the other sessions and says to work in a worktree", () => {
+  it("ほかのセッションを一覧にし、worktree で作業するよう述べること", () => {
     expect(concurrentSessionsWarning(others, here)).toBe(
       [
         "WARNING: other Kiro sessions are running in this working tree (/work/tree):",
@@ -219,7 +219,7 @@ describe("concurrentSessionsWarning", () => {
     );
   });
 
-  it("passes on the note about a missing record", () => {
+  it("記録がないという注記をそのまま渡すこと", () => {
     expect(concurrentSessionsWarning({ kind: "unreadable", note: "n" }, here)).toBe("NOTE: n\n");
   });
 });

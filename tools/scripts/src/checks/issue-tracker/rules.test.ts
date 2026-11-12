@@ -22,7 +22,7 @@ const url = (number: number, repository = repo): string =>
   `https://github.com/${repository}/issues/${number}`;
 
 describe("withDirectories", () => {
-  it("lists each file and every directory above it", () => {
+  it("各ファイルと、その上のすべてのディレクトリを一覧にすること", () => {
     expect(withDirectories(["a/b/c.ts", "d.ts", "a/e.ts"])).toEqual(
       new Set(["a", "a/b", "a/b/c.ts", "d.ts", "a/e.ts"]),
     );
@@ -42,7 +42,7 @@ describe("stalePaths", () => {
   };
   const stale = (body: string): string[] => stalePaths(body, paths);
 
-  it("reports a removed file, and a removed directory written with a trailing slash", () => {
+  it("消えたファイルと、末尾にスラッシュを付けて書いた消えたディレクトリを報告すること", () => {
     expect(stale("Run `scripts/check-policy.sh`, see `scripts/` and `notes/gone.md`.")).toEqual([
       "scripts/check-policy.sh",
       "scripts",
@@ -50,30 +50,30 @@ describe("stalePaths", () => {
     ]);
   });
 
-  it("drops a leading ./ but no other ./", () => {
+  it("先頭の ./ を取り除き、ほかの ./ は取り除かないこと", () => {
     expect(stale("`./scripts/test/`")).toEqual(["scripts/test"]);
     expect(stale("`scripts/./test`")).toEqual([]);
   });
 
-  it("reports each path once", () => {
+  it("各 path を 1 回だけ報告すること", () => {
     expect(stale("`scripts/` `scripts/` `scripts`")).toEqual(["scripts"]);
   });
 
-  it("does not report a path the tree has, or one that never existed", () => {
+  it("ツリーにある path と、一度もなかった path を報告しないこと", () => {
     expect(stale("`docs/index.md` `tools/scripts/` `packages/i18n` `notes/new.md`")).toEqual([]);
   });
 
-  it("reports a bare file name only when a removed file had it and no file of the tree has it", () => {
+  it("消えたファイルが持ち、ツリーのどのファイルも持たない、ファイル名だけの指定を報告すること", () => {
     expect(stale("`check-policy.sh` `rules.ts` `README.md` `never.sh`")).toEqual([
       "check-policy.sh",
     ]);
   });
 
-  it("does not take a bare word without an extension for a path", () => {
+  it("拡張子のない単語を path と取り違えないこと", () => {
     expect(stale("`old` `test` `notes.md2`")).toEqual([]);
   });
 
-  it("reads inline code only, outside fenced code blocks", () => {
+  it("フェンスのコードブロックの外のインラインコードだけを読むこと", () => {
     const body = [
       "scripts/check-policy.sh in prose",
       "```sh",
@@ -88,13 +88,13 @@ describe("stalePaths", () => {
     expect(stale(body)).toEqual(["scripts/check-policy.sh", "notes/gone.md"]);
   });
 
-  it("does not read a span across lines", () => {
+  it("複数行にまたがる span を読まないこと", () => {
     expect(stale("a `scripts\n/test b\n`notes/gone.md`")).toEqual(["notes/gone.md"]);
   });
 });
 
 describe("pathProblems", () => {
-  it("names the issue and the path", () => {
+  it("Issue と path を挙げること", () => {
     expect(pathProblems({ number: 7, title: "T", body: "" }, ["scripts"])).toEqual([
       "#7 「T」: `scripts` was removed from the repository. Rewrite the body with the path it moved to.",
     ]);
@@ -138,11 +138,11 @@ describe("ticketsToRead", () => {
     expect(ticketsToRead(map, children).map(({ number }) => number)).toEqual([2, 3, 4]);
   });
 
-  it("matches the line by the whole issue number", () => {
+  it("Issue 番号の全体で行に一致すること", () => {
     expect(ticketsToRead(map, [child(3, grilling)]).map(({ number }) => number)).toEqual([3]);
   });
 
-  it("skips open, not planned, and research or task tickets", () => {
+  it("open でないもの、計画していないもの、research と task のチケットを読み飛ばすこと", () => {
     const children = [
       child(2, grilling, "open", "completed"),
       child(5, grilling, "closed", "not_planned"),
@@ -152,12 +152,12 @@ describe("ticketsToRead", () => {
     expect(ticketsToRead(map, children)).toEqual([]);
   });
 
-  it("reads every ticket when the map has no Decisions so far, whatever other lines say", () => {
+  it("地図に Decisions so far がないとき、ほかの行にかかわらずすべてのチケットを読むこと", () => {
     const body = `- [A](${url(1)}): 実施\n## Notes`;
     expect(ticketsToRead(body, [child(1, grilling)]).length).toBe(1);
   });
 
-  it("reads to the end of the body when Decisions so far is the last section", () => {
+  it("Decisions so far が最後の節のとき、本文の最後まで読むこと", () => {
     const last = `## Notes\n## Decisions so far\n- [A](${url(1)}): 実施: none`;
     expect(ticketsToRead(last, [child(1, grilling)])).toEqual([]);
   });
@@ -183,7 +183,7 @@ describe("implementationProblems", () => {
 });
 
 describe("blockersInBody", () => {
-  it("reads the links and #numbers of a Blocked by: line, of this repository only", () => {
+  it("Blocked by: の行のリンクと #番号を、このリポジトリのものだけ読むこと", () => {
     const body = [
       "intro naming #1",
       `Blocked by: [A](${url(171)})、#12 and [B](${url(5, "other/repo")}), not issue#9 or a/#8`,
@@ -194,18 +194,18 @@ describe("blockersInBody", () => {
     expect(blockersInBody(body, repo)).toEqual([171, 12]);
   });
 
-  it("does not count an issue named in a note in full-width parentheses", () => {
+  it("全角括弧の注記で挙げた Issue を数えないこと", () => {
     const body = `Blocked by: [A](${url(171)})（決定は [B](${url(75)}) と #76）、#77（前提）`;
     expect(blockersInBody(body, repo)).toEqual([171, 77]);
   });
 
-  it("matches the repository exactly", () => {
+  it("リポジトリが完全に一致すること", () => {
     expect(blockersInBody(`Blocked by: [A](${url(3, "owner/nam")})`, repo)).toEqual([]);
   });
 });
 
 describe("edgeProblems", () => {
-  it("reports each blocker of the body that is not a native edge", () => {
+  it("本文の blocker のうち native の辺でないものを、それぞれ報告すること", () => {
     expect(edgeProblems({ number: 9, title: "T", body: "" }, [1, 2, 3], [2])).toEqual([
       `#9 「T」: "Blocked by:" names #1, but GitHub has no native edge. Add it (docs/agents/issue-tracker.md ("Wayfinding operations")).`,
       `#9 「T」: "Blocked by:" names #3, but GitHub has no native edge. Add it (docs/agents/issue-tracker.md ("Wayfinding operations")).`,
@@ -214,11 +214,11 @@ describe("edgeProblems", () => {
 });
 
 describe("report", () => {
-  it("passes with no problems", () => {
+  it("問題がないとき通すこと", () => {
     expect(report([])).toEqual({ status: 0, stdout: "issue-tracker: no problems\n", stderr: "" });
   });
 
-  it("fails with one line per problem", () => {
+  it("問題ごとに 1 行を出力して失敗すること", () => {
     expect(report(["a", "b"])).toEqual({
       status: 1,
       stdout: "",
@@ -226,7 +226,7 @@ describe("report", () => {
     });
   });
 
-  it("says what gh could not read, and why a shallow clone stops the check", () => {
+  it("gh が読めなかったものと、浅い clone が検査を止める理由を述べること", () => {
     expect(ghFailed("the maps")).toEqual({
       status: 2,
       stdout: "",
@@ -243,13 +243,13 @@ describe("report", () => {
 });
 
 describe("parseIssues", () => {
-  it("reads the issues", () => {
+  it("Issue を読むこと", () => {
     expect(parseIssues('[{"number":1,"title":"T","body":"B","extra":0}]')).toEqual([
       { number: 1, title: "T", body: "B" },
     ]);
   });
 
-  it("returns undefined for anything else", () => {
+  it("それ以外では undefined を返すこと", () => {
     for (const json of [
       "{}",
       "[null]",
@@ -262,7 +262,7 @@ describe("parseIssues", () => {
 });
 
 describe("parseChildren", () => {
-  it("reads one object per line, with a null state_reason as empty", () => {
+  it("1 行に 1 つのオブジェクトを読み、null の state_reason を空として読むこと", () => {
     const lines = [
       '{"number":1,"title":"T","state":"open","state_reason":null,"labels":["a"]}',
       "",
@@ -275,7 +275,7 @@ describe("parseChildren", () => {
     ]);
   });
 
-  it("returns undefined when a line is not a ticket", () => {
+  it("行がチケットではないとき undefined を返すこと", () => {
     const ok = { number: 1, title: "T", state: "open", state_reason: "x", labels: ["a"] };
     for (const bad of [
       { ...ok, number: "1" },
@@ -289,8 +289,8 @@ describe("parseChildren", () => {
   });
 });
 
-describe("parseStrings and parseNumbers", () => {
-  it("read an array of strings or of numbers, and nothing else", () => {
+describe("parseStrings と parseNumbers", () => {
+  it("文字列または数値の配列だけを読むこと", () => {
     expect(parseStrings('["a","b"]')).toEqual(["a", "b"]);
     expect(parseStrings('["a",1]')).toBeUndefined();
     expect(parseStrings('"a"')).toBeUndefined();

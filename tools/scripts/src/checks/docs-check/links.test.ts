@@ -14,7 +14,7 @@ const about = (area: string): string =>
     "",
   ].join("\n");
 
-describe("linkProblems: headings of other documents", () => {
+describe("linkProblems: ほかの文書の見出し", () => {
   // GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, -1, -2 for duplicates.
   const target = [
     "# Title",
@@ -74,7 +74,7 @@ describe("linkProblems: headings of other documents", () => {
     "[b](../tooling/b.md#title)",
     "[b](b.md#text)",
     "[b](b.md#after-code)",
-  ])("passes %s", (link) => {
+  ])("%s を通すこと", (link) => {
     expect(check(link)).toEqual([]);
   });
 
@@ -95,16 +95,16 @@ describe("linkProblems: headings of other documents", () => {
     ["[b](b.md#nospace)", "nospace"],
     ["[b](b.md#hello,-world)", "hello,-world"],
     ["[b](b.md#%E0%A4%A)", "%E0%A4%A"],
-  ])("fails %s", (link, fragment) => {
+  ])("%s で失敗すること", (link, fragment) => {
     expect(check(link)).toEqual([`tooling/a.md:1: tooling/b.md has no heading for #${fragment}`]);
   });
 
-  it("reads a target whose path is URL-encoded", () => {
+  it("path が URL エンコードされた対象を読むこと", () => {
     const files = docs({ "a.md": "[b](my%20b.md#x)\n[c](my%20b.md#y)\n", "my b.md": "# X\n" });
     expect(linkProblems(files)).toEqual(["a.md:2: my b.md has no heading for #y"]);
   });
 
-  it("leaves links that it cannot or need not follow", () => {
+  it("たどれない、またはたどる必要のないリンクを残すこと", () => {
     const text = [
       "[same](#nowhere)",
       "[web](https://example.com/b.md#nowhere)",
@@ -117,7 +117,7 @@ describe("linkProblems: headings of other documents", () => {
     expect(linkProblems(docs({ "tooling/a.md": text, "tooling/b.md": "# B\n" }))).toEqual([]);
   });
 
-  it("leaves URLs by their scheme and headings of the same file, even where a document matches", () => {
+  it("文書が合っていても、scheme を持つ URL と同じファイルの見出しを残すこと", () => {
     // A scheme is a letter, then letters, digits, +, - and . (RFC 3986, section 3.1).
     const files = docs({
       "tooling/a.md": "[u](Ab+.-1:b.md#nowhere)\n[l](b.mdd)\n",
@@ -129,7 +129,7 @@ describe("linkProblems: headings of other documents", () => {
     expect(linkProblems(files)).toEqual([]);
   });
 
-  it("reads a --- line as frontmatter only on the first line", () => {
+  it("--- の行を、最初の行にあるときだけ frontmatter として読むこと", () => {
     const text = "[b](b.md#first)\n---\n[b](b.md#third)\n";
     expect(linkProblems(docs({ "a.md": text, "b.md": "# B\n" }))).toEqual([
       "a.md:1: b.md has no heading for #first",
@@ -137,7 +137,7 @@ describe("linkProblems: headings of other documents", () => {
     ]);
   });
 
-  it("skips frontmatter, fenced code (also in a quote) and inline code", () => {
+  it("frontmatter、フェンスのコード (引用の中も)、インラインコードを読み飛ばすこと", () => {
     const text = [
       "---",
       "x: [b](b.md#nowhere)",
@@ -165,7 +165,7 @@ describe("linkProblems: headings of other documents", () => {
     ]);
   });
 
-  it("checks a file whose frontmatter does not close from the first line", () => {
+  it("最初の行から閉じていない frontmatter のファイルを検査すること", () => {
     const text = "---\n[b](b.md#nowhere)\n";
     expect(linkProblems(docs({ "a.md": text, "b.md": "# B\n" }))).toEqual([
       "a.md:2: b.md has no heading for #nowhere",
@@ -173,13 +173,13 @@ describe("linkProblems: headings of other documents", () => {
   });
 });
 
-describe("linkProblems: the site of an imported guideline", () => {
+describe("linkProblems: 取り込んだガイドラインのサイト", () => {
   const tree = {
     "guide/about.md": about("forLog"),
     "other/about.md": "# About\n",
   };
 
-  it("refuses a link to the site of a guideline imported into docs/", () => {
+  it("docs/ に取り込んだガイドラインのサイトへのリンクを拒否すること", () => {
     const page = `See [log](${site}/forLog/log_guidelines.html).\n`;
     expect(linkProblems(docs({ ...tree, "guide/page.md": page, "x/y.md": page }))).toEqual([
       "guide/page.md:1: links to the arch-guidelines site for a guideline imported into docs/; link to the docs/ document",
@@ -187,12 +187,12 @@ describe("linkProblems: the site of an imported guideline", () => {
     ]);
   });
 
-  it("allows the link in an about.md, and to a guideline that was not imported", () => {
+  it("about.md の中のリンクと、取り込んでいないガイドラインへのリンクを許可すること", () => {
     const page = `See [aws](${site}/forAWS/aws.html) and ${site}/forLog/ as text.\n`;
     expect(linkProblems(docs({ ...tree, "guide/page.md": page }))).toEqual([]);
   });
 
-  it("reads the imported guidelines from the frontmatter of every about.md", () => {
+  it("すべての about.md の frontmatter から、取り込んだガイドラインを読むこと", () => {
     const tree2 = {
       "a/about.md": about("forLog"),
       "b/c/about.md": about("forAWS"),
@@ -216,7 +216,7 @@ describe("linkProblems: the site of an imported guideline", () => {
     ]);
   });
 
-  it("refuses no site link when no guideline is imported", () => {
+  it("ガイドラインを取り込んでいないとき、サイトへのリンクを拒否しないこと", () => {
     const page = `[x](${site}/forLog/x.html) [y](${site}//x.html)\n`;
     expect(linkProblems(docs({ "p.md": page, "about.md": "---\nx: y\n---\n" }))).toEqual([]);
   });
