@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: 並行作業と worktree
-description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いている、または main の作業ツリーが origin/main より古いと警告されたとき、並行して作業を始めるとき、worktree から PR を出すときに読む。
+description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、worktree ごとの開発サーバーのポート、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いている、または main の作業ツリーが origin/main より古いと警告されたとき、並行して作業を始めるとき、worktree で開発サーバーを動かすとき、開発サーバーがポートの使用中で起動しないとき、worktree から PR を出すときに読む。
 tags: [tooling, runbook, git, worktree, kiro]
 ---
 
@@ -42,10 +42,24 @@ Kiro の file tool (読む、書く、編集する) は、相対 path を worktr
 
 ## 開発サーバーを動かす
 
-別のセッションも同じマシンで開発サーバーを動かします。ポートを worktree ごとに分ける仕組みはまだなく、[Issue #184](https://github.com/yokozi-jp/agent-software-factory/issues/184) で扱います。
+別のセッションも同じマシンで開発サーバーを動かします。ポートは worktree ごとに分けます ([Issue #184](https://github.com/yokozi-jp/agent-software-factory/issues/184))。
 
-- Vite は、指定したポートが塞がっていると、失敗せずに次のポートで起動します。起動したときの出力で実際のポートを読み、決め打ちしません。
-- 動作確認の前に `ss -ltnp` でそのポートの持ち主を確かめます。持ち主の cwd (`readlink /proc/<pid>/cwd`) が自分の worktree なら自分のプロセスです。
+- **割り当て**: `worktree.sh add` が worktree に slot を割り当てます (`tools/scripts/src/dev-ports/`)。main の checkout は slot 0 で、既定のポートのままです。slot n は既定に n × 10 を足します (n は 0〜7)。ポートは worktree の `apps/web/` と `apps/api/` にある `.env.local` に書かれ、git には入りません。使われている slot は、各 worktree の `apps/api/` の `.env.local` の先頭行の印から読むので、worktree を消すとその slot は空きます。
+- **自分の URL**: `node tools/scripts/src/dev-ports/cli.ts show` を実行します (worktree のどこからでも構いません)。`.env.local` はエージェントが読めない ([エージェントの権限](agent-permissions.md)) ので、この出力で知ります。`worktree.sh add` を通さずに作った worktree には、`node tools/scripts/src/dev-ports/cli.ts assign <worktree の path>` で割り当てます (すでに `.env.local` があると上書きしません)。
+
+  | slot 0 (main) | slot 1 | 用途                         |
+  | ------------- | ------ | ---------------------------- |
+  | 5173          | 5183   | web (`WEB_PORT`)             |
+  | 3000          | 3010   | API (`PORT`)                 |
+  | 9000          | 9010   | ローカルの IdP (`IDP_PORT`)  |
+  | 6006          | 6016   | Storybook (`STORYBOOK_PORT`) |
+
+- **塞がっていると失敗する**: web と API の `vp dev` は Vite の `server.strictPort`、Storybook は `--exact-port` で、ポートが塞がっていると次のポートに逃げず、起動に失敗します ([Vite の server.strictPort](https://vite.dev/config/server-options)、[Storybook の CLI](https://storybook.js.org/docs/api/cli-options))。失敗したら、`ss -ltnp` でそのポートの持ち主を確かめます。持ち主の cwd (`readlink /proc/<pid>/cwd`) が自分の worktree なら自分のプロセスです。そうでなければ、worktree の slot が重なっています。
+- **値の読み方**: 変数は独立していて、別のアプリへの参照は URL です (web の proxy 先は `API_ORIGIN`、API の公開 origin は `PUBLIC_ORIGIN`)。Vite の設定は `loadEnv` で、`dev:auth` と `dev:idp` は `--env-file-if-exists=.env.local` で読みます (後に並べたファイルが先のファイルを上書きし、シェルの環境変数が最優先であることを、Node.js 24.22.3 で確かめた)。`nx` は実行する target の環境として、workspace と project の `.env.local` を読みます ([Nx の環境変数](https://nx.dev/docs/reference/environment-variables)。2026-11-12 に読んだ。Nx 24.0.5 で、Storybook がその値のポートで起動することを確かめた)。`pnpm --filter ... storybook` は `.env.local` を読まず、既定の 6006 で起動することを確かめた (Storybook 10.6.6、2026-11-12)。worktree の Storybook は `pnpm exec nx storybook web` で起動します。
+- **設定が正しくないとき**: `WEB_PORT`、`PORT`、`API_ORIGIN` が、設定されているのに正しくない値 (空の文字列を含む) だと、`vp dev` だけでなく `vp build` と `vp test` も、設定を読む時点で変数名を挙げて失敗します。書き間違いのポートで黙って起動しないためで、API の起動 (`apps/api/src/env.ts`) の `PORT` と同じ扱いです (判断)。
+- **同時に作ったとき・手で消したとき**: `assign` は git の共通ディレクトリの `dev-ports.lock` で排他するので、複数のセッションが同時に `worktree.sh add` しても、同じ slot を取りません。ロックが残っても、60 秒たてば捨てます。ディレクトリを `rm -rf` で消した worktree は、git が一覧に残していても (`git worktree prune` の前)、slot を空きとして数えます。何らかの理由で 2 つの worktree が同じ slot を持つと、`show` が警告し、起動は `strictPort` が止めます。どちらかの `.env.local` を消して `assign` し直します。
+- **slot が尽きたとき**: 8 個 (main を含む) を使い切ると、`assign` は worktree を消すよう伝えて終わります。`worktree.sh add` は警告だけを出して worktree を作るので、使い終えた worktree を消してから `assign` します。範囲を 0〜7 にした理由: slot 8 の IdP が 9080 になり、`compose.local.yaml` の人事システムのフェイクと重なります (判断。重ならないことは `tools/scripts/src/configs/dev-ports.tools.test.ts` が compose のファイルを読んで確かめます)。
+- **compose は分けていません** ([Issue #723](https://github.com/yokozi-jp/agent-software-factory/issues/723)): `compose.local.yaml` と `compose.otel-lgtm.yaml` のポートは固定で、project 名も固定です。一度に起動できるのは 1 つの worktree です ([ローカルで通知メールのワーカーを動かす](local-worker.md))。
 - 止めるのは、自分が起動したプロセスだけです。pid を確かめて `kill <pid>` します。`pkill -f` や `killall` は、パターンに合う別のセッションのプロセスまで止めるので使いません。
 
 ## PR を出す

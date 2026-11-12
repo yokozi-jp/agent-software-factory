@@ -12,11 +12,12 @@ export interface WriteActor {
 }
 
 /**
- * The values that the common columns of one transaction take. `at` is read once, when the transaction starts, and is
- * bound as a value; `CURRENT_TIMESTAMP` and triggers are not used (docs/db/postgresql-keys.md).
+ * The values that the common columns of one transaction take. `now` is the moment that the entry point read once for
+ * the whole call (`currentInstant`, docs/adr/0043); it is bound as a value, and `CURRENT_TIMESTAMP` and triggers are
+ * not used (docs/db/postgresql-keys.md). Every transaction of one call takes the same `now`.
  */
 export interface WriteContext extends WriteActor {
-  readonly at: Temporal.Instant;
+  readonly now: Temporal.Instant;
 }
 
 /**
@@ -32,11 +33,11 @@ export class CurrentWrite extends Context.Service<CurrentWrite, WriteContext>()(
  * sets it.
  */
 export const createdColumns = (ctx: WriteContext) => ({
-  created_at: ctx.at.toString(),
+  created_at: ctx.now.toString(),
   created_by: ctx.actor,
   created_pgm_cd: ctx.pgmCd,
   created_tx_id: ctx.txId,
-  updated_at: ctx.at.toString(),
+  updated_at: ctx.now.toString(),
   updated_by: ctx.actor,
   updated_pgm_cd: ctx.pgmCd,
   updated_tx_id: ctx.txId,
@@ -47,7 +48,7 @@ export const createdColumns = (ctx: WriteContext) => ({
  * `WHERE` (`updateWithLock`).
  */
 export const updatedColumns = (ctx: WriteContext) => ({
-  updated_at: ctx.at.toString(),
+  updated_at: ctx.now.toString(),
   updated_by: ctx.actor,
   updated_pgm_cd: ctx.pgmCd,
   updated_tx_id: ctx.txId,
@@ -59,7 +60,7 @@ export const updatedColumns = (ctx: WriteContext) => ({
  * told apart from the work of the system (docs/db/postgresql-keys.md). `patchId` is the number of the ticket.
  */
 export const patchedColumns = (ctx: WriteContext, patchId: string) => ({
-  patched_at: ctx.at.toString(),
+  patched_at: ctx.now.toString(),
   patched_by: ctx.actor,
   patched_id: patchId,
 });

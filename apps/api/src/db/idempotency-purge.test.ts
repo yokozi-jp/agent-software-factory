@@ -22,7 +22,7 @@ import { Deferred, Effect, Exit } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // purgeExpiredIdempotencyKeys (Issue #325、docs/adr/0040): 期限を過ぎた冪等キーの行だけを、テナントごとに、件数の上限を付けて
 // 消す。実際の PostgreSQL で、残す行、別のテナント、複数回の実行、実行中の要求を確かめる。
@@ -60,7 +60,7 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   const countOf = (tenantId: string) => countIdempotencyKeys(ctx.db.superuser, "claim", tenantId);
 
   const purge = (tenantId: string, batchSize?: number) =>
-    ctx.run(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId, ...writer }, { batchSize }));
+    ctx.run(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId, ...writeContext }, { batchSize }));
 
   it("期限を過ぎた行だけを消し、期限内の行は残すこと", async () => {
     await seed(tenantA, 3, "expired");
@@ -74,6 +74,23 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
       "SELECT expires_at <= now() AS expired FROM claim.idempotency_key",
     );
     expect(left.rows.every((row) => !row.expired)).toBe(true);
+  });
+
+  it("期限の基準は scope の now で、DB の今ではないこと: now より後に期限が切れる行は、次の実行まで残す", async () => {
+    await seed(tenantA, 3, "expired");
+    const beforeExpiry = Temporal.Instant.from("2020-01-01T00:00:00Z");
+
+    const early = await ctx.run(
+      purgeExpiredIdempotencyKeys(ClaimTx, {
+        tenantId: tenantA,
+        ...writeContext,
+        now: beforeExpiry,
+      }),
+    );
+
+    expect(early).toEqual({ deleted: 0, batches: 1 });
+    expect(await countOf(tenantA)).toBe(3);
+    expect(await purge(tenantA)).toEqual({ deleted: 3, batches: 1 });
   });
 
   it("消す行がなければ、0 件で 1 回だけ確かめて終わること", async () => {
@@ -155,7 +172,7 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
       const request = provide(
         inTenantTransaction(
           ClaimTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           withIdempotencyKey(
             ClaimTx,
             { tenantId: tenantA, userId: userA, key },
@@ -174,7 +191,7 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   };
 
   const purgeIn = (provide: Parameters<Parameters<typeof whileRequestRuns>[1]>[0]) =>
-    provide(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId: tenantA, ...writer }));
+    provide(purgeExpiredIdempotencyKeys(ClaimTx, { tenantId: tenantA, ...writeContext }));
 
   it("実行中の要求が期限切れの行を消して持つロックは待たず、その行は飛ばして、ほかの行を消すこと", async () => {
     const heldKey = "44444444-4444-4444-8444-444444444444";

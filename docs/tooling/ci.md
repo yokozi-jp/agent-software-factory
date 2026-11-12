@@ -122,9 +122,11 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 外れた見立てもあります。11/12 06:33 UTC の run ([43168686397](https://github.com/yokozi-jp/agent-software-factory/actions/runs/43168686397)) の `DEBUG=vite:deps` のログでは、`web:test` の開始から 7 秒後までに依存の最適化が終わり、その後に最適化の行はありませんでした (再最適化は原因ではない)。`maxWorkers: 2` でも落ちました (CPU の飽和は原因ではない)。unit の `optimizeDeps.include` は、[Storybook の FAQ](https://storybook.js.org/docs/writing-tests/integrations/vitest-addon) の勧めに従って足してありますが、効くとは確かめていません。
 
+`parallelism: false` の後にも落ちました。11/12 11:47 UTC の push の run ([43212150110](https://github.com/yokozi-jp/agent-software-factory/actions/runs/43212150110)) で、storybook の `src/app.stories.tsx` だけが `Failed to fetch dynamically imported module` で読めませんでした。`worker:test` の完了は `web:test` の開始の約 5 秒前で、最適化は開始の 1 秒後までに終わっていました。原因は分かっていないので、CI の `DEBUG` に `vitest:browser:*` を足して、次に落ちたときの手がかりを残します。
+
 #### 手当ての後にも落ちたら
 
-`parallelism: false` の後にも同じエラーが出たら、見立てが外れています。落ちたログの `DEBUG=vite:deps` の行と、`web:test` の始まりの時刻、前後に終わった task の時刻を見直してください。それでも直らないときは、ログに上のエラーがあるときだけ `web:test` を 1 回再実行する step を考えます。Vitest の [`retry`](https://vitest.dev/config/retry) は個々のテストの再実行で、ファイルの読み込みの失敗は対象になりません (vitest 5.1.0、2026-11-12 に確かめた)。
+`parallelism: false` の後にも同じエラーが出たら、見立てが外れています。落ちたログの `DEBUG=vite:deps,vitest:browser:*` の行と、`web:test` の始まりの時刻、前後に終わった task の時刻を見直してください。それでも直らないときは、ログに上のエラーがあるときだけ `web:test` を 1 回再実行する step を考えます。Vitest の [`retry`](https://vitest.dev/config/retry) は個々のテストの再実行で、ファイルの読み込みの失敗は対象になりません (vitest 5.1.0、2026-11-12 に確かめた)。
 
 ## coverage の下限
 

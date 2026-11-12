@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { sql } from "kysely";
 
-import { CurrentWrite, type WriteActor } from "../tenant-db/common-columns.ts";
+import { CurrentWrite, type WriteContext } from "../tenant-db/common-columns.ts";
 import { dbCall } from "../tenant-db/db-call.ts";
 import { Database, inTenantTransaction, type ModuleTx } from "../tenant-db/tenant-transaction.ts";
 
@@ -42,7 +42,7 @@ const deleteExpiredBatch = <K extends ModuleTx>(
     const deleted = yield* dbCall(tx, (trx) =>
       sql`WITH batch AS MATERIALIZED (
             SELECT tenant_id, user_id, idempotency_key FROM ${table}
-            WHERE tenant_id = ${tenantId} AND expires_at <= ${current.at.toString()}
+            WHERE tenant_id = ${tenantId} AND expires_at <= ${current.now.toString()}
             ORDER BY expires_at
             LIMIT ${limit}
             FOR UPDATE SKIP LOCKED
@@ -60,10 +60,13 @@ const deleteExpiredBatch = <K extends ModuleTx>(
  * `batchSize` rows and commits, so no lock is held for long; it repeats until a transaction deletes fewer rows than
  * the limit. A run that ends at a row it skipped (a running request holds it) leaves that row for the next run.
  * Call it from the entry file of the batch, not inside a transaction: it opens its own (`inTenantTransaction`).
+ * `scope.now` is read once by the entry file for the whole run: every transaction takes it, both as the common columns
+ * and as the point that a row has to be past to be deleted. A row that expires during the run waits for the next run,
+ * so the loop ends.
  */
 export const purgeExpiredIdempotencyKeys = <K extends ModuleTx>(
   tx: K,
-  scope: { readonly tenantId: string } & WriteActor,
+  scope: { readonly tenantId: string } & WriteContext,
   options: PurgeOptions = {},
 ): Effect.Effect<PurgeResult, never, Database> =>
   Effect.gen(function* () {

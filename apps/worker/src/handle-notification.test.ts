@@ -20,7 +20,7 @@ describe("通知メールの処理 handleNotification", () => {
   const ctx = useWorker();
 
   const handle = (runtime: ReturnType<typeof ctx.worker>["runtime"], message: unknown) =>
-    runtime.runPromise(handleNotification(message, { now: fixedNow, write }));
+    runtime.runPromise(handleNotification(message, { now: fixedNow, ...write }));
 
   it("同じメッセージを 2 回渡すと、Mailpit に 1 通だけ届き、2 回目は Duplicate を返すこと", async () => {
     const { runtime } = ctx.worker();
@@ -34,6 +34,20 @@ describe("通知メールの処理 handleNotification", () => {
     expect(second).toEqual({ _tag: "Duplicate" });
     expect(await waitForMail(to, 1)).toHaveLength(1);
     expect(await ctx.processedCount()).toBe(1);
+  });
+
+  it("記録の行の共通カラムの時刻は、メッセージの now になること (トランザクションごとに時計を読み直さない)", async () => {
+    const { runtime } = ctx.worker();
+    const to = newRecipient();
+
+    await handle(runtime, notificationMessage({ to }));
+
+    const { rows } = await ctx.db.superuser.query<{ created_at: Date; updated_at: Date }>(
+      "SELECT created_at, updated_at FROM approval.processed_message",
+    );
+    expect(rows).toEqual([
+      { created_at: new Date(fixedNow.toString()), updated_at: new Date(fixedNow.toString()) },
+    ]);
   });
 
   it("1 回目の送信が失敗すると行が残らず、再配送の 2 回目で 1 通届くこと", async () => {
