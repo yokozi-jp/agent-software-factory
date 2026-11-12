@@ -296,6 +296,34 @@ const rootTsconfig = [
   "",
 ].join("\n");
 
+// The renovate.jsonc of the passing repository: the rules that automerge, then the rules that keep updates with a
+// person (docs/adr/0055).
+export const renovateConfig = {
+  lockFileMaintenance: { automerge: true, labels: ["automerge"] },
+  packageRules: [
+    {
+      description: "Automerge minor and patch updates of npm packages",
+      matchManagers: ["npm"],
+      matchUpdateTypes: ["minor", "patch"],
+      matchCurrentVersion: "!/^0/",
+      automerge: true,
+      labels: ["automerge"],
+    },
+    {
+      description: "A person merges Node.js, pnpm, kiro-cli and the authentication libraries",
+      matchDepNames: ["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"],
+      automerge: false,
+      labels: [],
+    },
+    {
+      description: "A person merges the PR of @effect/tsgo and Vite+",
+      matchPackageNames: ["@effect/tsgo", "vite-plus", "@voidzero-dev/vite-plus-core"],
+      automerge: false,
+      labels: [],
+    },
+  ],
+};
+
 export const passingRepo: Readonly<Record<string, string>> = {
   ".node-version": "24.22.1\n",
   "compose.local.yaml":
@@ -340,6 +368,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
   ].join("\n"),
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
+  // What Renovate may merge by itself (docs/adr/0055): npm minor and patch, and lock files, labelled `automerge`.
+  "renovate.jsonc": `// comment\n${JSON.stringify(renovateConfig, undefined, 2)}\n`,
   ...packageFiles("shared-kernel"),
   ...packageFiles("claim", {
     dependencies: { "@agent-software-factory/shared-kernel": "workspace:*" },

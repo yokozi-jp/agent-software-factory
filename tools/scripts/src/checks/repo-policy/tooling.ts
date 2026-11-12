@@ -1,6 +1,6 @@
 // Checks of the tool settings and repository files: Nx, lefthook, betterleaks, Node.js, steering, shell scripts, ADR numbers, migrations, the pnpm catalog.
 import { isSeq, parseDocument } from "yaml";
-import { Tree, hasKey, list, record } from "./tree.ts";
+import { Tree, hasKey, isRecord, list, record } from "./tree.ts";
 
 // ADR 0002: Nx runs tasks; Vite+ is toolchain only.
 // @nx/vite anywhere in a package.json counts: the dependencies, and also overrides, resolutions and
@@ -57,6 +57,133 @@ export function miseLockHasOnlyLinuxX64(tree: Tree): string[] {
           failures.push(
             `mise.lock records ${key} of ${tool}. Record ${onlyPlatform} only: run \`mise lock --platform ${onlyPlatform}\` (docs/adr/0009).`,
           );
+  return failures;
+}
+
+// ADR 0055: Renovate merges by itself only the lock file maintenance and the minor and patch updates of npm
+// packages that are 1.0 or later. This reads renovate.jsonc; it does not match the rules the way Renovate does (the
+// last matching rule wins, and rules overlap), so it keeps the shape simple: automerge is set only in
+// lockFileMaintenance and in rules that name the update types, the managers and the versions they cover, and the
+// rules that keep updates with a person come after all of them.
+// `renovate.sh preview` shows what Renovate really does (docs/tooling/renovate.md).
+const automergeLabel = "automerge";
+const automergedManagers: ReadonlySet<unknown> = new Set(["npm"]);
+const automergedUpdateTypes: ReadonlySet<unknown> = new Set(["minor", "patch"]);
+// Renovate reads a 0.x version as one that may break at any time, so a person merges it.
+const notZeroVersion = "!/^0/";
+// What a person merges: Node.js, pnpm, the coding agent, the authentication libraries (ADR 0013, 0057), and the PR
+// of @effect/tsgo and Vite+ (ADR 0028). Node.js and kiro-cli come from other managers, so the rule for npm does not
+// match them today. Their rules stay, so that widening the managers cannot make Renovate merge them.
+const mergedByPerson = [
+  "node",
+  "pnpm",
+  "kiro-cli",
+  "better-auth",
+  "oidc-provider",
+  "@effect/tsgo",
+  "vite-plus",
+  "@voidzero-dev/vite-plus-core",
+];
+// The only matchers a rule for a person may have: it must hold for every update type and manager of the dependency.
+const nameMatchers: ReadonlySet<string> = new Set(["matchDepNames", "matchPackageNames"]);
+
+type Rule = Record<string, unknown>;
+
+// The paths in the value where `automerge` is true, such as `packageRules[0].automerge` and `minor.automerge`.
+function automergePaths(value: unknown, path: string): string[] {
+  if (Array.isArray(value))
+    return value.flatMap((child, index) => automergePaths(child, `${path}[${index}]`));
+  if (!isRecord(value)) return [];
+  return Object.entries(value).flatMap(([key, child]) => {
+    const at = path === "" ? key : `${path}.${key}`;
+    return [...(key === "automerge" && child === true ? [at] : []), ...automergePaths(child, at)];
+  });
+}
+
+const allowedAutomergePath = /^(lockFileMaintenance|packageRules\[\d+\])\.automerge$/;
+
+export function renovateAutomergeIsBounded(tree: Tree): string[] {
+  const parsed = tree.parsed("renovate.jsonc");
+  if (parsed === undefined) return [];
+  const config = record(parsed);
+  const rules = list(config.packageRules).map(record);
+  const failures: string[] = [];
+  const named = (rule: Rule, index: number): string =>
+    `renovate.jsonc rule ${typeof rule.description === "string" ? `"${rule.description}"` : `packageRules[${index}]`}`;
+
+  // Anywhere else it would reach updates the rules below do not name: the top level, the blocks of the update types
+  // (major, minor, patch ...), the blocks of the managers.
+  for (const path of automergePaths(config, "").filter((at) => !allowedAutomergePath.test(at))) {
+    const container = path.slice(0, -".automerge".length);
+    failures.push(
+      `renovate.jsonc sets automerge ${container === "" ? "at the top level" : `in ${container}`}, so Renovate would merge more than the rules name. Set it only in lockFileMaintenance and in packageRules that name update types and managers (docs/adr/0055).`,
+    );
+  }
+  for (const preset of list(config.extends))
+    if (typeof preset === "string" && preset.startsWith(":automerge"))
+      failures.push(
+        `renovate.jsonc extends ${preset}, which turns on automerge outside the rules. Name the update types and managers in packageRules instead (docs/adr/0055).`,
+      );
+  // A label on every PR would reach the PRs a person merges.
+  if ([...list(config.labels), ...list(config.addLabels)].includes(automergeLabel))
+    failures.push(
+      `renovate.jsonc sets the label "${automergeLabel}" at the top level, so it reaches the PRs a person merges. Only the rules that automerge set it (docs/tooling/renovate.md).`,
+    );
+  const lockFiles = record(config.lockFileMaintenance);
+  if (lockFiles.automerge === true && !list(lockFiles.labels).includes(automergeLabel))
+    failures.push(
+      `renovate.jsonc lockFileMaintenance sets automerge, so its labels must include "${automergeLabel}" (docs/tooling/renovate.md).`,
+    );
+
+  rules.forEach((rule, index) => {
+    if (rule.automerge !== true) return;
+    const types = list(rule.matchUpdateTypes);
+    const managers = list(rule.matchManagers);
+    const requirements: [boolean, string][] = [
+      [
+        types.length > 0 && types.every((type) => automergedUpdateTypes.has(type)),
+        "matchUpdateTypes must list minor and patch only (docs/adr/0055).",
+      ],
+      [
+        managers.length > 0 && managers.every((manager) => automergedManagers.has(manager)),
+        "matchManagers must list npm only. A person merges GitHub Actions and mise tools (docs/adr/0055).",
+      ],
+      [
+        rule.matchCurrentVersion === notZeroVersion,
+        `matchCurrentVersion must be "${notZeroVersion}", so that a person merges a 0.x version (docs/adr/0055).`,
+      ],
+      [
+        list(rule.labels).includes(automergeLabel),
+        `its labels must include "${automergeLabel}" (docs/tooling/renovate.md).`,
+      ],
+    ];
+    for (const [holds, requirement] of requirements)
+      if (!holds) failures.push(`${named(rule, index)} sets automerge, so ${requirement}`);
+  });
+
+  const lastAutomerge = rules.findLastIndex((rule) => rule.automerge === true);
+  const stops = rules.flatMap((rule, index) =>
+    index > lastAutomerge && rule.automerge === false ? [{ rule, index }] : [],
+  );
+  const coversEverything = (rule: Rule): boolean =>
+    Object.keys(rule).every((key) => !key.startsWith("match") || nameMatchers.has(key));
+  for (const dependency of mergedByPerson)
+    if (
+      !stops.some(
+        ({ rule }) =>
+          coversEverything(rule) &&
+          [...list(rule.matchDepNames), ...list(rule.matchPackageNames)].includes(dependency),
+      )
+    )
+      failures.push(
+        `renovate.jsonc needs a rule after the last automerge rule that sets automerge to false for ${dependency} and matches it by name only, not by update type, manager or version. A person merges it (docs/adr/0055).`,
+      );
+  // `labels` is not merged between rules, so the label of the automerge rule stays on a PR unless a later rule empties it.
+  for (const { rule, index } of stops)
+    if (!Array.isArray(rule.labels) || rule.labels.length > 0)
+      failures.push(
+        `${named(rule, index)} sets automerge to false after the automerge rules, so it must set labels to [] and the PR does not carry "${automergeLabel}" (docs/tooling/renovate.md).`,
+      );
   return failures;
 }
 
