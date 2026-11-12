@@ -8,6 +8,7 @@
 - [エージェントの権限](agent-permissions.md)：エージェントの操作が止まった、確認を求められたとき、権限の規則や hook を足す、変える、緩めるとき、`--trust-all-tools` を付けるか迷うとき、worktree で Kiro を始めるとき
 - [secret scan](secret-scan.md)：betterleaks で止まったとき、誤検知を除外するとき、betterleaks を更新するとき
 - [Renovate](renovate.md)：Renovate の PR が出たとき、Renovate の設定を変えるとき、GitHub App をインストールするとき
+- [mise の道具を足すとき](mise-tools.md)：mise.toml に CLI ツールを足す、替えるとき、registry にない道具を http backend で入れるとき、Renovate が mise の道具の更新を出さないとき
 - [検証環境の流れ](verification-environment.md)：検証環境の workflow や CDK の stack を書く、変えるとき、検証環境が失敗したとき、本番の CD との違いを確かめるとき
 - [外部ドキュメントの読み方](external-docs.md)：外部の道具 (AWS、Hono、Vite+、Nx、mise、pnpm、lefthook、Oxlint、betterleaks、GitHub、Effect、Kiro、Codex) や仕様 (RFC、OpenTelemetry、MDN) の一次情報を調べるとき
 - [並行作業と worktree](worktrees.md)：別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree から PR を出すとき
