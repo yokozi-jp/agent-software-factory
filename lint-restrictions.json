@@ -293,11 +293,18 @@
     ],
     "message": "Import @opentelemetry/api only. The SDK, the exporters and the instrumentations are started in packages/telemetry/src/infrastructure/sdk.ts and the entry file of the app (docs/adr/0048).",
     "mentions": ["@opentelemetry/api"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は OpenTelemetry の SDK を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
           "apps/api/src/__fixtures__/otel-sdk.ts",
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/application/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/http/__fixtures__/otel-sdk.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@opentelemetry/sdk-",
@@ -307,7 +314,10 @@
       {
         "files": [
           "apps/api/src/__fixtures__/otel-sdk.ts",
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/application/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/http/__fixtures__/otel-sdk.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@opentelemetry/exporter-",
@@ -317,7 +327,10 @@
       {
         "files": [
           "apps/api/src/__fixtures__/otel-sdk.ts",
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/application/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/http/__fixtures__/otel-sdk.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@opentelemetry/instrumentation",
@@ -327,7 +340,10 @@
       {
         "files": [
           "apps/api/src/__fixtures__/otel-sdk.ts",
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/application/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/http/__fixtures__/otel-sdk.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@opentelemetry/resources\"",
@@ -337,7 +353,10 @@
       {
         "files": [
           "apps/api/src/__fixtures__/otel-sdk.ts",
-          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts"
+          "packages/module-fixtures/src/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/application/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/otel-sdk.ts",
+          "packages/module-fixtures/src/http/__fixtures__/otel-sdk.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@opentelemetry/auto-instrumentations",
@@ -380,11 +399,18 @@
     "values": ["pino"],
     "message": "Take a Logger from @agent-software-factory/logging as an argument. pino is created in packages/logging/src/infrastructure/node-logger.ts (docs/adr/0049).",
     "mentions": ["Logger"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は pino を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
           "apps/api/src/__fixtures__/pino.ts",
-          "packages/module-fixtures/src/__fixtures__/pino.ts"
+          "packages/module-fixtures/src/__fixtures__/pino.ts",
+          "packages/module-fixtures/src/application/__fixtures__/pino.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/pino.ts",
+          "packages/module-fixtures/src/http/__fixtures__/pino.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"pino\"",
@@ -398,11 +424,16 @@
     "values": ["console"],
     "message": "Do not write to the console. Take a Logger (@agent-software-factory/logging) as an argument and log through it (docs/adr/0049, docs/logging/format.md).",
     "mentions": ["Logger"],
+    "perLayer": true,
     "rows": [
       {
         "files": [
           "apps/api/src/__fixtures__/console.ts",
-          "packages/module-fixtures/src/__fixtures__/console.ts"
+          "packages/module-fixtures/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/domain/__fixtures__/console.ts",
+          "packages/module-fixtures/src/application/__fixtures__/console.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/console.ts",
+          "packages/module-fixtures/src/http/__fixtures__/console.ts"
         ],
         "rule": "no-restricted-globals",
         "text": "= console;",
@@ -412,7 +443,11 @@
       {
         "files": [
           "apps/api/src/__fixtures__/console.ts",
-          "packages/module-fixtures/src/__fixtures__/console.ts"
+          "packages/module-fixtures/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/domain/__fixtures__/console.ts",
+          "packages/module-fixtures/src/application/__fixtures__/console.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/console.ts",
+          "packages/module-fixtures/src/http/__fixtures__/console.ts"
         ],
         "rule": "no-restricted-properties",
         "text": "globalThis.console",
@@ -422,7 +457,11 @@
       {
         "files": [
           "apps/api/src/__fixtures__/console.ts",
-          "packages/module-fixtures/src/__fixtures__/console.ts"
+          "packages/module-fixtures/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/domain/__fixtures__/console.ts",
+          "packages/module-fixtures/src/application/__fixtures__/console.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/console.ts",
+          "packages/module-fixtures/src/http/__fixtures__/console.ts"
         ],
         "rule": "no-restricted-properties",
         "text": "globalThis[\"console\"]",
@@ -432,7 +471,11 @@
       {
         "files": [
           "apps/api/src/__fixtures__/console.ts",
-          "packages/module-fixtures/src/__fixtures__/console.ts"
+          "packages/module-fixtures/src/__fixtures__/console.ts",
+          "packages/module-fixtures/src/domain/__fixtures__/console.ts",
+          "packages/module-fixtures/src/application/__fixtures__/console.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/console.ts",
+          "packages/module-fixtures/src/http/__fixtures__/console.ts"
         ],
         "rule": "no-restricted-properties",
         "text": "{ console:",

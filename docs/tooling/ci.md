@@ -233,7 +233,9 @@ repo-policy は次の欠けを止めます。どれも、表の行か fixture �
 
 禁止を足すときは、欄を足し、`vite.config.ts` で欄の `values` と `message` から override を組み、止める場所と通す場所に `__fixtures__/<キー>.ts` を置いて表の行を足します。値を足すときは、その欄の止める行を持つファイルのそれぞれに、import を 1 行と表の行を足します。`layers` に層を足すと、`perLayer` の欄のそれぞれが、その層の fixture と行を求めます。置かない層は `withoutLayers` に、層の名前と理由を書きます (domain は [ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md) でライブラリの import をすべて止めるので、`outbox` など、domain に fixture を置かない禁止が domain を挙げます)。新しいドライバを足すと、`perDriver` の欄が、そのドライバの fixture と行を求めます。どの欄が `perLayer` と `perDriver` を持つかは、`lint-restrictions.json` を見ます。
 
-`perLayer` を持たない欄 (`console` や `pino` など、`packages/*/src/` の直下の 1 か所の fixture で示す禁止) は、層ごとには求めません。これらを層ごとに求めるかは [Issue #726](https://github.com/yokozi-jp/agent-software-factory/issues/726) で決めます。`apps/*`、`packages/shared-kernel`、`packages/db` のように、層とドライバの軸を持たない場所に override を足すときは、今も表に手で行を足します。足し忘れは機械では止まりません。
+`console`、`pino`、`otel-sdk` も `perLayer` の欄です ([Issue #726](https://github.com/yokozi-jp/agent-software-factory/issues/726))。層の override が値を渡し忘れると、その層だけ禁止が外れるためです。`pino` と `otel-sdk` は `moduleImports(層)` が `runtimeImports` を展開して渡し、`console` は domain の override が `no-restricted-globals` を設定し直します。`packages/*/src/` の直下の fixture だけでは、層で外れた禁止を見つけられません (`moduleImports` で http の層だけ `pino` を外しても、直下の fixture と `vp lint` は通りました)。`pino` と `otel-sdk` の domain は `withoutLayers` に挙げます。domain はライブラリの import をすべて止めるので、個別の禁止が外れても fixture は通り続け、検出力を示せないためです。
+
+`perLayer` を持たない欄は、層の軸がない禁止です。`session-setting` は、`apps/api` と `packages/shared-kernel` という場所で効く自作 plugin の規則で、層で分かれません。`db-imports` は `packages/db` の中だけで効き、`packages/module-fixtures` の層の軸がありません。`apps/*`、`packages/shared-kernel`、`packages/db` のように、層とドライバの軸を持たない場所に override を足すときは、今も表に手で行を足します。足し忘れは機械では止まりません。
 
 ## スクリプトのテスト
 
