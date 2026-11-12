@@ -157,9 +157,13 @@ export const factoryAgent: {
   },
 };
 
-// The Effect lint that every module runs (docs/adr/0028).
-export const lintEffect =
+// The Effect lint that every module runs (docs/adr/0028). It leaves the unused disable comments to `vp check`;
+// module-fixtures keeps the setting of oxlint.effect.json, which reports them (#517).
+export const lintEffectFixtures =
   "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure";
+export const lintEffect = `${lintEffectFixtures} --report-unused-disable-directives-severity off`;
+export const lintEffectShared =
+  "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src --report-unused-disable-directives-severity off";
 
 // The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
 // its src/index.ts. A module also runs the Effect lint.
@@ -213,7 +217,12 @@ export const packageJson = (name: string, fields: Record<string, unknown> = {}):
     scripts: {
       ...coverageScripts,
       check: "vp check",
-      ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
+      "lint-effect":
+        name === "shared-kernel"
+          ? lintEffectShared
+          : name === "module-fixtures"
+            ? lintEffectFixtures
+            : lintEffect,
     },
     nx: { name, ...(modules.includes(name) ? { tags: ["type:module"] } : {}) },
     ...fields,

@@ -49,12 +49,12 @@ afterEach(() => {
   box.remove();
 });
 
-const lint = (source: string) => {
+const lint = (source: string, ...flags: string[]) => {
   writeFileSync(join(project, "src/source.ts"), source);
   const result = runIn(
     project,
     process.execPath,
-    [effectTsgo, "oxlint", "--type-aware", "-c", "oxlint.json", "src"],
+    [effectTsgo, "oxlint", "--type-aware", "-c", "oxlint.json", ...flags, "src"],
     { timeout: 120_000 },
   );
   return { status: result.status, output: result.stdout + result.stderr };
@@ -105,5 +105,59 @@ describe("oxlint.effect.json と vite.config.ts の型つきの規則", () => {
     const typed = (rules: Record<string, unknown>) =>
       Object.fromEntries(Object.entries(rules).filter(([name]) => name.startsWith("typescript/")));
     expect(typed(parsed.rules)).toEqual(typed({ ...rootConfig.lint?.rules }));
+  });
+});
+
+// #517: lint-effect has only some of the rules, so the script of a module turns the report of unused disable comments
+// off (modulesLintEffect in repo-policy), and module-fixtures keeps the setting of the config (error), where the
+// disable comments prove that the effecttsgo rules fire. These tests run both with the real tool: the flag must
+// override the config, and must not let a violation through.
+describe("oxlint.effect.json と未使用の disable の報告", { timeout: 120_000 }, () => {
+  const off = ["--report-unused-disable-directives-severity", "off"];
+  // no-restricted-imports is a rule of vp check (vite.config.ts) that this config does not load.
+  const otherRule =
+    "// oxlint-disable-next-line no-restricted-imports -- a rule of vp check\nexport const value = 1;\n";
+  const floating =
+    'import { Effect } from "effect";\n\n// oxlint-disable-next-line effecttsgo/floating-effect -- fixture\nEffect.succeed(1);\n';
+
+  it("設定のままでは、この設定にない規則の disable を、未使用として報告して失敗すること", () => {
+    const result = lint(otherRule);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("Unused oxlint-disable directive");
+  });
+
+  it("flag で報告を切ると、この設定にない規則の disable を通すこと", () => {
+    const result = lint(otherRule, ...off);
+    expect(result.output).toContain("Found 0 warnings and 0 errors");
+    expect(result.status).toBe(0);
+  });
+
+  it("flag で報告を切っても、v3 の API と実行し忘れの Effect で失敗すること", () => {
+    const outdated = lint(
+      'import { Effect } from "effect";\n\nexport const caught = Effect.catchAll(Effect.fail(1), () => Effect.succeed(2));\n',
+      ...off,
+    );
+    expect(outdated.status).toBe(1);
+    expect(outdated.output).toContain("effecttsgo(outdated-api)");
+    const unrun = lint('import { Effect } from "effect";\n\nEffect.succeed(1);\n', ...off);
+    expect(unrun.status).toBe(1);
+    expect(unrun.output).toContain("effecttsgo(floating-effect)");
+  });
+
+  it("flag で報告を切っても、型つきの規則の違反で失敗すること", () => {
+    const result = lint("export const value = (JSON.parse('1') as number) + 1;\n", ...off);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("no-unsafe-type-assertion");
+  });
+
+  it("設定のままでは、規則が止める行の disable を通し、規則が外れた行の disable を失敗させること", () => {
+    const works = lint(floating);
+    expect(works.output).toContain("Found 0 warnings and 0 errors");
+    expect(works.status).toBe(0);
+    const outOfRule = lint(
+      'import { Effect } from "effect";\n\n// oxlint-disable-next-line effecttsgo/floating-effect -- fixture\nexport const ran = Effect.succeed(1);\n',
+    );
+    expect(outOfRule.status).toBe(1);
+    expect(outOfRule.output).toContain("Unused oxlint-disable directive");
   });
 });

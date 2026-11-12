@@ -16,7 +16,7 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run --coverage --exclude \"**/__fixtures__/**\" --exclude \"**/node_modules/**\"",
-    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src"
+    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src --report-unused-disable-directives-severity off"
   },
   "dependencies": {
     "@hono/zod-openapi": "catalog:",
