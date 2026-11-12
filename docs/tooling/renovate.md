@@ -12,7 +12,7 @@ PR は squash merge し、タイトルは `chore(deps): ...` です。必須チ�
 
 ## 自動で merge するもの
 
-GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterleaks`、`dependency-review`) と CodeQL が通ったら Renovate が merge します。PR の本文に `Automerge: Enabled` と出ます。リポジトリの設定「Allow auto-merge」が要ります ([GitHub リポジトリの設定](../repository/github-settings.md))。
+GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterleaks`、`dependency-review`) と、CodeQL の `code_scanning` の規則が通ったら Renovate が merge します (どちらも ruleset が強制します。[GitHub リポジトリの設定](../repository/github-settings.md))。PR の本文に `Automerge: Enabled` と出ます。リポジトリの設定「Allow auto-merge」が要ります ([GitHub リポジトリの設定](../repository/github-settings.md))。
 
 | 自動にする                      | 条件                                         |
 | ------------------------------- | -------------------------------------------- |
@@ -36,23 +36,29 @@ Action は CI の中で実行され、更新は `.github/workflows` を変えま
 - merge の直後に main の CI が落ちた。
 
 `rework` のラベルは、信号にしません。`rework` は人の指摘を受けて push したときに付けるラベルで、人が見ないまま merge した PR には付かないためです ([工場の成果の指標](../agents/factory-metrics.md)。信号にする範囲は判断です)。
-手戻りは次のコマンドで探します。
+自動 merge した PR のうち、手戻りになったものの番号を探すコマンドです。何も出なければ、手戻りはありません。
 
 ```sh
-gh pr list --state merged --label automerge --limit 100 --json number,title,mergedAt   # 自動 merge した PR
-gh pr list --state merged --search 'revert in:title' --json number,title,body --jq '.[] | select(.body | test("Reverts yokozi-jp/agent-software-factory#")) | {number, title}'   # revert の PR
-gh pr list --state merged --search '"直す PR" in:body' --json number,title                # 名指しした PR
-gh run list --workflow CI --branch main --status failure --limit 20                       # main の CI の失敗
+repo=yokozi-jp/agent-software-factory
+automerged=$(gh pr list --repo $repo --state merged --label automerge --limit 200 --json number --jq '.[].number' | sort)
+{
+  # 「直す PR: #」と revert の PR が、名指しする PR
+  gh pr list --repo $repo --state merged --limit 200 --json body --jq '.[].body | scan("(?:直す PR:|Reverts )[^\n]*")'
+  # 失敗した main の CI。題名は commit の題名で、末尾に (#PR の番号) が付く
+  gh run list --repo $repo --workflow CI --branch main --status failure --limit 50 --json displayTitle --jq '.[].displayTitle'
+} | grep -o '#[0-9]*' | tr -d '#' | sort -u | comm -12 - <(echo "$automerged")
 ```
+
+main の CI の失敗は、題名の PR のせいとは限りません。出てきた番号の PR を開き、失敗の原因を確かめます。
 
 手戻りが1件でも出たら、その種類の自動 merge を止め、人が見る状態に戻します。止めたあとは、原因を直してから再開するかを決めます。
 
 ### 自動 merge を止める
 
-「Allow auto-merge」を無効にしても止まりません。Renovate は GitHub の auto-merge が使えないと、自分で merge するためです ([platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))。止めるには、`renovate.jsonc` を直す PR を出します。
+止めるには、`renovate.jsonc` を直す PR を出します。「Allow auto-merge」を無効にする方法は、止まる保証がないので手順にしません。Renovate の文書は、プラットフォームの auto-merge が使えないと Renovate の automerge に戻ると書きます ([platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))。この設定の無効化が「使えない」に当たるかは確かめていません (推論)。
 
 - **一部だけ止める**: その規則の `automerge` を `false` にし、`labels` を `[]` にします。規則を消しても構いません。
-- **全部止める**: `packageRules` の最後に `{ "matchPackageNames": ["*"], "automerge": false, "labels": [] }` を足し、`lockFileMaintenance.automerge` を `false` にします ([Overriding global automerge](https://docs.renovatebot.com/key-concepts/automerge/))。
+- **全部止める**: `packageRules` の最後に `{ "matchPackageNames": ["*"], "automerge": false, "labels": [] }` を足し、`lockFileMaintenance` を `{ "automerge": false, "labels": [] }` にします。Renovate の文書の例は `matchPackageNames: ["*"]` と `automerge: false` だけです ([Overriding global automerge](https://docs.renovatebot.com/key-concepts/automerge/))。`labels` と `lockFileMaintenance` の部分は、Renovate 44.198.0 を `--platform=local` で動かし、すべての PR が `automerge: false` で `labels: []` になることを確かめました (2026-11-12)。
 
 `labels` は規則の間で合成されず、最後に一致した規則の値が使われます ([labels](https://docs.renovatebot.com/configuration-options/#labels))。人が merge する規則が `labels` を `[]` にしているのは、前の規則の `automerge` のラベルを、自動にしない PR に残さないためです。
 すでに GitHub の auto-merge が予約された PR は、PR の画面の「Disable auto-merge」か `gh pr merge --disable-auto <番号>` で外します (エージェントは `gh pr merge` を実行しません。[エージェントの権限](agent-permissions.md))。

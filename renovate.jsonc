@@ -16,8 +16,8 @@
   // can be traced to it (docs/tooling/renovate.md). `labels` is not merged between rules: the last matching rule
   // wins, so the rules for a person's PRs set `labels` to [].
   // To stop all automerge, add { "matchPackageNames": ["*"], "automerge": false, "labels": [] } as the last rule and set
-  // lockFileMaintenance.automerge to false (docs/tooling/renovate.md). Turning off "Allow auto-merge" does not
-  // stop it: Renovate then merges the PR itself.
+  // lockFileMaintenance to { "automerge": false, "labels": [] } (docs/tooling/renovate.md). Do not rely on turning
+  // off "Allow auto-merge": Renovate's platformAutomerge falls back to Renovate's own automerge.
   // tools/scripts/src/checks/repo-policy/tooling.ts keeps this bounded.
   "lockFileMaintenance": { "automerge": true, "labels": ["automerge"] },
   "packageRules": [

@@ -305,6 +305,7 @@ export const renovateConfig = {
       description: "Automerge minor and patch updates of npm packages",
       matchManagers: ["npm"],
       matchUpdateTypes: ["minor", "patch"],
+      matchCurrentVersion: "!/^0/",
       automerge: true,
       labels: ["automerge"],
     },
