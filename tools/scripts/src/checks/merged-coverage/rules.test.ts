@@ -6,6 +6,7 @@ import {
   parseFileCoverage,
   parsePolicy,
   projectOf,
+  scopeOf,
   summarize,
   violations,
   type FileCoverage,
@@ -272,5 +273,27 @@ describe("violations", () => {
       "apps/api/src/gone.ts: the exception names a file that does not exist. Remove its row.",
       "apps/api/src/app.test.ts: the exception names a file that is not measured anyway. Remove its row.",
     ]);
+  });
+});
+
+describe("scopeOf", () => {
+  it("reads the records of the affected projects and leaves out the others, in the order of the records", () => {
+    expect(
+      scopeOf(
+        ["apps/api", "apps/web", "packages/shared-kernel"],
+        ["packages/shared-kernel", "apps/api"],
+      ),
+    ).toEqual({ projects: ["apps/api", "packages/shared-kernel"], stale: ["apps/web"] });
+  });
+
+  it("ignores an affected project that has no record: that is for the caller to say", () => {
+    expect(scopeOf(["apps/api"], ["apps/api", "apps/web"])).toEqual({
+      projects: ["apps/api"],
+      stale: [],
+    });
+  });
+
+  it("reads nothing when no project is affected", () => {
+    expect(scopeOf(["apps/api"], [])).toEqual({ projects: [], stale: ["apps/api"] });
   });
 });
