@@ -19,8 +19,14 @@ const image = composeSchema.parse(parse(readFileSync(composeFile, "utf8"))).serv
 ].image;
 
 /**
+ * コンテナを使い回すか。既定は使い回さず、実行ごとに起動して終わりに止める (落ちても Ryuk が消す)。
+ * `HR_SYSTEM_FAKE_REUSE=1` のときだけ withReuse() で使い回し、起動を待たない。使い回したコンテナは
+ * 実行が終わっても残り、Ryuk も消さない (`docker rm -f` で消す)。
+ */
+export const reuseHrSystemFake = process.env["HR_SYSTEM_FAKE_REUSE"] === "1";
+
+/**
  * 人事システムのフェイク (WireMock) を起動する。
- * 手元は withReuse() で使い回し、毎回の起動を待たない。CI は毎回新しく起動する。
  * スタブは bind mount で読むので、使い回しても /__admin/reset で最新のファイルに戻る。
  */
 export function startHrSystemFake(): Promise<StartedTestContainer> {
@@ -28,5 +34,5 @@ export function startHrSystemFake(): Promise<StartedTestContainer> {
     .withExposedPorts(8080)
     .withBindMounts([{ source: fakeDirectory, target: "/home/wiremock", mode: "ro" }])
     .withWaitStrategy(Wait.forHttp("/__admin/health", 8080));
-  return (process.env["CI"] === undefined ? container.withReuse() : container).start();
+  return (reuseHrSystemFake ? container.withReuse() : container).start();
 }
