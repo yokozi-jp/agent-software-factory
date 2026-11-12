@@ -4,7 +4,7 @@
 title = "agent-software-factory"
 
 # Fail fast on older binaries. Must equal the betterleaks version in mise.toml (checked by tools/scripts/src/checks/repo-policy/cli.ts).
-betterleaksMinVersion = "1.10.0"
+betterleaksMinVersion = "1.10.1"
 
 [extend]
 useDefault = true
