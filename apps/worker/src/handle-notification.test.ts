@@ -148,6 +148,15 @@ describe("通知メールの処理 handleNotification", () => {
     expect(await ctx.processedCount()).toBe(0);
   });
 
+  it("テンプレートの値が足りないときの失敗に、足りない値の名前を全て入れること", async () => {
+    const { runtime } = ctx.worker();
+    const to = newRecipient();
+
+    await expect(
+      handle(runtime, notificationMessage({ to, template: "review_requested", values: {} })),
+    ).rejects.toThrow("The template review_requested needs the value applicantName, claimTitle");
+  });
+
   it("形の合わないメッセージは、送らず、行も残さず、失敗として返すこと", async () => {
     const { runtime } = ctx.worker();
     const to = newRecipient();

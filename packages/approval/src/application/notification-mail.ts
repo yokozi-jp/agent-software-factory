@@ -30,35 +30,51 @@ const formatBusinessInstant = (instant: Temporal.Instant): string =>
     hour12: false,
   });
 
-/** Reads one item of the message's `values`. The caller has checked that the template's items are there. */
-type TemplateValue = (name: string) => string;
+type Values = Readonly<Record<string, string>>;
+
+/** The items of `values` that the templates fill in. */
+type ValueName = "applicantName" | "claimTitle" | "reason";
+
+interface Content {
+  readonly subject: string;
+  readonly lines: readonly string[];
+}
+
+/** Whether `values` has every item of `names`. After it, the type says so: an item of `names` reads as a string. */
+const hasAll = <N extends ValueName>(
+  values: Values,
+  names: readonly N[],
+): values is Values & Readonly<Record<N, string>> =>
+  names.every((name) => values[name] !== undefined);
+
+/**
+ * A template: the items it fills in, and how it writes them. Given `values`, it returns the content, or the names of
+ * the items that are not there. The check and the read are one step, so `content` gets items that are known to be there
+ * and needs no fallback for a missing one.
+ */
+const template =
+  <N extends ValueName>(
+    names: readonly N[],
+    content: (value: Readonly<Record<N, string>>) => Content,
+  ) =>
+  (values: Values): Content | { readonly missing: readonly N[] } =>
+    hasAll(values, names)
+      ? content(values)
+      : { missing: names.filter((name) => values[name] === undefined) };
 
 const templates = {
-  review_requested: {
-    names: ["applicantName", "claimTitle"],
-    subject: (value) => `【承認依頼】${value("claimTitle")}`,
-    lines: (value) => [
-      `${value("applicantName")} さんから、次の申請の承認が依頼されています。`,
-      `申請: ${value("claimTitle")}`,
+  review_requested: template(["applicantName", "claimTitle"], (value) => ({
+    subject: `【承認依頼】${value.claimTitle}`,
+    lines: [
+      `${value.applicantName} さんから、次の申請の承認が依頼されています。`,
+      `申請: ${value.claimTitle}`,
     ],
-  },
-  sent_back: {
-    names: ["claimTitle", "reason"],
-    subject: (value) => `【差戻し】${value("claimTitle")}`,
-    lines: (value) => [
-      "次の申請が差し戻されました。",
-      `申請: ${value("claimTitle")}`,
-      `理由: ${value("reason")}`,
-    ],
-  },
-} satisfies Record<
-  NotificationRequested["template"],
-  {
-    readonly names: readonly string[];
-    readonly subject: (value: TemplateValue) => string;
-    readonly lines: (value: TemplateValue) => string[];
-  }
->;
+  })),
+  sent_back: template(["claimTitle", "reason"], (value) => ({
+    subject: `【差戻し】${value.claimTitle}`,
+    lines: ["次の申請が差し戻されました。", `申請: ${value.claimTitle}`, `理由: ${value.reason}`],
+  })),
+} satisfies Record<NotificationRequested["template"], (values: Values) => unknown>;
 
 /**
  * The mail for a notification message. Review requests and send-backs have one message shape and differ in the
@@ -70,21 +86,21 @@ export const renderNotificationMail = (
   message: NotificationRequested,
   now: Temporal.Instant,
 ): Effect.Effect<OutgoingMail> => {
-  const template = templates[message.template];
-  const missing = template.names.find((name) => message.values[name] === undefined);
-  if (missing !== undefined)
-    return Effect.die(new MissingTemplateValue({ template: message.template, name: missing }));
-  // `noUncheckedIndexedAccess` types a lookup as possibly missing; the check above made sure it is not.
-  const value: TemplateValue = (name) => message.values[name] ?? "";
+  const content = templates[message.template](message.values);
+  if ("missing" in content) {
+    return Effect.die(
+      new MissingTemplateValue({ template: message.template, name: content.missing.join(", ") }),
+    );
+  }
   const body = [
-    ...template.lines(value),
+    ...content.lines,
     "",
     `発生日時: ${formatBusinessInstant(Temporal.Instant.from(message.occurredAt))}`,
     `送信日時: ${formatBusinessInstant(now)}`,
   ];
   return Effect.succeed({
     to: message.to,
-    subject: template.subject(value),
+    subject: content.subject,
     text: body.join("\n"),
   });
 };
