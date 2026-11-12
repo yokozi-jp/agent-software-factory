@@ -17,16 +17,12 @@ import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
 import { methodNotAllowed } from "hono/method-not-allowed";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
 import { sessionGuard } from "./auth/session.ts";
-import {
-  accessLog,
-  logUnexpectedError,
-  requestContext,
-  type ApiVariables,
-} from "./http/logging.ts";
+import { accessLog, logUnexpectedError, type ApiVariables } from "./http/logging.ts";
 import { validationHook } from "./http/validation-hook.ts";
 import { runtimeWithoutDatabase, type ApiRuntime } from "./runtime.ts";
 import { csrfProtection } from "./security/csrf.ts";
@@ -129,7 +125,7 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
   // 今の span を読めるようにし、otel の後ろに置いて trace_id を付ける。
   base.use(contextStorage());
   base.use(tracingMiddleware);
-  base.use(requestContext());
+  base.use(requestId());
   base.use(accessLog(logger));
   base.use(
     secureHeaders({

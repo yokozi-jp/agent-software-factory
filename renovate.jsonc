@@ -104,8 +104,9 @@
     {
       // The Node.js runtime is set together with the Lambda runtime (ADR 0013). pnpm runs every check, so a person
       // reads its update (a judgement). The authentication libraries are read by a person even when the tests pass.
-      "description": "A person merges Node.js, pnpm and the authentication libraries",
-      "matchDepNames": ["node", "pnpm", "better-auth", "oidc-provider"],
+      // kiro-cli is the coding agent itself, and its release notes are read before it runs in CI (docs/adr/0057).
+      "description": "A person merges Node.js, pnpm, kiro-cli and the authentication libraries",
+      "matchDepNames": ["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"],
       "automerge": false,
     },
     {
@@ -115,6 +116,15 @@
       "automerge": false,
     },
   ],
+  // The official version list of Kiro CLI (docs/adr/0057). The official installer reads this index.json, so it is the
+  // registry URL. The mise manager skips `http:` tools (unsupported-datasource), hence the regex manager below.
+  "customDatasources": {
+    "kiro-cli": {
+      "defaultRegistryUrlTemplate": "https://prod.download.cli.kiro.dev/stable/index.json",
+      "format": "json",
+      "transformTemplates": ["{ \"releases\": versions.{ \"version\": version } }"],
+    },
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -133,6 +143,16 @@
       "packageNameTemplate": "betterleaks/betterleaks",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$",
+    },
+    {
+      "customType": "regex",
+      "description": "The version of the http:kiro-cli table in mise.toml",
+      "managerFilePatterns": ["/^mise\\.toml$/"],
+      "matchStrings": [
+        "\\[tools\\.\"http:kiro-cli\"\\]\\s*\\nversion\\s*=\\s*\"(?<currentValue>[^\"]+)\"",
+      ],
+      "depNameTemplate": "kiro-cli",
+      "datasourceTemplate": "custom.kiro-cli",
     },
   ],
 }

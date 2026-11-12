@@ -13,6 +13,7 @@ tags:
     pnpm,
     vite-plus,
     mise,
+    kiro,
     betterleaks,
     shellcheck,
     jactionlint,
@@ -124,6 +125,7 @@ curl -fsSL https://vite.plus | VP_NODE_MANAGER=yes VP_PM_MANAGER=yes bash
 
 - Vite+ (`vp`) は Node.js と pnpm を `.node-version` と `package.json` に合わせて用意するので、Node.js と pnpm を別に入れる必要はありません。
 - mise は、Git hook と CI で使う CLI ツール (`mise.toml` の `[tools]`) を、`mise.toml` と `mise.lock` で固定した版で入れます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。hook とスクリプトは `mise exec` で道具を呼ぶので、`mise activate` は要りません。
+- Kiro CLI (`kiro-cli`) も mise が固定した版で入れます ([ADR 0057](../adr/0057-kiro-cli-through-mise-http-backend.md))。4 の `mise install --locked` で入るので、公式のインストーラーは実行しません。固定した版で動かすには `mise exec -- kiro-cli chat` を実行します。初回は `mise exec -- kiro-cli login` でサインインします。ブラウザの redirect を扱えない環境では `--use-device-flow` を付けます。`~/.local/bin` に公式のインストーラーで入れた `kiro-cli` が既にあるマシンでは、`PATH` の順で、どちらが動くかが決まります。`mise exec -- which kiro-cli` で確かめます。
 - GitHub CLI (`gh`) は、Git の HTTPS の認証と、Issue や PR の操作に使います。
 
 途中で失敗すると、そこでブロックが止まります。原因を直してから、同じブロックをもう一度貼り付けます (何度実行しても同じ結果になります)。
