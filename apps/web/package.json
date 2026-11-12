@@ -8,7 +8,7 @@
     "build": "vp build",
     "preview": "vp preview",
     "test": "vp test run --coverage",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p ${STORYBOOK_PORT:-6006} --exact-port",
     "check": "vp check",
     "i18n-keys": "cd ../../packages/i18n && i18next-cli status && i18next-cli status --unused"
   },
