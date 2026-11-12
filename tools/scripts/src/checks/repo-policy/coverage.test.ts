@@ -10,7 +10,7 @@ import {
   packageJson,
 } from "./fixtures/passing-repo.ts";
 
-describe("ADR 0053: each project with code writes a coverage record", () => {
+describe("ADR 0053: コードのある各 project が coverage の記録を書くこと", () => {
   const violations = failuresOf(projectsWriteCoverage);
   const manifest = (fields: Record<string, unknown>) => ({
     "packages/claim/package.json": packageJson("claim", fields),
@@ -22,11 +22,11 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
   const configMessage = (path: string, project: string) =>
     `${path} must import recordCoverage or recordOnlyConfig from vitest-coverage.ts and use it as the default export or in \`coverage\`, so that ${project} writes its record (docs/adr/0053).`;
 
-  it("passes a repository where every project with code writes its record", () => {
+  it("コードのあるすべての project が記録を書くリポジトリを通すこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
-  describe("the test script", () => {
+  describe("test の script", () => {
     it.each([
       "vp test run --coverage",
       'vp test run --coverage --exclude "**/__fixtures__/**"',
@@ -38,7 +38,7 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       "vp test run --coverage --exclude=--no-coverage",
       "vp test run --coverage --no-coverage-reporter",
       "vp test run --coverage --coverage.enabled=falsey",
-    ])("passes %j", (script) => {
+    ])("%j を通すこと", (script) => {
       expect(violations(repo(manifest({ scripts: { test: script } })))).toEqual([]);
     });
 
@@ -64,14 +64,14 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       "vp test run --coverage --no-coverage",
       "vp test run --coverage --coverage=false",
       "vp test run --coverage --coverage.enabled=false",
-    ])("names a test script of %j", (script) => {
+    ])("%j の test の script を挙げること", (script) => {
       expect(violations(repo(manifest({ scripts: { test: script } })))).toEqual([
         testScriptMessage("packages/claim/package.json", "packages/claim"),
       ]);
     });
 
     it.each([{ scripts: {} }, { scripts: { test: 1 } }, { scripts: undefined }])(
-      "names a package.json with %j",
+      "%j の package.json を挙げること",
       (fields) => {
         expect(violations(repo(manifest(fields)))).toEqual([
           testScriptMessage("packages/claim/package.json", "packages/claim"),
@@ -80,14 +80,14 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
     );
   });
 
-  describe("the provider", () => {
-    it("names a package that does not have @vitest/coverage-v8 in devDependencies", () => {
+  describe("provider", () => {
+    it("devDependencies に @vitest/coverage-v8 のない package を挙げること", () => {
       expect(violations(repo(manifest({ devDependencies: {} })))).toEqual([
         providerMessage("packages/claim/package.json"),
       ]);
     });
 
-    it("does not take @vitest/coverage-v8 in dependencies for the dev dependency", () => {
+    it("dependencies の @vitest/coverage-v8 を dev 依存と取り違えないこと", () => {
       expect(
         violations(
           repo(manifest({ devDependencies: undefined, dependencies: coverageDevDependencies })),
@@ -115,11 +115,11 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       `import { ownFilesMinimum, recordCoverage } from "../../vitest-coverage.ts";\nexport default { test: { coverage: { ...recordCoverage(), thresholds: ownFilesMinimum } } };`,
       `import {\n  recordCoverage,\n} from '../../vitest-coverage.ts';\nexport default { test: { coverage: { ...recordCoverage() } } };`,
       `import { recordOnlyConfig } from "../../../vitest-coverage.ts";\nexport default recordOnlyConfig();`,
-    ])("passes %j", (source) => {
+    ])("%j を通すこと", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([]);
     });
 
-    it("names a package without a vite.config.ts", () => {
+    it("vite.config.ts のない package を挙げること", () => {
       expect(violations(repo(withConfig(undefined)))).toEqual([
         configMessage("packages/claim/vite.config.ts", "packages/claim"),
       ]);
@@ -141,14 +141,14 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       `${importOf("recordOnlyConfig")}export default recordOnlyConfig;`,
       `${importOf("recordCoverage")}recordCoverage();\nexport default { test: { coverage: { enabled: false } } };`,
       `${importOf("recordCoverage")}const options = recordCoverage();\nexport default {};`,
-    ])("names a vite.config.ts of %j", (source) => {
+    ])("%j の vite.config.ts を挙げること", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([
         configMessage("packages/claim/vite.config.ts", "packages/claim"),
       ]);
     });
   });
 
-  describe("which projects it reads", () => {
+  describe("読む project", () => {
     const bare = (project: string) => ({
       [`${project}/package.json`]: json({ name: project }),
       [`${project}/src/index.ts`]: "export {};\n",
@@ -158,7 +158,7 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       ["packages/ui", "packages/ui/src/components/button.tsx"],
       ["apps/web", "apps/web/src/main.tsx"],
       ["packages/other/events", "packages/other/events/src/schema.ts"],
-    ])("reads %s through %s", (project, file) => {
+    ])("%s を %s 経由で読むこと", (project, file) => {
       expect(
         violations(repo({ [`${project}/package.json`]: json({ name: project }), [file]: "x" })),
       ).toEqual([
@@ -168,7 +168,7 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       ]);
     });
 
-    it("names the projects in order, each with its own failures", () => {
+    it("project を順に、それぞれの失敗とともに挙げること", () => {
       expect(
         violations(
           repo({
@@ -201,17 +201,17 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       "packages/bare/test/a.ts",
       "packages/bare/lib/a.ts",
       "packages/bare/events/test/a.ts",
-    ])("does not read a project whose only file is %s", (file) => {
+    ])("唯一のファイルが %s である project を読まないこと", (file) => {
       expect(
         violations(repo({ "packages/bare/package.json": json({ name: "bare" }), [file]: "x" })),
       ).toEqual([]);
     });
 
-    it("does not read a directory with no package.json", () => {
+    it("package.json のない directory を読まないこと", () => {
       expect(violations(repo({ "packages/unnamed/src/index.ts": "export {};\n" }))).toEqual([]);
     });
 
-    it("does not read the code outside apps and packages", () => {
+    it("apps と packages の外のコードを読まないこと", () => {
       expect(
         violations(
           repo({
@@ -224,7 +224,7 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
       ).toEqual([]);
     });
 
-    it("takes the project of a file in a src/events directory to be the package, not its events package", () => {
+    it("src/events directory のファイルの project を、その events package ではなく package とすること", () => {
       expect(
         violations(
           repo({

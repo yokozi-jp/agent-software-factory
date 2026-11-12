@@ -26,7 +26,7 @@ describe("generatedWriteRefusal", () => {
       "pnpm exec nx db-types db",
     ],
     ["packages/closing/src/infrastructure/db.gen.ts", "(docs/adr/0025)", "packages/db/migrations/"],
-  ])("refuses %s and says why and how to regenerate it", (path, why, how) => {
+  ])("%s を拒否し、理由と生成し直す方法を述べること", (path, why, how) => {
     const message = generatedWriteRefusal("fs_write", path);
     expect(message).toContain(`block-generated-writes: refused fs_write on ${path}. `);
     expect(message).toContain(why);
@@ -36,7 +36,7 @@ describe("generatedWriteRefusal", () => {
     );
   });
 
-  it("writes the whole message for one file", () => {
+  it("1 つのファイルにメッセージ全体を書くこと", () => {
     expect(generatedWriteRefusal("delete_file", "pnpm-lock.yaml")).toBe(
       "block-generated-writes: refused delete_file on pnpm-lock.yaml. pnpm writes it. Do not edit it by hand; change package.json or pnpm-workspace.yaml and run `pnpm install` (or `pnpm add`). If the user really wants a hand edit, they start Kiro with KIRO_ALLOW_GENERATED_WRITE=1.",
     );
@@ -60,7 +60,7 @@ describe("generatedWriteRefusal", () => {
     "packages/claim/src/infrastructure/db.gen.ts.bak",
     "apps/api/src/infrastructure/db.gen.ts",
     "vendor/packages/claim/src/infrastructure/db.gen.ts",
-  ])("allows %s", (path) => {
+  ])("%s を許可すること", (path) => {
     expect(generatedWriteRefusal("fs_write", path)).toBeUndefined();
   });
 });
@@ -88,44 +88,44 @@ describe("writeTarget", () => {
     ["fs_append", { path: "mise.lock", text: "x" }, "mise.lock"],
     ["str_replace", { path: "README.md", oldStr: "a", newStr: "b" }, "README.md"],
     ["delete_file", { targetFile: "skills-lock.json", explanation: "x" }, "skills-lock.json"],
-  ])("reads the path of %s relative to the cwd", (tool, input, rel) => {
+  ])("%s の path を cwd からの相対として読むこと", (tool, input, rel) => {
     expect(writeTarget(tool, input, root, root)).toBe(rel);
   });
 
-  it("reads an absolute path", () => {
+  it("絶対 path を読むこと", () => {
     const path = join(root, "apps/web/src/routeTree.gen.ts");
     expect(writeTarget("fs_write", { path }, root, root)).toBe("apps/web/src/routeTree.gen.ts");
   });
 
-  it("resolves . and .. in the existing directories", () => {
+  it("存在するディレクトリの . と .. を解決すること", () => {
     const input = { path: "./apps/api/../web/src/routeTree.gen.ts" };
     expect(writeTarget("fs_write", input, root, root)).toBe("apps/web/src/routeTree.gen.ts");
   });
 
-  it("resolves a path relative to a cwd below the root", () => {
+  it("ルートより下の cwd からの相対 path を解決すること", () => {
     const input = { path: "src/routeTree.gen.ts" };
     expect(writeTarget("fs_write", input, join(root, "apps/web"), root)).toBe(
       "apps/web/src/routeTree.gen.ts",
     );
   });
 
-  it("follows a symlink to its target (.kiro/skills/<name> to .agents/skills/<name>)", () => {
+  it("symlink をその先にたどること (.kiro/skills/<name> から .agents/skills/<name>)", () => {
     const input = { path: ".kiro/skills/tdd/SKILL.md" };
     expect(writeTarget("str_replace", input, root, root)).toBe(".agents/skills/tdd/SKILL.md");
   });
 
-  it("keeps the directories that do not exist yet as written", () => {
+  it("まだ存在しないディレクトリを、書いたまま残すこと", () => {
     const input = { path: ".agents/skills/tdd/new/deeper/notes.md" };
     expect(writeTarget("fs_write", input, root, root)).toBe(
       ".agents/skills/tdd/new/deeper/notes.md",
     );
   });
 
-  it("is the root itself for the root", () => {
+  it("ルートのときはルートそのものであること", () => {
     expect(writeTarget("delete_file", { targetFile: "." }, root, root)).toBe("");
   });
 
-  it("checks a file whose name starts with two dots", () => {
+  it("名前が 2 つのドットで始まるファイルを検査すること", () => {
     expect(writeTarget("fs_write", { path: "..pnpm-lock.yaml" }, root, root)).toBe(
       "..pnpm-lock.yaml",
     );
@@ -140,7 +140,7 @@ describe("writeTarget", () => {
     ["delete_file with path instead of targetFile", "delete_file", { path: "pnpm-lock.yaml" }],
     ["an input that is not an object", "fs_write", "pnpm-lock.yaml"],
     ["an empty path", "fs_write", { path: "" }],
-  ])("is undefined for %s", (_, tool, input) => {
+  ])("%s のとき undefined であること", (_, tool, input) => {
     expect(writeTarget(tool, input, root, root)).toBeUndefined();
   });
 });

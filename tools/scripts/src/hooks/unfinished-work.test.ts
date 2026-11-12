@@ -36,15 +36,15 @@ beforeEach(() => {
 });
 
 describe("unfinishedWork", () => {
-  it("finds nothing in a clean tree that has pushed everything", () => {
+  it("すべてを push したきれいなツリーでは、何も見つけないこと", () => {
     expect(unfinishedWork(git)).toBeUndefined();
   });
 
-  it("finds nothing outside a git repository", () => {
+  it("git リポジトリの外では、何も見つけないこと", () => {
     expect(unfinishedWork(() => "")).toBeUndefined();
   });
 
-  it("finds a staged file, an unstaged change and an untracked file", () => {
+  it("ステージしたファイル、ステージしていない変更、追跡されていないファイルを見つけること", () => {
     writeFileSync(join(clone, "staged.txt"), "a\n");
     gitIn(clone, ["add", "staged.txt"]);
     writeFileSync(join(clone, "untracked.txt"), "b\n");
@@ -54,13 +54,13 @@ describe("unfinishedWork", () => {
     });
   });
 
-  it("counts the commits that no remote branch has", () => {
+  it("どの remote ブランチにもない commit を数えること", () => {
     gitIn(clone, ["commit", "-q", "--allow-empty", "-m", "two"]);
     gitIn(clone, ["commit", "-q", "--allow-empty", "-m", "three"]);
     expect(unfinishedWork(git)).toMatchObject({ changes: [], unpushed: 2 });
   });
 
-  it("counts no unpushed commit when there is no remote, or when git cannot count them", () => {
+  it("remote がないとき、または git が数えられないとき、未 push の commit を数えないこと", () => {
     const answers: Record<string, string> = {
       "rev-parse --is-inside-work-tree": "true\n",
       "status --porcelain": "?? a.txt\n",
@@ -81,12 +81,12 @@ describe("unfinishedWork", () => {
     "status --porcelain": "?? a.txt\n",
   };
 
-  it("finds nothing when git says it is not inside a work tree, whatever else it answers", () => {
+  it("git が作業ツリーの中ではないと言ったとき、ほかの答えにかかわらず何も見つけないこと", () => {
     const git = answering({ ...inTree, "rev-parse --is-inside-work-tree": "false\n" });
     expect(unfinishedWork(git)).toBeUndefined();
   });
 
-  it("counts no unpushed commit when the repository has no remote, whatever rev-list says", () => {
+  it("rev-list が何と答えても、リポジトリに remote がないとき、未 push の commit を数えないこと", () => {
     const rev = { "rev-list --count HEAD --not --remotes": "3\n" };
     expect(unfinishedWork(answering({ ...inTree, ...rev, remote: "" }))).toMatchObject({
       unpushed: 0,
@@ -99,7 +99,7 @@ describe("unfinishedWork", () => {
     });
   });
 
-  it("counts no unpushed commit when git answers with something that is not a number", () => {
+  it("git が数ではない答えを返したとき、未 push の commit を数えないこと", () => {
     const git = answering({
       ...inTree,
       remote: "origin\n",
@@ -108,7 +108,7 @@ describe("unfinishedWork", () => {
     expect(unfinishedWork(git)).toMatchObject({ unpushed: 0 });
   });
 
-  it("builds the key from HEAD and the changes, one to a line", () => {
+  it("HEAD と変更から、1 行に 1 つずつ key を作ること", () => {
     const git = answering({
       ...inTree,
       "status --porcelain": "?? a.txt\n M b.txt\n",
@@ -117,7 +117,7 @@ describe("unfinishedWork", () => {
     expect(unfinishedWork(git)?.key).toBe("abc123\n?? a.txt\n M b.txt");
   });
 
-  it("gives another key when the state changes", () => {
+  it("状態が変わったとき、別の key にすること", () => {
     writeFileSync(join(clone, "a.txt"), "a\n");
     const first = unfinishedWork(git)?.key;
     writeFileSync(join(clone, "b.txt"), "b\n");
@@ -126,7 +126,7 @@ describe("unfinishedWork", () => {
 });
 
 describe("unfinishedWorkWarning", () => {
-  it("names the tree, the first 10 changes and the unpushed commits", () => {
+  it("ツリー、最初の 10 件の変更、未 push の commit を挙げること", () => {
     const changes = Array.from({ length: 12 }, (_, i) => `?? f${i}.txt`);
     const text = unfinishedWorkWarning({ changes, unpushed: 3, key: "k" }, "/tree");
     expect(text).toContain("this working tree (/tree) has unfinished work");
@@ -141,7 +141,7 @@ describe("unfinishedWorkWarning", () => {
     "then commit or push, or say in your report what is left and why. Do not report a commit or a push you have not seen succeed.",
   ];
 
-  it("leaves out the part that does not apply, and ends with the advice and a newline", () => {
+  it("当てはまらない部分を省き、助言と改行で終えること", () => {
     expect(unfinishedWorkWarning({ changes: [], unpushed: 1, key: "k" }, "/tree")).toBe(
       [
         "WARNING: this working tree (/tree) has unfinished work.",

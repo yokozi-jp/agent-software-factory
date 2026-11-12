@@ -41,19 +41,19 @@ afterAll(() => {
 });
 
 describe("agent-probe", () => {
-  it("prints the calls of the newest session of the workspace", () => {
+  it("ワークスペースの最新セッションの呼び出しを出力すること", () => {
     const result = probe("/work");
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("allow        execute_bash new command\n");
   });
 
-  it("exits 1 when no session has the workspace", () => {
+  it("ワークスペースを持つセッションがないとき 1 で終了すること", () => {
     const result = probe("/nowhere");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("agent-probe: no Kiro session for /nowhere");
   });
 
-  it.each([[[]], [["/a", "/b"]]])("exits 2 for the arguments %j", (args) => {
+  it.each([[[]], [["/a", "/b"]]])("引数 %j のとき 2 で終了すること", (args) => {
     const result = probe(...args);
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("usage:");

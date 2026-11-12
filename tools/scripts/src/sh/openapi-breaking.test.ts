@@ -34,7 +34,7 @@ afterAll(() => {
 });
 
 describe("openapi-breaking.sh", () => {
-  it("compares the spec on origin/main with the working tree, failing on ERR only", () => {
+  it("origin/main の spec と作業ツリーを比べ、ERR のときだけ失敗すること", () => {
     const result = compare([]);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("the report");
@@ -43,12 +43,12 @@ describe("openapi-breaking.sh", () => {
     );
   });
 
-  it("takes the base and the spec as arguments", () => {
+  it("base と spec を引数に取ること", () => {
     expect(compare(["main", "other.json"]).status).toBe(0);
     expect(calls()).toBe("exec -- oasdiff breaking main:other.json other.json --fail-on ERR");
   });
 
-  it("fails with the two-step way out when oasdiff reports a breaking change", () => {
+  it("oasdiff が破壊的変更を報告したとき、2 段階で抜ける方法を示して失敗すること", () => {
     const result = compare([], 1);
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("the report");
@@ -56,13 +56,13 @@ describe("openapi-breaking.sh", () => {
     expect(result.stderr).toContain("docs/web-api/versioning.md");
   });
 
-  it("writes the report to the job summary when there is one", () => {
+  it("レポートがあるとき、job の要約に書くこと", () => {
     writeFileSync(summary, "");
     expect(compare([], 0, { GITHUB_STEP_SUMMARY: summary }).status).toBe(0);
     expect(readFileSync(summary, "utf8")).toContain("the report");
   });
 
-  it("fails, instead of skipping the check, without mise", () => {
+  it("mise がないとき、検査を飛ばさずに失敗すること", () => {
     const path = onlyCommands(box.root, "no-mise", ["git", "sh", "mktemp", "rm", "cat"]);
     const result = runIn(repo, "sh", [script], { env: { PATH: path } });
     expect(result.status).toBe(1);

@@ -52,7 +52,7 @@ afterAll(() => {
 });
 
 describe("shellcheck.sh", () => {
-  it("lints the tracked and staged *.sh files with the pinned shellcheck, except .agents/", () => {
+  it("追跡された *.sh とステージした *.sh を、固定した shellcheck で lint し、.agents/ を除くこと", () => {
     expect(lint(repo).status).toBe(0);
     expect(readFileSync(record, "utf8").trimEnd().split("\n")).toEqual([
       "exec",
@@ -65,16 +65,16 @@ describe("shellcheck.sh", () => {
     ]);
   });
 
-  it("fails when shellcheck finds something", () => {
+  it("shellcheck が何かを見つけたとき失敗すること", () => {
     expect(lint(repo, 1).status).not.toBe(0);
   });
 
-  it("lists the same files from a subdirectory", () => {
+  it("サブディレクトリから同じファイルを一覧にすること", () => {
     expect(lint(join(repo, "sub")).status).toBe(0);
     expect(readFileSync(record, "utf8")).toContain("a.sh\n");
   });
 
-  it("fails, instead of skipping the check, without mise", () => {
+  it("mise がないとき、検査を飛ばさずに失敗すること", () => {
     const path = onlyCommands(box.root, "no-mise", ["git", "sh", "xargs"]);
     const result = runIn(repo, "sh", [script], { env: { PATH: path } });
     expect(result.status).toBe(1);

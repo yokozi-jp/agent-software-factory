@@ -87,7 +87,7 @@ afterAll(() => {
 });
 
 describe("recordCoverage", { timeout: 120_000 }, () => {
-  it("records the files of another project that the tests ran, and the own files that no test loaded", () => {
+  it("テストが実行した別の project のファイルと、どのテストも読み込まなかった自分のファイルを記録すること", () => {
     const { status, files } = record("apps/a");
 
     expect(status).toBe(0);
@@ -97,7 +97,7 @@ describe("recordCoverage", { timeout: 120_000 }, () => {
     expect(files["apps/a/src/unloaded.ts"]).toBe(0);
   });
 
-  it("holds nothing else: no test file, and no file of a project that is outside the root and not run", () => {
+  it("ほかには何も持たないこと: テストファイルも、ルートの外で実行されない project のファイルも持たない", () => {
     const { files } = record("apps/a");
 
     expect(Object.keys(files).toSorted()).toEqual([
@@ -109,7 +109,7 @@ describe("recordCoverage", { timeout: 120_000 }, () => {
 });
 
 describe("recordOnlyConfig", { timeout: 120_000 }, () => {
-  it("writes a record at 0% for a project without tests, and passes", () => {
+  it("テストのない project に 0% の記録を書いて通すこと", () => {
     const { status, files } = record("packages/b");
 
     expect(status).toBe(0);

@@ -49,7 +49,7 @@ describe("parseTarget", () => {
     [["range", "base", "head"], { name: "range", base: "base", head: "head" }],
     [["all"], { name: "all" }],
     [["worktree"], { name: "worktree" }],
-  ])("reads %j", (argv, target) => {
+  ])("%j を読むこと", (argv, target) => {
     expect(parseTarget(argv)).toEqual(target);
   });
 
@@ -63,13 +63,13 @@ describe("parseTarget", () => {
     [["range", "base"]],
     [["range", "base", "head", "x"]],
     [["--config", "other.toml"]],
-  ])("rejects %j, so that only the scan target can be chosen", (argv) => {
+  ])("検査の対象だけを選べるように、%j を拒否すること", (argv) => {
     expect(parseTarget(argv)).toBeUndefined();
   });
 });
 
 describe("usage", () => {
-  it("lists every target and what runs it", () => {
+  it("すべての対象と、それを実行するものを一覧にすること", () => {
     expect(usage).toBe(
       [
         "Usage:",
@@ -85,7 +85,7 @@ describe("usage", () => {
 });
 
 describe("betterleaks", () => {
-  it("runs the pinned betterleaks with the fixed flags, the mode options, and the current directory", () => {
+  it("固定した betterleaks を、固定の flag、モードの option、現在のディレクトリで実行すること", () => {
     expect(betterleaks("git", ["--staged"])).toEqual([
       "exec",
       "--",
@@ -115,7 +115,7 @@ describe("betterleaks", () => {
 });
 
 describe("pushedRefs", () => {
-  it("scans the commits of a new branch that no remote-tracking branch has", () => {
+  it("remote-tracking ブランチのない新しいブランチの commit を検査すること", () => {
     expect(pushedRefs(`refs/heads/x ${a} refs/heads/x ${zero}\n`)).toEqual([
       {
         kind: "scan",
@@ -126,7 +126,7 @@ describe("pushedRefs", () => {
     ]);
   });
 
-  it("scans the commits after the remote's commit on an existing branch", () => {
+  it("既存のブランチでは、remote の commit より後の commit を検査すること", () => {
     expect(pushedRefs(`refs/heads/main ${b} refs/heads/main ${a}\n`)).toEqual([
       {
         kind: "scan",
@@ -138,7 +138,7 @@ describe("pushedRefs", () => {
     ]);
   });
 
-  it("skips a deleted branch, and reads every line", () => {
+  it("削除されたブランチを読み飛ばし、すべての行を読むこと", () => {
     expect(
       pushedRefs(`(delete) ${zero} refs/heads/x ${a}\nrefs/heads/y ${b} refs/heads/z ${zero}\n`),
     ).toEqual([
@@ -152,14 +152,14 @@ describe("pushedRefs", () => {
     ]);
   });
 
-  it("knows the all-zero object name of a SHA-256 repository", () => {
+  it("SHA-256 のリポジトリの、すべて 0 の object 名を知っていること", () => {
     const zero64 = "0".repeat(64);
     expect(pushedRefs(`(delete) ${zero64} refs/heads/x ${zero64}`)).toEqual([
       { kind: "deleted", remoteRef: "refs/heads/x" },
     ]);
   });
 
-  it("takes an object name that only starts or ends with zeros for a commit", () => {
+  it("0 で始まる、または終わるだけの object 名を commit と取ること", () => {
     const starts = `${"0".repeat(39)}1`;
     const ends = `1${"0".repeat(39)}`;
     expect(pushedRefs(`r ${starts} r ${ends}\n`)).toEqual([
@@ -167,7 +167,7 @@ describe("pushedRefs", () => {
     ]);
   });
 
-  it("ignores empty lines, nothing on stdin, and lines that are not four fields", () => {
+  it("空行、stdin に何もないこと、項目が 4 つでない行を無視すること", () => {
     expect(pushedRefs("")).toEqual([]);
     expect(pushedRefs("\n\n")).toEqual([]);
     expect(
@@ -177,7 +177,7 @@ describe("pushedRefs", () => {
 });
 
 describe("plan", () => {
-  it("scans the staged files, and skips when nothing is staged", () => {
+  it("ステージしたファイルを検査し、何もステージされていないときは読み飛ばすこと", () => {
     expect(plan({ name: "staged" }, [], fakeRepo({ staged: 2 }).repo)).toEqual([
       {
         kind: "scan",
@@ -191,7 +191,7 @@ describe("plan", () => {
     ]);
   });
 
-  it("scans the commits of a range, and skips an empty range", () => {
+  it("範囲の commit を検査し、空の範囲を読み飛ばすこと", () => {
     const range = { name: "range", base: "x", head: "y" } as const;
     expect(plan(range, [], fakeRepo({ counts: { "x..y": 3 } }).repo)).toEqual([
       {
@@ -206,7 +206,7 @@ describe("plan", () => {
     ]);
   });
 
-  it("scans the full history and the working tree", () => {
+  it("履歴全体と作業ツリーを検査すること", () => {
     expect(plan({ name: "all" }, [], fakeRepo({ counts: { "--all": 5 } }).repo)).toEqual([
       {
         kind: "scan",
@@ -227,7 +227,7 @@ describe("plan", () => {
     expect(asked).toEqual([]);
   });
 
-  it("pre-push takes each pushed ref in turn: deleted, new, not in this clone, empty, and new commits", () => {
+  it("pre-push は push する ref を順に取ること: 削除、新規、この clone にない、空、新しい commit", () => {
     const refs = pushedRefs(
       [
         `(delete) ${zero} refs/heads/gone ${a}`,
@@ -277,13 +277,13 @@ describe("plan", () => {
     ]);
   });
 
-  it("pre-push with nothing on stdin has nothing to do", () => {
+  it("stdin に何もない pre-push は、することがないこと", () => {
     expect(plan({ name: "pre-push" }, [], fakeRepo({}).repo)).toEqual([]);
   });
 });
 
 describe("exitStatus", () => {
-  it("passes the one scan's exit code on, and takes a scan that did not start as a failure", () => {
+  it("1 つの検査の終了コードをそのまま返し、始まらなかった検査を失敗と取ること", () => {
     expect(exitStatus({ name: "all" }, [0])).toBe(0);
     expect(exitStatus({ name: "range", base: "x", head: "y" }, [1])).toBe(1);
     expect(exitStatus({ name: "staged" }, [7])).toBe(7);
@@ -291,7 +291,7 @@ describe("exitStatus", () => {
     expect(exitStatus({ name: "all" }, [])).toBe(0);
   });
 
-  it("fails a push with 1 when any ref fails, and passes one with nothing to scan", () => {
+  it("どれかの ref が失敗したとき push を 1 で失敗させ、検査するものがないときは通すこと", () => {
     const push = { name: "pre-push" } as const;
     expect(exitStatus(push, [])).toBe(0);
     expect(exitStatus(push, [0, 0])).toBe(0);
@@ -302,13 +302,13 @@ describe("exitStatus", () => {
 });
 
 describe("gitFailed", () => {
-  it("passes git's own code on, so that a git error is not taken for a finding (1)", () => {
+  it("git のエラーを検出 (1) と取り違えないよう、git 自身のコードをそのまま返すこと", () => {
     expect(gitFailed(128)).toBe(128);
     expect(gitFailed(129)).toBe(129);
     expect(gitFailed(2)).toBe(2);
   });
 
-  it("is 128, git's code for a fatal error, when git gave none or gave 0 or 1", () => {
+  it("git がコードを返さない、または 0 か 1 を返したとき、致命的エラーを表す git のコード 128 になること", () => {
     expect(gitFailed(undefined)).toBe(128);
     expect(gitFailed(null)).toBe(128);
     expect(gitFailed(0)).toBe(128);

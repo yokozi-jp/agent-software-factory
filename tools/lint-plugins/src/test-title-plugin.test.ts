@@ -15,6 +15,11 @@ const tester = new RuleTester({ languageOptions: { parserOptions: { lang: "ts" }
 tester.run("japanese-title", japaneseTitle, {
   valid: [
     'describe("ログイン", () => {});',
+    // describe の名前は、コードの名前 1 つ (空白なし) ならそのまま書ける。
+    'describe("startPostgres", () => {});',
+    'describe("vite.config.ts", () => {});',
+    'describe("checkNumbers()", () => {});',
+    'describe.each([1, 2])("parseIssues", () => {});',
     'it("セッションが始まること", () => {});',
     'test("ok を返すこと", () => {});',
     // 英数字が混ざっていてもよい。日本語が1文字でもあればよい。
@@ -26,13 +31,30 @@ tester.run("japanese-title", japaneseTitle, {
     'items.it("english", () => {});',
     'expect("english").toBe("english");',
     'items.it.each([1, 2])("english", () => {});',
+    'build(1)("english", () => {});',
+    'it["each"]([1, 2])("english", () => {});',
+    'items.map([1, 2])("english", () => {});',
     // 名前が文字列でないものは、検査できないので通す。
     "it(title, () => {});",
     "it();",
   ],
   invalid: [
     {
-      code: 'describe("login", () => {});',
+      code: 'describe("log in", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    // it と test の名前は、コードの名前 1 つでも日本語が要る。
+    {
+      code: 'it("startPostgres", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'test("startPostgres", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    // 空白を含む名前は、コードの名前 1 つではない。
+    {
+      code: 'describe("startPostgres starts", () => {});',
       errors: [{ messageId: "notJapanese" }],
     },
     {

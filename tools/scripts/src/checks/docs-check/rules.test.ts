@@ -13,7 +13,7 @@ const frontmatter = (...lines: string[]): string =>
   ["---", ...lines, "---", "", "# t", ""].join("\n");
 
 describe("frontmatterProblems", () => {
-  it("names an unquoted value with a colon and a space, which YAML reads as a new key", () => {
+  it("YAML が新しいキーと読む、コロンと空白のある引用符なしの値を挙げること", () => {
     expect(
       frontmatterProblems(
         docs({ "a/b.md": frontmatter("type: Reference", "description: javascript: x") }),
@@ -23,13 +23,13 @@ describe("frontmatterProblems", () => {
     ]);
   });
 
-  it("names an unquoted value with a space and #, which YAML reads as a comment", () => {
+  it("YAML がコメントと読む、空白と # のある引用符なしの値を挙げること", () => {
     expect(frontmatterProblems(docs({ "b.md": frontmatter("title: C #1") }))).toHaveLength(1);
     expect(frontmatterProblems(docs({ "b.md": frontmatter("title:  a:\tb") }))).toHaveLength(1);
     expect(frontmatterProblems(docs({ "b.md": frontmatter("title: a\t#b") }))).toHaveLength(1);
   });
 
-  it("passes quoted, flow, block and other YAML values", () => {
+  it("引用符つき、フロー、ブロックなどの YAML の値を通すこと", () => {
     const values = [
       'description: "javascript: x"',
       "description: 'javascript: x'",
@@ -49,7 +49,7 @@ describe("frontmatterProblems", () => {
     expect(frontmatterProblems(docs({ "a.md": frontmatter(...values) }))).toEqual([]);
   });
 
-  it("reads only top-level keys in the frontmatter", () => {
+  it("frontmatter の最上位のキーだけを読むこと", () => {
     const text = [
       "---",
       "sources:",
@@ -64,7 +64,7 @@ describe("frontmatterProblems", () => {
     expect(frontmatterProblems(docs({ "a.md": text }))).toEqual([]);
   });
 
-  it("accepts keys with underscores, digits and hyphens", () => {
+  it("アンダースコア、数字、ハイフンを含むキーを受け付けること", () => {
     expect(
       frontmatterProblems(docs({ "a.md": frontmatter("_okf-version2: a: b", "Key: a: b") })),
     ).toEqual([
@@ -73,24 +73,24 @@ describe("frontmatterProblems", () => {
     ]);
   });
 
-  it("reads to the end of a frontmatter that does not close, and nothing after an empty one", () => {
+  it("閉じていない frontmatter は最後まで読み、空の frontmatter の後は読まないこと", () => {
     expect(frontmatterProblems(docs({ "a.md": "---\ndescription: a: b" }))).toEqual([
       "a.md:2: the value of description has a colon followed by a space, or a space and #, and is not quoted; wrap it in double quotes",
     ]);
     expect(frontmatterProblems(docs({ "a.md": "---\n---\ndescription: a: b\n" }))).toEqual([]);
   });
 
-  it("does not read a line that ends in a carriage return, as before", () => {
+  it("復帰文字で終わる行を、従来どおり読まないこと", () => {
     expect(frontmatterProblems(docs({ "a.md": "---\ndescription: a: b\r\n---\n" }))).toEqual([]);
   });
 
-  it("skips a file without frontmatter", () => {
+  it("frontmatter のないファイルを読み飛ばすこと", () => {
     expect(frontmatterProblems(docs({ "a.md": "# a\ndescription: a: b\n" }))).toEqual([]);
   });
 });
 
 describe("statsProblems", () => {
-  it("reports broken links inside docs/ and orphans from iwe stats", () => {
+  it("iwe stats から docs/ 内のリンク切れと孤立を報告すること", () => {
     const stats = JSON.stringify({
       brokenLinks: [
         { sourceKey: "tooling/a", targetKey: "tooling/missing" },
@@ -104,7 +104,7 @@ describe("statsProblems", () => {
     ]);
   });
 
-  it("passes when iwe reports neither", () => {
+  it("iwe がどちらも報告しないとき通すこと", () => {
     expect(statsProblems("{}")).toEqual([]);
     expect(statsProblems("null")).toEqual([]);
     expect(statsProblems("[]")).toEqual([]);
@@ -114,7 +114,7 @@ describe("statsProblems", () => {
 });
 
 describe("indexProblems", () => {
-  it("needs a note after a full-width colon on every link line of an index.md", () => {
+  it("index.md のすべてのリンク行に、全角コロンの後の説明が要ること", () => {
     const index = [
       "# Tooling",
       "",
@@ -136,26 +136,26 @@ describe("indexProblems", () => {
     ]);
   });
 
-  it("reads only lines that start with the bullet, and not a line that ends in a carriage return", () => {
+  it("箇条書きで始まる行だけを読み、復帰文字で終わる行を読まないこと", () => {
     const index = "text - [Title](a.md)\n- [Title](a.md)\r\n- [Long title](b.md)\n";
     expect(indexProblems(docs({ "index.md": index }))).toEqual([
       'index.md:3: link line needs a "：when to read" note: - [Long title](b.md)',
     ]);
   });
 
-  it("checks an indented link line", () => {
+  it("インデントされたリンク行を検査すること", () => {
     expect(indexProblems(docs({ "index.md": "  -  [A](a.md)\n" }))).toEqual([
       'index.md:1: link line needs a "：when to read" note: -  [A](a.md)',
     ]);
   });
 
-  it("reads only files named index.md", () => {
+  it("index.md という名前のファイルだけを読むこと", () => {
     expect(indexProblems(docs({ "my-index.md": "- [A](a.md)\n" }))).toEqual([]);
   });
 });
 
 describe("extensionProblems", () => {
-  it("needs the .md of a link to a document, with or without a heading", () => {
+  it("文書へのリンクには、見出しの有無にかかわらず .md が要ること", () => {
     const text = 'See [b](b) and [c](c#見出し).\nAnd [d](dir/d "title").\n';
     expect(extensionProblems(docs({ "tooling/a.md": text }))).toEqual([
       "tooling/a.md:1: link to b needs the file extension (.md)",
@@ -164,7 +164,7 @@ describe("extensionProblems", () => {
     ]);
   });
 
-  it("passes links with an extension, URLs, anchors and autolinks", () => {
+  it("拡張子つきのリンク、URL、アンカー、自動リンクを通すこと", () => {
     const text = [
       "[a](a.md) [b](../b.md#x) [i](img.PNG) [u](https://example.com/x) [m](mailto:a@b)",
       "[h](#heading) [x](<a>) [s](Http://x) [p](a+b.c-d:x)",
@@ -173,7 +173,7 @@ describe("extensionProblems", () => {
     expect(extensionProblems(docs({ "a.md": text }))).toEqual([]);
   });
 
-  it("reads the target as the pattern did: code joined into a link, a title after spaces, a dot in a folder", () => {
+  it("パターンと同じく対象を読むこと: リンクに続くコード、空白の後の title、フォルダの中のドット", () => {
     const text = '[a]`x`(b)\n[d](dir/d  "title")\n[p](dir.v2/page)\n';
     expect(extensionProblems(docs({ "a.md": text }))).toEqual([
       "a.md:1: link to b needs the file extension (.md)",
@@ -182,13 +182,13 @@ describe("extensionProblems", () => {
     ]);
   });
 
-  it("toggles code only on a line that starts with a fence", () => {
+  it("フェンスで始まる行でだけ、コードを切り替えること", () => {
     expect(extensionProblems(docs({ "a.md": "Use ``` here\n[d](d)\n" }))).toEqual([
       "a.md:2: link to d needs the file extension (.md)",
     ]);
   });
 
-  it("skips code: fenced blocks and inline code", () => {
+  it("コードを読み飛ばすこと: フェンスのブロックとインラインコード", () => {
     const text = [
       "Use `[b](b)` like this:",
       "",
@@ -208,14 +208,14 @@ describe("extensionProblems", () => {
 });
 
 describe("lengthWarnings", () => {
-  it("warns about a document over 250 lines, and not at 250", () => {
+  it("250 行を超える文書を警告し、250 行ちょうどでは警告しないこと", () => {
     const lines = (n: number): string => "x\n".repeat(n);
     expect(lengthWarnings(docs({ "a.md": lines(250), "b.md": lines(251) }))).toEqual([
       "b.md is 251 lines (over 250): check it answers one question (its description); split by responsibility, not to hit a line count",
     ]);
   });
 
-  it("counts newlines, as wc -l does", () => {
+  it("wc -l と同じく、改行を数えること", () => {
     expect(lengthWarnings(docs({ "a.md": `${"x\n".repeat(250)}tail` }))).toEqual([]);
   });
 });
@@ -241,19 +241,19 @@ describe("stagedProblems", () => {
     "index.md": "x",
   });
 
-  it("needs the about.md of an imported area staged with a change to that area", () => {
+  it("取り込んだ領域の変更には、その領域の about.md のステージが要ること", () => {
     expect(stagedProblems(tree, ["guide/page.md"])).toEqual([
       "guide/page.md is in an imported guideline. Record the change under 原文からの変更点 in guide/about.md and stage it (AGENTS.md).",
     ]);
     expect(stagedProblems(tree, ["guide/gone.md", "guide/page.md"])).toHaveLength(2);
   });
 
-  it("passes once about.md is staged too", () => {
+  it("about.md もステージすれば通ること", () => {
     expect(stagedProblems(tree, ["guide/page.md", "guide/about.md"])).toEqual([]);
     expect(stagedProblems(tree, ["guide/about.md"])).toEqual([]);
   });
 
-  it("passes changes outside imported areas", () => {
+  it("取り込んだ領域の外の変更を通すこと", () => {
     expect(
       stagedProblems(tree, ["tooling/a.md", "plain/x.md", "index.md", "none/x.md", "other.md"]),
     ).toEqual([]);
