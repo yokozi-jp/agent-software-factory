@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { preview } from "./rules.ts";
+import { isBranchListLine, preview } from "./rules.ts";
 
 // One trace-level "branches" entry, in the shape `renovate --platform=local` logs it (LOG_FORMAT=json).
 const branches = (value: unknown): string => JSON.stringify({ msg: "branches", branches: value });
@@ -27,6 +27,7 @@ describe("preview", () => {
       [
         "renovate/betterleaks",
         "  chore(deps): update betterleaks to v1.9.0",
+        "  automerge: no",
         "    betterleaks: 1.8.0 -> 1.9.0 (minor)",
         "",
         "1 branch(es)",
@@ -48,7 +49,7 @@ describe("preview", () => {
       "null",
       "[1]",
     ].join("\n");
-    expect(preview(log)).toBe("a\n  A\nb\n  B\n\n2 branch(es)\n");
+    expect(preview(log)).toBe("a\n  A\n  automerge: no\nb\n  B\n  automerge: no\n\n2 branch(es)\n");
   });
 
   it("falls back to the current and new values, then to ?, and lists a dependency once", () => {
@@ -64,6 +65,7 @@ describe("preview", () => {
       [
         "renovate/node",
         "  Update node",
+        "  automerge: no",
         "    node: 24 -> 26 (major)",
         "    x: ? -> ? (pin)",
         "",
@@ -93,12 +95,12 @@ describe("preview", () => {
         ],
       },
     ]);
-    expect(preview(log)).toBe("7\n  t\n    d: 1 -> 2 (major)\n\n1 branch(es)\n");
+    expect(preview(log)).toBe("7\n  t\n  automerge: no\n    d: 1 -> 2 (major)\n\n1 branch(es)\n");
   });
 
   it("lists no upgrades when they are not a list", () => {
     const log = branches([{ branchName: "b", prTitle: "t", upgrades: { depName: "d" } }]);
-    expect(preview(log)).toBe("b\n  t\n\n1 branch(es)\n");
+    expect(preview(log)).toBe("b\n  t\n  automerge: no\n\n1 branch(es)\n");
   });
 
   it("prefers the version to the value", () => {
@@ -119,6 +121,36 @@ describe("preview", () => {
       },
     ]);
     expect(preview(log)).toContain("    d: 1.0.0 -> 2.0.0 (major)\n");
+  });
+
+  it("shows whether Renovate merges the PR itself, and the release age it waits for", () => {
+    const upgrade = (minimumReleaseAge?: string) => ({ depName: "d", minimumReleaseAge });
+    const log = branches([
+      { branchName: "a", prTitle: "A", automerge: true, upgrades: [upgrade("3 days")] },
+      { branchName: "b", prTitle: "B", automerge: true, upgrades: [upgrade()] },
+      { branchName: "c", prTitle: "C", automerge: "true", upgrades: [upgrade("3 days")] },
+      {
+        branchName: "d",
+        prTitle: "D",
+        automerge: true,
+        upgrades: [upgrade("3 days"), upgrade("7 days"), upgrade("3 days")],
+      },
+    ]);
+    const lines = preview(log)
+      ?.split("\n")
+      .filter((line) => line.includes("automerge"));
+    expect(lines).toEqual([
+      "  automerge: yes (minimumReleaseAge 3 days)",
+      "  automerge: yes",
+      "  automerge: no",
+      "  automerge: yes (minimumReleaseAge 3 days, 7 days)",
+    ]);
+  });
+
+  it("recognises the line that the branch list is logged as, and no other", () => {
+    expect(isBranchListLine(branches([]))).toBe(true);
+    expect(isBranchListLine(JSON.stringify({ msg: "other", branches: [] }))).toBe(false);
+    expect(isBranchListLine("not json")).toBe(false);
   });
 
   it("returns undefined when the log has no branch list", () => {

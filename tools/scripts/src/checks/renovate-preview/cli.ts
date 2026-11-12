@@ -2,15 +2,21 @@
 //   node tools/scripts/src/checks/renovate-preview/cli.ts <renovate log file>
 // The log is the JSON log of `renovate --platform=local` at trace level. Exit 2 without a file, 1 when the
 // log has no branch list. What is listed is in rules.ts.
-import { readFileSync } from "node:fs";
-import { preview } from "./rules.ts";
+// The trace log of this repository passes 500 MB, more than a JavaScript string holds, so the file is read line by
+// line and only the lines of the branch list are kept.
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
+import { isBranchListLine, preview } from "./rules.ts";
 
 const logFile = process.argv[2];
 if (logFile === undefined) {
   console.error("usage: node tools/scripts/src/checks/renovate-preview/cli.ts <renovate log file>");
   process.exit(2);
 }
-const output = preview(readFileSync(logFile, "utf8"));
+const lines: string[] = [];
+for await (const line of createInterface({ input: createReadStream(logFile), crlfDelay: Infinity }))
+  if (isBranchListLine(line)) lines.push(line);
+const output = preview(lines.join("\n"));
 if (output === undefined) {
   console.error("renovate-preview: no branch list in the log. Did the run reach the branch step?");
   process.exit(1);

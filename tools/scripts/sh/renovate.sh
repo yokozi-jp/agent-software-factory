@@ -33,7 +33,7 @@ case "${1:-}" in
     # is not guaranteed to reach the child process in POSIX sh, so export.)
     export LOG_LEVEL=trace LOG_FORMAT=json
     if ! dlx renovate --platform=local >"$log" 2>&1; then
-      tail -n 20 "$log" >&2
+      tail -n 20 "$log" | cut -c1-300 >&2
       echo "renovate: Renovate failed (see above)." >&2
       exit 1
     fi
