@@ -1,6 +1,6 @@
 import type { TestProject } from "vite-plus/test/node";
 
-import { startHrSystemFake } from "./containers.ts";
+import { startHrSystemFake, stopHrSystemFake } from "./containers.ts";
 
 declare module "vite-plus/test" {
   export interface ProvidedContext {
@@ -14,8 +14,5 @@ export default async function setup(project: TestProject) {
   const fake = await startHrSystemFake();
   project.provide("hrSystemFakeOrigin", `http://${fake.getHost()}:${fake.getMappedPort(8080)}`);
 
-  return async () => {
-    // 使い回したコンテナは止めない (次の実行が使う)。CI は毎回新しく起動したので止める。
-    if (process.env["CI"] !== undefined) await fake.stop();
-  };
+  return () => stopHrSystemFake(fake);
 }
