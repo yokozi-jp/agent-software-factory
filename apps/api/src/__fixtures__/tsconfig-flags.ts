@@ -54,9 +54,9 @@ export function unusedLabel(): void {
   label: for (;;) break;
 }
 
-// @ts-expect-error -- fixture: verbatimModuleSyntax: ErrorHandler is a type and must be imported with `type`
-import { ErrorHandler } from "hono";
-export type Handler = ErrorHandler;
+// @ts-expect-error -- fixture: verbatimModuleSyntax: Logger is a type and must be imported with `type`
+import { Logger } from "@agent-software-factory/logging";
+export type Handler = Logger;
 
 // @ts-expect-error -- fixture: erasableSyntaxOnly: an enum has a runtime meaning that type stripping would lose
 export enum Direction {
