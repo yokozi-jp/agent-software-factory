@@ -6,6 +6,8 @@ import {
   apiDependencies,
   eventsFiles,
   lintEffect,
+  lintEffectFixtures,
+  lintEffectShared,
   packageFiles,
   packageJson,
   passingRepo,
@@ -14,6 +16,7 @@ import {
 import { apiManifest, failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   dbDependencies,
+  effecttsgoRulesStayInFixtures,
   eventsPackages,
   modulePackageNames,
   modulesAreRegistered,
@@ -204,7 +207,7 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
       violations(
         repo({
           "packages/module-fixtures/package.json": packageJson("module-fixtures", {
-            scripts: { "lint-effect": lintEffect },
+            scripts: { "lint-effect": lintEffectFixtures },
           }),
         }),
       ),
@@ -224,7 +227,7 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
         }),
       ),
     ).toEqual([
-      `packages/module-fixtures/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`,
+      `packages/module-fixtures/package.json must have the lint-effect script "${lintEffectFixtures}", so that effect-tsgo checks the module (docs/adr/0028).`,
     ]);
   });
 
@@ -846,6 +849,14 @@ describe("ADR 0048: packages/telemetry の構成", () => {
     ]);
   });
 
+  it("drivers.json の entry が読めない driver の exports を、問わないこと: 原因は drivers.json の形の検査が述べる", () => {
+    const broken = {
+      ...packageFiles("telemetry", { exports: { ".": "./src/index.ts" } }, "driver"),
+      "drivers.json": JSON.stringify({ telemetry: { runtime: "edge" } }),
+    };
+    expect(violations(repo(broken))).toEqual([]);
+  });
+
   it.each([
     ["only the entry for any code", { ".": "./src/index.ts" }],
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
@@ -1068,8 +1079,9 @@ describe("ADR 0026: package.json が宣言しない package を、何も解決�
 
 describe("ADR 0028: すべてのモジュールが Effect の lint を実行すること", () => {
   const violations = failuresOf(modulesLintEffect);
-  const missing = (name: string) =>
-    `packages/${name}/package.json must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`;
+  const missing = (name: string, expected: string = lintEffect) =>
+    `packages/${name}/package.json must have the lint-effect script "${expected}", so that effect-tsgo checks the module (docs/adr/0028).`;
+  const sharedMissing = `packages/shared-kernel/package.json must have the lint-effect script "${lintEffectShared}", so that effect-tsgo checks it and leaves the unused disable comments to \`vp check\` (docs/adr/0028).`;
 
   it.each([
     ["no lint-effect script", {}],
@@ -1080,6 +1092,20 @@ describe("ADR 0028: すべてのモジュールが Effect の lint を実行す�
     [
       "a lint-effect script of another config",
       { "lint-effect": lintEffect.replace("oxlint.effect", "oxlint") },
+    ],
+    // #517: the module turns the report of unused disable comments off. A script that reports them fails `lint-effect`
+    // on a disable comment of a rule that only `vp check` has.
+    [
+      "a lint-effect script that reports the unused disable comments",
+      { "lint-effect": lintEffectFixtures },
+    ],
+    [
+      "a lint-effect script that only warns of the unused disable comments",
+      { "lint-effect": lintEffect.replace("severity off", "severity warn") },
+    ],
+    [
+      "a lint-effect script that reports them with the flag of another name",
+      { "lint-effect": lintEffect.replace("-severity off", " off") },
     ],
   ])("%s のあるモジュールを拒否すること", (_, scripts) => {
     expect(
@@ -1093,17 +1119,139 @@ describe("ADR 0028: すべてのモジュールが Effect の lint を実行す�
     ).toEqual([missing("claim")]);
   });
 
-  it("lint-effect の script のないモジュールを拒否し、shared には求めないこと", () => {
+  it("lint-effect の script のないモジュールを拒否すること", () => {
     expect(
       violations(
         repo({
           "packages/claim/package.json": packageJson("claim", { scripts: { check: "vp check" } }),
-          "packages/shared-kernel/package.json": packageJson("shared-kernel", {
-            scripts: { check: "vp check", "lint-effect": "x" },
-          }),
         }),
       ),
     ).toEqual([missing("claim")]);
+  });
+
+  // module-fixtures keeps the report of unused disable comments: they prove that the effecttsgo rules fire.
+  it("module-fixtures の lint-effect が未使用の disable を報告しないと拒否すること", () => {
+    expect(
+      violations(
+        repo({
+          "packages/module-fixtures/package.json": packageJson("module-fixtures", {
+            scripts: { check: "vp check", "lint-effect": lintEffect },
+          }),
+        }),
+      ),
+    ).toEqual([missing("module-fixtures", lintEffectFixtures)]);
+  });
+
+  it.each([
+    ["no lint-effect script", {}],
+    [
+      "a lint-effect script that reports the unused disable comments",
+      {
+        "lint-effect": lintEffectShared.replace(
+          " --report-unused-disable-directives-severity off",
+          "",
+        ),
+      },
+    ],
+    ["a lint-effect script of the layers of a module", { "lint-effect": lintEffect }],
+  ])("%s のある shared-kernel を拒否すること", (_, scripts) => {
+    expect(
+      violations(
+        repo({
+          "packages/shared-kernel/package.json": packageJson("shared-kernel", {
+            scripts: { check: "vp check", ...scripts },
+          }),
+        }),
+      ),
+    ).toEqual([sharedMissing]);
+  });
+
+  it("shared-kernel のない tree には shared-kernel の script を求めないこと", () => {
+    expect(
+      violations(repo({ "packages/shared-kernel/package.json": undefined })).filter((failure) =>
+        failure.includes("lint-effect"),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("#517: effecttsgo の規則の名前が module-fixtures の fixture にだけあること", () => {
+  const violations = failuresOf(effecttsgoRulesStayInFixtures);
+  const message = (path: string) =>
+    `${path} names an effecttsgo rule. \`vp check\` does not load the plugin, so a disable comment of the rule is reported as unused: fix the code that the rule stops, and keep the comments in packages/module-fixtures/src/*/__fixtures__/ (docs/tooling/effect-lint.md, #517).`;
+
+  it.each([
+    [
+      "a line comment",
+      "// oxlint-disable-next-line effecttsgo/floating-effect -- x\nEffect.succeed(1);\n",
+    ],
+    [
+      "a trailing comment",
+      "Effect.succeed(1); // oxlint-disable-line effecttsgo/floating-effect\n",
+    ],
+    ["a block comment", "/* oxlint-disable effecttsgo/outdated-api */\n"],
+    ["the eslint form", "// eslint-disable-next-line effecttsgo/floating-effect\n"],
+    [
+      "a block comment of several lines",
+      "/*\n oxlint-disable\n effecttsgo/unstable-api-usage\n*/\n",
+    ],
+    [
+      "a list of rules",
+      "// oxlint-disable-next-line no-restricted-imports, effecttsgo/floating-effect\n",
+    ],
+  ])("%s の disable を application のコードで拒否すること", (_, source) => {
+    const path = "packages/claim/src/application/use-case.ts";
+    expect(violations(repo({ [path]: source })).filter((m) => m === message(path))).toEqual([
+      message(path),
+    ]);
+  });
+
+  it.each([
+    "packages/claim/src/infrastructure/store.ts",
+    "packages/claim/src/application/use-case.test.ts",
+    "packages/shared-kernel/src/clock.ts",
+    "apps/api/src/app.ts",
+    "packages/claim/src/application/view.tsx",
+    "packages/claim/src/application/view.mts",
+    // oxlint.effect.json lints effect-tsgo.ts of any package, and the module's script turns the report off.
+    "packages/claim/src/application/__fixtures__/effect-tsgo.ts",
+    "apps/api/src/__fixtures__/effect-tsgo.ts",
+  ])("%s の disable を拒否すること", (path) => {
+    expect(
+      violations(repo({ [path]: "// oxlint-disable-next-line effecttsgo/floating-effect\n" })),
+    ).toEqual([message(path)]);
+  });
+
+  it("module-fixtures の __fixtures__/ の disable を通し、effecttsgo と書かない disable を通すこと", () => {
+    expect(
+      violations(
+        repo({
+          "packages/module-fixtures/src/application/__fixtures__/effect-tsgo.ts":
+            "// oxlint-disable-next-line effecttsgo/floating-effect -- fixture\n",
+          "packages/claim/src/application/use-case.ts":
+            "// oxlint-disable-next-line no-restricted-imports -- reason\n",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("module-fixtures の __fixtures__/ の外の disable を拒否すること", () => {
+    const path = "packages/module-fixtures/src/application/use-case.ts";
+    expect(
+      violations(repo({ [path]: "// oxlint-disable-next-line effecttsgo/floating-effect\n" })),
+    ).toEqual([message(path)]);
+  });
+
+  it("規則名のある disable と、ソースでないファイルの名前を通すこと", () => {
+    expect(
+      violations(
+        repo({
+          "packages/claim/src/application/use-case.ts":
+            "// oxlint-disable-next-line no-restricted-imports -- reason\n/* oxlint-disable no-console */\n",
+          "packages/claim/src/application/notes.md": "effecttsgo/floating-effect\n",
+        }),
+      ),
+    ).toEqual([]);
   });
 });
 

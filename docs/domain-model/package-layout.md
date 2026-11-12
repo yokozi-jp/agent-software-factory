@@ -10,7 +10,7 @@ tags: [domain-model, convention, packages, drivers, clean-architecture, repo-pol
 `packages/` の package は、**モジュール**か**ドライバ**のどちらかの型に揃えます。型から外れた置き方は、repo-policy か lint が止めます。決定と理由は [ADR 0054](../adr/0054-drivers-with-domain-and-infrastructure-layers.md) にあります。この文書は、レビュアーとエージェントが参照する正本です。
 
 - **モジュール**: 業務の機能を持つ package (claim、approval、closing)。`type:module` の tag を持つ。
-- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package (db、hr-system、i18n、logging、telemetry)。クリーンアーキテクチャの Frameworks & Drivers の輪にあたる。`type:driver` の tag を持ち、`drivers.ts` の `driverShapes` にも名前が要る (片方だけだと repo-policy が止める)。
+- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package (db、hr-system、i18n、logging、telemetry)。クリーンアーキテクチャの Frameworks & Drivers の輪にあたる。`type:driver` の tag を持ち、ルートの `drivers.json` にも名前が要る (片方だけだと repo-policy が止める)。
 - どちらでもない package は shared-kernel (`type:shared-kernel`。モジュールが共有する業務のコード)、ui (`type:ui`。shadcn が配置を決める)、module-fixtures (`type:fixtures`。lint の fixture) で、この規約の対象外です。役割の tag は [module ではない package を足す手順](add-package.md) にあります。
 
 ## 依存の向き
@@ -32,7 +32,7 @@ apps/*  (ManagedRuntime と Layer を組み立てる)
 | C2  | 層は内向きにだけ依存する                                                                                                                                                           | lint (`layers`)                                                                         |
 | C3  | `domain` は外部ライブラリ、Node.js の組み込み、`throw`、`Date`、`Math.random` を使わない                                                                                           | lint (`layers`、`domain` の純粋さ)                                                      |
 | C4  | 層のコードは `testing/` を import しない (テストは import できる)                                                                                                                  | lint (禁止の表 `testing-import`)                                                        |
-| C5  | 道具が決める置き場は動かさず、`drivers.ts` の `driverShapes` に書く                                                                                                                | repo-policy                                                                             |
+| C5  | 道具が決める置き場は動かさず、`drivers.json` に書く                                                                                                                                | repo-policy                                                                             |
 | M1  | モジュールの `src/` に置けるのは、`index.ts`、層のディレクトリ、`__fixtures__/` だけ                                                                                               | repo-policy                                                                             |
 | M2  | Effect は `application` と `infrastructure` だけで使い、安定した API だけを使う                                                                                                    | lint、effect-tsgo ([ADR 0028](../adr/0028-effect-in-application-and-infrastructure.md)) |
 | M3  | ドライバを import できるのはモジュールの `infrastructure` だけ。`application` と `http` は止める                                                                                   | lint (禁止の表 `driver-in-module`)                                                      |
@@ -110,4 +110,4 @@ db に `domain/` はありません。カタログの検査は `Queryable` を�
 
 - **M5**: Port が `application` にあり、業務の言葉で書かれているか。ドライバの型 (`Employee` のような外部システムの形) を Port の公開の型に使っていないか。`Layer` が `infrastructure` にあるか。
 - **D7**: ドライバの非同期の関数が `signal` を受け取り、外部ライブラリ (ky の `signal`、pg の問い合わせ) に渡しているか。中断のテストがあるか (hr-system の `client.test.ts` が例)。
-- **ドライバの追加**: 新しいドライバは、`drivers.ts` の `driverShapes` と `modules.ts` の `ownExports` に足したか。[module ではない package を足す手順](add-package.md) に従ったか。
+- **ドライバの追加**: 新しいドライバは、`drivers.json` に足したか。[module ではない package を足す手順](add-package.md) に従ったか。

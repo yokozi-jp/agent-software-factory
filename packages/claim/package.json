@@ -8,7 +8,7 @@
   },
   "scripts": {
     "check": "vp check",
-    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure",
+    "lint-effect": "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure --report-unused-disable-directives-severity off",
     "test": "vp test run --coverage"
   },
   "dependencies": {

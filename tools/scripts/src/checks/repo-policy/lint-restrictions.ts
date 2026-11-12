@@ -222,7 +222,7 @@ function hasName(text: string, value: string): boolean {
 interface Words {
   // The name of a place, for the sentence that asks for an excuse.
   readonly nameOf: string;
-  // Where a place is named (vite.config.ts, driverShapes), and the fixture that its row is for.
+  // Where a place is named (vite.config.ts, drivers.json), and the fixture that its row is for.
   readonly named: (name: string) => string;
   readonly rowFor: (name: string) => string;
   readonly staleBecause: string;
@@ -315,8 +315,8 @@ function layerFailures(
   ];
 }
 
-// A key with `perDriver` is asked of the drivers (`node`: those that run on Node.js, named in nodeDrivers of
-// vite.config.ts; `all`: every driver), and a row anywhere under packages/<driver>/src/ is the driver's. Other keys
+// A key with `perDriver` is asked of the drivers (`node`: those that run on Node.js, with "runtime": "node" in drivers.json;
+// `all`: every driver), and a row anywhere under packages/<driver>/src/ is the driver's. Other keys
 // have rows in drivers for their own reasons (db opens the connections), so only `withoutDrivers` is asked of them.
 function driverFailures(
   { key, restriction }: Entry,
@@ -450,8 +450,8 @@ export function lintRestrictionsAgree(tree: Tree): string[] {
     driversFor: (kind) => driversOf(tree, kind),
   };
   // Without the layers every perLayer key would pass for lack of a layer to ask, so a vite.config.ts whose `layers` the
-  // check cannot read fails, instead of switching the check off. (A driver that nodeDrivers does not name is caught by
-  // driversAreInLint.)
+  // check cannot read fails, instead of switching the check off. (A driver whose runtime drivers.json does not give is
+  // caught by driversFileIsWellFormed.)
   const perLayerKeys = entries
     .filter(({ restriction }) => restriction.perLayer === true)
     .map(({ key }) => key);

@@ -166,9 +166,13 @@ export const factoryAgent: {
   },
 };
 
-// The Effect lint that every module runs (docs/adr/0028).
-export const lintEffect =
+// The Effect lint that every module runs (docs/adr/0028). It leaves the unused disable comments to `vp check`;
+// module-fixtures keeps the setting of oxlint.effect.json, which reports them (#517).
+export const lintEffectFixtures =
   "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure";
+export const lintEffect = `${lintEffectFixtures} --report-unused-disable-directives-severity off`;
+export const lintEffectShared =
+  "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src --report-unused-disable-directives-severity off";
 
 // The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
 // its src/index.ts. A module also runs the Effect lint.
@@ -233,7 +237,12 @@ export const packageJson = (
     scripts: {
       ...coverageScripts,
       check: "vp check",
-      ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
+      "lint-effect":
+        name === "shared-kernel"
+          ? lintEffectShared
+          : name === "module-fixtures"
+            ? lintEffectFixtures
+            : lintEffect,
     },
     nx: { name, ...(role === undefined ? {} : { tags: [tagOf(role)] }) },
     ...fields,
@@ -296,6 +305,47 @@ const rootTsconfig = [
   "",
 ].join("\n");
 
+// The drivers (drivers.json, docs/adr/0054) of the passing repository: the five of the repository, as the checks read
+// them. A driver that has no package in a case is left alone, so a case that adds a driver package adds only the package.
+const driversTable = {
+  db: {
+    runtime: "node",
+    tools: ["bootstrap.sql", "migrations", "templates", "test"],
+    exports: {
+      "./node": "./src/node.ts",
+      "./seed": "./src/seed.ts",
+      "./testing": "./src/testing.ts",
+    },
+    exportsReason:
+      "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051, 0054)",
+  },
+  "hr-system": {
+    runtime: "web",
+    tools: ["fake", "openapi.yaml", "test"],
+    exports: { ".": "./src/index.ts", "./client": "./src/client.ts" },
+    exportsReason:
+      "the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054)",
+  },
+  i18n: {
+    runtime: "web",
+    tools: ["i18next.config.ts", "test"],
+    places: ["locales"],
+    rootMay: ["domain", "infrastructure"],
+  },
+  logging: {
+    runtime: "node",
+    exports: { ".": "./src/index.ts", "./node": "./src/node.ts", "./testing": "./src/testing.ts" },
+    exportsReason:
+      "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)",
+  },
+  telemetry: {
+    runtime: "node",
+    exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
+    exportsReason:
+      "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
+  },
+};
+
 // The renovate.jsonc of the passing repository: the rules that automerge, then the rules that keep updates with a
 // person (docs/adr/0055).
 export const renovateConfig = {
@@ -325,6 +375,7 @@ export const renovateConfig = {
 };
 
 export const passingRepo: Readonly<Record<string, string>> = {
+  "drivers.json": JSON.stringify(driversTable, undefined, 2),
   ".node-version": "24.22.1\n",
   "compose.local.yaml":
     "services:\n  postgres:\n    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4\n",
@@ -432,6 +483,10 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "docs/adr/0001-lefthook.md": "# ADR 0001\n",
   "docs/adr/0002-nx.md": "# ADR 0002\n",
   "docs/adr/0029-outbox.md": "# ADR 0029\n",
+  // Cited by the reasons in drivers.json (docs-references reads the ADR numbers a config cites).
+  "docs/adr/0038-db.md": "# ADR 0038\n",
+  "docs/adr/0048-telemetry.md": "# ADR 0048\n",
+  "docs/adr/0052-hr-system.md": "# ADR 0052\n",
   "docs/adr/0049-logging.md": "# ADR 0049\n",
   "docs/local-env-setup/setup.md": "# Setup\n\n## 3. Ubuntu の初期セットアップ\n",
   "tools/scripts/sh/guard-push.sh": "#!/bin/sh\ngit push --dry-run\n",

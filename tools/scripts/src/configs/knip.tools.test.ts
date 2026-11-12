@@ -29,7 +29,9 @@ const rootFiles = [
   ".markdownlint-cli2.yaml",
   "knip.jsonc",
   "lefthook.yml",
-  // The root vite.config.ts imports it (the table of lint restrictions, docs/adr/0050), and Knip loads that config.
+  // The root vite.config.ts imports them (the table of lint restrictions, docs/adr/0050, and the drivers, docs/adr/0054),
+  // and Knip loads that config.
+  "drivers.json",
   "lint-restrictions.json",
   "mise.toml",
   "nx.json",
