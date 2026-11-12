@@ -138,6 +138,8 @@ export interface ProblemInput<Type extends ProblemType, Status extends Contentfu
   readonly status: Status;
   readonly detail?: string;
   readonly errors?: readonly object[];
+  /** Response headers the status requires, such as `Allow` in a 405. `Content-Type` is always `application/problem+json`. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 /** The body of a problem. `type` and `status` keep their literal types, so a route handler can return it as declared. */
@@ -177,7 +179,7 @@ export function problemResponse<Type extends ProblemType, Status extends Content
     ...(traceId !== undefined ? { trace_id: traceId } : {}),
   };
   // `c.json` keeps the body and status types, so a route handler can return this for a response it declared.
-  return c.json(body, input.status, { "Content-Type": PROBLEM_CONTENT_TYPE });
+  return c.json(body, input.status, { ...input.headers, "Content-Type": PROBLEM_CONTENT_TYPE });
 }
 
 const statusTitles: Readonly<Record<number, string>> = {
@@ -223,10 +225,13 @@ export const problemNotFoundHandler: NotFoundHandler = (c) =>
 
 /**
  * For `methodNotAllowed({ app, onMethodNotAllowed })` of `hono/method-not-allowed`. The `Allow` header is required in a 405
- * (RFC 9110 15.5.6), so it is set here from the methods the middleware collected.
+ * (RFC 9110 15.5.6), so it is passed here from the methods the middleware collected.
  */
 export function problemMethodNotAllowedHandler(c: Context, allowedMethods: readonly string[]) {
-  const res = problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(405), status: 405 });
-  res.headers.set("Allow", allowedMethods.join(", "));
-  return res;
+  return problemResponse(c, {
+    type: ABOUT_BLANK,
+    title: statusTitle(405),
+    status: 405,
+    headers: { Allow: allowedMethods.join(", ") },
+  });
 }
