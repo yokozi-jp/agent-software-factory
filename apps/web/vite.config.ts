@@ -10,6 +10,12 @@ import { playwright } from "vite-plus/test/browser-playwright";
 // 形の記述があり、jscpd (pnpm lint:dup) が重複と数えるので、名前を付けて形を変えてある。
 const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
 
+// Vitest が設定を読んでいるとき (unit も story の play も)。この間は route の HMR 用のコードと React Compiler を外す。
+// どちらもテストでは、コードの最後の行や生成した分岐が未通過と数えられ、coverage の下限を割るため
+// (docs/tooling/ci.md ("coverage の下限")、docs/adr/0056)。`storybook dev` と `storybook build` は Vitest を通らないので、
+// 画面ではコンパイラが効く。
+const underVitest = process.env["VITEST"] !== undefined;
+
 export default defineConfig({
   // The router plugin must come before the React plugin.
   plugins: [
@@ -17,11 +23,11 @@ export default defineConfig({
       target: "react",
       autoCodeSplitting: true,
       // route の HMR の footer は、テストでは動かず、route のファイルの最後の行が未通過と数えられる。テストでは外す。
-      codeSplittingOptions: { addHmr: process.env["VITEST"] === undefined },
+      codeSplittingOptions: { addHmr: !underVitest },
     }),
-    // React Compiler (Rust 版)。テストでは外す。コンパイラが各部品に足すキャッシュ判定の分岐 (`if ($[0] !== dep)`) は、
-    // テストの片側しか通らず、v8 の coverage の branches を下げるため (docs/adr/0056)。
-    react({ compiler: process.env["VITEST"] === undefined ? { logDiagnostics: true } : false }),
+    // React Compiler (Rust 版、docs/adr/0056)。`logDiagnostics` は、コンパイラが飛ばした部品の診断を build と dev のログに出す。
+    // 飛ばした部品は最適化されないだけで動くので、既定の黙る設定では気づけない。
+    react({ compiler: underVitest ? false : { logDiagnostics: true } }),
     tailwindcss(),
   ],
   // `@/*` is resolved from the `paths` of tsconfig.json (docs/adr/0033).
