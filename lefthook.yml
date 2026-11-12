@@ -222,6 +222,11 @@ pre-push:
     # Nx decides from the inputs of the test-isolation target (tools/scripts/package.json), the only place that lists them.
     nx-test-isolation:
       run: pnpm exec nx affected -t test-isolation --base=origin/main --head=HEAD
+    # Stryker's first run of the scripts tests, with no mutants, as CI runs it (#570). A unit test that reads the real
+    # workspace passes in `test` and fails here, because Stryker runs it in a copy of tools/scripts. Nx skips the
+    # project when its cached result still holds.
+    nx-mutation-dry-run:
+      run: pnpm exec nx affected -t mutation-dry-run --base=origin/main --head=HEAD
     # The same SAST as CI, so an agent sees a new finding before the pull request (docs/adr/0021).
     # Fails only on ERROR findings that the branch adds to origin/main. Needs the network for the Registry rules.
     # Exit 1 (a new finding) stops the push. Exit 2 or more (could not scan: offline, no fetch) only prints its message.

@@ -207,7 +207,8 @@ jobs:
             fi
           done
 
-      # The mutation target (Stryker) is not here: it runs daily in mutation.yml (docs/adr/0031).
+      # The mutation target (Stryker) is not here: it runs daily in mutation.yml (docs/adr/0031). Only its first
+      # run (mutation-dry-run) is, below.
       # The name is the row of the assurance catalog (docs/tooling/assurance-catalog.md).
       # Chromium is for the web tests (Vitest browser mode with Playwright, apps/web/vite.config.ts), the same browser
       # as the E2E (docs/adr/0039). It is installed every time, because the affected projects are known only to nx.
@@ -235,6 +236,13 @@ jobs:
       # target only when one of them changed. The pre-push hook runs the same command.
       - name: Test isolation of the scripts tests
         run: pnpm exec nx affected -t test-isolation
+
+      # Stryker runs the unit tests in a copy of tools/scripts where the paths up to the workspace root lead nowhere.
+      # A unit test that reads the real workspace passes above and fails Stryker's first run, which stopped mutation.yml
+      # on every scheduled run from 2026-10-31 to 2026-11-11 (#570). This runs that first run only, with no mutants (16 s on
+      # 2026-11-12, in run 43180235121); the pre-push hook runs it too.
+      - name: Stryker first run of the scripts tests (nx affected)
+        run: pnpm exec nx affected -t mutation-dry-run
 
       # The Kysely types of the module schemas (packages/*/src/infrastructure/db.gen.ts) are generated from the
       # migrations and committed. Runs the migrations on a fresh PostgreSQL, generates the types again and fails if

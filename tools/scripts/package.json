@@ -8,7 +8,8 @@
     "test": "vp test run --project unit --coverage",
     "test-isolation": "vp test run --project isolation",
     "test-tools": "vp test run --project tools",
-    "mutation": "stryker run"
+    "mutation": "stryker run",
+    "mutation-dry-run": "stryker run --dryRunOnly"
   },
   "dependencies": {
     "smol-toml": "catalog:",
@@ -63,6 +64,9 @@
           "{workspaceRoot}/nx.json",
           "{workspaceRoot}/oxlint.effect.json",
           "{workspaceRoot}/package.json",
+          "{workspaceRoot}/packages/db/migrations/*",
+          "{workspaceRoot}/packages/db/src/infrastructure/seed/index.ts",
+          "{workspaceRoot}/packages/db/src/testing/prepare-database.ts",
           "{workspaceRoot}/pnpm-lock.yaml",
           "{workspaceRoot}/renovate.jsonc"
         ]
@@ -74,6 +78,13 @@
         ],
         "outputs": [
           "{projectRoot}/reports/stryker-incremental.json"
+        ]
+      },
+      "mutation-dry-run": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "{workspaceRoot}/.kiro/hooks/*.json"
         ]
       }
     }

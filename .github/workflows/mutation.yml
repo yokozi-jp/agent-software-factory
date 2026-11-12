@@ -2,6 +2,9 @@ name: Mutation
 
 # Stryker on the pure functions of tools/scripts. It is not a required check: it takes minutes to tens of
 # minutes and grows with the code, so it runs outside the pull request (docs/adr/0031, docs/tooling/ci.md).
+# GitHub mails a failed scheduled run only to whoever last changed the cron line (docs.github.com, "Events that
+# trigger workflows", "Notifications for scheduled workflows"). No scheduled run has passed from 2026-10-28 to
+# 2026-11-11 and nobody read the failures (#570), so a failed scheduled run also opens an issue (the report job).
 on:
   schedule:
     # Every day, 03:00 UTC.
@@ -37,3 +40,33 @@ jobs:
       # break is 100: one surviving mutant fails the run (tools/scripts/stryker.config.mjs).
       - name: Mutation (Stryker, tools/scripts)
         run: pnpm exec nx mutation scripts
+
+  # A failed scheduled run opens an issue, or comments on the open one, so that it is read where the work is
+  # triaged. The issue carries only the link to the run: the log is not copied into it. Only the issues scope.
+  report:
+    needs: mutation
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open the issue, or comment on the open one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: mutation.yml の毎日の実行が失敗している
+        run: |
+          number="$(gh issue list --state open --search "\"$TITLE\" in:title" --limit 5 --json number,title \
+            --jq '.[] | select(.title == env.TITLE) | .number' | head -n 1)"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "また失敗した: $RUN_URL"
+          else
+            gh issue create --title "$TITLE" --label needs-triage --body "mutation.yml の定期実行が失敗した: $RUN_URL
+
+          次を確かめる (docs/adr/0031、docs/tooling/ci.md)。
+
+          - 初回の実行 (dry run) が落ちた: sandbox の外のファイルを読む unit のテストを \`*.tools.test.ts\` に移し、読むファイルを test-tools の inputs に足す。
+          - 生き残った mutant がある: その違いで失敗するテストを足す。等価な mutant だけ \`// Stryker disable next-line\` を書く。"
+          fi
