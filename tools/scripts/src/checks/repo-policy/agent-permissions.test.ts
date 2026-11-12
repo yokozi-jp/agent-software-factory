@@ -209,7 +209,7 @@ describe("agent の権限 (docs/tooling/agent-permissions.md)", () => {
     ["git push*", "+"],
     ["git push*", " -f"],
     ["git commit*", "--no-verify"],
-  ])("%j を持つ deny のない allow %j を拒否すること", (allow, word) => {
+  ])("allow %j を、%j を持つ deny のないまま拒否すること", (allow, word) => {
     const deny = {
       ...shellRules[1],
       match: (shellRules[1]?.match ?? []).filter(

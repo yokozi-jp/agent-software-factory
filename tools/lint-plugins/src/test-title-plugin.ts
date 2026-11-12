@@ -18,19 +18,35 @@ const codeName = /^[A-Za-z_$][\w$.\-/]*(?:\(\))?$/u;
 const nameOf = (node: AstNode): string | undefined =>
   node?.type === "Identifier" ? node.name : undefined;
 
-// The function a declaration calls: `describe("title")`, `it("title")`, `test("title")` and the table forms
-// `it.each(table)("title")`. Anything else is not a test declaration.
-const declaredWith = (callee: AstNode): string | undefined => {
+// Vitest's modifiers: `it.only("title")`, `it.skip`, `it.concurrent`, and the ones that take an argument first,
+// `it.each(table)("title")`, `it.for(table)("title")`, `it.skipIf(condition)("title")`.
+const modifiers = new Set([
+  "each",
+  "for",
+  "only",
+  "skip",
+  "todo",
+  "concurrent",
+  "sequential",
+  "fails",
+  "skipIf",
+  "runIf",
+]);
+
+// The test function a declaration calls: `describe("title")`, `it("title")`, `test("title")`, or one of them
+// with modifiers. Anything else is not a test declaration.
+const testFunctionOf = (callee: AstNode): string | undefined => {
   const name = nameOf(callee);
   if (name !== undefined) return testFunctions.has(name) ? name : undefined;
-  // `it.each(table)` returns a function that takes the title.
-  if (callee?.type !== "CallExpression") return undefined;
-  const each = callee.callee;
-  if (each.type !== "MemberExpression" || each.computed || nameOf(each.property) !== "each") {
-    return undefined;
+  // `it.each(table)` and `it.skipIf(condition)` return a function that takes the title.
+  if (callee?.type === "CallExpression") {
+    return callee.callee.type === "MemberExpression" ? testFunctionOf(callee.callee) : undefined;
   }
-  const object = nameOf(each.object);
-  return object !== undefined && testFunctions.has(object) ? object : undefined;
+  if (callee?.type !== "MemberExpression" || callee.computed) return undefined;
+  const property = nameOf(callee.property);
+  return property !== undefined && modifiers.has(property)
+    ? testFunctionOf(callee.object)
+    : undefined;
 };
 
 // The text of a title that is known at lint time: a string literal, or the fixed parts of a template literal.
@@ -59,7 +75,7 @@ const japaneseTitle = defineRule({
   create(context) {
     return {
       CallExpression(node) {
-        const declaration = declaredWith(node.callee);
+        const declaration = testFunctionOf(node.callee);
         if (declaration === undefined) return;
         const [title] = node.arguments;
         const text = titleText(title);

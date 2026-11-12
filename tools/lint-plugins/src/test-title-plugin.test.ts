@@ -15,6 +15,9 @@ const tester = new RuleTester({ languageOptions: { parserOptions: { lang: "ts" }
 tester.run("japanese-title", japaneseTitle, {
   valid: [
     'describe("ログイン", () => {});',
+    'it.only("セッションが始まること", () => {});',
+    'describe.skip("startPostgres", () => {});',
+    'it.skipIf(ci)("日本語の名前", () => {});',
     // describe の名前は、コードの名前 1 つ (空白なし) ならそのまま書ける。
     'describe("startPostgres", () => {});',
     'describe("vite.config.ts", () => {});',
@@ -33,6 +36,9 @@ tester.run("japanese-title", japaneseTitle, {
     'items.it.each([1, 2])("english", () => {});',
     'build(1)("english", () => {});',
     'it["each"]([1, 2])("english", () => {});',
+    'items.it.only("english", () => {});',
+    'it.unknown("english", () => {});',
+    'it.each[1]("english", () => {});',
     'items.map([1, 2])("english", () => {});',
     // 名前が文字列でないものは、検査できないので通す。
     "it(title, () => {});",
@@ -43,6 +49,31 @@ tester.run("japanese-title", japaneseTitle, {
       code: 'describe("log in", () => {});',
       errors: [{ messageId: "notJapanese" }],
     },
+    // 修飾子 (only、skip、concurrent、skipIf、for) を付けても検査する。
+    {
+      code: 'it.only("returns ok", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'it.skip("returns ok", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'it.concurrent.each([1, 2])("accepts %s", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'it.skipIf(ci)("returns ok", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'test.for([1, 2])("accepts %s", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'it.skip("startPostgres", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
     // it と test の名前は、コードの名前 1 つでも日本語が要る。
     {
       code: 'it("startPostgres", () => {});',
@@ -50,6 +81,10 @@ tester.run("japanese-title", japaneseTitle, {
     },
     {
       code: 'test("startPostgres", () => {});',
+      errors: [{ messageId: "notJapanese" }],
+    },
+    {
+      code: 'it.each([1, 2])("startPostgres", () => {});',
       errors: [{ messageId: "notJapanese" }],
     },
     // 空白を含む名前は、コードの名前 1 つではない。
