@@ -6,7 +6,7 @@
 // line and only the lines of the branch list are kept.
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
-import { preview } from "./rules.ts";
+import { isBranchListLine, preview } from "./rules.ts";
 
 const logFile = process.argv[2];
 if (logFile === undefined) {
@@ -15,7 +15,7 @@ if (logFile === undefined) {
 }
 const lines: string[] = [];
 for await (const line of createInterface({ input: createReadStream(logFile), crlfDelay: Infinity }))
-  if (line.includes('"msg":"branches"')) lines.push(line);
+  if (isBranchListLine(line)) lines.push(line);
 const output = preview(lines.join("\n"));
 if (output === undefined) {
   console.error("renovate-preview: no branch list in the log. Did the run reach the branch step?");

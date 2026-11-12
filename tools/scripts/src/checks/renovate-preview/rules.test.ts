@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { preview } from "./rules.ts";
+import { isBranchListLine, preview } from "./rules.ts";
 
 // One trace-level "branches" entry, in the shape `renovate --platform=local` logs it (LOG_FORMAT=json).
 const branches = (value: unknown): string => JSON.stringify({ msg: "branches", branches: value });
@@ -145,6 +145,12 @@ describe("preview", () => {
       "  automerge: no",
       "  automerge: yes (minimumReleaseAge 3 days, 7 days)",
     ]);
+  });
+
+  it("recognises the line that the branch list is logged as, and no other", () => {
+    expect(isBranchListLine(branches([]))).toBe(true);
+    expect(isBranchListLine(JSON.stringify({ msg: "other", branches: [] }))).toBe(false);
+    expect(isBranchListLine("not json")).toBe(false);
   });
 
   it("returns undefined when the log has no branch list", () => {

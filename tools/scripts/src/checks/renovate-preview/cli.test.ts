@@ -44,7 +44,8 @@ describe("renovate-preview", () => {
     });
   });
 
-  it("reads a log with a very large line that is not the branch list", () => {
+  // A line over the 512 MB that a JavaScript string holds is not tested: the file would be as large as the log.
+  it("finds the branch list among large lines of other entries", () => {
     const big = JSON.stringify({ msg: "other", data: "x".repeat(10_000_000) });
     const entry = { msg: "branches", branches: [{ branchName: "b", prTitle: "t" }] };
     writeFileSync(join(box.root, "big.log"), `${big}\n${JSON.stringify(entry)}\n${big}\n`);
