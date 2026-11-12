@@ -1,8 +1,9 @@
 // Check that every project with code writes a coverage record (docs/adr/0053, #578).
-import { isMeasured, projectOf } from "../merged-coverage/rules.ts";
-import { Tree, record } from "./tree.ts";
+import { isMeasured, parsePolicy, projectOf } from "../merged-coverage/rules.ts";
+import { Tree, list, record } from "./tree.ts";
 
 const coverageVersion = "@vitest/coverage-v8";
+const policyPath = "coverage-policy.json";
 
 // A test script that runs `vp test run` with the option that writes the record. The other options are free (i18n and
 // shared-kernel exclude fixtures). It is one command: a shell operator or a comment would let `--coverage` be text that
@@ -36,13 +37,29 @@ const recordImport =
 // writes no record. A project is the nearest directory with a package.json, as in projectOf of the merged check; code
 // with no package.json above it belongs to none (it is not a package of the workspace, so nothing runs its tests).
 export function projectsWriteCoverage(tree: Tree): string[] {
+  // What counts is the table of coverage-policy.json (#577). A file that does not parse is reported by the tree.
+  if (tree.maybe(policyPath) === undefined) return [`${policyPath} is missing (docs/adr/0053).`];
+  const value = tree.parsed(policyPath);
+  if (value === undefined) return [];
+  const policy = parsePolicy(value);
+  if (typeof policy === "string") return [policy];
+  // A directory of `projects` that the workspace does not list holds no project that Nx runs, so it would write no record.
+  const workspace = list(record(tree.parsed("pnpm-workspace.yaml")).packages);
+  const unlisted = policy.projects
+    .filter((glob) => !workspace.includes(glob))
+    .map(
+      (glob) =>
+        `pnpm-workspace.yaml must list "${glob}" in packages, as coverage-policy.json does in projects: a directory that is not a workspace package is not run by Nx, so it writes no coverage record (docs/adr/0053).`,
+    );
   const packages = tree.paths
     .filter((path) => path.endsWith("/package.json"))
     .map((path) => path.slice(0, -"/package.json".length));
   const projects = new Set(
-    tree.paths.filter(isMeasured).flatMap((path) => projectOf(path, packages) ?? []),
+    tree.paths
+      .filter((path) => isMeasured(path, policy))
+      .flatMap((path) => projectOf(path, packages) ?? []),
   );
-  return [...projects].toSorted().flatMap((project) => {
+  const failures = [...projects].toSorted().flatMap((project) => {
     const manifest = `${project}/package.json`;
     const json = record(tree.parsed(manifest));
     const config = `${project}/vite.config.ts`;
@@ -62,4 +79,5 @@ export function projectsWriteCoverage(tree: Tree): string[] {
       );
     return failures;
   });
+  return [...unlisted, ...failures];
 }

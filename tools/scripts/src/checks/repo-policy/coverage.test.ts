@@ -6,6 +6,7 @@ import { failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   coverageConfig,
   coverageDevDependencies,
+  coveragePolicy,
   coverageScripts,
   packageJson,
 } from "./fixtures/passing-repo.ts";
@@ -144,6 +145,78 @@ describe("ADR 0053: コードのある各 project が coverage の記録を書�
     ])("%j の vite.config.ts を挙げること", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([
         configMessage("packages/claim/vite.config.ts", "packages/claim"),
+      ]);
+    });
+  });
+
+  describe("coverage-policy.json の表", () => {
+    const bare = { "packages/bare/package.json": json({ name: "bare" }) };
+
+    it("表が除かないファイルをコードと見なし、除いたファイルは見なさないこと", () => {
+      const policy = (fields: object) => ({
+        "coverage-policy.json": json({ ...coveragePolicy, ...fields }),
+        ...bare,
+        "packages/bare/src/server.ts": "export {};\n",
+      });
+      expect(violations(repo(policy({})))).toEqual([
+        testScriptMessage("packages/bare/package.json", "packages/bare"),
+        providerMessage("packages/bare/package.json"),
+        configMessage("packages/bare/vite.config.ts", "packages/bare"),
+      ]);
+      expect(
+        violations(repo(policy({ entries: { "packages/bare/src/server.ts": "entry" } }))),
+      ).toEqual([]);
+      expect(violations(repo(policy({ notMeasured: ["**/server.ts"] })))).toEqual([]);
+    });
+
+    it("projects の directory を、記録を書く場所と見なすこと", () => {
+      expect(
+        violations(
+          repo({
+            "coverage-policy.json": json({ ...coveragePolicy, projects: ["apps/*"] }),
+            ...bare,
+            "packages/bare/src/index.ts": "export {};\n",
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("workspace が挙げていない projects の directory を指摘すること", () => {
+      const message = (glob: string) =>
+        `pnpm-workspace.yaml must list "${glob}" in packages, as coverage-policy.json does in projects: a directory that is not a workspace package is not run by Nx, so it writes no coverage record (docs/adr/0053).`;
+      expect(
+        violations(
+          repo({
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tools/*\n",
+          }),
+        ),
+      ).toEqual([message("packages/*"), message("packages/*/events")]);
+      expect(violations(repo({ "pnpm-workspace.yaml": "catalog: {}\n" }))).toHaveLength(3);
+      expect(
+        violations(
+          repo({
+            "coverage-policy.json": json({ ...coveragePolicy, projects: ["apps/*"] }),
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n",
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("表のない repository を指摘すること", () => {
+      expect(violations(repo({ "coverage-policy.json": undefined }))).toEqual([
+        "coverage-policy.json is missing (docs/adr/0053).",
+      ]);
+    });
+
+    it("読めない表を、tree と同じく 1 回だけ報告すること", () => {
+      expect(violations(repo({ "coverage-policy.json": "{" }))).toEqual([
+        expect.stringContaining("coverage-policy.json is not valid JSON"),
+      ]);
+    });
+
+    it("形の合わない表を指摘すること", () => {
+      expect(violations(repo({ "coverage-policy.json": json({ minimum: {} }) }))).toEqual([
+        "coverage-policy.json: minimum needs numbers for lines and branches",
       ]);
     });
   });
