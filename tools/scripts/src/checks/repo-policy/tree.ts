@@ -59,22 +59,14 @@ export class Tree {
   readonly paths: readonly string[];
   readonly parseErrors: string[] = [];
   readonly #parsed = new Map<string, unknown>();
-  readonly #reads = new Set<string>();
 
   constructor(repo: Repo) {
     this.repo = repo;
     this.paths = [...repo.tracked.keys()].sort();
   }
 
-  // Every path a rule asked for through `read`, `maybe`, `parsed` and `named` (the name, for `named`), whether or
-  // not the tree has the file. The pre-commit job `repo-policy` of lefthook.yml must glob each of them.
-  get readPaths(): string[] {
-    return [...this.#reads].sort();
-  }
-
   // The text of a file, or undefined when the tree has no such file.
   maybe(path: string): string | undefined {
-    this.#reads.add(path);
     return this.repo.read(path);
   }
 
@@ -87,7 +79,6 @@ export class Tree {
 
   // The tracked files with this name, at the root or at any depth.
   named(name: string): string[] {
-    this.#reads.add(name);
     return this.paths.filter((path) => path === name || path.endsWith(`/${name}`));
   }
 

@@ -3,7 +3,7 @@
 // cli.test.ts.
 import { describe, expect, it } from "vite-plus/test";
 import { repo } from "./fixtures/repo.ts";
-import { readPaths, violations } from "./rules.ts";
+import { violations } from "./rules.ts";
 
 describe("violations", () => {
   it("finds nothing in a repository that keeps every rule", () => {
@@ -16,14 +16,5 @@ describe("violations", () => {
       ".vite-hooks exists. Git hooks are managed by lefthook.yml (docs/adr/0001).",
       "mise.toml must pin betterleaks to an exact version (docs/adr/0009).",
     ]);
-  });
-});
-
-describe("readPaths", () => {
-  it("lists the paths the rules read from the repository, sorted", () => {
-    const paths = readPaths(repo());
-    expect(paths).toContain("compose.local.yaml");
-    expect(paths).toContain("package.json");
-    expect(paths).toEqual([...paths].sort());
   });
 });
