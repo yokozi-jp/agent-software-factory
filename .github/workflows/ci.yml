@@ -217,12 +217,32 @@ jobs:
       # Vite's logs do not say whether a re-optimization in the middle of the run caused it. Nx prints the output of a
       # failed task only, so a passing run stays quiet. DEBUG=vitest:browser:* also logs the browser provider of Vitest
       # (page loads and failed requests), because the dependency optimizer did not explain the failure of run 43212150110.
+      # retry-web-test runs nx a second time when web:test alone failed to load a test file, and says so in a
+      # ::warning:: annotation (docs/adr/0058). The tasks that passed come from the Nx cache in the second run.
+      # The events of Docker and of the network are recorded while nx runs and printed in a group afterwards. They
+      # test the suspicion that the clean-up of the containers of api:test and worker:test (Testcontainers) changes
+      # the network while web:test starts, 5 to 13 seconds after them (#523). Remove them once the cause is known.
       - name: Check, test and build (nx affected)
         env:
           DEBUG: vite:deps,vitest:browser:*
         run: |
           pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium
-          pnpm exec nx affected -t check test build
+          docker_events="$RUNNER_TEMP/docker-events.log"
+          network_events="$RUNNER_TEMP/network-events.log"
+          docker events --format '{{.TimeNano}} {{.Type}} {{.Action}} {{.Actor.Attributes.name}}' >"$docker_events" 2>&1 &
+          docker_pid=$!
+          ip -timestamp monitor address link >"$network_events" 2>&1 &
+          ip_pid=$!
+          status=0
+          node tools/scripts/src/checks/retry-web-test/cli.ts pnpm exec nx affected -t check test build || status=$?
+          kill "$docker_pid" "$ip_pid" || true
+          echo "::group::Docker and network events during the run, in UTC (#523)"
+          while read -r nano rest; do
+            printf '%s.%s docker %s\n' "$(date -u -d "@${nano:0:10}" +%T)" "${nano:10:3}" "$rest"
+          done <"$docker_events"
+          cat "$network_events"
+          echo "::endgroup::"
+          exit "$status"
 
       # Each project wrote coverage/coverage-final.json in its test target, counting the files of other projects that its tests
       # ran. This adds the records up and checks each file of apps/*/src and packages/*/src against the minimum of
