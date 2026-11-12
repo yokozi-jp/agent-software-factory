@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 import { describe, expect, it } from "vite-plus/test";
 
 import { memoryLogger } from "../test/memory-logger.ts";
@@ -73,6 +74,18 @@ describe("エラー応答 (docs/adr/0035)", () => {
     await expectBlankProblem(res, 405, "Method Not Allowed");
     expect(res.headers.get("Allow")).toBe("GET, HEAD");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("sub-app を mount した route でも 405 にすること", async () => {
+    const parent = appWithoutDatabase();
+    const child = new Hono();
+    child.get("/items", (c) => c.json([]));
+    parent.route("/v1", child);
+
+    const res = await parent.request("/v1/items", { method: "DELETE" });
+
+    expect(res.status).toBe(405);
+    expect(res.headers.get("Allow")).toBe("GET, HEAD");
   });
 
   it("route にある method の 404 は 405 にしないこと", async () => {

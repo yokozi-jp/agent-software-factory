@@ -4,8 +4,7 @@ import { appOrigin, createAuthFixture, type AuthFixture } from "../../test/auth-
 
 const json = "application/json";
 
-// 405 の middleware は csrfProtection と sessionGuard の外側にある (app.ts)。csrfProtection の 403 と 415 が先に返る。
-// sessionGuard はセッションを読むだけで 401 を返さない (401 は route の requireSession) ので、未認証でも 405 になる。
+// 405 の middleware と csrfProtection、sessionGuard の順序 (docs/adr/0035 の 405)。
 describe("route にない method (405) と認証の順序", () => {
   let fixture: AuthFixture;
 
