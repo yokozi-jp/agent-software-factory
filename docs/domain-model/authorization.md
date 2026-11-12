@@ -11,7 +11,7 @@ tags: [domain-model, convention, authorization, security]
 役割と操作の表、操作する人の 7 種類、HTTP の応答の表、理由と採らなかった案は [ADR 0045](../adr/0045-authorization-policy-in-application-with-permit-token.md) にあります。この文書には、コードを書くときの規則だけを書きます。
 
 > [!NOTE]
-> `authorize`、`Permit`、網羅のテストはまだ実装がありません。サンプル機能の仕様で書きます。BOLA のテストの仕組みは実装済みです (「BOLA のテスト」)。この文書は実装の指針で、書いた後に実装と食い違えば、この文書を直します。
+> `authorize` と `Permit` は、申請の「下書きを作る」だけが実装済みです (`packages/claim/src/application/authorize.ts`。`Permit` の型は `shared-kernel` の `.`)。この操作は対象を持たないので拒否がなく、`Permit` を直接返します。拒否のある操作を足すときに、`Result` と拒否の `_tag` を返す形にします。`Permit` を `authorize` だけで作る検査と、網羅のテストはまだありません。サンプル機能の仕様で書きます。BOLA のテストの仕組みは実装済みです (「BOLA のテスト」)。この文書は実装の指針で、書いた後に実装と食い違えば、この文書を直します。
 
 ## 線引き
 

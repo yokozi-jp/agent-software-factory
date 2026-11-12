@@ -11,7 +11,42 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
+export interface ClaimIdempotencyKey {
+  created_at: ColumnType<Temporal.Instant, string, string>;
+  created_by: string;
+  created_pgm_cd: string;
+  created_tx_id: string;
+  expires_at: ColumnType<Temporal.Instant, string, string>;
+  idempotency_key: string;
+  lock_no: Generated<number>;
+  patched_at: ColumnType<Temporal.Instant, string, string> | null;
+  patched_by: string | null;
+  patched_id: string | null;
+  request_hash: string;
+  response_body: Json | null;
+  status_code: number | null;
+  tenant_id: string;
+  updated_at: ColumnType<Temporal.Instant, string, string>;
+  updated_by: string;
+  updated_pgm_cd: string;
+  updated_tx_id: string;
+  user_id: string;
+}
+
 export interface ClaimTClaim {
+  applicant_id: string | null;
   claim_id: Generated<Int8>;
   created_at: ColumnType<Temporal.Instant, string, string>;
   created_by: string;
@@ -21,6 +56,7 @@ export interface ClaimTClaim {
   patched_at: ColumnType<Temporal.Instant, string, string> | null;
   patched_by: string | null;
   patched_id: string | null;
+  status_typ: Generated<string>;
   tenant_id: string;
   updated_at: ColumnType<Temporal.Instant, string, string>;
   updated_by: string;
@@ -29,5 +65,6 @@ export interface ClaimTClaim {
 }
 
 export interface DB {
+  "claim.idempotency_key": ClaimIdempotencyKey;
   "claim.t_claim": ClaimTClaim;
 }

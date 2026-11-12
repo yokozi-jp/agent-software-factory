@@ -17,6 +17,7 @@ const openApiDocument = {
   // 名前の昇順 (Spectral の openapi-tags-alphabetical)。route に tag を足したら、ここにも説明つきで足す。
   tags: [
     { name: "auth", description: "The signed-in user and the session." },
+    { name: "claims", description: "Expense claims of the signed-in user." },
     { name: "health", description: "Whether the API process is running." },
   ],
 };

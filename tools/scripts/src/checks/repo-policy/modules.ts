@@ -302,9 +302,13 @@ const addModuleGuide = "docs/domain-model/add-module.md";
 const apiManifest = "apps/api/package.json";
 const apiApp = "apps/api/src/app.ts";
 
+// A module has routes when it has a file under src/http/route/ (docs/adr/0026). apps/api mounts them in app.ts with `.route()`.
+const routeDirectory = (name: string): string => `packages/${name}/src/http/route/`;
+
 // Every package that has the tag is in moduleOrder, and every name of moduleOrder is a package that has the tag.
-// A tagged module is also a dependency of apps/api, and app.ts imports it: a module copied from
-// another and left out of one of these has no route, and nothing else says so (docs/adr/0026). The database of a
+// A tagged module is also a dependency of apps/api (its tests and the worker's jobs use every module). A module with routes
+// is mounted by app.ts too: a module copied from another and left out of one of these has no route, and nothing else says
+// so (docs/adr/0026). A module without routes is not in app.ts, since an import with no use does nothing. The database of a
 // module needs no registration: the module's Tx picks its role on the one pool of the runtime (docs/adr/0029).
 export function modulesAreRegistered(tree: Tree): string[] {
   const failures: string[] = [];
@@ -326,10 +330,13 @@ export function modulesAreRegistered(tree: Tree): string[] {
       failures.push(
         `${apiManifest} must have ${scope}/${name}: "workspace:*" in dependencies, since packages/${name} has the tag ${moduleTag}. ${guide}`,
       );
-    const importPattern = new RegExp(`(?:from|import)\\s*["']${scope}/${name}["']`);
-    if (!importPattern.test(tree.read(apiApp)))
+    // The convention `<name>Router` (docs/domain-model/add-module.md): the module's index.ts exports it, and app.ts mounts it
+    // with `.route("/", <name>Router(…))`. Text, not a parse: it stops a module whose routes nothing mounts.
+    const mountPattern = new RegExp(`\\.route\\(\\s*["'][^"']*["']\\s*,\\s*${name}Router\\(`);
+    const hasRoutes = tree.paths.some((path) => path.startsWith(routeDirectory(name)));
+    if (hasRoutes && !mountPattern.test(tree.read(apiApp)))
       failures.push(
-        `${apiApp} must import ${scope}/${name}, since packages/${name} has the tag ${moduleTag}. ${guide}`,
+        `${apiApp} must mount the routes of ${scope}/${name} with .route("/", ${name}Router({ runtime })), since packages/${name} has routes under src/http/route/. ${guide}`,
       );
   }
   return failures;

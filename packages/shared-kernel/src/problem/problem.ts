@@ -19,6 +19,8 @@ export const commonProblemTypes = {
   sessionExpired: "/problems/session-expired",
   forbiddenOrigin: "/problems/forbidden-origin",
   forbiddenCrossSiteRequest: "/problems/forbidden-cross-site-request",
+  // The user is signed in but has no active tenant, so a route that works on the data of a tenant refuses (docs/adr/0011).
+  noTenant: "/problems/no-tenant",
   // Idempotency-Key (docs/adr/0040). All four are 400 except `idempotencyInProgress`, which is 409.
   idempotencyKeyMissing: "/problems/idempotency-key-missing",
   idempotencyKeyMalformed: "/problems/idempotency-key-malformed",
@@ -99,6 +101,7 @@ const unauthenticatedProblemSchema = problemSchema([
 const forbiddenProblemSchema = problemSchema([
   commonProblemTypes.forbiddenOrigin,
   commonProblemTypes.forbiddenCrossSiteRequest,
+  commonProblemTypes.noTenant,
 ]);
 
 function problemContent<S extends z.ZodType>(schema: S) {
@@ -116,7 +119,8 @@ export const commonProblemResponses = {
     content: problemContent(unauthenticatedProblemSchema),
   },
   403: {
-    description: "The request is refused by the CSRF protection.",
+    description:
+      "The request is refused: by the CSRF protection, or the user has no active tenant.",
     content: problemContent(forbiddenProblemSchema),
   },
   415: {
@@ -126,6 +130,35 @@ export const commonProblemResponses = {
   500: {
     description: "An unexpected error happened.",
     content: problemContent(aboutBlankProblemSchema),
+  },
+} as const;
+
+const idempotencyBadRequestTypes = [
+  commonProblemTypes.validation,
+  commonProblemTypes.idempotencyKeyMissing,
+  commonProblemTypes.idempotencyKeyMalformed,
+  commonProblemTypes.idempotencyPayloadMismatch,
+] as const;
+
+/**
+ * The responses of a POST or PATCH route that go with its `Idempotency-Key` (docs/adr/0040), written after
+ * `commonProblemResponses`: they replace its 400 with one whose `type` is also a problem of the key (missing, malformed,
+ * used with another request), keeping the `errors` of a validation failure, and add the 409 for a key whose first request
+ * is still running.
+ */
+export const idempotencyProblemResponses = {
+  400: {
+    description:
+      "The request is invalid, or the Idempotency-Key is missing, malformed, or was used with another request.",
+    content: problemContent(
+      problemSchema(idempotencyBadRequestTypes).extend({
+        errors: z.array(validationErrorSchema.catchall(z.unknown())).optional(),
+      }),
+    ),
+  },
+  409: {
+    description: "A request with the same Idempotency-Key is still being processed.",
+    content: problemContent(problemSchema([commonProblemTypes.idempotencyInProgress])),
   },
 } as const;
 
@@ -148,7 +181,9 @@ interface ProblemBody<Type extends ProblemType, Status extends ContentfulStatusC
   readonly title: string;
   readonly status: Status;
   readonly detail?: string;
-  readonly errors?: readonly object[];
+  // Mutable on purpose: `problemResponse` copies the array it is given, so the body owns it, and a route that declares `errors` with
+  // `z.array` (a mutable type in z.infer) can return this for its 400. `ProblemInput.errors` stays readonly for callers.
+  readonly errors?: object[];
   readonly trace_id?: string;
 }
 
@@ -175,7 +210,7 @@ export function problemResponse<Type extends ProblemType, Status extends Content
     title: input.title,
     status: input.status,
     ...(!isServerError && input.detail !== undefined ? { detail: input.detail } : {}),
-    ...(!isServerError && input.errors !== undefined ? { errors: input.errors } : {}),
+    ...(!isServerError && input.errors !== undefined ? { errors: [...input.errors] } : {}),
     ...(traceId !== undefined ? { trace_id: traceId } : {}),
   };
   // `c.json` keeps the body and status types, so a route handler can return this for a response it declared.

@@ -24,14 +24,16 @@ tags: [adr, architecture, packages, exports, lint]
 
 | 入口                 | ファイル                                                                                          | 触る外部ライブラリ                                |
 | -------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `.`                  | `event.ts`                                                                                        | `zod`                                             |
+| `.`                  | `event.ts`、`request-context.ts` (型だけ)                                                         | `zod`                                             |
 | `./result`           | `result.ts`、`from-result.ts`                                                                     | `effect`                                          |
 | `./time`             | `time.ts`、`api-time.ts`                                                                          | `effect`、`zod`                                   |
 | `./messaging`        | `consumer.ts`、`outbox.ts`、`processed-message.ts`                                                | `effect`、`kysely`、`zod`                         |
 | `./tenant-db`        | `tenant-transaction.ts`、`db-call.ts`、`common-columns.ts`、`insert-row.ts`、`optimistic-lock.ts` | `effect`、`kysely`                                |
 | `./idempotency-db`   | `idempotency.ts`、`idempotency-purge.ts`                                                          | `effect`、`kysely`                                |
 | `./idempotency-http` | `idempotency-http.ts`                                                                             | `hono`、`@hono/zod-openapi`                       |
-| `./problem`          | `problem.ts`                                                                                      | `hono`、`@hono/zod-openapi`、`@opentelemetry/api` |
+| `./problem`          | `problem.ts`、`validation-hook.ts`、`request-context-http.ts`                                     | `hono`、`@hono/zod-openapi`、`@opentelemetry/api` |
+
+`.` の `request-context.ts` は、リクエストの文脈 (`RequestContext`) と許可の証 (`Permit`) の型だけで、モジュールの `http` 層と `domain` が読みます ([Issue #554](https://github.com/yokozi-jp/agent-software-factory/issues/554))。`./problem` の `validation-hook.ts` (検証エラーの hook と sub-app を作る `createRouter()`) と `request-context-http.ts` (文脈を求める middleware) は、モジュールの `http` 層が使うために `apps/api` から移しました。`./tenant-db` は、runtime の型 `DatabaseRuntime` も持ちます。
 
 `./result` は、`Result` 型 (`domain` が `import type` で使う) と `fromResult` (`application` が使う) を、1 つの機能 (失敗の表し方) として置きます。`domain` は型だけを import するので、`effect` は実行時に読まれません。
 

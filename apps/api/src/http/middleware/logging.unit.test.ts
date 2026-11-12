@@ -1,6 +1,7 @@
 import {
   problemErrorHandler,
   problemResponse,
+  validationHook,
 } from "@agent-software-factory/shared-kernel/problem";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
@@ -9,7 +10,6 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Auth } from "../../auth/auth.ts";
 import { memoryLogger } from "../../../test/memory-logger.ts";
-import { validationHook } from "../hook/validation-hook.ts";
 import { appWithoutDatabase } from "../../../test/app-without-database.ts";
 import { accessLog, logUnexpectedError, requestLogContext, type ApiVariables } from "./logging.ts";
 

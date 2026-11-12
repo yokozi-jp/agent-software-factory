@@ -18,7 +18,7 @@ describe("冪等キーの行を用意して数える道具", () => {
 
   beforeEach(async () => {
     db = await createTestDatabase();
-    await ensureIdempotencyKeyTable(db.migrator, "claim");
+    await ensureIdempotencyKeyTable(db.migrator, "approval");
   });
   afterEach(async () => {
     await db.close();
@@ -26,28 +26,28 @@ describe("冪等キーの行を用意して数える道具", () => {
 
   it("期限切れと期限内の行を、テナントごとに指定した件数だけ作って数えること", async () => {
     await seedIdempotencyKeys(db.superuser, {
-      module: "claim",
+      module: "approval",
       tenantId: tenantA,
       count: 3,
       expiry: "expired",
     });
     await seedIdempotencyKeys(db.superuser, {
-      module: "claim",
+      module: "approval",
       tenantId: tenantA,
       count: 2,
       expiry: "alive",
     });
     await seedIdempotencyKeys(db.superuser, {
-      module: "claim",
+      module: "approval",
       tenantId: tenantB,
       count: 4,
       expiry: "expired",
     });
 
-    expect(await countIdempotencyKeys(db.superuser, "claim", tenantA)).toBe(5);
-    expect(await countIdempotencyKeys(db.superuser, "claim", tenantB)).toBe(4);
+    expect(await countIdempotencyKeys(db.superuser, "approval", tenantA)).toBe(5);
+    expect(await countIdempotencyKeys(db.superuser, "approval", tenantB)).toBe(4);
     const expired = await db.superuser.query<{ n: string }>(
-      "SELECT count(*) AS n FROM claim.idempotency_key WHERE expires_at <= now()",
+      "SELECT count(*) AS n FROM approval.idempotency_key WHERE expires_at <= now()",
     );
     expect(Number(expired.rows[0]?.n)).toBe(7);
   });
@@ -56,7 +56,7 @@ describe("冪等キーの行を用意して数える道具", () => {
     const user = "22222222-2222-4222-8222-222222222222";
 
     await seedIdempotencyKeys(db.superuser, {
-      module: "claim",
+      module: "approval",
       tenantId: tenantA,
       count: 1,
       expiry: "alive",
@@ -65,7 +65,7 @@ describe("冪等キーの行を用意して数える道具", () => {
     });
 
     const { rows } = await db.superuser.query<{ user_id: string; idempotency_key: string }>(
-      "SELECT user_id, idempotency_key FROM claim.idempotency_key",
+      "SELECT user_id, idempotency_key FROM approval.idempotency_key",
     );
     expect(rows).toEqual([{ user_id: user, idempotency_key: key }]);
   });

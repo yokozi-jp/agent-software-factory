@@ -106,7 +106,9 @@ describe("withIdempotencyKey と idempotency_key", () => {
   const keyRows = async () =>
     (
       await ctx.db.superuser.query<{ tenant_id: string; user_id: string; status_code: number }>(
-        "SELECT tenant_id, user_id, status_code FROM claim.idempotency_key ORDER BY tenant_id, user_id",
+        // テンプレートの DB には seed の行がある (docs/adr/0036)。このテストのテナントの行だけを見る。
+        "SELECT tenant_id, user_id, status_code FROM claim.idempotency_key WHERE tenant_id = ANY($1) ORDER BY tenant_id, user_id",
+        [[tenantA, tenantB]],
       )
     ).rows;
   /** テストが業務の表に足した行の数。テンプレートの DB が最初から持つ行 (seed) は数えない。 */
@@ -165,7 +167,10 @@ describe("withIdempotencyKey と idempotency_key", () => {
       response_body: unknown;
       expires_at: Date;
       at: Date;
-    }>("SELECT response_body, expires_at, created_at AS at FROM claim.idempotency_key");
+    }>(
+      "SELECT response_body, expires_at, created_at AS at FROM claim.idempotency_key WHERE tenant_id = $1",
+      [tenantA],
+    );
     expect(stored.rows[0]?.response_body).toEqual({ created: 1 });
     // 保存期間は 24 時間 (docs/adr/0040)。
     const row = stored.rows[0];

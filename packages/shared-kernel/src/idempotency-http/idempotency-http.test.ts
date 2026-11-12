@@ -2,13 +2,18 @@ import { Hono } from "hono";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  idempotencyFailureResponse,
   idempotencyInProgressResponse,
   idempotencyPayloadMismatchResponse,
+  idempotencyRequestOf,
   parseIdempotencyKey,
   requireIdempotencyKey,
   type IdempotencyEnv,
 } from "./idempotency-http.ts";
-import { IdempotencyInProgress } from "../idempotency-db/idempotency.ts";
+import {
+  IdempotencyInProgress,
+  IdempotencyPayloadMismatch,
+} from "../idempotency-db/idempotency.ts";
 
 const uuid = "9f1c1f6e-2f0e-4c3a-9c53-2a5c3e0d6b11";
 
@@ -101,5 +106,49 @@ describe("失敗の応答", () => {
     expect(response.status).toBe(409);
     expect(response.headers.get("Retry-After")).toBe("5");
     expect(await response.json()).toMatchObject({ type: "/problems/idempotency-in-progress" });
+  });
+});
+
+describe("idempotencyRequestOf", () => {
+  it("method、path、クエリ文字列 (? なし)、本文をそのまま返し、本文をあとからも読めること", async () => {
+    const app = new Hono();
+    app.post("/items", async (c) => {
+      const request = await idempotencyRequestOf(c);
+      return c.json({ request, again: await c.req.text() });
+    });
+
+    const res = await app.request("/items?a=1&b=2", { method: "POST", body: '{"x":1}' });
+
+    expect(await res.json()).toEqual({
+      request: { method: "POST", path: "/items", query: "a=1&b=2", body: '{"x":1}' },
+      again: '{"x":1}',
+    });
+  });
+
+  it("クエリがなければ query は空文字であること", async () => {
+    const app = new Hono();
+    app.post("/items", async (c) => c.json(await idempotencyRequestOf(c)));
+
+    const res = await app.request("/items", { method: "POST" });
+
+    expect(await res.json()).toEqual({ method: "POST", path: "/items", query: "", body: "" });
+  });
+});
+
+describe("idempotencyFailureResponse", () => {
+  const app = new Hono();
+  app.get("/mismatch", (c) => idempotencyFailureResponse(c, new IdempotencyPayloadMismatch()));
+  app.get("/progress", (c) =>
+    idempotencyFailureResponse(c, new IdempotencyInProgress({ retryAfterSeconds: 5 })),
+  );
+
+  it("不一致は 400、処理中は Retry-After 付きの 409 にすること", async () => {
+    const mismatch = await app.request("/mismatch");
+    const progress = await app.request("/progress");
+
+    expect(mismatch.status).toBe(400);
+    expect(await mismatch.json()).toMatchObject({ type: "/problems/idempotency-payload-mismatch" });
+    expect(progress.status).toBe(409);
+    expect(progress.headers.get("Retry-After")).toBe("5");
   });
 });

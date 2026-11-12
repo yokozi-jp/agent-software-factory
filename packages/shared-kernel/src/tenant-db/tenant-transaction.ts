@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Layer } from "effect";
+import { Context, Effect, Exit, Layer, type ManagedRuntime } from "effect";
 import { sql, type ControlledTransaction, type Kysely, type QueryExecutorProvider } from "kysely";
 
 import { CurrentWrite, type WriteContext } from "./common-columns.ts";
@@ -71,6 +71,13 @@ export class Database extends Context.Service<Database, { readonly db: Kysely<ne
 ) {
   static layer = (db: Kysely<never>) => Layer.succeed(Database, Database.of({ db }));
 }
+
+/**
+ * The runtime that an entry passes to the `http` layer of a module: it only provides `Database` (above). The `http` layer
+ * runs its use case with `runPromise`, and the use case gets the transaction from `Database` and the `Tx` of its module, so the
+ * runtime holds no list of modules (docs/adr/0028, docs/adr/0029).
+ */
+export type DatabaseRuntime = ManagedRuntime.ManagedRuntime<Database, never>;
 
 /**
  * The transaction tag of a module: a `Context.Service` class that carries the module's own database type and has a

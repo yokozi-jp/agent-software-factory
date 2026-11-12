@@ -1,4 +1,4 @@
-import { Database } from "@agent-software-factory/shared-kernel/tenant-db";
+import { Database, type DatabaseRuntime } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import type { Kysely } from "kysely";
 
@@ -8,7 +8,7 @@ import type { Kysely } from "kysely";
  * @agent-software-factory/db/node); the module's `Tx` picks the role of a transaction (docs/adr/0029). A route runs its use
  * case with `runtime.runPromise`.
  */
-export type ApiRuntime = ManagedRuntime.ManagedRuntime<Database, never>;
+export type ApiRuntime = DatabaseRuntime;
 
 export const createApiRuntime = (db: Kysely<never>): ApiRuntime =>
   ManagedRuntime.make(Database.layer(db));

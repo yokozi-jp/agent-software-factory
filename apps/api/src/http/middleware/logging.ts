@@ -9,6 +9,8 @@ import type { Context, MiddlewareHandler } from "hono";
 import { tryGetContext } from "hono/context-storage";
 import type { RequestIdVariables } from "hono/request-id";
 
+import type { RequestContextSourceEnv } from "@agent-software-factory/shared-kernel";
+
 import type { SessionVariables } from "./session.ts";
 
 // API のロギング (docs/adr/0049、docs/logging/web-api.md)。ロガーの実装は packages/logging にあり、ここは Hono との接点だけを持つ。
@@ -24,7 +26,9 @@ interface LoggingVariables extends RequestIdVariables {
   tenantId?: string;
 }
 
-export type ApiVariables = SessionVariables & LoggingVariables;
+export type ApiVariables = SessionVariables &
+  LoggingVariables &
+  RequestContextSourceEnv["Variables"];
 type ApiEnv = { Variables: ApiVariables };
 
 /**
