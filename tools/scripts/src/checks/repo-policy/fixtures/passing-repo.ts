@@ -185,11 +185,19 @@ export const sharedKernelExports: Record<string, string> = {
     ].map((entry) => [`./${entry}`, `./src/${entry}/index.ts`]),
   ),
 };
+// What a project with code needs to write its coverage record (docs/adr/0053): the test script, the provider, and the
+// vite.config.ts that calls the helper (projectsWriteCoverage).
+export const coverageScripts = { test: "vp test run --coverage" };
+export const coverageDevDependencies = { "@vitest/coverage-v8": "catalog:" };
+export const coverageConfig =
+  'import { recordOnlyConfig } from "../../vitest-coverage.ts";\nexport default recordOnlyConfig();\n';
 export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
     exports: name === "shared-kernel" ? sharedKernelExports : { ".": "./src/index.ts" },
+    devDependencies: coverageDevDependencies,
     scripts: {
+      ...coverageScripts,
       check: "vp check",
       ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
     },
@@ -202,6 +210,7 @@ export const packageFiles = (
 ): Record<string, string> => ({
   [`packages/${name}/package.json`]: packageJson(name, fields),
   [`packages/${name}/src/index.ts`]: "export {};\n",
+  [`packages/${name}/vite.config.ts`]: coverageConfig,
 });
 
 // The events package of a module, packages/<module>/events, that passes every check (docs/adr/0026): it depends on
@@ -213,12 +222,14 @@ export const eventsFiles = (
   [`packages/${module}/events/package.json`]: JSON.stringify({
     name: `@agent-software-factory/${module}-events`,
     exports: { ".": "./src/index.ts" },
-    scripts: { check: "vp check", test: "vp test run --coverage" },
+    scripts: { check: "vp check", ...coverageScripts },
     dependencies: { "@agent-software-factory/shared-kernel": "workspace:*", zod: "catalog:" },
+    devDependencies: coverageDevDependencies,
     nx: { name: `${module}-events` },
     ...fields,
   }),
   [`packages/${module}/events/src/index.ts`]: "export {};\n",
+  [`packages/${module}/events/vite.config.ts`]: coverageConfig,
   [`packages/${module}/events/test/versions.test.ts`]: "export {};\n",
   [`packages/${module}/events/test/fixtures/${module}.done.v1.json`]: "{}\n",
 });
@@ -265,7 +276,14 @@ export const passingRepo: Readonly<Record<string, string>> = {
     devDependencies: { nx: "catalog:" },
     engines: { node: "^24" },
   }),
-  "apps/api/package.json": JSON.stringify({ dependencies: apiDependencies }),
+  "apps/api/package.json": JSON.stringify({
+    dependencies: apiDependencies,
+    devDependencies: coverageDevDependencies,
+    scripts: coverageScripts,
+  }),
+  // The build target is read by oneNodeMajor (docs/adr/0013); recordCoverage() by projectsWriteCoverage (docs/adr/0053).
+  "apps/api/vite.config.ts":
+    'export default { build: { target: "node24" }, test: { coverage: recordCoverage() } };\n',
   // apps/api imports each module in the file that assembles them.
   "apps/api/src/app.ts": modules
     .map((name) => `import "@agent-software-factory/${name}";\n`)
@@ -341,7 +359,6 @@ export const passingRepo: Readonly<Record<string, string>> = {
     "});",
     "",
   ].join("\n"),
-  "apps/api/vite.config.ts": 'export default { build: { target: "node24" } };\n',
   ".kiro/steering/external-docs.md":
     "---\ninclusion: auto\nname: external-docs\ndescription: when to read the docs.\n---\n\n# Docs\n",
   "docs/adr/0001-lefthook.md": "# ADR 0001\n",
