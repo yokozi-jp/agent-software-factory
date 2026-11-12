@@ -106,7 +106,7 @@ const notARoot = ["docs", "research", ".agents"];
 // The top-level directories of the tree, as a pattern for the start of a path.
 function rootsOf(tracked: readonly string[]): string {
   const roots = new Set(
-    tracked.flatMap((path) => (path.includes("/") ? [String(path.split("/")[0])] : [])),
+    tracked.filter((path) => path.includes("/")).map((path) => String(path.split("/")[0])),
   );
   return [...roots]
     .filter((root) => !notARoot.includes(root))

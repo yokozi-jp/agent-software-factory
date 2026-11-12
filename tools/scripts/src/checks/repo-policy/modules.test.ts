@@ -791,6 +791,47 @@ describe("ADR 0049: packages/logging", () => {
   });
 });
 
+describe("ADR 0052: packages/hr-system", () => {
+  const violations = failuresOf(packageManifests, modulesDependOneWay);
+  const exports = { ".": "./src/index.ts", "./client": "./src/client.ts" };
+
+  it("passes hr-system with its two exports, and it is not a module", () => {
+    const withHrSystem = repo(packageFiles("hr-system", { exports }));
+    expect(violations(withHrSystem)).toEqual([]);
+    expect(modulePackageNames(new Tree(withHrSystem))).not.toContain("hr-system");
+  });
+
+  it.each([
+    ["the contract only", { ".": "./src/index.ts" }],
+    ["the client only", { "./client": "./src/client.ts" }],
+    ["a path that is empty", { ".": "", "./client": "./src/client.ts" }],
+    ["no exports", {}],
+  ])("refuses hr-system with %s", (_, wrong) => {
+    expect(violations(repo(packageFiles("hr-system", { exports: wrong })))).toEqual(
+      expect.arrayContaining([
+        `packages/hr-system/package.json must have the exports ${JSON.stringify(exports)}, the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054).`,
+      ]),
+    );
+  });
+
+  it("may depend on no module", () => {
+    expect(
+      violations(
+        repo(
+          packageFiles("hr-system", {
+            exports,
+            dependencies: { "@agent-software-factory/claim": "workspace:*" },
+          }),
+        ),
+      ),
+    ).toEqual([
+      expect.stringContaining(
+        "packages/hr-system/package.json has @agent-software-factory/claim in dependencies.",
+      ),
+    ]);
+  });
+});
+
 describe("ADR 0026: nothing resolves a package that a package.json does not declare", () => {
   const violations = failuresOf(noResolutionBypass);
   const resolves = (path: string, what: string) =>

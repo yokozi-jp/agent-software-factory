@@ -392,6 +392,8 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ["an import of names", 'import { a } from "node:fs";'],
       ["a type import", '  import type { A } from "node:fs";'],
       ["a re-export", 'export { a } from "node:fs";'],
+      ["an import with no space before the path", 'import"node:fs";'],
+      ["a re-export with no space before the path", 'export { a } from"node:fs";'],
     ])("asks for a row of %s that is let through, even when no row has its text", (_, line) => {
       expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([
         unlistedPass(connectionTest, 2, "connection"),
@@ -402,6 +404,9 @@ describe("ADR 0050: the table of lint restrictions and its fixtures agree", () =
       ["a constant that holds a text", 'export const a = "node:fs";'],
       ["a name that starts with import", 'const imported = from("node:fs");'],
       ["a call with from in its name", 'exportFrom("node:fs");'],
+      ["a dynamic import", 'import("node:fs");'],
+      ["an import after other code", 'x import "node:fs";'],
+      ["a from that no quote follows", "export const a = b from c;"],
     ])("does not take %s for an import", (_, line) => {
       expect(failures({ [connectionTest]: `${connectionPassFixture}${line}\n` })).toEqual([]);
     });

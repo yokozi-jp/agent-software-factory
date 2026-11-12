@@ -412,6 +412,13 @@ describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)"
     expect(violations(repo({ "compose.local.yaml": compose("postgres:18") }))).toEqual([]);
   });
 
+  it.each([
+    ["no space", 'export const postgresImage="postgres:18";\n'],
+    ["many spaces", 'export const postgresImage   =   "postgres:18";\n'],
+  ])("reads postgresImage with %s around the equal sign", (_, text) => {
+    expect(violations(repo({ [connection]: text }))).toEqual([]);
+  });
+
   it("refuses a compose that moves alone, and a postgresImage that moves alone", () => {
     expect(violations(repo({ "compose.local.yaml": compose("postgres:19@sha256:abc") }))).toEqual([
       `compose.local.yaml postgres image (postgres:19) must be the tag of postgresImage in ${connection} (postgres:18) (docs/tooling/local-worker.md).`,

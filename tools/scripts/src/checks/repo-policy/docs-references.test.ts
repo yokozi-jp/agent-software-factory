@@ -301,6 +301,7 @@ describe("references from the configs and the scripts to files of the code", () 
       "# <upstream>/.github/workflows/ci.yml and owner/repo/.github/ISSUE_TEMPLATE/idea.yml",
     ],
     ["a name that is not under a directory of the code", "# docs/a.ts and src/a.ts"],
+    ["a dot inside a name that has no extension", "# packages/a.b/c"],
     // The limits in docs/tooling/ci.md: none of these is read.
     ["a path from its package", '"entry": "src/seed/index.ts"'],
     ["a path with escaped slashes in JSON", '"entry": "packages\\/a\\/b.ts"'],
@@ -407,6 +408,48 @@ describe("references from the configs and the scripts to files of the code", () 
       untrackedSteering: [],
       viteHooks: false,
     };
-    expect(violations({ ...flat, read: () => "apps/a/missing.ts\n" })).toEqual([]);
+    // Without a root, the pattern would read an absolute path (/usr/local/a.sh) as a path of the tree.
+    expect(violations({ ...flat, read: () => "apps/a/missing.ts and /usr/local/a.sh\n" })).toEqual(
+      [],
+    );
+  });
+
+  it("does not take the name of a file at the root for a top-level directory", () => {
+    expect(violations(repo({ ...cite("# see notes.md/a.ts"), "notes.md": "" }))).toEqual([]);
+  });
+
+  it("does not read research/ and .agents/ as top-level directories of the code", () => {
+    expect(
+      violations(
+        repo({
+          ...cite("# research/b/missing.ts and .agents/c/missing.ts"),
+          "research/a.md": "",
+          ".agents/skills/a.md": "",
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("skips a root alone from a file in a directory, whose relative path leads nowhere", () => {
+    expect(violations(repo(cite("# ../packages/ and ../../apps/", "tools/b/c.yml")))).toEqual([]);
+  });
+
+  it.each([
+    "tools/mise.lock",
+    "mise.lock.bak",
+    "CHANGELOG.mdx",
+    "docs-CHANGELOG.md",
+    "apps/web/src/a.test.tsx.snap",
+    "apps/web/src/a.test.ts.bak",
+    "packages/a/src/db.gen.tsx",
+    "apps/web/.gitignore.bak",
+  ])("checks %s, whose name only looks like one that is not read", (path) => {
+    expect(violations(repo({ [path]: "apps/a/missing.ts\n" }))).toEqual([
+      missing("apps/a/missing.ts", path),
+    ]);
+  });
+
+  it("does not check a changelog at the root of the tree", () => {
+    expect(violations(repo({ "CHANGELOG.md": "apps/a/missing.ts\n" }))).toEqual([]);
   });
 });
