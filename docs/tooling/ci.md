@@ -98,6 +98,18 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - `node tools/scripts/src/checks/merged-coverage/cli.ts` (`nx` の job の「Merged coverage of the projects」): `nx affected -t check test build` が各 project に書いた `coverage/coverage-final.json` を 1 つに合わせ、`apps/*/src`、`packages/*/src`、`packages/*/events/src` のコードのファイルごとに、lines と branches が 90% あることを確かめます ([coverage の下限](#coverage-の下限)、[ADR 0053](../adr/0053-merged-coverage-check.md))。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
+### web:test が不安定に落ちるとき
+
+`web:test` (Vitest の browser mode で流す `unit` と `storybook` の 2 つの project) は、CI で次のどれかで落ちることがあります ([Issue #523](https://github.com/yokozi-jp/agent-software-factory/issues/523))。落ちたログの先頭のエラーで見分けます。
+
+| ログのエラー                                                              | 見立て                                                                                                        | 手当て                                                                                                                                                                  |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `The iframe ... did not become ready within 60000ms`                      | CI の資源不足か、Vite の依存の再最適化 (確かめていない)。ファイルの読み込みの失敗で、`retry` の対象にならない | `apps/web/vite.config.ts` の `maxWorkers` (同時に開くページの上限)、project ごとの `optimizeDeps.include`、`nx` の step の `DEBUG=vite:deps` (落ちたときだけログに出る) |
+| `Failed to fetch dynamically imported module`                             | 同上                                                                                                          | 同上                                                                                                                                                                    |
+| story の `expect(...).toBeVisible()` が `Received element is not visible` | 出てすぐの fade-in で opacity が 0 のときに判定した。テストの書き方の誤り                                     | `waitFor(() => expect(...).toBeVisible())` で待つ (`dialog.stories.tsx`、`sheet.stories.tsx`、`tooltip.stories.tsx`)。`retry` で隠さない                                |
+
+落ちたら、`DEBUG=vite:deps` が出した `new dependencies optimized` などの行が、失敗の前にあるかを見ます。あれば、その依存を `optimizeDeps.include` に足します。なければ資源不足の見立てが残るので、`maxWorkers` を見直します。同じ症状が `maxWorkers` を絞った後も続くなら、web:test を別の job に分けることを考えます。その場合は `Merged coverage of the projects` が同じ job の `coverage-final.json` を読むので、artifact で渡す必要があります。
+
 ## coverage の下限
 
 テストの強さの基準は [Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30) の決定です。`apps/api`、`apps/web`、`apps/worker`、`packages/db`、`tools/scripts`、`tools/lint-plugins` の `test` が、Vitest の coverage (provider は v8) で次の 2 つを確かめ、満たさなければ失敗します。ゲートは `nx` の job の `nx affected -t test` です。

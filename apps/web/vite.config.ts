@@ -40,6 +40,12 @@ export default defineConfig({
       provider: playwright({ contextOptions: { timezoneId: "America/New_York" } }),
       instances: [{ browser: "chromium" }],
     },
+    // 同時に開くブラウザのページ数の上限 (#523)。browser mode では maxWorkers が、開いているページの数の予算になる
+    // (https://vitest.dev/config/maxworkers の "Browser Mode")。既定は使える並列度の全部で、CI の runner (4 vCPU) では
+    // api:test (testcontainers) や web:build と同時に 4 ページを開く。Storybook の FAQ は、`iframe` や
+    // `Failed to fetch dynamically imported module` で落ちる原因を CI の資源不足と説明している。2 は判断で、
+    // 効果は CI で繰り返し流して確かめる。
+    maxWorkers: 2,
     // project は 2 つ。unit は src/ の `*.test.ts` で、純粋な関数の確認 (ブラウザで流すのは、上の timezoneId を効かせるため)。
     // storybook は story の `play` で、画面と部品の component test (docs/adr/0033)。`*.test.tsx` は ADR 0033 で使わないが、
     // 置かれても黙って流れないことがないよう、unit の include に入れてある。
@@ -52,6 +58,23 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
+          // storybook project と同じ理由で、依存を先に最適化する (#523)。unit も同じブラウザの iframe で流れ、
+          // CI で `use-idempotent-mutation.test.tsx` の iframe が 60 秒たっても用意できなかったことがある。
+          // 一覧は、キャッシュを消して unit を流した後の `node_modules/.vite/vitest/*/deps/_metadata.json` の `optimized` から、
+          // vitest と vite の内部を除いて書いた。テストか setup file が新しい依存を import したら足す。
+          optimizeDeps: {
+            include: [
+              "@tanstack/react-query",
+              "@tanstack/react-router",
+              "hono/client",
+              "react",
+              "react-dom",
+              "react-dom/client",
+              "react/jsx-dev-runtime",
+              "react/jsx-runtime",
+              "temporal-polyfill/global",
+            ],
+          },
           include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.ts"],
           setupFiles: ["./test/temporal.ts"],
           // __fixtures__/ は lint の検出力を確かめるファイルで、実行するテストではない (docs/adr/0026)。

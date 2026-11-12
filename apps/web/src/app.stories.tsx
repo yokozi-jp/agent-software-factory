@@ -53,33 +53,37 @@ const forbiddenTitle = "このページを表示する権限がありません�
 
 let latest: ReadyApp | undefined;
 
-function App({ path, session, signIn, signOut, apiStatus = 200 }: AppProps) {
-  const [app] = useState(() => {
-    // 401 を返した後は、サーバーの側でもセッションがない。
-    let current = session;
-    const context: AppContext = {
-      apiFetch: withSessionExpiry(
-        () => {
-          if (apiStatus === 401) current = "unauthenticated";
-          return Promise.resolve(new Response(null, { status: apiStatus }));
-        },
-        () => {
-          goToSessionExpired(router);
-        },
-      ),
-      getSession: () =>
-        current === "unavailable"
-          ? Promise.reject(new Error("unavailable"))
-          : Promise.resolve(current),
-      signIn,
-      signOut,
-    };
-    const router = createAppRouter(context, createMemoryHistory({ initialEntries: [path] }));
-    const created = { router, context };
-    // play が router を読めるよう、作った router を覚える。story は 1 つずつ流れる。
-    latest = created;
-    return created;
-  });
+// 画面の route の木を、メモリ履歴と mock の context で作る。component の外に置くのは、React Compiler が
+// render の後に変える変数 (`current`) を許さないため (react(immutability))。
+function createApp({ path, session, signIn, signOut, apiStatus = 200 }: AppProps): ReadyApp {
+  // 401 を返した後は、サーバーの側でもセッションがない。
+  let current = session;
+  const context: AppContext = {
+    apiFetch: withSessionExpiry(
+      () => {
+        if (apiStatus === 401) current = "unauthenticated";
+        return Promise.resolve(new Response(null, { status: apiStatus }));
+      },
+      () => {
+        goToSessionExpired(router);
+      },
+    ),
+    getSession: () =>
+      current === "unavailable"
+        ? Promise.reject(new Error("unavailable"))
+        : Promise.resolve(current),
+    signIn,
+    signOut,
+  };
+  const router = createAppRouter(context, createMemoryHistory({ initialEntries: [path] }));
+  const created = { router, context };
+  // play が router を読めるよう、作った router を覚える。story は 1 つずつ流れる。
+  latest = created;
+  return created;
+}
+
+function App(props: AppProps) {
+  const [app] = useState(() => createApp(props));
   return <RouterProvider router={app.router} />;
 }
 
