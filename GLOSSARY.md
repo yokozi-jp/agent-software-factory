@@ -19,8 +19,12 @@ _Avoid_: 参照業務機能、デモ
 _Avoid_: 機能、ドメイン、コンポーネント
 
 **ドライバ**:
-外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。モジュールのうち import してよいのは `infrastructure` だけ(`apps/*` の入口も組み立てで import する)で、それを包んで Port を実装する。構成は [package の構成](docs/domain-model/package-layout.md)。
+外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。モジュールのうち import してよいのは `infrastructure` だけ(`apps/*` の入口も組み立てで import する)で、そこで包んで Port を実装する（それが**アダプター**）。`pg` のような DB のドライバ、デバイスドライバ、非機能要件の「アーキテクチャドライバ」とは別のもの。`db` は `pg` を包む側にあたる。構成は [package の構成](docs/domain-model/package-layout.md)。
 _Avoid_: ライブラリ、アダプター、共通基盤
+
+**アダプター**:
+モジュールの `infrastructure` にある、Port を実装するコード（`Layer`）。ドライバを `Effect.tryPromise` で包み、業務の言葉の Port とドライバの API を変換する。ヘキサゴナルアーキテクチャの Adapter、クリーンアーキテクチャの Interface Adapters の輪にあたる。package には分けず、モジュールの中に置く。つながりは「Port（`application`）← アダプター（モジュールの `infrastructure`）← ドライバ（共有の package）← 外部の道具」。
+_Avoid_: ドライバ
 
 **Shared Kernel**:
 複数のモジュールが合意して共有する、小さなモデルとコード（`Result`、イベントの定義、時刻、共通の列、楽観ロック、テナントのトランザクションなど）。`packages/shared-kernel` に置く。DDD の Shared Kernel にあたり、どのモジュールにも依存しない。外部の道具を包む `db`、`i18n` などのドライバや、`ui` とは区別する。
