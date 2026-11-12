@@ -8,6 +8,7 @@ import {
   driversAreInLint,
   driversDoNotUseEffect,
   driversHaveTheirLayout,
+  driversOfModules,
 } from "./drivers.ts";
 
 const guide = "docs/domain-model/package-layout.md";
@@ -115,7 +116,37 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
         "test/keys.test.ts": "export {};\n",
       },
     );
-    expect(violations(repo({ ...db, ...i18n }))).toEqual([]);
+    const hr = driver(
+      "hr-system",
+      { ".": "./src/index.ts" },
+      {
+        "src/index.ts": 'export type { Employee } from "./domain/employee.ts";\n',
+        "openapi.yaml": "openapi: 3.1.0\n",
+        "fake/mappings/a.json": "{}",
+        "test/fake.test.ts": "export {};\n",
+      },
+    );
+    expect(violations(repo({ ...db, ...i18n, ...hr }))).toEqual([]);
+  });
+
+  it("names the drivers that the infrastructure of a module may depend on: all but db", () => {
+    expect(driversOfModules).toEqual(["hr-system", "i18n", "logging", "telemetry"]);
+  });
+
+  it("leaves the files under the name of a driver alone when it has no package.json", () => {
+    expect(
+      violations(repo({ "packages/logging/NOTES.md": "x", "packages/db/src/a.ts": "x" })),
+    ).toEqual([]);
+  });
+
+  it("does not stop at a file that is named src", () => {
+    expect(violations(repo({ ...logging(), "packages/logging/src": "x" }))).toEqual([]);
+  });
+
+  it("reports a name at the root once, whatever the number of its files", () => {
+    expect(
+      violations(repo(logging({ "scripts/a.ts": "x", "scripts/b.ts": "x", "scripts/c.ts": "x" }))),
+    ).toHaveLength(1);
   });
 
   it("refuses the locales of i18n in a driver that has no such place", () => {
@@ -127,11 +158,30 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
   it("counts as an entry only an export that names a file directly in src/", () => {
     const odd = driver(
       "telemetry",
-      { ".": "./src/index.ts", "./a": "./lib/a.js", "./b": "./src/deep/b.ts", "./c": 1 },
-      { "src/index.ts": 'export * from "./domain/url.ts";\n', "src/lib.ts": "export {};\n" },
+      {
+        ".": "./src/index.ts",
+        "./a": "./lib/a.js",
+        "./b": "./src/deep/b.ts",
+        "./c": 1,
+        // An array is a list of fallbacks, not a path. Text of the array would read as "./src/array.ts".
+        "./d": ["./src/array.ts"],
+        // The path has to start with ./src/.
+        "./e": "../src/outside.ts",
+      },
+      {
+        "src/index.ts": 'export * from "./domain/url.ts";\n',
+        "src/lib.ts": "export {};\n",
+        "src/array.ts": "export {};\n",
+        "src/outside.ts": "export {};\n",
+      },
     );
+    const named =
+      "The files in src/ outside a directory are the ones that its exports name (index.ts)";
+    const rest = "and they only re-export: move the code into domain/, infrastructure/ or testing/";
     expect(violations(repo(odd))).toEqual([
-      `packages/telemetry/src/lib.ts is not an entry of the driver telemetry. The files in src/ outside a directory are the ones that its exports name (index.ts), and they only re-export: move the code into domain/, infrastructure/ or testing/ (docs/adr/0054, ${guide}).`,
+      `packages/telemetry/src/array.ts is not an entry of the driver telemetry. ${named}, ${rest} (docs/adr/0054, ${guide}).`,
+      `packages/telemetry/src/lib.ts is not an entry of the driver telemetry. ${named}, ${rest} (docs/adr/0054, ${guide}).`,
+      `packages/telemetry/src/outside.ts is not an entry of the driver telemetry. ${named}, ${rest} (docs/adr/0054, ${guide}).`,
     ]);
   });
 
@@ -227,6 +277,70 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ).toEqual([
       `packages/logging/src/node.ts re-exports "./testing/memory-destination.ts", but the entry ./node of logging re-exports ${may.node} only (docs/adr/0054, ${guide}).`,
       `packages/logging/src/testing.ts re-exports "./domain/logger.ts", but the entry ./testing of logging re-exports ${may.testing} only (docs/adr/0054, ${guide}).`,
+    ]);
+  });
+
+  it("reads a re-export however it is spaced and quoted", () => {
+    expect(
+      violations(
+        repo(
+          logging({
+            "src/index.ts": [
+              "export  *  from  './domain/logger.ts'",
+              'export   type   {  A  }   from   "./domain/logger.ts"',
+              'export\n{\n  b,\n}\nfrom\n"./domain/logger.ts"',
+              'import   type   {  }   from   "./domain/logger.ts"',
+              'import type{}  from"./domain/logger.ts"',
+              "",
+            ].join(";\n"),
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("takes a line comment after a statement for a comment, not for code", () => {
+    expect(
+      violations(
+        repo(
+          logging({
+            "src/index.ts":
+              'export * from "./domain/logger.ts"; // the logger\n  // an indented comment\nexport { b } from "./domain/logger.ts"; // last\n',
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["code before the export", 'x export * from "./domain/logger.ts"'],
+    ["code after the path", 'export * from "./domain/logger.ts" as x'],
+    ["a name list that is not a re-export of everything", 'export a from "./domain/logger.ts"'],
+    ["an import with names", 'import type {a} from "./domain/logger.ts"'],
+    ["an import that is not a type import", 'import {} from "./domain/logger.ts"'],
+    ["a path that leaves the entry's folder", 'export * from "../domain/logger.ts"'],
+    ["a path that is not in a layer folder", 'export * from "./logger.ts"'],
+  ])("refuses %s", (_, text) => {
+    expect(violations(repo(logging({ "src/index.ts": `${text};\n` })))).toHaveLength(1);
+  });
+
+  it("says what is in the entry file and where the code goes, for each entry", () => {
+    const body = (statement: string, layers: string) =>
+      `has \`${statement}\`. An entry file only re-exports (\`export … from "./<layer>/…"\`): put the code in ${layers} (docs/adr/0054, ${guide}).`;
+    expect(
+      violations(
+        repo(
+          logging({
+            "src/index.ts": "export  const\n  x  =  1;\n",
+            "src/node.ts": "export const y = 2;\n",
+            "src/testing.ts": "export const z = 3;\n",
+          }),
+        ),
+      ),
+    ).toEqual([
+      `packages/logging/src/index.ts ${body("export const x = 1", "domain/")}`,
+      `packages/logging/src/node.ts ${body("export const y = 2", "domain/ or infrastructure/")}`,
+      `packages/logging/src/testing.ts ${body("export const z = 3", "testing/")}`,
     ]);
   });
 
@@ -332,6 +446,36 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     ).toEqual([
       `lint-restrictions.json has @agent-software-factory/claim in the values of driver-in-module, but it is not a driver in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
     ]);
+  });
+
+  it("looks for the driver in nodeDrivers only, up to the end of its declaration", () => {
+    const other = "const other = {\n  logging: {\n  },\n};\n";
+    const failure = `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`;
+    // Declared before and after nodeDrivers, and not in webDrivers.
+    expect(
+      violations(repo({ ...logging(), ...complete, "vite.config.ts": other + vite("db", "") })),
+    ).toEqual([failure]);
+    expect(
+      violations(repo({ ...logging(), ...complete, "vite.config.ts": vite("db", "") + other })),
+    ).toEqual([failure]);
+  });
+
+  it("reads a declaration that has no end as running to the end of the file", () => {
+    const source = (text: string) => ({ ...logging(), ...complete, "vite.config.ts": text });
+    expect(violations(repo(source("const nodeDrivers = {\n  logging: {")))).toEqual([]);
+  });
+
+  it("does not take a value of driver-in-module that is not text for a driver name", () => {
+    expect(
+      violations(
+        repo({
+          "lint-restrictions.json": json({
+            "driver-in-module": { values: [1, null], rows: [] },
+            "driver-effect": { values: ["effect"], rows: [] },
+          }),
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("finds nothing to say when vite.config.ts has neither list", () => {

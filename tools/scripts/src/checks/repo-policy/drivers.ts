@@ -124,12 +124,13 @@ export function driversHaveTheirLayout(tree: Tree): string[] {
   return failures;
 }
 
-// The code of a file without its comments, as the statements: a line comment, a block comment and the blank lines are
-// dropped, and the rest is split at `;`.
+// The code of a file without its comments, as the statements: a line comment (alone on its line or after a statement),
+// a block comment and the blank lines are dropped, and the rest is split at `;`. A `//` in a string cuts the statement
+// too, which is no harm here: a statement that is cut is not a re-export, and is refused as it would be whole.
 function statements(source: string): string[] {
   return source
     .replaceAll(/\/\*[^]*?\*\//g, "")
-    .replaceAll(/^\s*\/\/.*$/gm, "")
+    .replaceAll(/\/\/.*/g, "")
     .split(";")
     .map((statement) => statement.trim())
     .filter((statement) => statement !== "");
@@ -145,9 +146,11 @@ const reexport =
 export function driverEntriesOnlyReexport(tree: Tree): string[] {
   const failures: string[] = [];
   for (const [name, { rootMay = ["domain"] }] of Object.entries(driverShapes)) {
+    // Stryker disable next-line ConditionalExpression: equivalent, without a package.json the exports are empty, so there is no entry to read
     if (!isDriver(tree, name)) continue;
     for (const [file, key] of entryFiles(tree, name)) {
       const path = `packages/${name}/src/${file}`;
+      // Stryker disable next-line ConditionalExpression: equivalent, a file that the tree does not have reads as empty, which has no statement
       if (!tree.paths.includes(path)) continue;
       const may = key === "." ? rootMay : key === "./testing" ? ["testing"] : layers;
       for (const statement of statements(tree.read(path))) {
@@ -159,6 +162,7 @@ export function driverEntriesOnlyReexport(tree: Tree): string[] {
           continue;
         }
         const layer = /^\.\/([^/]+)\//.exec(target)?.[1];
+        // Stryker disable next-line ConditionalExpression: equivalent, `may.includes(undefined)` is false too
         if (layer === undefined || !may.includes(layer))
           failures.push(
             `${path} re-exports "${target}", but the entry ${key} of ${name} re-exports ${may.map((place) => `${place}/`).join(" and ")} only${key === "." ? ": the entry that any code imports does not pull in an external library (docs/adr/0051)" : ""} (docs/adr/0054, ${guide}).`,
@@ -173,6 +177,7 @@ export function driverEntriesOnlyReexport(tree: Tree): string[] {
 // Effect.tryPromise, so the Effect version is the module's to move (docs/adr/0054).
 export function driversDoNotUseEffect(tree: Tree): string[] {
   return driverNames.flatMap((name) => {
+    // Stryker disable next-line ConditionalExpression: equivalent, without a package.json there is no dependency to refuse
     if (!isDriver(tree, name)) return [];
     const path = `packages/${name}/package.json`;
     const json = record(tree.parsed(path));
@@ -198,6 +203,7 @@ const tablePath = "lint-restrictions.json";
 // The text of `const <name> = …` in vite.config.ts, up to the end of its statement (`\n];` or `\n};`).
 function declaration(source: string, name: string): string {
   const start = source.indexOf(`const ${name}`);
+  // Stryker disable next-line ConditionalExpression,UnaryOperator,StringLiteral: equivalent, the callers look for a name in the text, and the last character of the file (what `slice(-1)` gives) or this text holds none
   if (start === -1) return "";
   const rest = source.slice(start);
   const stop = rest.search(/\n[\]}];/);
