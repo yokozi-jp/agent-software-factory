@@ -448,6 +448,97 @@
       }
     ]
   },
+  "hono": {
+    "adr": "docs/adr/0026",
+    "values": ["hono", "@hono/zod-openapi", "@hono/otel"],
+    "message": "Import Hono (hono, @hono/*) only in an HTTP part: a src/http/ directory, apps/api/src/app.ts or the entry file apps/api/src/server.ts. Put the route, the middleware or the hook in http/, and let the other code take plain values (docs/adr/0026).",
+    "mentions": ["http/"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は Hono を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
+    "rows": [
+      {
+        "files": [
+          "apps/api/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/application/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/hono.ts",
+          "packages/db/src/infrastructure/__fixtures__/hono.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/hono.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/hono.ts",
+          "packages/logging/src/infrastructure/__fixtures__/hono.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/hono.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"hono\"",
+        "expect": "stop",
+        "reason": "Hono を import できるのは HTTP の部品 (src/http/、apps/api/src/app.ts、入口の server.ts) だけ"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/application/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/hono.ts",
+          "packages/db/src/infrastructure/__fixtures__/hono.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/hono.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/hono.ts",
+          "packages/logging/src/infrastructure/__fixtures__/hono.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/hono.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@hono/zod-openapi\"",
+        "expect": "stop",
+        "reason": "Hono を import できるのは HTTP の部品 (src/http/、apps/api/src/app.ts、入口の server.ts) だけ"
+      },
+      {
+        "files": [
+          "apps/api/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/application/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/hono.ts",
+          "packages/db/src/infrastructure/__fixtures__/hono.ts",
+          "packages/hr-system/src/infrastructure/__fixtures__/hono.ts",
+          "packages/i18n/src/infrastructure/__fixtures__/hono.ts",
+          "packages/logging/src/infrastructure/__fixtures__/hono.ts",
+          "packages/telemetry/src/infrastructure/__fixtures__/hono.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@hono/otel\"",
+        "expect": "stop",
+        "reason": "Hono を import できるのは HTTP の部品 (src/http/、apps/api/src/app.ts、入口の server.ts) だけ"
+      },
+      {
+        "files": [
+          "apps/api/src/http/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/http/__fixtures__/hono.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"hono\"",
+        "expect": "pass",
+        "reason": "src/http/ の中は Hono の route、middleware、hook を書く場所なので、Hono を import してよい"
+      },
+      {
+        "files": [
+          "apps/api/src/http/__fixtures__/hono.ts",
+          "packages/module-fixtures/src/http/__fixtures__/hono.ts"
+        ],
+        "rule": "no-restricted-imports",
+        "text": "\"@hono/zod-openapi\"",
+        "expect": "pass",
+        "reason": "src/http/ の中は Hono の route、middleware、hook を書く場所なので、Hono を import してよい"
+      },
+      {
+        "files": ["apps/api/src/__fixtures__/hono.test.ts"],
+        "rule": "no-restricted-imports",
+        "text": "\"hono\"",
+        "expect": "pass",
+        "reason": "apps/api/src のテストは Hono の app を作って route を呼ぶので、Hono を import してよい"
+      }
+    ],
+    "perDriver": "all"
+  },
   "db-imports": {
     "adr": "docs/adr/0038",
     "values": [],

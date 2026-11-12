@@ -3,7 +3,7 @@ import type { TestDatabase } from "@agent-software-factory/db/testing";
 import { randomUUID } from "node:crypto";
 
 import type { createApp } from "../src/app.ts";
-import { requireSession } from "../src/auth/session.ts";
+import { requireSession } from "../src/http/middleware/session.ts";
 import type { ResourceContext, ResourceFactory } from "./bola.ts";
 
 // BOLA のテストの検出力を確かめる fixture (docs/adr/0045)。メモを持ち主ごとに持つ route を、アプリに足す。

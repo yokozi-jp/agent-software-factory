@@ -38,6 +38,7 @@ apps/*  (ManagedRuntime と Layer を組み立てる)
 | M3  | ドライバを import できるのはモジュールの `infrastructure` だけ。`application` と `http` は止める                                                                                   | lint (禁止の表 `driver-in-module`)                                                      |
 | M4  | モジュールは `package.json` でドライバ (db を除く) に依存してよい                                                                                                                  | repo-policy (`modulesDependOneWay`)                                                     |
 | M5  | Port は `application` に `Context.Service` で置き、実装は `infrastructure` に Layer で置く                                                                                         | レビュー                                                                                |
+| M6  | Hono (`hono`、`@hono/*`) を import できるのは `http` と、`apps/api` の `src/http/`、`app.ts`、`server.ts` だけ。route は `http/route/` に sub-app として置く                       | lint (禁止の表 `hono`)                                                                  |
 | D1  | ドライバの層は `domain` と `infrastructure` だけ。`application` と `http` は作らない。中身のない層も作らない                                                                       | repo-policy                                                                             |
 | D2  | ドライバの `src/` に置けるのは、入口のファイル、`domain/`、`infrastructure/`、`testing/`、`__fixtures__/`、C5 の置き場だけ                                                         | repo-policy                                                                             |
 | D3  | 入口のファイルは再 export だけを書く (型の augmentation を届ける `import type {} from "./…"` も書ける)                                                                             | repo-policy                                                                             |
@@ -58,7 +59,7 @@ packages/<モジュール>/
     ├── domain/
     ├── application/        # Port (Context.Service)
     ├── infrastructure/     # Port の実装 (Layer)。ドライバを包む
-    ├── http/
+    ├── http/               # Hono を import できる層。route/ に sub-app を置く
     └── __fixtures__/       # lint の fixture だけ
 ```
 

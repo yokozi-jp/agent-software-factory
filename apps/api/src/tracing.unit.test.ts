@@ -5,7 +5,7 @@ import { startTelemetry, type Telemetry } from "@agent-software-factory/telemetr
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
-import { requestLogContext } from "./http/logging.ts";
+import { requestLogContext } from "./http/middleware/logging.ts";
 import { appWithoutDatabase } from "../test/app-without-database.ts";
 
 // 受信の span (docs/adr/0048)。SDK を起動してから createApp を呼ぶ。
