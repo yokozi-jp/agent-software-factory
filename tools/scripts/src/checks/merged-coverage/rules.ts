@@ -43,6 +43,18 @@ export const projectOf = (path: string, projects: readonly string[]): string | u
     .filter((project) => path.startsWith(`${project}/`))
     .toSorted((a, b) => b.length - a.length)[0];
 
+// Which of the directories that hold a record are read: those of the affected projects. The others hold a record that an
+// earlier run left (a CI checkout has none), and are not read (#579).
+export function scopeOf(
+  recorded: readonly string[],
+  affected: readonly string[],
+): { readonly projects: string[]; readonly stale: string[] } {
+  return {
+    projects: recorded.filter((project) => affected.includes(project)),
+    stale: recorded.filter((project) => !affected.includes(project)),
+  };
+}
+
 export function parsePolicy(value: unknown): Policy | string {
   if (!isObject(value)) return "coverage-policy.json is not an object";
   const { minimum, exceptions } = value;
