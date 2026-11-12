@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: Effect の検査
-description: application と infrastructure の Effect を、effect-tsgo (lint-effect の Nx target) と vite.config.ts の規則で検査する手順。実行し忘れ、Effect 3 の API、unstable と experimental の API、実行の関数、使わないと決めた機能を止める仕組み、止まったときの直し方、disable コメントの書き方、検査が見ないものを定める。lint-effect が失敗したとき、vp check が Effect の規則で止まったとき、Effect の検査を足す、変える、effect-tsgo や Oxlint を更新するときに読む。
+description: application と infrastructure の Effect を、effect-tsgo (lint-effect の Nx target) と vite.config.ts の規則で検査する手順。実行し忘れ、Effect 3 の API、unstable と experimental の API、実行の関数、使わないと決めた機能を止める仕組み、止まったときの直し方、disable コメントの扱い (effecttsgo の規則は disable せず直す、未使用の disable の判定を vp check に任せる)、検査が見ないものを定める。lint-effect が失敗したとき、vp check が Effect の規則で止まったとき、Effect の検査を足す、変える、effect-tsgo や Oxlint を更新するときに読む。
 tags: [tooling, runbook, effect, lint, oxlint, effect-tsgo]
 ---
 
@@ -23,12 +23,29 @@ pnpm exec nx run-many -t lint-effect        # すべての package
 pnpm exec nx run claim:lint-effect          # 1 つの package
 ```
 
-`lint-effect` は各 package の `package.json` の script で、`effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure` を実行します (`shared-kernel` は `src` 全体)。CI の `nx` の job (`nx affected -t lint-effect`) と、pre-commit の `lint-effect` が実行します。
+`lint-effect` は各 package の `package.json` の script で、`effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure --report-unused-disable-directives-severity off` を実行します (`shared-kernel` は `src` 全体)。`module-fixtures` だけは最後の flag を付けません。理由は次の「使われない disable」です。CI の `nx` の job (`nx affected -t lint-effect`) と、pre-commit の `lint-effect` が実行します。
 
 - `effect-tsgo oxlint` は、入れた Oxlint (Vite+ が持つもの) と oxlint-tsgolint に、`effecttsgo` の plugin を足して実行します。`effect-tsgo patch` は `node_modules` を書き換えるので使いません。
 - `oxlint.effect.json` は、`effecttsgo` の 4 つの規則と、`vite.config.ts` の `typedRules` の `typescript/*` の規則 ([ADR 0020](../adr/0020-typescript-strictness.md)) を error にします。`categories.correctness` を `off` にするのは、plugin の他の correctness の規則が warning で入るためです。規則を足すときは、`rules` に 1 行足します。
-- `typedRules` の規則を入れるのは、`vp check` が要求する `oxlint-disable-next-line typescript/no-unsafe-type-assertion` などを、`lint-effect` が「使われない disable」と報告しないためです。`typedRules` に規則を足したら、同じ規則と同じ option を `oxlint.effect.json` にも足します。`tools/scripts/src/checks/effect-lint/config.tools.test.ts` が食い違いを止めます。生成したファイル (`*.gen.ts`) は、`vite.config.ts` の `ignorePatterns` と同じく対象から外します。
-- `reportUnusedDisableDirectives` を error にしているので、使われない `oxlint-disable` のコメントでも失敗します。
+- `typedRules` の規則は、`vp check` と同じ規則を `lint-effect` でも error にします。`typedRules` に規則を足したら、同じ規則と同じ option を `oxlint.effect.json` にも足します。`tools/scripts/src/checks/effect-lint/config.tools.test.ts` が食い違いを止めます。生成したファイル (`*.gen.ts`) は、`vite.config.ts` の `ignorePatterns` と同じく対象から外します。
+- `oxlint.effect.json` は `reportUnusedDisableDirectives` を error にしています。ただし本体のコードの `lint-effect` は、script の `--report-unused-disable-directives-severity off` で切ります (下の「使われない disable」)。
+
+## 使われない disable
+
+`reportUnusedDisableDirectives` は、「その行に診断が出なかった disable」を報告します ([Oxlint の ignore comments](https://oxc.rs/docs/guide/usage/linter/ignore-comments.html))。`vp check` と `lint-effect` は規則の集合が違うので、自分が持たない規則の disable を必ず「使われない」と報告します ([Issue #517](https://github.com/yokozi-jp/agent-software-factory/issues/517))。
+
+| 実行          | 持つ規則                                                                                                   | 持たない規則                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `vp check`    | `vite.config.ts` の規則すべて (`no-restricted-*`、`import/no-cycle`、tenant-sql など、`typedRules` を含む) | `effecttsgo/*`                                                           |
+| `lint-effect` | `effecttsgo/*` と、`typedRules` の `typescript/*`                                                          | `no-restricted-*`、`import/no-cycle`、js plugin の規則 (tenant-sql など) |
+
+規則の集合が全部は揃わない実行は、disable が使われるかを判定できません。そこで判定を分けます。
+
+- **本体のコード** (モジュールの `application`、`infrastructure`、`shared-kernel`): 使われない disable は、全規則を持つ `vp check` が止めます。`lint-effect` は報告を切ります。切っても、`effecttsgo` と `typedRules` の違反は止めます (`config.tools.test.ts` が本物の `effect-tsgo` で確かめます)。
+- **`effecttsgo/*` の disable**: `vp check` がプラグインを知らず、使われないと報告するので、本体のコードには書けません。違反はコードを直します。`__fixtures__/` の外のコードに `effecttsgo/` の規則の名前があると、repo-policy が失敗します。
+- **fixture** (`module-fixtures`): `lint-effect` が報告を error のまま残します。`effecttsgo` の規則が外れて disable が使われなくなると、ここで失敗します。これが規則の検出力の確認です (下の「検出力の確かめ方」)。
+
+切る flag を落とす、`module-fixtures` に足す、といった変更は repo-policy が止めます (`modulesLintEffect`)。新しいモジュールを足すときは、`claim` の `lint-effect` の script を写します。
 
 ## 止まったとき
 
@@ -43,13 +60,13 @@ pnpm exec nx run claim:lint-effect          # 1 つの package
 
 `Context.Tag` (Effect 3) のように、4.x の型に存在しない名前は `outdated-api` ではなく、`vp check` の型検査が `Property 'Tag' does not exist` で止めます。
 
-抑えるときは、その行の前に理由つきの disable コメントを書きます (ADR 0026 と同じ形)。`oxlint-disable-next-line effecttsgo/floating-effect -- 理由`。
+`effecttsgo` の規則 (`floating-effect`、`outdated-api`、`unstable-api-usage`、`experimental-api-usage`) は disable で抑えず、コードを直します。`vp check` が `effecttsgo/*` の disable を使われないと報告するためです (上の「使われない disable」)。`no-restricted-*` などの `vp check` の規則は、その行の前に理由つきの disable コメントを書いて抑えられます (ADR 0026 と同じ形。`oxlint-disable-next-line no-restricted-imports -- 理由`)。
 
 ## 検出力の確かめ方
 
 規則が外れたり、対象の層に届かなくなったりしたら失敗するように、2 つの仕組みがあります。
 
-- **fixture**: モジュールの形をした `packages/module-fixtures` の `application/__fixtures__/` と `infrastructure/__fixtures__/` に、違反の行と disable コメントを置きます。規則が止めないと、disable コメントが使われないので失敗します。設定 (`oxlint.effect.json`) はすべてのモジュールで同じなので、1 つで足ります。各モジュールが同じ範囲を lint することは、repo-policy が `lint-effect` の script で確かめます ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
+- **fixture** (`lint-effect` が未使用の disable を報告する唯一の場所): モジュールの形をした `packages/module-fixtures` の `application/__fixtures__/` と `infrastructure/__fixtures__/` に、違反の行と disable コメントを置きます。規則が止めないと、disable コメントが使われないので失敗します。設定 (`oxlint.effect.json`) はすべてのモジュールで同じなので、1 つで足ります。各モジュールが同じ範囲を lint することは、repo-policy が `lint-effect` の script で確かめます ([ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md))。
   - `effect-tsgo.ts`: `floating-effect`、`unstable-api-usage`、`experimental-api-usage`。`lint-effect` が検査します。`vp check` は `effecttsgo` の plugin を知らず、コメントを使われないものと報告するので、このファイルを読みません (`vite.config.ts` の `lint.ignorePatterns`)。
   - `effect.ts`: `no-restricted-properties`、`no-restricted-imports`。`vp check` が検査します。
   - repo-policy が、層ごとに 2 つのファイルと、それぞれの disable コメントがあることを確かめます。

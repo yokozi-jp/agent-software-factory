@@ -36,6 +36,7 @@ import {
 import { headerNamesAgree, writersUseIdempotencyKey } from "./idempotency.ts";
 import {
   dbDependencies,
+  effecttsgoRulesStayInFixtures,
   eventsPackages,
   modulesAreRegistered,
   modulesDependOneWay,
@@ -98,6 +99,7 @@ function run(tree: Tree): string[] {
     ...dbDependencies(tree),
     ...noResolutionBypass(tree),
     ...modulesLintEffect(tree),
+    ...effecttsgoRulesStayInFixtures(tree),
     ...modulesHaveLayers(tree),
     ...driversFileIsWellFormed(tree),
     ...driversAreTagged(tree),

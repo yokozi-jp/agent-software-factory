@@ -436,16 +436,68 @@ export function noResolutionBypass(tree: Tree): string[] {
 
 // The Effect lint of a module (docs/adr/0028). Its fixtures are in one module only, so they show the rules work,
 // not that each module runs them: each module runs the same command on its application and infrastructure.
-const lintEffect =
-  "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json src/application src/infrastructure";
+//
+// lint-effect loads only some of the rules, so it cannot tell whether a disable comment of a rule of `vp check`
+// (no-restricted-imports, import/no-cycle, tenant-sql ...) is used (#517). The script of a module therefore turns
+// reportUnusedDisableDirectives off: `vp check`, which has every rule of the code, decides that. Only module-fixtures
+// keeps the setting of oxlint.effect.json (error): its disable comments are the proof that the effecttsgo rules fire
+// (docs/tooling/effect-lint.md). Without this check, a script that drops the flag would only fail on the first
+// disable comment, and a script that adds it to module-fixtures would silently stop proving the rules.
+const lintEffectCommand = "effect-tsgo oxlint --type-aware -c ../../oxlint.effect.json";
+const reportUnusedOff = "--report-unused-disable-directives-severity off";
+const lintEffectFixtures = `${lintEffectCommand} src/application src/infrastructure`;
+const lintEffect = `${lintEffectFixtures} ${reportUnusedOff}`;
+const lintEffectShared = `${lintEffectCommand} src ${reportUnusedOff}`;
+
+const lintEffectScript = (tree: Tree, name: string): unknown =>
+  record(record(tree.parsed(manifest(name))).scripts)["lint-effect"];
+
+// The packages whose script is not the one of a module: module-fixtures keeps the report of unused disable comments.
+const lintEffectOf: Readonly<Record<string, string>> = { "module-fixtures": lintEffectFixtures };
 
 export function modulesLintEffect(tree: Tree): string[] {
-  return modulePackageNames(tree).flatMap((name) => {
-    const script = record(record(tree.parsed(manifest(name))).scripts)["lint-effect"];
-    return script === lintEffect
+  const failures = modulePackageNames(tree).flatMap((name) => {
+    const expected = lintEffectOf[name] ?? lintEffect;
+    return lintEffectScript(tree, name) === expected
       ? []
       : [
-          `${manifest(name)} must have the lint-effect script "${lintEffect}", so that effect-tsgo checks the module (docs/adr/0028).`,
+          `${manifest(name)} must have the lint-effect script "${expected}", so that effect-tsgo checks the module (docs/adr/0028).`,
         ];
   });
+  // shared-kernel is not a module, but its whole src/ is under lint-effect (docs/adr/0028).
+  if (
+    tree.maybe(manifest("shared-kernel")) !== undefined &&
+    lintEffectScript(tree, "shared-kernel") !== lintEffectShared
+  )
+    failures.push(
+      `${manifest("shared-kernel")} must have the lint-effect script "${lintEffectShared}", so that effect-tsgo checks it and leaves the unused disable comments to \`vp check\` (docs/adr/0028).`,
+    );
+  return failures;
+}
+
+// A disable comment of an effecttsgo rule sits only in the fixtures of module-fixtures (#517). `vp check` does not
+// load the effecttsgo plugin, so it reports the comment as unused, and lint-effect does not decide that for the code
+// of a module (see above): a comment in the code would fail `vp check` with nothing for the author to do. A
+// violation of an effecttsgo rule is fixed in the code (docs/tooling/effect-lint.md). Any mention of the rule names
+// stops, not just the forms of the disable keywords, so a block comment over several lines or a new keyword does
+// not get through. oxlint.effect.json lints `__fixtures__/effect-tsgo.ts` of any package, and the scripts of the
+// modules turn the report off, so a fixture elsewhere would prove nothing: only module-fixtures is exempt.
+// A disable comment without a rule name is not checked here: unicorn/no-abusive-eslint-disable stops it in
+// vite.config.ts.
+const effectRuleMention = /\beffecttsgo\//;
+const sourceFile = /^(?:packages|apps)\/[^/]+\/src\/.+\.[cm]?[jt]sx?$/;
+const effectFixtureHome = "packages/module-fixtures/src/";
+
+export function effecttsgoRulesStayInFixtures(tree: Tree): string[] {
+  return tree.paths
+    .filter(
+      (path) =>
+        sourceFile.test(path) &&
+        !(path.startsWith(effectFixtureHome) && path.includes("/__fixtures__/")) &&
+        effectRuleMention.test(tree.read(path)),
+    )
+    .map(
+      (path) =>
+        `${path} names an effecttsgo rule. \`vp check\` does not load the plugin, so a disable comment of the rule is reported as unused: fix the code that the rule stops, and keep the comments in packages/module-fixtures/src/*/__fixtures__/ (docs/tooling/effect-lint.md, #517).`,
+    );
 }
