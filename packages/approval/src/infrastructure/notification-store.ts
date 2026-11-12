@@ -3,7 +3,7 @@ import {
   CurrentWrite,
   Database,
   inTenantTransaction,
-  type WriteActor,
+  type WriteContext,
 } from "@agent-software-factory/shared-kernel/tenant-db";
 import {
   isMessageProcessed,
@@ -26,7 +26,7 @@ export const NotificationStoreLayer: Layer.Layer<NotificationStore, never, Datab
     const database = yield* Database;
     const inTransaction = <A>(
       message: ConsumedMessage,
-      write: WriteActor,
+      write: WriteContext,
       work: Effect.Effect<A, never, (typeof ApprovalTx)["Identifier"] | CurrentWrite>,
     ) =>
       inTenantTransaction(ApprovalTx, { tenantId: message.tenantId, ...write }, work).pipe(

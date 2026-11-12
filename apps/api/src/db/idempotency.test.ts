@@ -20,7 +20,7 @@ import { Cause, Data, Deferred, Effect, Exit, Option } from "effect";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // withIdempotencyKey と idempotency_key (Issue #323、docs/adr/0040): 実際の PostgreSQL で、同じキーの業務の処理が 1 回
 // だけ動き、失敗した処理はキーの行も残さず、待ちが切れたら 409 になることを確かめる。公開の境界は共有の関数。
@@ -98,7 +98,7 @@ describe("withIdempotencyKey と idempotency_key", () => {
     );
     return inTenantTransaction(
       ClaimTx,
-      { tenantId, ...writer },
+      { tenantId, ...writeContext },
       options.pid === undefined ? idempotent : withPid(options.pid, idempotent),
     );
   };

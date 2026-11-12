@@ -1,12 +1,26 @@
 import { createPool } from "@agent-software-factory/db/node";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
-import { Database, type WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
+import { currentInstant } from "@agent-software-factory/shared-kernel/time";
+import { Database, type WriteContext } from "@agent-software-factory/shared-kernel/tenant-db";
 import { Effect } from "effect";
 import { Kysely, PostgresDialect } from "kysely";
 import { afterEach, beforeEach } from "vite-plus/test";
 
-/** `inTenantTransaction` の scope の、共通カラムに入れる値。テストでは、どれも固定の値で足りる。 */
-export const writer: WriteActor = { actor: "test-user", pgmCd: "db.test", txId: "test-tx" };
+/**
+ * `inTenantTransaction` の scope の、共通カラムに入れる値。実行者、プログラム、呼び出しの ID は固定の値で足りる。
+ * `now` は、入口が 1 回読む現在時刻 (docs/adr/0043) の代わりに、展開するたび (`...writeContext`) に時計の今を返す getter にする。
+ * 固定の時刻にすると、DB の `now()` を基準に行を作るテストが崩れるため: `idempotency.test.ts` は期限を `now() - interval '1 second'` に
+ * 書き換えてから、その行を期限切れとして扱う要求を流す。共通カラムの時刻そのものを確かめるテスト (`common-columns.test.ts`) は、
+ * この getter を使わず、固定の `now` を直接渡す。
+ */
+export const writeContext: WriteContext = {
+  get now() {
+    return Effect.runSync(currentInstant);
+  },
+  actor: "test-user",
+  pgmCd: "db.test",
+  txId: "test-tx",
+};
 
 /** テストごとに DB を作り、接続を 1 本の pool にして、前のトランザクションの設定が同じ接続に残るかを確かめられるようにする。 */
 export function useDatabase() {

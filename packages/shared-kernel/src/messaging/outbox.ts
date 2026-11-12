@@ -70,7 +70,7 @@ export const enqueueOutbox = <K extends ModuleTx>(
       serialized_event: JSON.stringify(event),
       traceparent,
       occurred_at: parsed.occurredAt,
-      publication_date: write.at.toString(),
+      publication_date: write.now.toString(),
       ...createdColumns(write),
     };
     yield* dbCall(tx, (trx) => insertRow(trx, sql.table("messaging.outbox"), row));

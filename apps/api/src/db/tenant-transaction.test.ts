@@ -15,7 +15,7 @@ import { Cause, Data, Effect, Exit, type Duration } from "effect";
 import { Kysely, PostgresDialect, sql, type RawBuilder } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // shared のトランザクションの関数 (inTenantTransaction、dbCall、dbCallUnique) と、モジュールの最初の表 claim.t_claim の RLS
 // (docs/adr/0011、docs/adr/0028、docs/adr/0029)。app_user の接続で、モジュールのロールに切り替えて確かめる。
@@ -60,7 +60,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
 
   const { run, runExit } = ctx;
   const inClaim = <A, E>(tenantId: string, work: Effect.Effect<A, E, ClaimTx>) =>
-    inTenantTransaction(ClaimTx, { tenantId, ...writer }, work);
+    inTenantTransaction(ClaimTx, { tenantId, ...writeContext }, work);
 
   /** `idle in transaction` のまま残っている接続の数。 */
   const idleInTransaction = async (): Promise<number> => {
@@ -233,7 +233,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       const exit = await runExit(
         inTenantTransaction(
           ApprovalTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           Effect.andThen(insert, insert),
         ),
       );
@@ -274,7 +274,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
         ),
       );
     const inApproval = <A, E>(tenantId: string, work: Effect.Effect<A, E, ApprovalTx>) =>
-      inTenantTransaction(ApprovalTx, { tenantId, ...writer }, work);
+      inTenantTransaction(ApprovalTx, { tenantId, ...writeContext }, work);
 
     it("一意制約の違反を、制約の名前つきの UniqueViolation にして、catchTag で処理できること", async () => {
       await run(inApproval(tenantA, insertCode(tenantA, "a")));
@@ -339,7 +339,7 @@ describe("inTenantTransaction と claim.t_claim の RLS", () => {
       // 実行しない。型の検査 (vp check) だけが確かめる。
       const never = () =>
         // @ts-expect-error -- 申請のトランザクションは ClaimTx だけを提供する。ApprovalTx が足りない。
-        run(inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writer }, readApproval));
+        run(inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writeContext }, readApproval));
 
       expect(typeof never).toBe("function");
     });
@@ -384,7 +384,7 @@ describe("pool が空のとき", () => {
       const holder = Effect.runPromise(
         inTenantTransaction(
           ClaimTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           Effect.sync(hold).pipe(Effect.andThen(Effect.sleep("1500 millis"))),
         ).pipe(Effect.provide(layer)),
       );
@@ -399,7 +399,7 @@ describe("pool が空のとき", () => {
 
   /** 空のトランザクションを 1 つ始める。`timeout` があれば、Effect.timeout を掛ける。 */
   const attempt = (layer: ReturnType<typeof Database.layer>, timeout?: Duration.Input) => {
-    const empty = inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writer }, Effect.void);
+    const empty = inTenantTransaction(ClaimTx, { tenantId: tenantA, ...writeContext }, Effect.void);
     return Effect.runPromiseExit(
       (timeout === undefined ? empty : empty.pipe(Effect.timeout(timeout))).pipe(
         Effect.provide(layer),
@@ -481,19 +481,19 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
       case "claim":
         return inTenantTransaction(
           ClaimTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           dbCall(ClaimTx, (trx) => text.execute(trx)),
         );
       case "approval":
         return inTenantTransaction(
           ApprovalTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           dbCall(ApprovalTx, (trx) => text.execute(trx)),
         );
       case "closing":
         return inTenantTransaction(
           ClosingTx,
-          { tenantId: tenantA, ...writer },
+          { tenantId: tenantA, ...writeContext },
           dbCall(ClosingTx, (trx) => text.execute(trx)),
         );
     }
@@ -512,7 +512,7 @@ describe("モジュールのロールの権限 (inTenantTransaction)", () => {
       await run(
         inTenantTransaction(
           ClaimTx,
-          { tenantId, ...writer },
+          { tenantId, ...writeContext },
           dbCall(ClaimTx, (trx) =>
             trx.insertInto("claim.t_claim").values(claimRow(tenantId)).execute(),
           ),

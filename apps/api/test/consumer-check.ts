@@ -8,7 +8,7 @@ import {
   type ConsumeResult,
   type RegisteredConsumer,
 } from "@agent-software-factory/shared-kernel/messaging";
-import { type Database, type WriteActor } from "@agent-software-factory/shared-kernel/tenant-db";
+import { type Database, type WriteContext } from "@agent-software-factory/shared-kernel/tenant-db";
 import type { Effect } from "effect";
 
 /**
@@ -29,7 +29,7 @@ export async function consumerProblems(options: {
   readonly consumers: readonly RegisteredConsumer[];
   readonly examples: Readonly<Record<string, unknown>>;
   readonly db: TestDatabase;
-  readonly write: WriteActor;
+  readonly write: WriteContext;
   readonly run: <A, E>(effect: Effect.Effect<A, E, Database>) => Promise<A>;
 }): Promise<string[]> {
   const { consumers, examples, db, write, run } = options;

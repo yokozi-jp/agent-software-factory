@@ -32,6 +32,7 @@ Tracer と `@hono/otel` の span のつなぎ方は、実施の Issue ([Issue #1
 
 - 入口のテストは、ランタイムに固定の `Clock` (`Layer.succeed(Clock.Clock)`) か `TestClock.layer()` を与えます。`TestClock` は仮想の時間を持つので、`sleep` や timeout を待つ処理も `TestClock.adjust` で進められます。
 - `application` の関数のテストは、`now` を値で渡します。
+- DB のトランザクションの共通カラムの時刻も、この `now` です。`shared-kernel` の `inTenantTransaction` は時計を読まず、scope の `now` を受けます。1 つの処理が複数のトランザクションを開いても、同じ `now` を渡します ([共通カラムの値](../db/postgresql-keys.md#共通カラムの値))。
 
 ## domain の Result を変える
 
