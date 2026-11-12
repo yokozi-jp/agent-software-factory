@@ -2,7 +2,7 @@
 // The restrictions of the table (lint-restrictions.json) are checked in lint-restrictions.ts.
 import { isRestrictionFixture } from "./lint-restrictions.ts";
 import { modulePackageNames, packageNames } from "./modules.ts";
-import { Tree, record } from "./tree.ts";
+import { Tree, objectKeys, record } from "./tree.ts";
 
 // The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or
 // `fixtures/` directory that breaks the rule or the flag on purpose, each such line marked with
@@ -121,13 +121,6 @@ export function projectTsconfigs(tree: Tree): string[] {
       );
   }
   return failures;
-}
-
-// The keys of `const <name> ... = { ... };` in the text: the keys of an object literal that holds no other object.
-function objectKeys(text: string, name: string): string[] {
-  const body = new RegExp(`^const ${name}\\b[^=]*=\\s*\\{([^}]*)\\}`, "m").exec(text)?.[1];
-  if (body === undefined) return [];
-  return Array.from(body.matchAll(/([A-Za-z0-9_-]+)"?\s*:/g), (match) => String(match[1]));
 }
 
 const fixtureAnnotation = "oxlint-disable-next-line no-restricted-imports";

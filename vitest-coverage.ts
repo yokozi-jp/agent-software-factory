@@ -1,4 +1,6 @@
+import { join, relative } from "node:path";
 import { defineConfig } from "vite-plus";
+import policy from "./coverage-policy.json" with { type: "json" };
 
 // The `coverage` options that every project's vite.config.ts shares, so that each project writes a record
 // (coverage/coverage-final.json) which the merged check in CI adds up with the others (docs/adr/0053,
@@ -10,30 +12,38 @@ import { defineConfig } from "vite-plus";
 // project lists the others by hand, so a new directory or package is not missed. Vitest lists the files that no test
 // loaded (at 0%) only under the project root, so the record does not hold the files of unrelated projects.
 //
-// `exclude` has what is never measured (the same list as `isMeasured` in tools/scripts/src/checks/merged-coverage/rules.ts)
-// and the entry files of the project, which only its own minimum needs (`thresholds["src/**"]`): the merged check reads
-// the exceptions from coverage-policy.json.
+// What the record holds comes from the table of coverage-policy.json, which the merged check (tools/scripts/src/checks/
+// merged-coverage/rules.ts, isMeasured) reads too (#577): `projects` are the directories whose `src` counts, `notMeasured`
+// the kinds of files that never count, and `entries` the files that only start the program (a project's own minimum
+// would count them at 0%, and the merged check does not). A file is added in one place, and the two cannot differ.
+//
+// Vitest matches a file inside the root of the project by its path from the root ("Patterns are matched against each file's
+// path relative to the project root", https://vitest.dev/config/coverage). For a file outside the root it also tries the
+// absolute path and the path from the root that starts with "../" (the `isIncluded` of @vitest/coverage-v8 5.1.0, read on
+// 2026-11-12), so an entry is written in both forms: the absolute path, and the path from the project when the entry is in
+// it. vitest-coverage.tools.test.ts shows that each form is needed.
 const ownFiles = "src/**/*.ts";
 
-export function recordCoverage({
-  own = ownFiles,
-  exclude = [],
-}: {
-  readonly own?: string;
-  readonly exclude?: readonly string[];
-} = {}) {
+// The characters that picomatch reads in a glob, escaped in the part of an absolute path that is not from the table.
+const escapeGlob = (text: string): string => text.replaceAll(/[\\*?[\]{}()!+@]/gu, String.raw`\$&`);
+
+// A path of the table to the patterns that Vitest matches. The project is the directory Vitest runs in: the root defaults to
+// the working directory, and Nx runs `vp test run` from the project (a different root would leave an entry of the project
+// counted at 0%, which the project's own minimum reports).
+function entryPatterns(entry: string): string[] {
+  const absolute = join(import.meta.dirname, entry);
+  const fromProject = relative(process.cwd(), absolute);
+  const outside = fromProject === ".." || fromProject.startsWith("../");
+  const pattern = join(escapeGlob(import.meta.dirname), entry);
+  return outside ? [pattern] : [pattern, fromProject];
+}
+
+export function recordCoverage({ own = ownFiles }: { readonly own?: string } = {}) {
   return {
     provider: "v8" as const,
     allowExternal: true,
-    include: [own, "**/{apps,packages}/*/{,events/}src/**/*.{ts,tsx}"],
-    exclude: [
-      "**/*.test.{ts,tsx}",
-      "**/__fixtures__/**",
-      "**/*.gen.ts",
-      "**/*.d.ts",
-      "**/*.stories.tsx",
-      ...exclude,
-    ],
+    include: [own, ...policy.projects.map((glob) => `**/${glob}/src/**/*.{ts,tsx}`)],
+    exclude: [...policy.notMeasured, ...Object.keys(policy.entries).flatMap(entryPatterns)],
   };
 }
 

@@ -38,6 +38,7 @@
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "i18next-cli": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "typescript": "catalog:",

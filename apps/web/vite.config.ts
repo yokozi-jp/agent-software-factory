@@ -16,6 +16,12 @@ const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
 // loadEnv で読む (https://vite.dev/guide/env-and-mode の "NODE_ENV and Modes"。2026-11-12 に読んだ)。
 const env = loadEnv("development", process.cwd(), "");
 
+// Vitest が設定を読んでいるとき (unit も story の play も)。この間は route の HMR 用のコードと React Compiler を外す。
+// どちらもテストでは、コードの最後の行や生成した分岐が未通過と数えられ、coverage の下限を割るため
+// (docs/tooling/ci.md ("coverage の下限")、docs/adr/0056)。`storybook dev` と `storybook build` は Vitest を通らないので、
+// 画面ではコンパイラが効く。
+const underVitest = process.env["VITEST"] !== undefined;
+
 export default defineConfig({
   // The router plugin must come before the React plugin.
   plugins: [
@@ -23,9 +29,11 @@ export default defineConfig({
       target: "react",
       autoCodeSplitting: true,
       // route の HMR の footer は、テストでは動かず、route のファイルの最後の行が未通過と数えられる。テストでは外す。
-      codeSplittingOptions: { addHmr: process.env["VITEST"] === undefined },
+      codeSplittingOptions: { addHmr: !underVitest },
     }),
-    react(),
+    // React Compiler (Rust 版、docs/adr/0056)。`logDiagnostics` は、コンパイラが飛ばした部品の診断を build と dev のログに出す。
+    // 飛ばした部品は最適化されないだけで動くので、既定の黙る設定では気づけない。
+    react({ compiler: underVitest ? false : { logDiagnostics: true } }),
     tailwindcss(),
   ],
   // `@/*` is resolved from the `paths` of tsconfig.json (docs/adr/0033).
@@ -120,13 +128,8 @@ export default defineConfig({
     reporters: ["default", "./test/a11y-warnings-reporter.ts"],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。unit と storybook の両方が通した行を数える。
     coverage: {
-      ...recordCoverage({
-        own: "src/**/*.{ts,tsx}",
-        exclude: [
-          // 実行環境ごとの入口。i18n の初期化と router を作って描画するだけで、story では通らない。
-          "src/main.tsx",
-        ],
-      }),
+      // 測らない入口のファイルは coverage-policy.json の entries に書く (vitest-coverage.ts が読む)。
+      ...recordCoverage({ own: "src/**/*.{ts,tsx}" }),
       thresholds: {
         autoUpdate: floorThreshold,
         // この project の src だけに下限を掛ける。他の project のファイルは CI の合わせた検査が見る。

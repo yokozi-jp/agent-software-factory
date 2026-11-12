@@ -11,7 +11,10 @@ const kernelFile = "packages/shared-kernel/src/tenant-db/db-call.ts";
 const apiFile = "apps/api/src/app.ts";
 const policy = {
   minimum: { lines: 90, branches: 90 },
-  exceptions: { "apps/api/src/server.ts": "entry" },
+  projects: ["apps/*", "packages/*", "packages/*/events"],
+  notMeasured: ["**/*.test.{ts,tsx}", "**/__fixtures__/**", "**/*.gen.ts"],
+  entries: { "apps/api/src/server.ts": "entry" },
+  exceptions: {},
 };
 
 let box: Sandbox;
@@ -69,15 +72,23 @@ const graphJson = (without?: string): string =>
       ),
     },
   });
-const filters = "--projects apps/* --projects packages/* --projects packages/*/events";
+const filtersOf = (projects: readonly string[]): string =>
+  projects.map((glob) => `--projects ${glob}`).join(" ");
 const check = (
   nx: {
+    // The `projects` of the policy, which the question to nx is made of (the default is the policy above).
+    projects?: readonly string[];
+    writers?: readonly string[];
     affected?: readonly string[];
     nxFails?: boolean;
     graph?: "fails" | "not a graph" | "without api";
     github?: boolean;
   } = {},
 ) => {
+  const filters = filtersOf(nx.projects ?? policy.projects);
+  const writers = (nx.writers ?? ["api", "web", "claim", "shared-kernel", "claim-events"]).join(
+    " ",
+  );
   const names = (nx.affected ?? []).map((name) => `"${name}"`).join(" ");
   const printed = {
     undefined: graphJson(),
@@ -89,7 +100,7 @@ const check = (
     pnpm:
       nx.nxFails === true
         ? "exit 1"
-        : `case "$*" in *"${filters}"*) printf '%s\\n' api web claim shared-kernel claim-events;; *"graph --print"*) ${graph};; *--affected*) printf '%s\\n' ${names};; esac`,
+        : `case "$*" in *"${filters}"*) printf '%s\\n' ${writers};; *"graph --print"*) ${graph};; *--affected*) printf '%s\\n' ${names};; esac`,
   });
   return runIn(repo, process.execPath, [cli], {
     env: { GITHUB_ACTIONS: nx.github === true ? "true" : "", PATH: withPath(stubs) },
@@ -256,6 +267,44 @@ describe("merged-coverage", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("nothing to check");
+  });
+
+  it("記録に入っていても、入口のファイルを数えないこと", () => {
+    record("apps/api", { [apiFile]: 10, "apps/api/src/server.ts": 0 });
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
+  });
+
+  it("どのファイルにも当たらない entries の行があると、1 で終了すること", () => {
+    record("apps/api", { [apiFile]: 10 });
+    write(
+      "coverage-policy.json",
+      JSON.stringify({
+        ...policy,
+        entries: { ...policy.entries, "apps/api/src/gone.ts": "was renamed" },
+      }),
+    );
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("apps/api/src/gone.ts: the entry matches no file.");
+  });
+
+  it("policy の projects が挙げる directory の記録だけを読み、ほかは読まないこと", () => {
+    // The shared-kernel record is under the minimum; it is not read because packages/* is not in the policy.
+    const projects = ["apps/*"];
+    write("coverage-policy.json", JSON.stringify({ ...policy, projects }));
+    record("apps/api", { [apiFile]: 10 });
+    record("packages/shared-kernel", { [kernelFile]: 1 });
+
+    const result = check({ projects, writers: ["api", "web"], affected: ["api", "shared-kernel"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
   });
 
   it("policy が有効でないとき、2 で終了すること", () => {
