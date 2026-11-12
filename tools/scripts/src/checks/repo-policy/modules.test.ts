@@ -846,6 +846,14 @@ describe("ADR 0048: packages/telemetry の構成", () => {
     ]);
   });
 
+  it("drivers.json の entry が読めない driver の exports を、問わないこと: 原因は drivers.json の形の検査が述べる", () => {
+    const broken = {
+      ...packageFiles("telemetry", { exports: { ".": "./src/index.ts" } }, "driver"),
+      "drivers.json": JSON.stringify({ telemetry: { runtime: "edge" } }),
+    };
+    expect(violations(repo(broken))).toEqual([]);
+  });
+
   it.each([
     ["only the entry for any code", { ".": "./src/index.ts" }],
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],

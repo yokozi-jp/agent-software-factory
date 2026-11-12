@@ -1,45 +1,149 @@
 // Checks of the layout of the modules and of the drivers (docs/adr/0054, docs/domain-model/package-layout.md).
 // A driver is a shared package that touches an external system and holds no business rule: db, hr-system, i18n,
-// logging and telemetry. It has the tag type:driver (roles.ts), and an entry in driverShapes below. Each has the
-// layers domain/ and infrastructure/ (and testing/ for the tools of its tests), and the files named by its
+// logging and telemetry. It has the tag type:driver (roles.ts), and an entry in drivers.json (the root of the repository).
+// Each has the layers domain/ and infrastructure/ (and testing/ for the tools of its tests), and the files named by its
 // `exports` are the only ones in src/ that are not in a directory; those files only re-export. The libraries a layer
 // may import, and the direction between the layers, are lint rules (vite.config.ts); this file checks what a lint
 // rule cannot see: which names a package and its src/ may hold, what an entry file contains, and that a driver does
 // not depend on Effect.
 import { namesWithRole, roleOf, tagOf } from "./roles.ts";
-import { Tree, list, record } from "./tree.ts";
+import { Tree, isRecord, list, record } from "./tree.ts";
 
 const guide = "docs/domain-model/package-layout.md";
 
-// The drivers are named here, in nodeDrivers or webDrivers of vite.config.ts, and in the values of `driver-in-module` of
-// lint-restrictions.json; driversAreInLint fails when a driver is missing from one of them.
-// What a driver may hold besides the files every package has, and what its entries may re-export.
-//   tools     names at the root of the package that a tool decides (migrations/ of dbmate, openapi.yaml, the stubs of
-//             the fake): they stay where the tool looks for them, and are listed here (rule C5).
-//   places    names in src/ that a tool decides (locales/ of i18next-cli).
-//   rootMay   the layers that the entry `.` may re-export. Other entries are fixed: `./testing` re-exports testing/, and
-//             the rest re-export infrastructure/ and domain/. `.` re-exports domain/ only, because it is the entry that any
-//             code imports and it must not pull in an external library (docs/adr/0051). i18n is the exception: it is a thin
-//             wrapper that web alone uses.
-interface DriverShape {
-  readonly tools?: readonly string[];
-  readonly places?: readonly string[];
-  readonly rootMay?: readonly string[];
+// The drivers are named in drivers.json only. vite.config.ts imports it for the lint overrides of the drivers, modules.ts
+// reads the exports from it, and the checks below read the rest; the values of `driver-in-module` of lint-restrictions.json
+// are the one other place that names them (the table asks a fixture for each value), and driversAreInLint compares the two.
+// The fields of an entry:
+//   runtime            "node" for a driver that runs on Node.js (db, logging, telemetry): its infrastructure/ and testing/
+//                      leave the runtime restrictions of docs/adr/0007 and import their own libraries. "web" for one that
+//                      runs where the apps do (hr-system, i18n): its infrastructure/ keeps the restrictions of the modules.
+//   tools              names at the root of the package that a tool decides (migrations/ of dbmate, openapi.yaml, the stubs of
+//                      the fake): they stay where the tool looks for them, and are listed here (rule C5).
+//   places             names in src/ that a tool decides (locales/ of i18next-cli).
+//   rootMay            the layers that the entry `.` may re-export. Other entries are fixed: `./testing` re-exports testing/, and
+//                      the rest re-export infrastructure/ and domain/. `.` re-exports domain/ only, because it is the entry that any
+//                      code imports and it must not pull in an external library (docs/adr/0051). i18n is the exception: it is a thin
+//                      wrapper that web alone uses (docs/adr/0054, docs/adr/0044).
+//   exports            the `exports` of its package.json, when it is not `{".": "./src/index.ts"}`; `exportsReason` is what the
+//                      failure says about it (modules.ts).
+//   extraNodeFiles     "node" only: files besides infrastructure/ and testing/ that get the same relaxation (a fixture that
+//                      shows the lint rule still stops what the driver may not do).
+//   workspaceTypesOnly "node" only: the driver imports the packages of the workspace as types only (db, docs/adr/0038).
+type Runtime = "node" | "web";
+
+export interface Driver {
+  readonly runtime: Runtime;
+  readonly tools: readonly string[];
+  readonly places: readonly string[];
+  readonly rootMay: readonly string[];
+  readonly exports?: Readonly<Record<string, string>>;
+  readonly exportsReason?: string;
+  readonly extraNodeFiles: readonly string[];
+  readonly workspaceTypesOnly: boolean;
 }
 
-const driverShapes: Readonly<Record<string, DriverShape>> = {
-  db: { tools: ["bootstrap.sql", "migrations", "templates", "test"] },
-  "hr-system": { tools: ["fake", "openapi.yaml", "test"] },
-  i18n: {
-    tools: ["i18next.config.ts", "test"],
-    places: ["locales"],
-    rootMay: ["domain", "infrastructure"],
-  },
-  logging: {},
-  telemetry: {},
+const driversPath = "drivers.json";
+const runtimes: readonly Runtime[] = ["node", "web"];
+const nodeOnly = ["extraNodeFiles", "workspaceTypesOnly"];
+const fields = ["runtime", "tools", "places", "rootMay", "exports", "exportsReason", ...nodeOnly];
+
+const strings = (value: unknown): string[] | undefined => {
+  const items = list(value);
+  const texts = items.filter((item): item is string => typeof item === "string");
+  return Array.isArray(value) && texts.length === items.length ? texts : undefined;
 };
 
-const driverNames: readonly string[] = Object.keys(driverShapes);
+const stringMap = (value: unknown): Record<string, string> | undefined => {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value);
+  const texts = entries.filter((entry): entry is [string, string] => typeof entry[1] === "string");
+  return texts.length === entries.length ? Object.fromEntries(texts) : undefined;
+};
+
+// An entry of drivers.json read as a Driver, and what is wrong with it. An entry with a problem is not read, so the checks
+// say that the driver has no entry, and driversFileIsWellFormed says why.
+function parseDriver(value: unknown): { driver?: Driver; problems: string[] } {
+  if (!isRecord(value)) return { problems: ["is not an object"] };
+  const problems: string[] = [];
+  for (const key of Object.keys(value).filter((key) => !fields.includes(key)))
+    problems.push(`has the field ${key}, which is none of ${fields.join(", ")}`);
+  const runtime = runtimes.find((candidate) => candidate === value.runtime);
+  if (runtime === undefined)
+    problems.push('needs "runtime": "node" or "web", where the driver runs');
+  const listOf = (key: string): string[] => {
+    if (value[key] === undefined) return [];
+    const items = strings(value[key]);
+    if (items === undefined) problems.push(`has ${key}, which is not a list of text`);
+    return items ?? [];
+  };
+  const exports = value.exports === undefined ? undefined : stringMap(value.exports);
+  if (value.exports !== undefined && exports === undefined)
+    problems.push("has exports, which is not an object of text");
+  const reason = value.exportsReason;
+  if ((value.exports === undefined) !== (reason === undefined))
+    problems.push(
+      "needs exports and exportsReason together: the reason is what a wrong exports is told",
+    );
+  else if (reason !== undefined && (typeof reason !== "string" || reason.trim() === ""))
+    problems.push("has exportsReason, which is not text");
+  if (runtime !== "node")
+    for (const key of nodeOnly.filter((key) => value[key] !== undefined))
+      problems.push(`has ${key}, which only a driver with "runtime": "node" has`);
+  if (value.workspaceTypesOnly !== undefined && typeof value.workspaceTypesOnly !== "boolean")
+    problems.push("has workspaceTypesOnly, which is not true or false");
+  const tools = listOf("tools");
+  const places = listOf("places");
+  const rootMay = value.rootMay === undefined ? ["domain"] : listOf("rootMay");
+  const extraNodeFiles = listOf("extraNodeFiles");
+  if (problems.length > 0 || runtime === undefined) return { problems };
+  return {
+    problems,
+    driver: {
+      runtime,
+      tools,
+      places,
+      rootMay,
+      ...(exports === undefined || typeof reason !== "string"
+        ? {}
+        : { exports, exportsReason: reason }),
+      extraNodeFiles,
+      workspaceTypesOnly: value.workspaceTypesOnly === true,
+    },
+  };
+}
+
+// The drivers of drivers.json, by name, that are well formed. A tree with no drivers.json has none.
+export function readDrivers(tree: Tree): ReadonlyMap<string, Driver> {
+  const drivers = new Map<string, Driver>();
+  for (const [name, entry] of Object.entries(record(tree.parsed(driversPath)))) {
+    const { driver } = parseDriver(entry);
+    if (driver !== undefined) drivers.set(name, driver);
+  }
+  return drivers;
+}
+
+// A name in drivers.json whose entry cannot be read. The check of its exports (modules.ts) leaves it alone: it would compare
+// the package against `.` only, and add a failure to the one that driversFileIsWellFormed gives with the reason.
+export const isBrokenDriver = (tree: Tree, name: string): boolean =>
+  name in record(tree.parsed(driversPath)) && !readDrivers(tree).has(name);
+
+// Every entry of drivers.json is an object with a runtime and the fields above, and no other. A misspelled field or a runtime
+// that is neither node nor web would otherwise leave the driver out of a rule without a word, so it fails here.
+export function driversFileIsWellFormed(tree: Tree): string[] {
+  const parsed = tree.parsed(driversPath);
+  if (tree.maybe(driversPath) === undefined || parsed === undefined) return [];
+  if (!isRecord(parsed))
+    return [
+      `${driversPath} must be an object with an entry for each driver, by name (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+    ];
+  return Object.entries(parsed).flatMap(([name, entry]) =>
+    parseDriver(entry).problems.map(
+      (problem) =>
+        `${driversPath}: the entry ${name} ${problem} (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+    ),
+  );
+}
 
 const standardFiles = ["package.json", "tsconfig.json", "vite.config.ts"];
 const layers = ["domain", "infrastructure"];
@@ -53,22 +157,23 @@ const dependencyFields = [
 const isDriver = (tree: Tree, name: string): boolean =>
   tree.paths.includes(`packages/${name}/package.json`);
 
-// The tag type:driver and the entry in driverShapes go together. A driver with the tag and no entry is under none of the
-// rules below (they walk driverShapes), so nothing would check its layout, its entries or that it does not use Effect. An
+// The tag type:driver and the entry in drivers.json go together. A driver with the tag and no entry is under none of the
+// rules below (they walk drivers.json), so nothing would check its layout, its entries or that it does not use Effect. An
 // entry for a package with the tag of another role would check a package that is not a driver. A package with no role is
 // refused by packagesHaveOneRole.
 export function driversAreTagged(tree: Tree): string[] {
   const failures: string[] = [];
+  const drivers = readDrivers(tree);
   for (const name of namesWithRole(tree, "driver"))
-    if (!driverNames.includes(name))
+    if (!drivers.has(name))
       failures.push(
-        `packages/${name} has the tag type:driver, but driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts has no entry for ${name}, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+        `packages/${name} has the tag type:driver, but ${driversPath} has no entry for ${name}, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
       );
-  for (const name of driverNames) {
+  for (const name of drivers.keys()) {
     const role = roleOf(tree, name);
     if (isDriver(tree, name) && role !== undefined && role !== "driver")
       failures.push(
-        `packages/${name} has an entry in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts, but its tag is ${tagOf(role)}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
+        `packages/${name} has an entry in ${driversPath}, but its tag is ${tagOf(role)}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
       );
   }
   return failures;
@@ -104,7 +209,7 @@ function entryFiles(tree: Tree, name: string): Map<string, string> {
 // application/ or http/: it has no use case of its own, and an empty layer is not made.
 export function driversHaveTheirLayout(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const [name, { tools = [], places = [] }] of Object.entries(driverShapes)) {
+  for (const [name, { tools, places }] of readDrivers(tree)) {
     if (!isDriver(tree, name)) continue;
     const root = `packages/${name}/`;
     const entries = entryFiles(tree, name);
@@ -137,7 +242,7 @@ export function driversHaveTheirLayout(tree: Tree): string[] {
       if (seen.has(top.name) || [...standardFiles, ...tools].includes(top.name)) continue;
       seen.add(top.name);
       failures.push(
-        `${root}${top.name}${top.inDirectory ? "/" : ""} is not in the root of the driver ${name}. The root holds ${[...standardFiles, "src", ...tools].join(", ")}; a file that a tool looks for is added to the tools of ${name} in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+        `${root}${top.name}${top.inDirectory ? "/" : ""} is not in the root of the driver ${name}. The root holds ${[...standardFiles, "src", ...tools].join(", ")}; a file that a tool looks for is added to the tools of ${name} in ${driversPath} (docs/adr/0054, ${guide}).`,
       );
     }
   }
@@ -165,7 +270,7 @@ const reexport =
 // infrastructure/ for i18n), `./testing` re-exports testing/, the others re-export infrastructure/ and domain/.
 export function driverEntriesOnlyReexport(tree: Tree): string[] {
   const failures: string[] = [];
-  for (const [name, { rootMay = ["domain"] }] of Object.entries(driverShapes)) {
+  for (const [name, { rootMay }] of readDrivers(tree)) {
     // Stryker disable next-line ConditionalExpression: equivalent, without a package.json the exports are empty, so there is no entry to read
     if (!isDriver(tree, name)) continue;
     for (const [file, key] of entryFiles(tree, name)) {
@@ -196,7 +301,7 @@ export function driverEntriesOnlyReexport(tree: Tree): string[] {
 // Rule D5: a driver returns a Promise and does not depend on Effect. The infrastructure of the module wraps the driver with
 // Effect.tryPromise, so the Effect version is the module's to move (docs/adr/0054).
 export function driversDoNotUseEffect(tree: Tree): string[] {
-  return driverNames.flatMap((name) => {
+  return [...readDrivers(tree).keys()].flatMap((name) => {
     // Stryker disable next-line ConditionalExpression: equivalent, without a package.json there is no dependency to refuse
     if (!isDriver(tree, name)) return [];
     const path = `packages/${name}/package.json`;
@@ -212,36 +317,23 @@ export function driversDoNotUseEffect(tree: Tree): string[] {
   });
 }
 
-// The drivers are named in three places besides driverShapes, and a driver left out of one of them is not under that
-// rule: the `driver-in-module` values of the table of lint restrictions (the module's application and http may not import it),
-// the fixture of `driver-effect` (the lint rule that keeps Effect out reaches its infrastructure/), and `nodeDrivers` or
-// `webDrivers` of vite.config.ts (the libraries and the runtime its infrastructure may use). A name in the table that is
-// no driver is refused too.
+// The drivers are named in drivers.json, and a driver left out of the table of lint restrictions is not under its rules: the
+// `driver-in-module` values (the application and http of a module may not import it) and the fixture of `driver-effect` (the
+// lint rule that keeps Effect out reaches its infrastructure/). The table needs the names itself, because it asks a fixture for
+// each value (docs/adr/0050), so the two are compared and not derived from one another. A name in the table that is no driver
+// is refused too.
 const scope = "@agent-software-factory";
 const tablePath = "lint-restrictions.json";
 
-// The text of `const <name> = …` in vite.config.ts, up to the end of its statement (`\n];` or `\n};`).
-function declaration(source: string, name: string): string {
-  const start = source.indexOf(`const ${name}`);
-  // Stryker disable next-line ConditionalExpression,UnaryOperator,StringLiteral: equivalent, the callers look for a name in the text, and the last character of the file (what `slice(-1)` gives) or this text holds none
-  if (start === -1) return "";
-  const rest = source.slice(start);
-  const stop = rest.search(/\n[\]}];/);
-  return stop === -1 ? rest : rest.slice(0, stop);
-}
-
 // Which drivers a restriction is asked of: `node` for those that run on Node.js, `all` for every driver.
-export type DriverKind = "node" | "all";
+export type DriverKind = Runtime | "all";
 
-// The drivers of the repository, those of driverShapes that have a package. With "node", only those that nodeDrivers of
-// vite.config.ts names: they run on Node.js, and their infrastructure/ imports their own libraries.
+// The drivers of the repository, those of drivers.json that have a package. With "node", only those whose runtime is node: they
+// run on Node.js, and their infrastructure/ imports their own libraries.
 export function driversOf(tree: Tree, kind: DriverKind): string[] {
-  const nodeDrivers = declaration(tree.read("vite.config.ts"), "nodeDrivers");
-  return driverNames.filter(
-    (name) =>
-      isDriver(tree, name) &&
-      (kind === "all" || new RegExp(`^\\s+"?${name}"?: \\{`, "m").test(nodeDrivers)),
-  );
+  return [...readDrivers(tree)]
+    .filter(([name, { runtime }]) => isDriver(tree, name) && (kind === "all" || runtime === "node"))
+    .map(([name]) => name);
 }
 
 export function driversAreInLint(tree: Tree): string[] {
@@ -251,10 +343,8 @@ export function driversAreInLint(tree: Tree): string[] {
   const effectFiles = list(record(table["driver-effect"]).rows).flatMap((row) =>
     list(record(row).files),
   );
-  const vite = tree.read("vite.config.ts");
-  const nodeDrivers = declaration(vite, "nodeDrivers");
-  const webDrivers = declaration(vite, "webDrivers");
-  for (const name of driverNames) {
+  const drivers = readDrivers(tree);
+  for (const name of drivers.keys()) {
     if (!isDriver(tree, name)) continue;
     const fixture = `packages/${name}/src/infrastructure/__fixtures__/driver-effect.ts`;
     if (!inModule.includes(`${scope}/${name}`))
@@ -265,18 +355,14 @@ export function driversAreInLint(tree: Tree): string[] {
       failures.push(
         `${tablePath} does not have ${fixture} in the rows of driver-effect. Add the fixture that shows the lint rule stops \`effect\` in ${name}, and its rows (docs/adr/0054, ${guide}).`,
       );
-    if (
-      !new RegExp(`^\\s+"?${name}"?: \\{`, "m").test(nodeDrivers) &&
-      !webDrivers.includes(`"${name}"`)
-    )
-      failures.push(
-        `vite.config.ts names the driver ${name} in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
-      );
   }
   for (const value of inModule)
-    if (typeof value === "string" && !driverNames.some((name) => value === `${scope}/${name}`))
+    if (
+      typeof value === "string" &&
+      ![...drivers.keys()].some((name) => value === `${scope}/${name}`)
+    )
       failures.push(
-        `${tablePath} has ${value} in the values of driver-in-module, but it is not a driver in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+        `${tablePath} has ${value} in the values of driver-in-module, but it is not a driver in ${driversPath} (docs/adr/0054, ${guide}).`,
       );
   return failures;
 }

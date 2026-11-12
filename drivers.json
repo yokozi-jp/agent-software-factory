@@ -1,0 +1,44 @@
+{
+  "db": {
+    "runtime": "node",
+    "tools": ["bootstrap.sql", "migrations", "templates", "test"],
+    "exports": {
+      "./node": "./src/node.ts",
+      "./seed": "./src/seed.ts",
+      "./testing": "./src/testing.ts"
+    },
+    "exportsReason": "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051, 0054)",
+    "extraNodeFiles": ["packages/db/src/__fixtures__/**"],
+    "workspaceTypesOnly": true
+  },
+  "hr-system": {
+    "runtime": "web",
+    "tools": ["fake", "openapi.yaml", "test"],
+    "exports": { ".": "./src/index.ts", "./client": "./src/client.ts" },
+    "exportsReason": "the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054)"
+  },
+  "i18n": {
+    "runtime": "web",
+    "tools": ["i18next.config.ts", "test"],
+    "places": ["locales"],
+    "rootMay": ["domain", "infrastructure"]
+  },
+  "logging": {
+    "runtime": "node",
+    "exports": {
+      ".": "./src/index.ts",
+      "./node": "./src/node.ts",
+      "./testing": "./src/testing.ts"
+    },
+    "exportsReason": "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)"
+  },
+  "telemetry": {
+    "runtime": "node",
+    "exports": { ".": "./src/index.ts", "./node": "./src/node.ts" },
+    "exportsReason": "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
+    "extraNodeFiles": [
+      "packages/telemetry/src/__fixtures__/otel-sdk.ts",
+      "packages/telemetry/src/__fixtures__/outbox.ts"
+    ]
+  }
+}
