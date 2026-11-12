@@ -19,7 +19,8 @@ tags: [adr, ci, testing, mutation, stryker]
 
 - **実行**: `mutation.yml` が毎日 03:00 UTC と `workflow_dispatch` で `pnpm exec nx mutation scripts` を実行します。必須チェックにせず、`ci.yml` の `main` の `needs` にも入れません。
 - **手元**: `rules.ts` を変えた人 (エージェント) は、push の前にそのファイルだけを変異させます ([CI](../tooling/ci.md))。手順は変えません。
-- **保証**: merge のゲートでなくなるので、[保証カタログ](../tooling/assurance-catalog.md) の保証には数えません。1日1回の実行が失敗したら、生き残った mutant を殺すテストを足す Issue にします。
+- **初回の実行だけは PR で流す**: `ci.yml` と pre-push が `nx affected -t mutation-dry-run` (`stryker run --dryRunOnly`) を流します。mutant は走らせず、`unit` のテストが Stryker の sandbox で通るかだけを確かめます。実ワークスペースを読む `unit` のテストは、PR の `test` では通り、Stryker の初回の実行で落ちます。2026-10-31 から 11-11 まで 12 日間、毎日の実行が `migration-compat` のテスト 1 つでこの形で止まっていたためです ([Issue #570](https://github.com/yokozi-jp/agent-software-factory/issues/570))。この step も、mutation の score は保証に数えません。
+- **保証**: merge のゲートでなくなるので、[保証カタログ](../tooling/assurance-catalog.md) の mutation の score は保証に数えません。1日1回の実行が失敗したら、`mutation.yml` の `report` job が Issue を作ります (開いている同名の Issue があればコメントします)。GitHub は定期実行の失敗を、cron の行を最後に変えた人にだけメールするので、メールには頼りません。Issue を受け取ったら、初回の実行の失敗はテストを `*.tools.test.ts` に移し、生き残った mutant はそれを殺すテストを足します。
 
 ## Considered Options
 
@@ -29,6 +30,6 @@ tags: [adr, ci, testing, mutation, stryker]
 
 ## Consequences
 
-- mutation の退行 (テストの弱まり) は、最大で 1 日後に分かります。それまでの間、PR の coverage の下限 ([Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30)) とレビューが防ぎます。
+- mutation の退行 (テストの弱まり) は、最大で 1 日後に Issue で分かります。それまでの間、PR の coverage の下限 ([Issue #30](https://github.com/yokozi-jp/agent-software-factory/issues/30)) とレビューが防ぎます。
 - 実行時間が 90 分 (`timeout-minutes`) を超えたら、対象のファイルを分けるか、incremental の cache を足すかを、この ADR を見直して決めます。
 - `ci.yml` の step の名前が `Check, test and build (nx affected)` に変わります。保証カタログの行も同じ名前にしました。
