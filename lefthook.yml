@@ -235,3 +235,16 @@ pre-push:
     # Warns only. dependency review in CI is the gate for dependencies (docs/adr/0021).
     osv-scanner:
       run: tools/scripts/sh/osv-scanner.sh
+
+# git worktree add runs post-checkout with the null ref (zeros only) as the first argument; a checkout or a switch passes the
+# previous HEAD (https://git-scm.com/docs/githooks). So a worktree gets its dev-server ports (Issue #184, #740) whoever made it
+# and however: `git worktree add` by hand, a skill, tools/scripts/sh/worktree.sh. The hook runs in the new worktree, with the
+# lefthook.yml of the commit it was made from, so a worktree made from a commit without this job gets no ports from it;
+# worktree.sh add assigns them afterwards (docs/tooling/worktrees.md ("開発サーバーを動かす")).
+# The entry exits with 0 whatever happens: git makes a failing post-checkout fail `git worktree add` (the worktree is still
+# made), and a worktree without ports only means that a clash fails at startup (strictPort). `|| true` covers a failure
+# before the entry runs (no node).
+post-checkout:
+  jobs:
+    - name: dev-ports
+      run: node tools/scripts/src/dev-ports/cli.ts hook {1} || true

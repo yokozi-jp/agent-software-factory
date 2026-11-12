@@ -1,11 +1,15 @@
 // 開発サーバーのポートを worktree ごとに分ける (docs/tooling/worktrees.md ("開発サーバーを動かす")、Issue #184)。
 //   node tools/scripts/src/dev-ports/cli.ts assign <worktree>   空いている slot を割り当て、apps/web と apps/api の
-//                                                               .env.local を書く。URL を出力する
+//                                                               .env.local を書く。URL を出力する。割り当て済みなら何も書かず、
+//                                                               その slot を出力する
 //   node tools/scripts/src/dev-ports/cli.ts show                この worktree の slot の URL を出力する
+//   node tools/scripts/src/dev-ports/cli.ts hook <前の HEAD>    post-checkout の入口。前の HEAD が null ref (git worktree add)
+//                                                               のときだけ、この worktree に assign する。常に終了コード 0
 // .env.local は、エージェントが読めない (docs/tooling/agent-permissions.md) ので、URL は show で知る。
-// tools/scripts/sh/worktree.sh add が、worktree を作った後に assign を呼ぶ。
-//   exit 0  done
-//   exit 1  assign: 書く先に .env.local がある (上書きしない)。show: この worktree には assign していない
+// lefthook.yml の post-checkout が hook を呼び、worktree を作った人が誰でも slot が付く。古い commit から作った worktree には
+// hook がないので、tools/scripts/sh/worktree.sh add が、作った後に assign を呼ぶ。
+//   exit 0  done。hook は、割り当てに失敗しても 0 (失敗した post-checkout は git worktree add を失敗にする)
+//   exit 1  assign: 書く先に、slot の印のない .env.local がある (上書きしない)。show: この worktree には assign していない
 //   exit 2  usage, main の checkout への assign, 空いている slot がない, ロックを取れない, git の失敗
 // このファイルは git とファイルを読み書きして、事実を集めて出力する。何を決めるかは rules.ts にある (docs/adr/0024)。
 import { execFileSync } from "node:child_process";
@@ -19,7 +23,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { planAssign, planShow, summary, worktreePaths, type Worktree } from "./rules.ts";
+import {
+  planAssign,
+  planShow,
+  shouldAssignOnCheckout,
+  summary,
+  worktreePaths,
+  type Worktree,
+} from "./rules.ts";
 
 type Output = { readonly status: number; readonly stdout: string; readonly stderr: string };
 
@@ -93,11 +104,30 @@ function assign(cwd: string, target: string | undefined): Output {
   return withLock(cwd, () => {
     const plan = planAssign(worktrees(cwd), dir);
     if (!plan.ok) return fail(plan.status, plan.message);
+    // すでに割り当て済みなら files は undefined で、何も書かない。
     // "wx" は、ファイルがあると失敗する。planAssign の確認と書き込みの間に作られても、上書きしない。
-    writeFileSync(webFile(dir), plan.files.web, { flag: "wx" });
-    writeFileSync(apiFile(dir), plan.files.api, { flag: "wx" });
+    if (plan.files !== undefined) {
+      writeFileSync(webFile(dir), plan.files.web, { flag: "wx" });
+      writeFileSync(apiFile(dir), plan.files.api, { flag: "wx" });
+    }
     return { status: 0, stdout: summary(plan.slot), stderr: "" };
   });
+}
+
+// lefthook.yml の post-checkout が呼ぶ。git worktree add が null ref を渡すので、そのときだけ割り当てる。
+// 失敗しても終了コードは 0: git は、失敗した post-checkout を worktree add の失敗にする (worktree は作られる)。
+function hook(cwd: string, previousHead: string | undefined): Output {
+  const top = realpathSync(git(cwd, ["rev-parse", "--show-toplevel"]).trim());
+  const [mainCheckout] = worktrees(cwd);
+  if (
+    previousHead === undefined ||
+    mainCheckout === undefined ||
+    !shouldAssignOnCheckout(previousHead, top, mainCheckout.path)
+  )
+    return { status: 0, stdout: "", stderr: "" };
+  const result = assign(cwd, top);
+  if (result.status === 0) return result;
+  return { status: 0, stdout: "", stderr: result.stderr };
 }
 
 function show(cwd: string): Output {
@@ -114,6 +144,8 @@ function show(cwd: string): Output {
 function run(args: readonly string[]): Output {
   const cwd = process.cwd();
   const [command, target, ...rest] = args;
+  // hook は、git が渡す引数 (第 1 引数のほか 2 つ) を受ける。形が合わなくても失敗にしない。
+  if (command === "hook") return hook(cwd, target);
   if (rest.length > 0) return fail(2, usage.trim());
   if (command === "assign") return assign(cwd, target);
   if (command === "show" && target === undefined) return show(cwd);

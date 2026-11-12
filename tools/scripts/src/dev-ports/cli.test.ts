@@ -56,6 +56,64 @@ const apiFile = (dir: string) => join(dir, "apps/api/.env.local");
 const webFile = (dir: string) => join(dir, "apps/web/.env.local");
 const slotIn = (text: string): number => Number(/^slot (\d+)/m.exec(text)?.[1]);
 
+// post-checkout の hook (lefthook.yml) が呼ぶ入口。git worktree add が null ref を渡す (https://git-scm.com/docs/githooks)。
+// 失敗しても終了コードは 0: git は、失敗した post-checkout を worktree add の失敗にする (worktree は作られる)。
+describe("dev-ports の hook", () => {
+  const nullRef = "0".repeat(40);
+
+  it("null ref のとき、その worktree に slot を割り当て、ファイルを書くこと", () => {
+    const { add } = repo();
+    const dir = add();
+    const result = run(dir, "hook", nullRef);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("slot 1");
+    expect(readFileSync(apiFile(dir), "utf8")).toBe(envFiles(1).api);
+  });
+
+  it("前の HEAD がある通常の checkout では、何も書かず何も出力しないこと", () => {
+    const { add } = repo();
+    const dir = add();
+    const result = run(dir, "hook", "14c74576e7421e12e79ab2546d7135e353a4a56f");
+    expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
+    expect(existsSync(apiFile(dir))).toBe(false);
+  });
+
+  it("main の checkout では、null ref でも何も書かず、静かに終了コード 0 で終わること", () => {
+    const { main } = repo();
+    const result = run(main, "hook", nullRef);
+    expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
+    expect(existsSync(apiFile(main))).toBe(false);
+  });
+
+  // worktree.sh add が続けて assign しても、hook の結果が残る。
+  it("すでに割り当て済みの worktree では、書き直さず、終了コード 0 で終わること", () => {
+    const { add } = repo();
+    const dir = add();
+    run(dir, "hook", nullRef);
+    const before = readFileSync(apiFile(dir), "utf8");
+    const again = run(dir, "hook", nullRef);
+    expect(again.status).toBe(0);
+    expect(readFileSync(apiFile(dir), "utf8")).toBe(before);
+  });
+
+  it("割り当てに失敗しても、警告を stderr に出し、終了コード 0 で終わること", () => {
+    const { main, add } = repo();
+    for (let index = 1; index < slotCount; index += 1) run(main, "assign", add());
+    const dir = add();
+    const result = run(dir, "hook", nullRef);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("worktree を消");
+    expect(existsSync(apiFile(dir))).toBe(false);
+  });
+
+  it("引数がないとき、使い方を出さず、終了コード 0 で何もしないこと", () => {
+    const { add } = repo();
+    const dir = add();
+    expect(run(dir, "hook")).toMatchObject({ status: 0, stdout: "" });
+    expect(existsSync(apiFile(dir))).toBe(false);
+  });
+});
+
 describe("dev-ports の assign", () => {
   it("最初の worktree に slot 1 を割り当て、2 つのファイルを書き、URL を出力すること", () => {
     const { main, add } = repo();
@@ -90,6 +148,17 @@ describe("dev-ports の assign", () => {
     const taken = slotIn(run(main, "assign", first).stdout);
     const next = slotIn(run(first, "assign", second).stdout);
     expect(next).not.toBe(taken);
+  });
+
+  it("すでに割り当て済みの worktree に assign すると、書き直さず、同じ slot を出力すること", () => {
+    const { main, add } = repo();
+    const dir = add();
+    run(main, "assign", dir);
+    const before = readFileSync(apiFile(dir), "utf8");
+    const again = run(main, "assign", dir);
+    expect(again.status).toBe(0);
+    expect(again.stdout).toContain("slot 1");
+    expect(readFileSync(apiFile(dir), "utf8")).toBe(before);
   });
 
   it("すでに .env.local があるときは、上書きせず終了コード 1 で断ること", () => {

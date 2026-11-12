@@ -6,12 +6,44 @@ import {
   planAssign,
   planShow,
   portsFor,
+  shouldAssignOnCheckout,
   slotCount,
   slotOf,
   summary,
   worktreePaths,
   type Worktree,
 } from "./rules.ts";
+
+const nullRef = "0".repeat(40);
+const someCommit = "14c74576e7421e12e79ab2546d7135e353a4a56f";
+
+describe("shouldAssignOnCheckout", () => {
+  // git worktree add と git clone は、post-checkout の第 1 引数に null ref を渡す (https://git-scm.com/docs/githooks)。
+  it("前の HEAD が null ref のとき、main でない worktree では割り当てること", () => {
+    expect(shouldAssignOnCheckout(nullRef, "/w/a", "/w/app")).toBe(true);
+  });
+
+  it("通常の checkout や switch (前の HEAD がある) では、割り当てないこと", () => {
+    expect(shouldAssignOnCheckout(someCommit, "/w/a", "/w/app")).toBe(false);
+  });
+
+  it("main の checkout (clone) では、null ref でも割り当てないこと", () => {
+    expect(shouldAssignOnCheckout(nullRef, "/w/app", "/w/app")).toBe(false);
+  });
+
+  // 空や欠けた引数を null ref とみなすと、手で hook を呼んだだけで割り当ててしまう。
+  it.each(["", "0", "0".repeat(39), "0".repeat(64) + "1"])(
+    "null ref の形でない引数 %j では、割り当てないこと",
+    (previous) => {
+      expect(shouldAssignOnCheckout(previous, "/w/a", "/w/app")).toBe(false);
+    },
+  );
+
+  // SHA-256 のリポジトリでは、ID が 64 桁になる。
+  it("64 桁のゼロ (SHA-256 の null ref) も、null ref として扱うこと", () => {
+    expect(shouldAssignOnCheckout("0".repeat(64), "/w/a", "/w/app")).toBe(true);
+  });
+});
 
 // main と、そのほかの worktree。files は apps/web と apps/api の .env.local の中身 (なければ undefined)。
 const main: Worktree = { path: "/w/app", exists: true, api: undefined, web: undefined };
@@ -59,6 +91,29 @@ describe("planAssign", () => {
     const onlyWeb: Worktree = { path: "/w/a", exists: true, api: undefined, web: "X=1\n" };
     expect(planAssign([main, onlyApi], "/w/a")).toMatchObject({ ok: false, status: 1 });
     expect(planAssign([main, onlyWeb], "/w/a")).toMatchObject({ ok: false, status: 1 });
+  });
+
+  // post-checkout の hook が先に割り当てた worktree に、worktree.sh add が続けて assign しても、失敗にしない。
+  it("すでに slot の印がある worktree では、何も書かずに、その slot を返すこと", () => {
+    expect(planAssign([main, assigned("/w/a", 3)], "/w/a")).toEqual({
+      ok: true,
+      slot: 3,
+      files: undefined,
+    });
+  });
+
+  it("印が web か api の片方にしかなくても、その slot を返すこと", () => {
+    const onlyWebMarked: Worktree = {
+      path: "/w/a",
+      exists: true,
+      api: undefined,
+      web: envFiles(4).web,
+    };
+    expect(planAssign([main, onlyWebMarked], "/w/a")).toEqual({
+      ok: true,
+      slot: 4,
+      files: undefined,
+    });
   });
 
   // git は、ディレクトリを手で消した worktree を prunable として一覧に残す。その slot は使われていない。

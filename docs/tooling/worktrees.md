@@ -44,8 +44,9 @@ Kiro の file tool (読む、書く、編集する) は、相対 path を worktr
 
 別のセッションも同じマシンで開発サーバーを動かします。ポートは worktree ごとに分けます ([Issue #184](https://github.com/yokozi-jp/agent-software-factory/issues/184))。
 
-- **割り当て**: `worktree.sh add` が worktree に slot を割り当てます (`tools/scripts/src/dev-ports/`)。main の checkout は slot 0 で、既定のポートのままです。slot n は既定に n × 10 を足します (n は 0〜7)。ポートは worktree の `apps/web/` と `apps/api/` にある `.env.local` に書かれ、git には入りません。使われている slot は、各 worktree の `apps/api/` の `.env.local` の先頭行の印から読むので、worktree を消すとその slot は空きます。
-- **自分の URL**: `node tools/scripts/src/dev-ports/cli.ts show` を実行します (worktree のどこからでも構いません)。`.env.local` はエージェントが読めない ([エージェントの権限](agent-permissions.md)) ので、この出力で知ります。`worktree.sh add` を通さずに作った worktree には、`node tools/scripts/src/dev-ports/cli.ts assign <worktree の path>` で割り当てます (すでに `.env.local` があると上書きしません)。
+- **割り当て**: worktree を作ると、slot が付きます (`tools/scripts/src/dev-ports/`)。誰がどう作っても付くよう、`lefthook.yml` の `post-checkout` の job が `git worktree add` の最中に割り当てます。git は `git worktree add` で `post-checkout` を動かし、第 1 引数に null ref (ゼロだけの ID) を渡します。通常の `checkout` と `switch` は直前の HEAD を渡すので、何もしません ([githooks](https://git-scm.com/docs/githooks)。2026-11-12 に読んだ)。main の checkout は slot 0 で、既定のポートのままです。slot n は既定に n × 10 を足します (n は 0〜7)。ポートは worktree の `apps/web/` と `apps/api/` にある `.env.local` に書かれ、git には入りません。使われている slot は、各 worktree の `apps/api/` の `.env.local` の先頭行の印から読むので、worktree を消すとその slot は空きます。
+- **hook が効かないとき**: hook は、新しい worktree の作成元の commit にある `lefthook.yml` と `cli.ts` で動きます。この job が入る前の commit から作った worktree には、付きません。`git worktree add --no-checkout` でも動きません。`lefthook install` (`pnpm install` の `prepare`) を一度も実行していない clone では、hook 自体が入っていません。そのため `tools/scripts/sh/worktree.sh add` は、作った後に `assign` を呼びます。hook が先に割り当てていれば、何も書かずに同じ slot を出力します。
+- **自分の URL**: `node tools/scripts/src/dev-ports/cli.ts show` を実行します (worktree のどこからでも構いません)。`.env.local` はエージェントが読めない ([エージェントの権限](agent-permissions.md)) ので、この出力で知ります。slot がない worktree には、`node tools/scripts/src/dev-ports/cli.ts assign <worktree の path>` で割り当てます (すでに slot があれば何も書かず、その slot を出力します。印のない `.env.local` があると、上書きせずに断ります)。
 
   | slot 0 (main) | slot 1 | 用途                         |
   | ------------- | ------ | ---------------------------- |
