@@ -66,6 +66,50 @@ describe("parse できない設定ファイル: メッセージ", () => {
   });
 });
 
+describe("JSONC のファイル", () => {
+  const parsedOf = (text: string): unknown => {
+    const tree = new Tree(repo({ "renovate.jsonc": text }));
+    const value = tree.parsed("renovate.jsonc");
+    expect(tree.parseErrors).toEqual([]);
+    return value;
+  };
+
+  it("行コメントとブロックコメントを読み飛ばすこと", () => {
+    expect(parsedOf('// head\n{\n  /* block\n  comment */ "a": 1, // tail\n  "b": 2\n}\n')).toEqual(
+      {
+        a: 1,
+        b: 2,
+      },
+    );
+  });
+
+  it("末尾のカンマを、オブジェクトでも配列でも読み飛ばすこと", () => {
+    expect(parsedOf('{ "a": [1, 2,], "b": { "c": 3, }, }')).toEqual({ a: [1, 2], b: { c: 3 } });
+  });
+
+  it("コメントをはさんだ末尾のカンマを読み飛ばすこと", () => {
+    expect(parsedOf('{ "a": 1, // last\n }')).toEqual({ a: 1 });
+  });
+
+  it("文字列の中の // と /* と ,} は残すこと", () => {
+    expect(parsedOf('{ "url": "https://example.com/*x*/", "t": "a, }", "q": "\\" // x" }')).toEqual(
+      {
+        url: "https://example.com/*x*/",
+        t: "a, }",
+        q: '" // x',
+      },
+    );
+  });
+
+  it("JSONC として読めないファイルを JSONC と挙げること", () => {
+    const tree = new Tree(repo({ "renovate.jsonc": "{\n" }));
+    tree.parsed("renovate.jsonc");
+    expect(tree.parseErrors).toEqual([
+      "renovate.jsonc is not valid JSONC (SyntaxError: Expected property name or '}' in JSON at position 2 (line 2 column 1))",
+    ]);
+  });
+});
+
 describe("ツリーにないファイル", () => {
   it("ツリーにないファイルを、空または undefined として読むこと", () => {
     const tree = new Tree(repo());

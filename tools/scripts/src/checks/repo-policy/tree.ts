@@ -25,9 +25,26 @@ const firstLine = (error: unknown): string =>
     .replace(/\n[^]*/, "")
     .replace(/:$/, "");
 
+// JSON with comments and trailing commas (renovate.jsonc). A string is matched first, so a `//` or a `,` inside
+// a string stays. The comments go first, so that a comma before a comment and a closing bracket is a trailing one.
+const withoutComments = (text: string): string =>
+  text.replace(/"(?:[^"\\\n]|\\.)*"|\/\/[^\n]*|\/\*[^]*?\*\//g, (match) =>
+    match.startsWith('"') ? match : "",
+  );
+const withoutTrailingCommas = (text: string): string =>
+  text.replace(/"(?:[^"\\\n]|\\.)*"|,(?=\s*[}\]])/g, (match) => (match === "," ? "" : match));
+
 // The parser for a file, by its extension. Each returns the value, or throws with the reason the text is
 // not valid.
 function parser(path: string): [string, (text: string) => unknown] {
+  if (path.endsWith(".jsonc"))
+    return [
+      "JSONC",
+      (text) => {
+        const value: unknown = JSON.parse(withoutTrailingCommas(withoutComments(text)));
+        return value;
+      },
+    ];
   if (path.endsWith(".json"))
     return [
       "JSON",

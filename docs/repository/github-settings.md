@@ -26,6 +26,7 @@ gh repo edit yokozi-jp/agent-software-factory \
 ```
 
 `--enable-auto-merge` (Allow auto-merge) は、Renovate が必須チェックの通った PR を自分で merge するために要ります ([ADR 0055](../adr/0055-renovate-automerge-by-ci.md))。必須チェックは次の 2 の ruleset が強制するので、通らない PR は merge されません。
+この設定を無効にしても、Renovate の自動 merge が止まる保証はありません。Renovate の文書は、プラットフォームの auto-merge が使えないと Renovate の automerge に戻ると書きます ([platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))。無効化がそれに当たるかは確かめていません (推論)。止め方は [Renovate](../tooling/renovate.md) の「自動 merge を止める」にあります。
 
 ## 2. main の保護 (ruleset)
 
