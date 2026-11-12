@@ -20,7 +20,7 @@ GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterl
 | npm (catalog) の minor と patch                           | 現在の版が 1.0 以上。公開から 3 日たっている |
 | GitHub Action と mise の道具の patch (betterleaks を含む) | 公開から 3 日たっている                      |
 
-人が merge する PR: メジャー版、0.x、`better-auth`、`oidc-provider`、Node.js、pnpm、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
+人が merge する PR: メジャー版、0.x、`better-auth`、`oidc-provider`、Node.js、pnpm、`kiro-cli`、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
 
 自動にする PR で CI が落ちたら、PR は open のまま残ります。直して push すれば、CI が通った時点で merge されます。自動にした PR が main を壊したら、その PR を revert します。止めたいときは、`renovate.jsonc` の自動にする規則を消すか、`gh repo edit --enable-auto-merge=false` を実行します。
 本文が `Automerge: Disabled by config` なら、規則が効いていません。
@@ -33,14 +33,15 @@ GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterl
 
 ## 更新の対象
 
-| ファイル                                        | 更新するもの                                                                                    |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `mise.toml`、`mise.lock`                        | jactionlint、betterleaks、shellcheck、zizmor。Renovate が `mise lock` で `mise.lock` も更新する |
-| `.betterleaks.toml`                             | `betterleaksMinVersion`。betterleaks の PR で、`mise.toml` と一緒に更新する                     |
-| `.github/workflows/*.yml`                       | Action の commit SHA と、同じ行の `# v1.2.3` のコメント。`jdx/mise-action` の `version`         |
-| `pnpm-workspace.yaml`、`pnpm-lock.yaml`         | catalog の依存。nx と vite-plus と tanstack router は monorepo ごとに1つの PR にまとまる        |
-| `.node-version`、`package.json` の `devEngines` | Node.js (メジャー版を除く) と pnpm                                                              |
-| `tools/scripts/sh/renovate.sh`                  | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する  |
+| ファイル                                        | 更新するもの                                                                                                                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mise.toml`、`mise.lock`                        | jactionlint、betterleaks、shellcheck、zizmor。Renovate が `mise lock` で `mise.lock` も更新する                                                                      |
+| `mise.toml` の `[tools."http:kiro-cli"]`        | `version`。regex manager が Kiro 公式の `index.json` から検出する ([ADR 0056](../adr/0056-kiro-cli-through-mise-http-backend.md))。branch は `renovate/kiro-cli-3.x` |
+| `.betterleaks.toml`                             | `betterleaksMinVersion`。betterleaks の PR で、`mise.toml` と一緒に更新する                                                                                          |
+| `.github/workflows/*.yml`                       | Action の commit SHA と、同じ行の `# v1.2.3` のコメント。`jdx/mise-action` の `version`                                                                              |
+| `pnpm-workspace.yaml`、`pnpm-lock.yaml`         | catalog の依存。nx と vite-plus と tanstack router は monorepo ごとに1つの PR にまとまる                                                                             |
+| `.node-version`、`package.json` の `devEngines` | Node.js (メジャー版を除く) と pnpm                                                                                                                                   |
+| `tools/scripts/sh/renovate.sh`                  | `renovate_version`。`renovate.jsonc` の検査に使う Renovate の版。週に1回、月曜の早朝に更新する                                                                       |
 
 `config:best-practices` により、npm のパッケージは公開から3日たつまで PR を出しません。
 lock file (`pnpm-lock.yaml`、`mise.lock`) は、毎週月曜の早朝に更新します。`mise.toml` の版は固定しているので、`mise.lock` の週次の更新では版が変わりません。
@@ -63,6 +64,7 @@ Renovate は open の alert を読んでセキュリティ更新の PR を作る
 人が merge する PR (自動にしないもの) の手順です。CI (`main`、`commitlint`、`betterleaks`、`dependency-review`) が通ったことを確かめます。そのうえで、PR ごとに次を見ます。
 
 - **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えると、repo-policy が落ちます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。zizmor や jactionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
+- **kiro-cli**: `mise.toml` の `version` だけが変わります。Renovate が `mise.lock` を更新していなければ、そのブランチで `mise lock http:kiro-cli --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` の sha256 が、Kiro 公式の `https://prod.download.cli.kiro.dev/stable/index.json` のその版の値と同じことを確かめ、リリースノートを読んでから merge します ([ADR 0056](../adr/0056-kiro-cli-through-mise-http-backend.md))。
 - **betterleaks**: `mise.toml`、`mise.lock`、`.betterleaks.toml` の3つが同じ版に変わっていること。repo-policy (`tools/scripts/src/checks/repo-policy/cli.ts`) が落ちたら、そろっていないファイルを直します。 `mise.toml` に `betterleaks = "v1.10.0"` と v 付きで書かれていたら、`renovate.jsonc` の `extractVersion` の規則が効いていません (PR #621 で起きた。リリースの tag が `v1.10.0` で、`.betterleaks.toml` の `1.10.0` と一致しなかった)。
 - **Action**: SHA が変わり、同じ行のコメントの版も変わっていること。リリースノートで権限や入力の変更がないか見ます。
 - **catalog**: `pnpm-lock.yaml` が変わっていること。
