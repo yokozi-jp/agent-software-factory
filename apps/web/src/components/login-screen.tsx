@@ -32,6 +32,7 @@ export function LoginScreen({ kind: initialKind, onSignIn }: LoginScreenProps) {
         <h1 className="text-lg font-semibold">{t("login.title")}</h1>
         {message === undefined ? null : <p role="alert">{message}</p>}
         <Button
+          className="max-md:h-11"
           onClick={() => {
             setFailed(false);
             onSignIn().catch(() => {

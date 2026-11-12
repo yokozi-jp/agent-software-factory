@@ -44,6 +44,7 @@ export function UserMenu({ name, onSignOut }: UserMenuProps) {
             key={preference}
             type="button"
             size="sm"
+            className="max-md:h-11"
             variant={theme === preference ? "secondary" : "ghost"}
             aria-pressed={theme === preference}
             onClick={() => {
@@ -58,6 +59,7 @@ export function UserMenu({ name, onSignOut }: UserMenuProps) {
         type="button"
         variant="outline"
         size="sm"
+        className="max-md:h-11"
         onClick={() => {
           setSignOutFailed(false);
           onSignOut().catch(() => {

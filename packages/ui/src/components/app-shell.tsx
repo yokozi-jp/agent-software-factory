@@ -94,6 +94,7 @@ export function AppShell({
                         <SidebarMenuItem key={item.href}>
                           <SidebarMenuButton
                             isActive={active}
+                            className="max-md:h-11"
                             aria-current={active ? "page" : undefined}
                             render={renderLink(item)}
                           >
@@ -112,7 +113,7 @@ export function AppShell({
       </Sidebar>
       <SidebarInset id={mainId} tabIndex={-1}>
         <header className="flex h-12 items-center gap-2 border-b px-4">
-          <SidebarTrigger aria-label={triggerLabel} />
+          <SidebarTrigger aria-label={triggerLabel} className="max-md:size-11" />
           {title !== "" && <h1 className="text-lg font-semibold">{title}</h1>}
         </header>
         <div className="p-4">{children}</div>
