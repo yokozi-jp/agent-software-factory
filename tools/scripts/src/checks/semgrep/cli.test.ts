@@ -71,7 +71,7 @@ afterAll(() => {
 });
 
 describe("semgrep", () => {
-  it("scans from the repository top against the merge base with origin/main, with the Registry rules", () => {
+  it("リポジトリの最上位から、origin/main との merge base に対して Registry の規則で検査すること", () => {
     const top = git("rev-parse", "origin/main");
     expect(scan({}, join(repo, "src"))).toEqual({ status: 0, stdout: "", stderr: "" });
     expect(recorded()).toEqual([
@@ -79,12 +79,12 @@ describe("semgrep", () => {
     ]);
   });
 
-  it("passes Semgrep's exit code on: 1 for a new finding, and others for a Semgrep error", () => {
+  it("Semgrep の終了コードをそのまま返すこと: 新しい指摘は 1、Semgrep のエラーはそれ以外", () => {
     expect(scan({ STUB_EXIT: "1" }).status).toBe(1);
     expect(scan({ STUB_EXIT: "7" }).status).toBe(7);
   });
 
-  it("compares with origin/$GITHUB_BASE_REF, and uses the rules in SEMGREP_RULES", () => {
+  it("origin/$GITHUB_BASE_REF と比べ、SEMGREP_RULES の規則を使うこと", () => {
     git("update-ref", "refs/remotes/origin/release", mergeBase);
     expect(scan({ GITHUB_BASE_REF: "release", SEMGREP_RULES: "/r.yml" }).status).toBe(0);
     expect(recorded()).toEqual([
@@ -92,7 +92,7 @@ describe("semgrep", () => {
     ]);
   });
 
-  it("exits 2 without scanning when the base does not exist", () => {
+  it("base がないとき、検査せずに 2 で終了すること", () => {
     expect(scan({ GITHUB_BASE_REF: "missing" })).toEqual(
       cannotScan(
         "origin/missing does not exist here, so new findings cannot be told apart. Run `git fetch origin`.",
@@ -101,7 +101,7 @@ describe("semgrep", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("exits 2 without scanning when HEAD shares no history with the base", () => {
+  it("HEAD が base と履歴を共有しないとき、検査せずに 2 で終了すること", () => {
     git("switch", "-q", "--orphan", "unrelated");
     git("commit", "-q", "--allow-empty", "-m", "unrelated");
     const result = scan();
@@ -114,7 +114,7 @@ describe("semgrep", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("exits 2 (could not scan), not 1 (a finding), outside a git repository", () => {
+  it("git リポジトリの外では、1 (検出) ではなく 2 (検査できない) で終了すること", () => {
     const outside = join(box.root, "outside");
     mkdirSync(outside);
     const result = scan({}, outside);
@@ -124,7 +124,7 @@ describe("semgrep", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("exits 2 without mise, so CI fails instead of passing unchecked", () => {
+  it("mise がないとき 2 で終了し、CI が確かめずに通さず失敗すること", () => {
     const noMise = join(box.root, "no-mise");
     mkdirSync(noMise);
     symlinkSync(join(gitIn(repo, ["--exec-path"]).trim(), "git"), join(noMise, "git"));

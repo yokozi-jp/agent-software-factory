@@ -18,20 +18,20 @@ afterAll(() => {
 });
 
 describe("renovate-preview", () => {
-  it("is a usage error without a log file", () => {
+  it("ログファイルがないとき、使い方の誤りとすること", () => {
     const result = run();
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("usage: node tools/scripts/src/checks/renovate-preview/cli.ts");
   });
 
-  it("fails when the log has no branch list", () => {
+  it("ログにブランチの一覧がないとき失敗すること", () => {
     writeFileSync(join(box.root, "empty.log"), 'not json\n{"msg":"other"}\n');
     const result = run("empty.log");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("renovate-preview: no branch list in the log.");
   });
 
-  it("prints the branches of a log", () => {
+  it("ログのブランチを出力すること", () => {
     const entry = {
       msg: "branches",
       branches: [{ branchName: "renovate/x", prTitle: "chore(deps): update x to v2" }],
@@ -45,7 +45,7 @@ describe("renovate-preview", () => {
   });
 
   // A line over the 512 MB that a JavaScript string holds is not tested: the file would be as large as the log.
-  it("finds the branch list among large lines of other entries", () => {
+  it("ほかの項目の大きな行の中から、ブランチの一覧を見つけること", () => {
     const big = JSON.stringify({ msg: "other", data: "x".repeat(10_000_000) });
     const entry = { msg: "branches", branches: [{ branchName: "b", prTitle: "t" }] };
     writeFileSync(join(box.root, "big.log"), `${big}\n${JSON.stringify(entry)}\n${big}\n`);

@@ -14,7 +14,7 @@ describe("refusesForcePush", () => {
     "git -c a=b push --force",
     "pnpm test && git push --force",
     "git push -f\n",
-  ])("refuses a rewriting push: %j", (command) => {
+  ])("履歴を書き換える push を拒否すること: %j", (command) => {
     expect(refusesForcePush(command)).toBe(true);
   });
 
@@ -29,7 +29,7 @@ describe("refusesForcePush", () => {
     "git fetch -f; git push",
     // git's subcommands are lower case.
     "git PUSH --force",
-  ])("allows an ordinary push or another command: %j", (command) => {
+  ])("通常の push やほかのコマンドを許可すること: %j", (command) => {
     expect(refusesForcePush(command)).toBe(false);
   });
 
@@ -62,7 +62,7 @@ describe("refusesForcePush", () => {
     "cat <<< x\ngit push --force",
     "cat <<EOF\ngit push --force",
     "cat <<EOF > f\nbody\nEOF\ngit push -f",
-  ])("refuses a push in command position: %j", (command) => {
+  ])("コマンドの位置にある push を拒否すること: %j", (command) => {
     expect(refusesForcePush(command)).toBe(true);
   });
 
@@ -75,7 +75,7 @@ describe("refusesForcePush", () => {
     'cat > f <<"EOF"\ngit push --force\nEOF',
     "cat <<-EOF > f\n\tgit push -f\n\tEOF",
     "cat > a <<A\ngit push -f\nA\ncat > b <<B\ngit push -f\nB",
-  ])("allows text that only mentions it: %j", (command) => {
+  ])("言及するだけの文章を許可すること: %j", (command) => {
     expect(refusesForcePush(command)).toBe(false);
   });
 });

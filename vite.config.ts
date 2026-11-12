@@ -866,11 +866,13 @@ export default defineConfig({
         ],
         rules: { "tenant-sql/no-session-setting": "off" },
       },
-      // The title of every test in apps/*/src is written in Japanese, so that the verbose test report reads as a
-      // list of what the code guarantees. The rule is in tools/lint-plugins/src/test-title-plugin.ts. Tests of the tools
-      // and of the lint plugins themselves are outside this rule.
+      // The title of every test is written in Japanese, so that the verbose test report reads as a
+      // list of what the code guarantees. A describe may be one name from the code, such as "startPostgres".
+      // The rule is in tools/lint-plugins/src/test-title-plugin.ts. The fixtures are
+      // apps/api/src/__fixtures__/test-title.test.ts, apps/web/src/__fixtures__/tests.test.tsx and
+      // tools/scripts/src/test/fixtures/test-title.test.ts.
       {
-        files: ["apps/*/src/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
+        files: ["**/*.test.ts", "**/*.test.tsx"],
         jsPlugins: [
           { name: "test-title", specifier: "./tools/lint-plugins/src/test-title-plugin.ts" },
         ],

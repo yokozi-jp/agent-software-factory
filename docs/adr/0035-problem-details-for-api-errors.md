@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0035: API のエラー応答は RFC 9457 の Problem Details にし、識別子は type だけにして、変換は 4 か所に限る"
-description: API のすべてのエラー応答を application/problem+json にし、type・title・status を必須にする決定。識別子は type だけで code を足さず、ステータスだけで分かるものは about:blank、共通は /problems/<kebab>、業務の失敗と 409 は /problems/<module>/<kebab-tag> にする。title と detail は英語で固定し、5xx は内部の情報をどの環境でも出さず trace_id を付ける。変換は defaultHook、onError、notFound、route の _tag の switch の 4 か所だけで shared の関数を通す。Better Auth の /api/auth/* は契約の外に置き、405 は返さない。型は domain の _tag から web の Record<ProblemType, キー> まで連ねる。oasdiff にはエラーの type を x-extensible-enum で載せる。エラー応答の形や type を足す、変えるとき、defaultHook や onError を書くとき、code の拡張や 405 を足したくなったとき、Better Auth の応答を書き換えたくなったときに読む。
+description: API のすべてのエラー応答を application/problem+json にし、type・title・status を必須にする決定。識別子は type だけで code を足さず、ステータスだけで分かるものは about:blank、共通は /problems/<kebab>、業務の失敗と 409 は /problems/<module>/<kebab-tag> にする。title と detail は英語で固定し、5xx は内部の情報をどの環境でも出さず trace_id を付ける。変換は defaultHook、onError、notFound、route の _tag の switch の 4 か所だけで shared の関数を通す。Better Auth の /api/auth/* は契約の外に置き、route にない method は Allow 付きの 405 (about:blank) にする。型は domain の _tag から web の Record<ProblemType, キー> まで連ねる。oasdiff にはエラーの type を x-extensible-enum で載せる。エラー応答の形や type を足す、変えるとき、defaultHook や onError を書くとき、code の拡張や 405 を足したくなったとき、Better Auth の応答を書き換えたくなったときに読む。
 tags: [adr, web-api, error, problem-details, rfc9457, hono, openapi, i18n]
 ---
 
@@ -14,7 +14,7 @@ tags: [adr, web-api, error, problem-details, rfc9457, hono, openapi, i18n]
 - **形**: すべてのエラー応答を RFC 9457 の Problem Details (`Content-Type: application/problem+json`) にし、`type`、`title`、`status` を必須にします。
 - **識別子は `type` だけ**: `code` の拡張は足しません。RFC 9457 3.1.1 は、consumer が `type` を主な識別子に使うことを求めています。`code` を足すと識別子が 2 つになり、ずれる余地ができます。i18n の方式を決めた [Issue #146](https://github.com/yokozi-jp/agent-software-factory/issues/146) の「`code`」は「`type`」と読みます。
 - **`type` の名前**:
-  - ステータスだけで分かるもの (404、415、500、503。405 は返さない) は `about:blank` です (RFC 9457 4.2.1)。
+  - ステータスだけで分かるもの (404、405、415、500、503) は `about:blank` です (RFC 9457 4.2.1)。
   - web が見分けるものだけ、相対の完全なパスにします (RFC 9457 3.1.1)。派生プロジェクトでドメインが変わるので、絶対 URI にしません。
   - 共通は `/problems/<kebab>` です (`validation`、`unauthenticated`、`session-expired`、`forbidden-origin`、`rate-limited` など)。
   - 業務の失敗と 409 は `/problems/<module>/<kebab-tag>` です。`domain` の失敗の `_tag` から機械的に作ります (`ApprovalNotAllowed` → `/problems/expense/approval-not-allowed`)。`_tag` はモジュールをまたいで重なりうるので、モジュール名を前に付けます。
@@ -27,11 +27,15 @@ tags: [adr, web-api, error, problem-details, rfc9457, hono, openapi, i18n]
   - `app.notFound`: 404。
   - route の失敗の `_tag` の `switch`: 422 と 409。
 
-  `sessionGuard`、`csrfProtection` の middleware は、4 か所の外に応答を作らず、`shared-kernel` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
+  `sessionGuard`、`csrfProtection`、`methodNotAllowed` (405) の middleware は、4 か所の外に応答を作らず、`shared-kernel` の同じ関数を呼んで Problem Details を返します (これまで各自で `c.json` を書いていたものを移します)。
 
 - **置き場所**: Problem の schema と関数は `shared-kernel` の公開 API に置きます。`shared-kernel` が `@hono/zod-openapi` に依存します。各モジュールの `http` の層が使うので、`apps/api` には置けません ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。`domain` は `import type` のままで、HTTP を知りません。
 - **Better Auth**: `/api/auth/*` は Better Auth の `{ code, message }` のまま、契約の外に置きます。その前に掛かる自前の middleware は Problem Details です ([ADR 0022](0022-better-auth-cookie-bff.md))。
-- **405**: 返しません。Hono の既定の 404 のままにします。`status-codes.md` の「405 を返す」とは違います。
+- **405**: route にある path へ route にない method で来たら、`Allow` 付きの `about:blank` の 405 を返します (RFC 9110 15.5.6、`status-codes.md` と同じ)。決めたときは、Hono に組み込みの 405 がなく、method ごとに route を網羅する処理を自作すると考えて、返さない決定でした ([Issue #338](https://github.com/yokozi-jp/agent-software-factory/issues/338))。今入っている hono 4.13.17 には `hono/method-not-allowed` があり、自作が要らないので返します ([Issue #574](https://github.com/yokozi-jp/agent-software-factory/issues/574))。
+  - **仕組み**: middleware が登録した route から method を集め、`onMethodNotAllowed` に shared の `problemMethodNotAllowedHandler` を渡して Problem Details にします。route は最初の要求で読むので、`.route()` の sub-app (Issue #553) の前に登録してよく、`apps/api/src/app.test.ts` が sub-app の route でも 405 になることを確かめます。
+  - **位置**: `app.ts` で `secureHeaders` の後、`csrfProtection` と `sessionGuard` の前です。`csrfProtection` の 403 と 415 が先に返ります (`apps/api/src/security/csrf.ts`)。`sessionGuard` はセッションを読むだけで 401 を返さず、401 は route の `requireSession` が返すので、未認証でも 405 になります (`apps/api/src/auth/method-not-allowed.test.ts`)。
+  - **`/api/auth/*`**: `GET` と `POST` だけを許すので、`PUT` などは 405 になります。この 405 は Better Auth を通らず、Better Auth の `{ code, message }` ではなく Problem Details です。`openapi.json` には載らない経路ですが、Better Auth の経路は公開のドキュメントにあるものなので、`Allow` を返しても隠すものはありません (判断)。
+  - **`openapi.json`**: 405 は書きません (判断)。route ごとの契約ではなくプロトコルとしての応答で、404 も書いていないためです。spec は変わらないので、oasdiff と Spectral への影響はありません。
 - **型の連鎖**: `domain` の `_tag` の union → `http` の `switch` と、route の `type` の一覧の `satisfies` での突き合わせ → route の zod schema の `type` のリテラルの union → `hc` → web の `Record<ProblemType, キー>`。`_tag` を足して `http` の対応を忘れると `switch` の網羅で、`type` の一覧に足し忘れると `satisfies` で、web の文面を足し忘れると `Record` で、型の検査が止まります ([ADR 0027](0027-domain-model-as-pure-functions-and-unions.md) の「失敗を型に出す」を web まで伸ばします)。web は型付きの失敗で `parseResponse` を使わず、`res.status` で分岐します。`parseResponse` の `DetailedError` は `detail.data` が型を持たないためです (Hono 4.13.13)。
 - **oasdiff**: spec ではエラーの `type` を `string` と `x-extensible-enum` にし、値の追加で oasdiff が止まらないようにします。oasdiff は、応答の enum への値の追加を ERR にします (`response-property-enum-value-added`)。CI は `--fail-on ERR` で例外のファイルを持たず、知らない `type` は web が汎用の文面にするので、古い web は壊れません。`.openapi({ "x-extensible-enum": [...] })` で出力でき、oasdiff 1.34.1 で値の追加が止まらないことを確かめました (下の Consequences)。`--severity-levels` で WARN に下げる案は使いません。
 - **検査**: Spectral の独自の規則 (4xx と 5xx が `application/problem+json` で `type`、`title`、`status` を持つ)、4 か所の `app.request()` のテスト、保証カタログの「エラー応答の形」の行で守らせます ([Issue #190](https://github.com/yokozi-jp/agent-software-factory/issues/190))。Oxlint の規則は足しません。`c.json(..., 4xx)` を確実に見つける書き方がなく、route の応答 schema が型で止めるからです。
@@ -53,7 +57,6 @@ Content-Type: application/problem+json
 - **`code` の拡張を足す**: 業務のコードを `type` と別に持てます。ただ、識別子が 2 つになり、ずれる余地ができます。RFC 9457 3.1.1 も `type` を主な識別子にすると定めています。足しません。
 - **環境ごとに詳細を出し分ける (開発では例外のメッセージを返す)**: 開発は楽になります。環境の設定を誤ると本番で内部の情報が漏れます。開発のときはログとトレースを読みます。
 - **Better Auth の応答を書き換える middleware**: `/api/auth/*` も Problem Details にそろえられます。ただ、Better Auth 1.7.12 の `onAPIError.onError` は通知だけで、応答の形を替える手段がありません。応答を書き換える middleware は、版の更新で壊れやすいです。契約の外に置きます。
-- **405 を自作する**: 規約どおりになります。Hono に組み込みがなく、メソッドごとに route を網羅する処理を持つことになります。web は `hc` の型でメソッドの誤りを止めるので、返しません。
 - **`--severity-levels` だけで oasdiff を済ませる**: 設定は 1 行です。ただ、`type` 以外の応答の enum の追加も WARN になり、止めたい変更まで通ります。`x-extensible-enum` なら `type` だけを緩められるので、こちらにします。
 
 ## Consequences

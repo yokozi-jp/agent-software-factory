@@ -12,7 +12,7 @@ const main = [adr("0001-a"), "docs/adr/index.md", "docs/adr/README.txt"];
 const base = { branch: "docs/mine", main, prs: [] as OpenPr[], branchFiles: main };
 
 describe("checkNumbers", () => {
-  it("passes and prints the next number when the branch adds no ADR", () => {
+  it("ブランチが ADR を足していないとき、通して次の番号を出力すること", () => {
     expect(checkNumbers(base)).toEqual({
       status: 0,
       stdout: "next free ADR number: 0002\n",
@@ -20,7 +20,7 @@ describe("checkNumbers", () => {
     });
   });
 
-  it("passes an added ADR with a free number and counts it for the next number", () => {
+  it("空いている番号で足した ADR を通し、次の番号に数えること", () => {
     expect(checkNumbers({ ...base, branchFiles: [...main, adr("0002-mine")] })).toEqual({
       status: 0,
       stdout: "next free ADR number: 0003\n",
@@ -28,7 +28,7 @@ describe("checkNumbers", () => {
     });
   });
 
-  it("fails when another open PR adds the same number, and names the PR", () => {
+  it("ほかの open な PR が同じ番号を足すとき、その PR を挙げて失敗すること", () => {
     const result = checkNumbers({
       ...base,
       prs: [pr(7, "docs/other", adr("0002-other"))],
@@ -42,7 +42,7 @@ describe("checkNumbers", () => {
     });
   });
 
-  it("ignores the files of this branch's own PR", () => {
+  it("このブランチ自身の PR のファイルを無視すること", () => {
     const result = checkNumbers({
       ...base,
       prs: [pr(8, "docs/mine", adr("0002-mine"))],
@@ -51,7 +51,7 @@ describe("checkNumbers", () => {
     expect(result.status).toBe(0);
   });
 
-  it("fails when origin/main has the number under another name", () => {
+  it("origin/main が別の名前で同じ番号を持つとき失敗すること", () => {
     const result = checkNumbers({ ...base, branchFiles: [...main, adr("0001-again")] });
     expect(result).toEqual({
       status: 1,
@@ -61,7 +61,7 @@ describe("checkNumbers", () => {
     });
   });
 
-  it("lists every user of a number once, sorted, and reports each taken number", () => {
+  it("番号の使い手を 1 回ずつ並べ替えて一覧にし、使われた番号を報告すること", () => {
     const result = checkNumbers({
       ...base,
       prs: [
@@ -82,7 +82,7 @@ describe("checkNumbers", () => {
     });
   });
 
-  it("takes the next number after the highest one anywhere, compared as numbers", () => {
+  it("どこかにある最大の番号の次を、数値として比べて採ること", () => {
     const result = checkNumbers({
       ...base,
       main: [adr("0009-a"), adr("0010-b")],
@@ -92,7 +92,7 @@ describe("checkNumbers", () => {
     expect(result.stdout).toBe("next free ADR number: 0100\n");
   });
 
-  it("counts only docs/adr/NNNN-*.md files, not files in subdirectories or other names", () => {
+  it("docs/adr/NNNN-*.md のファイルだけを数え、サブディレクトリや別の名前を数えないこと", () => {
     const result = checkNumbers({
       ...base,
       main: [],
@@ -109,7 +109,7 @@ describe("checkNumbers", () => {
     expect(result.stdout).toBe("next free ADR number: 0009\n");
   });
 
-  it("starts at 0001 when there is no ADR at all", () => {
+  it("ADR が 1 つもないとき 0001 から始めること", () => {
     expect(checkNumbers({ ...base, main: [], branchFiles: [] }).stdout).toBe(
       "next free ADR number: 0001\n",
     );
@@ -117,21 +117,21 @@ describe("checkNumbers", () => {
 });
 
 describe("parsePrs", () => {
-  it("reads the JSON that `gh pr list --json number,headRefName,files` prints", () => {
+  it("`gh pr list --json number,headRefName,files` が出力する JSON を読むこと", () => {
     const json = JSON.stringify([
       { number: 7, headRefName: "docs/other", files: [{ path: "a.md", additions: 1 }] },
     ]);
     expect(parsePrs(json)).toEqual([pr(7, "docs/other", "a.md")]);
   });
 
-  it("reads a PR without files", () => {
+  it("ファイルのない PR を読むこと", () => {
     expect(parsePrs('[{"number":1,"headRefName":"x","files":[]}]')).toEqual([pr(1, "x")]);
   });
 
   it.each([
     ["empty output", ""],
     ["not JSON", "Post: EOF"],
-  ])("throws on %s, which gh does not print on success", (_name, json) => {
+  ])("gh が成功時に出力しない %s で throw すること", (_name, json) => {
     expect(() => parsePrs(json)).toThrow(SyntaxError);
   });
 
@@ -144,13 +144,13 @@ describe("parsePrs", () => {
     ["files that is not a list", '[{"number":1,"headRefName":"x","files":{}}]'],
     ["a file without a path", '[{"number":1,"headRefName":"x","files":[{}]}]'],
     ["a file that is null", '[{"number":1,"headRefName":"x","files":[null]}]'],
-  ])("rejects %s, which gh does not print on success", (_name, json) => {
+  ])("gh が成功時に出力しない %s を拒否すること", (_name, json) => {
     expect(parsePrs(json)).toBeUndefined();
   });
 });
 
 describe("ghFailed", () => {
-  it("says what to check, on stderr", () => {
+  it("確かめることを stderr に述べること", () => {
     expect(ghFailed).toEqual({
       status: 2,
       stdout: "",

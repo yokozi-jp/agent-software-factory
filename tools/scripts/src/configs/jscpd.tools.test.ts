@@ -49,8 +49,8 @@ beforeEach(() => {
   put("apps/api/src/summarize.ts");
 });
 
-describe("jscpd with .jscpd.json", () => {
-  it("passes code with no copy", () => {
+describe(".jscpd.json による jscpd", () => {
+  it("複製のないコードを通すこと", () => {
     expect(scan().status).toBe(0);
   });
 
@@ -58,7 +58,7 @@ describe("jscpd with .jscpd.json", () => {
     ["in another app", "apps/web/src/summarize.ts"],
     ["in the same app", "apps/api/src/other.ts"],
     ["in packages/", "packages/shared-kernel/src/summarize.ts"],
-  ])("fails on a copy %s", (_, path) => {
+  ])("%s の複製で失敗すること", (_, path) => {
     put(path);
     expect(scan().status).toBe(1);
   });
@@ -70,23 +70,23 @@ describe("jscpd with .jscpd.json", () => {
     "apps/api/src/__fixtures__/summarize.ts",
     "apps/api/dist/summarize.ts",
     "tools/scripts/summarize.ts",
-  ])("ignores a copy in %s", (path) => {
+  ])("%s の複製を無視すること", (path) => {
     put(path);
     expect(scan().status).toBe(0);
   });
 
-  it("ignores a copy between jscpd:ignore-start and jscpd:ignore-end", () => {
+  it("jscpd:ignore-start と jscpd:ignore-end の間の複製を無視すること", () => {
     put("apps/web/src/summarize.ts", `// jscpd:ignore-start\n${summarize}// jscpd:ignore-end\n`);
     expect(scan().status).toBe(0);
   });
 
   // failOnEmpty: a pattern or format that matches no file fails instead of passing unchecked.
-  it("fails when no file is scanned", () => {
+  it("検査するファイルがないとき失敗すること", () => {
     rmSync(join(repo, "apps"), { recursive: true });
     expect(scan().status).toBe(1);
   });
 
-  it("is configured to count the copy that it fails on", () => {
+  it("失敗の原因になる複製を数えるように設定されていること", () => {
     const config: unknown = JSON.parse(readFileSync(join(repo, ".jscpd.json"), "utf8"));
     expect(config).toMatchObject({ threshold: 0, failOnEmpty: true });
   });

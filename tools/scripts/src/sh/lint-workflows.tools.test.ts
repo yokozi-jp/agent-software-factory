@@ -53,17 +53,17 @@ afterAll(() => {
   box.remove();
 });
 
-describe("lint-workflows.sh with the real jactionlint and zizmor", () => {
-  it("passes when no workflow is tracked", () => {
+describe("本物の jactionlint と zizmor による lint-workflows.sh", () => {
+  it("追跡された workflow がないとき通すこと", () => {
     expect(lint().status).toBe(0);
   }, 300_000);
 
-  it("passes a clean workflow", () => {
+  it("きれいな workflow を通すこと", () => {
     workflow("      - run: echo ok");
     expect(lint().status).toBe(0);
   }, 300_000);
 
-  it("jactionlint finds an undefined step in an expression", () => {
+  it("jactionlint が式の中の未定義の step を見つけること", () => {
     workflow(
       [
         '      - run: echo "$OUT"',
@@ -74,23 +74,23 @@ describe("lint-workflows.sh with the real jactionlint and zizmor", () => {
     expect(lint().status).toBe(1);
   }, 300_000);
 
-  it("the shellcheck of jactionlint finds an unquoted variable in run:", () => {
+  it("jactionlint の shellcheck が run: の中の引用符のない変数を見つけること", () => {
     workflow("      - run: echo $HOME");
     expect(lint().status).toBe(1);
   }, 300_000);
 
-  it("zizmor finds checkout without persist-credentials: false", () => {
+  it("zizmor が persist-credentials: false のない checkout を見つけること", () => {
     workflow("      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1");
     expect(lint().status).toBe(1);
   }, 300_000);
 
   // An attacker-controlled value expanded into a shell script. Both tools report it.
-  it("finds a PR title expanded into run:", () => {
+  it("run: に展開された PR title を見つけること", () => {
     workflow('      - run: echo "${{ github.event.pull_request.title }}"');
     expect(lint().status).toBe(1);
   }, 300_000);
 
-  it("ignores an untracked workflow", () => {
+  it("追跡されていない workflow を無視すること", () => {
     workflow("      - run: echo ok");
     writeFileSync(
       join(repo, ".github/workflows/scratch.yml"),

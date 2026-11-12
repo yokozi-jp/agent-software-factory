@@ -11,7 +11,10 @@ const kernelFile = "packages/shared-kernel/src/tenant-db/db-call.ts";
 const apiFile = "apps/api/src/app.ts";
 const policy = {
   minimum: { lines: 90, branches: 90 },
-  exceptions: { "apps/api/src/server.ts": "entry" },
+  projects: ["apps/*", "packages/*", "packages/*/events"],
+  notMeasured: ["**/*.test.{ts,tsx}", "**/__fixtures__/**", "**/*.gen.ts"],
+  entries: { "apps/api/src/server.ts": "entry" },
+  exceptions: {},
 };
 
 let box: Sandbox;
@@ -69,15 +72,23 @@ const graphJson = (without?: string): string =>
       ),
     },
   });
-const filters = "--projects apps/* --projects packages/* --projects packages/*/events";
+const filtersOf = (projects: readonly string[]): string =>
+  projects.map((glob) => `--projects ${glob}`).join(" ");
 const check = (
   nx: {
+    // The `projects` of the policy, which the question to nx is made of (the default is the policy above).
+    projects?: readonly string[];
+    writers?: readonly string[];
     affected?: readonly string[];
     nxFails?: boolean;
     graph?: "fails" | "not a graph" | "without api";
     github?: boolean;
   } = {},
 ) => {
+  const filters = filtersOf(nx.projects ?? policy.projects);
+  const writers = (nx.writers ?? ["api", "web", "claim", "shared-kernel", "claim-events"]).join(
+    " ",
+  );
   const names = (nx.affected ?? []).map((name) => `"${name}"`).join(" ");
   const printed = {
     undefined: graphJson(),
@@ -89,7 +100,7 @@ const check = (
     pnpm:
       nx.nxFails === true
         ? "exit 1"
-        : `case "$*" in *"${filters}"*) printf '%s\\n' api web claim shared-kernel claim-events;; *"graph --print"*) ${graph};; *--affected*) printf '%s\\n' ${names};; esac`,
+        : `case "$*" in *"${filters}"*) printf '%s\\n' ${writers};; *"graph --print"*) ${graph};; *--affected*) printf '%s\\n' ${names};; esac`,
   });
   return runIn(repo, process.execPath, [cli], {
     env: { GITHUB_ACTIONS: nx.github === true ? "true" : "", PATH: withPath(stubs) },
@@ -113,7 +124,7 @@ beforeEach(() => {
 });
 
 describe("merged-coverage", () => {
-  it("passes when the records of the projects add up to the minimum, and says how many files it read", () => {
+  it("project の記録の合計が下限に達するとき通し、読んだファイル数を述べること", () => {
     // Neither project reaches 90% alone: the API ran lines 1-6 and the kernel lines 5-10 of the same file.
     record("apps/api", { [kernelFile]: 6, [apiFile]: 10 });
     record("packages/shared-kernel", { [kernelFile]: { from: 5 } });
@@ -124,7 +135,7 @@ describe("merged-coverage", () => {
     expect(result.stdout).toBe("merged-coverage: 2 files from the records of 2 projects.\n");
   });
 
-  it("exits 1 and names the file that is under the minimum", () => {
+  it("下限に達しないファイルを挙げて 1 で終了すること", () => {
     record("apps/api", { [apiFile]: 5 });
     record("packages/shared-kernel", { [kernelFile]: 10 });
 
@@ -137,7 +148,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).not.toContain("shared-kernel");
   });
 
-  it("exits 1 for a file of a project with a record that no record has", () => {
+  it("どの記録にもない記録を持つ project のファイルで、1 で終了すること", () => {
     record("apps/api", { [apiFile]: 10 });
     write("apps/api/src/new-file.ts", "export const added = 1;\n");
 
@@ -147,13 +158,13 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("apps/api/src/new-file.ts: no test of any project ran it");
   });
 
-  it("leaves out the projects that have no record, as the projects that are not affected have none", () => {
+  it("影響を受けない project に記録がないのと同じく、記録のない project を除くこと", () => {
     record("apps/api", { [apiFile]: 10 });
 
     expect(check({ affected: ["api", "shared-kernel"] }).status).toBe(0);
   });
 
-  it("marks the failure as an error annotation in GitHub Actions", () => {
+  it("GitHub Actions では、失敗を error annotation にすること", () => {
     record("apps/api", { [apiFile]: 1 });
 
     const result = check({ affected: ["api"], github: true });
@@ -162,14 +173,14 @@ describe("merged-coverage", () => {
     expect(result.stderr).toMatch(/^::error::apps\/api\/src\/app\.ts: lines 10%/u);
   });
 
-  it("exits 2 when tests were affected but no project wrote a record", () => {
+  it("テストが影響を受けたのにどの project も記録を書かなかったとき、2 で終了すること", () => {
     const result = check({ affected: ["api"] });
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("no coverage-final.json");
   });
 
-  it("exits 2 when nx cannot say which projects are affected, though a record is there", () => {
+  it("記録があっても nx が影響を受ける project を言えないとき、2 で終了すること", () => {
     record("apps/api", { [apiFile]: 10 });
 
     const result = check({ nxFails: true });
@@ -181,7 +192,7 @@ describe("merged-coverage", () => {
   it.each([
     ["fails", "fails" as const],
     ["is not a graph", "not a graph" as const],
-  ])("exits 2 when the project graph of nx %s", (_, graph) => {
+  ])("nx の project graph が %s のとき、2 で終了すること", (_, graph) => {
     record("apps/api", { [apiFile]: 10 });
 
     const result = check({ affected: ["api"], graph });
@@ -190,7 +201,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("nx could not say which projects are affected");
   });
 
-  it("exits 2 when an affected project is not in the project graph", () => {
+  it("影響を受ける project が project graph にないとき、2 で終了すること", () => {
     record("apps/api", { [apiFile]: 10 });
 
     const result = check({ affected: ["api"], graph: "without api" });
@@ -199,7 +210,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("nx could not say which projects are affected");
   });
 
-  it("ignores the record of a project that is not affected, and names it", () => {
+  it("影響を受けない project の記録を無視し、それを挙げること", () => {
     // The web record is left by an earlier run: it would fail the minimum if it were read.
     record("apps/api", { [apiFile]: 10 });
     record("apps/web", { "apps/web/src/main.tsx": 1 });
@@ -214,7 +225,7 @@ describe("merged-coverage", () => {
     );
   });
 
-  it("passes without reading the records left in coverage/ when no project that writes a record is affected", () => {
+  it("記録を書く project が影響を受けないとき、coverage/ に残った記録を読まずに通すこと", () => {
     record("apps/api", { [apiFile]: 1 });
 
     const result = check({ affected: ["scripts"] });
@@ -224,7 +235,7 @@ describe("merged-coverage", () => {
     expect(result.stdout).toContain("nothing to check");
   });
 
-  it("exits 2 when the only record is of a project that is not affected, though another one is", () => {
+  it("唯一の記録が影響を受けない project のもので、別の project が影響を受けるとき、2 で終了すること", () => {
     record("apps/web", { "apps/web/src/main.tsx": 10 });
 
     const result = check({ affected: ["api"] });
@@ -234,7 +245,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("affected projects (apps/api)");
   });
 
-  it("finds the record of an events package by its directory, not by its name", () => {
+  it("events package の記録を、名前ではなく directory で見つけること", () => {
     record("packages/claim/events", { "packages/claim/events/src/event.ts": 10 });
     write("packages/claim/events/src/event.ts", "export const event = 1;\n");
 
@@ -244,21 +255,59 @@ describe("merged-coverage", () => {
     expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
   });
 
-  it("passes without a record when only tools/scripts is affected, though nx lists every project with --projects", () => {
+  it("nx が --projects ですべての project を挙げても、tools/scripts だけが影響を受けるときは記録なしで通すこと", () => {
     const result = check({ affected: ["scripts"] });
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("nothing to check");
   });
 
-  it("passes without a record when no affected project has a test target (a docs-only change)", () => {
+  it("影響を受ける project にテストの target がないとき (docs だけの変更)、記録なしで通すこと", () => {
     const result = check();
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("nothing to check");
   });
 
-  it("exits 2 when the policy is not valid", () => {
+  it("記録に入っていても、入口のファイルを数えないこと", () => {
+    record("apps/api", { [apiFile]: 10, "apps/api/src/server.ts": 0 });
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
+  });
+
+  it("どのファイルにも当たらない entries の行があると、1 で終了すること", () => {
+    record("apps/api", { [apiFile]: 10 });
+    write(
+      "coverage-policy.json",
+      JSON.stringify({
+        ...policy,
+        entries: { ...policy.entries, "apps/api/src/gone.ts": "was renamed" },
+      }),
+    );
+
+    const result = check({ affected: ["api"] });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("apps/api/src/gone.ts: the entry matches no file.");
+  });
+
+  it("policy の projects が挙げる directory の記録だけを読み、ほかは読まないこと", () => {
+    // The shared-kernel record is under the minimum; it is not read because packages/* is not in the policy.
+    const projects = ["apps/*"];
+    write("coverage-policy.json", JSON.stringify({ ...policy, projects }));
+    record("apps/api", { [apiFile]: 10 });
+    record("packages/shared-kernel", { [kernelFile]: 1 });
+
+    const result = check({ projects, writers: ["api", "web"], affected: ["api", "shared-kernel"] });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("merged-coverage: 1 files from the records of 1 projects.\n");
+  });
+
+  it("policy が有効でないとき、2 で終了すること", () => {
     record("apps/api", { [apiFile]: 10 });
     write("coverage-policy.json", JSON.stringify({ minimum: {}, exceptions: {} }));
 
@@ -268,7 +317,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("coverage-policy.json: minimum");
   });
 
-  it("exits 2 when a record is not valid JSON, instead of a stack trace", () => {
+  it("記録が JSON でないとき、スタックトレースの代わりに 2 で終了すること", () => {
     write("apps/api/coverage/coverage-final.json", "{ not json");
 
     const result = check({ affected: ["api"] });
@@ -277,7 +326,7 @@ describe("merged-coverage", () => {
     expect(result.stderr).toContain("apps/api/coverage/coverage-final.json: not valid JSON.");
   });
 
-  it("exits 2 when a record is not in Istanbul's format", () => {
+  it("記録が Istanbul の形式でないとき、2 で終了すること", () => {
     write(
       "apps/api/coverage/coverage-final.json",
       JSON.stringify({ [join(repo, apiFile)]: { statementMap: 1 } }),

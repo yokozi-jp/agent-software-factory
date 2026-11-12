@@ -133,7 +133,7 @@ describe("通知メールの処理 handleNotification", () => {
     expect(observed).toEqual([0]);
   });
 
-  it("テンプレートの値が足りないメッセージは、送らず、行も残さず、失敗として返すこと", async () => {
+  it("テンプレートの値が足りないメッセージは、送らず、行も残さず、足りない値の名前を入れた失敗として返すこと", async () => {
     const { runtime } = ctx.worker();
     const to = newRecipient();
 
@@ -142,10 +142,21 @@ describe("通知メールの処理 handleNotification", () => {
         runtime,
         notificationMessage({ to, template: "sent_back", values: { claimTitle: "x" } }),
       ),
-    ).rejects.toThrow(/\S/);
+    ).rejects.toThrow("The template sent_back is missing the values: reason");
 
     expect(await mailTo(to)).toHaveLength(0);
     expect(await ctx.processedCount()).toBe(0);
+  });
+
+  it("テンプレートの値が複数足りないときは、足りない値の名前を全て、テンプレートの順に入れること", async () => {
+    const { runtime } = ctx.worker();
+    const to = newRecipient();
+
+    await expect(
+      handle(runtime, notificationMessage({ to, template: "review_requested", values: {} })),
+    ).rejects.toThrow(
+      "The template review_requested is missing the values: applicantName, claimTitle",
+    );
   });
 
   it("形の合わないメッセージは、送らず、行も残さず、失敗として返すこと", async () => {

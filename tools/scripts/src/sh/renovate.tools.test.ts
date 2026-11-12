@@ -34,7 +34,7 @@ afterAll(() => {
 
 // The custom manager of renovate.jsonc keeps the Renovate version in renovate.sh up to date. If the path it names
 // is not the script's, Renovate stops updating that version without any error.
-describe("the custom manager that updates renovate_version", () => {
+describe("renovate_version を更新する custom manager", () => {
   const config = readFileSync(join(workspace, "renovate.jsonc"), "utf8");
   const manager =
     /"managerFilePatterns": \["\/(?<file>[^"]+)\/"\],\s*"matchStrings": \["(?<version>renovate_version.*?)"\],\s*"depNameTemplate"/.exec(
@@ -46,31 +46,31 @@ describe("the custom manager that updates renovate_version", () => {
     return new RegExp(String(value));
   };
 
-  it("matches the path of renovate.sh, and no other script", () => {
+  it("renovate.sh の path に一致し、ほかのスクリプトには一致しないこと", () => {
     const file = unescape(manager?.file);
     expect(file.test("tools/scripts/sh/renovate.sh")).toBe(true);
     expect(file.test("scripts/renovate.sh")).toBe(false);
     expect(file.test("tools/scripts/sh/shellcheck.sh")).toBe(false);
   });
 
-  it("finds the version in renovate.sh", () => {
+  it("renovate.sh の版を見つけること", () => {
     const text = readFileSync(script, "utf8");
     expect(unescape(manager?.version).exec(text)?.groups?.currentValue).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
 
-describe("renovate.sh validate with the real renovate-config-validator", () => {
-  it("passes the renovate.jsonc of this repository", () => {
+describe("本物の renovate-config-validator による renovate.sh validate", () => {
+  it("このリポジトリの renovate.jsonc を通すこと", () => {
     copyFileSync(join(workspace, "renovate.jsonc"), join(repo, "renovate.jsonc"));
     expect(validate().status).toBe(0);
   }, 300_000);
 
-  it("fails on an unknown option", () => {
+  it("未知の option で失敗すること", () => {
     config('{ "extends": ["config:best-practices"], "notAnOption": true }\n');
     expect(validate().status).toBe(1);
   }, 300_000);
 
-  it("fails on a bad value", () => {
+  it("不正な値で失敗すること", () => {
     config('{ "extends": ["config:best-practices"], "semanticCommits": "sometimes" }\n');
     expect(validate().status).toBe(1);
   }, 300_000);

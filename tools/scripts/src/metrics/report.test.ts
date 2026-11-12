@@ -27,7 +27,7 @@ const sample = (
 const header = "| 指標 | サンプル機能の PR | ハーネスの PR |\n| --- | --- | --- |\n";
 
 describe("periodReport", () => {
-  it("shows each month's rates beside its harness pull requests, then the feedback loop of each week", () => {
+  it("月ごとの率を harness の pull request の隣に、次に週ごとのフィードバックループを示すこと", () => {
     const samples = [
       // Pushed on Monday 2026-10-05 in JST (01:00 and 09:00), though 01:00 JST is still Sunday in UTC.
       sample(10, "sample", {
@@ -87,7 +87,7 @@ describe("periodReport", () => {
     );
   });
 
-  it("says so when no push had all its required checks finish", () => {
+  it("必須チェックがすべて終わった push がないとき、そう述べること", () => {
     const report = periodReport({
       since: at("2026-09-30T15:00:00Z"),
       until: at("2026-10-01T15:00:00Z"),
@@ -121,7 +121,7 @@ describe("periodReport", () => {
 describe("boundaryReport", () => {
   const boundary = sample(20, "harness", { mergedAt: "2026-10-10T00:00:00Z" }).pull;
 
-  it("shows the values of the pull requests before and after the boundary, with the feedback loop", () => {
+  it("境界の前後の pull request の値を、フィードバックループとともに示すこと", () => {
     const before = [
       sample(17, "harness", {
         mergedAt: "2026-10-08T00:00:00Z",
@@ -164,7 +164,7 @@ describe("boundaryReport", () => {
     );
   });
 
-  it("says so for a side without pull requests", () => {
+  it("pull request のない側について、そう述べること", () => {
     const report = boundaryReport({
       boundary,
       count: 2,

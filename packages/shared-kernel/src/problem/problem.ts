@@ -138,6 +138,8 @@ export interface ProblemInput<Type extends ProblemType, Status extends Contentfu
   readonly status: Status;
   readonly detail?: string;
   readonly errors?: readonly object[];
+  /** Response headers the status requires, such as `Allow` in a 405. `Content-Type` is always `application/problem+json`. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 /** The body of a problem. `type` and `status` keep their literal types, so a route handler can return it as declared. */
@@ -177,7 +179,7 @@ export function problemResponse<Type extends ProblemType, Status extends Content
     ...(traceId !== undefined ? { trace_id: traceId } : {}),
   };
   // `c.json` keeps the body and status types, so a route handler can return this for a response it declared.
-  return c.json(body, input.status, { "Content-Type": PROBLEM_CONTENT_TYPE });
+  return c.json(body, input.status, { ...input.headers, "Content-Type": PROBLEM_CONTENT_TYPE });
 }
 
 const statusTitles: Readonly<Record<number, string>> = {
@@ -185,6 +187,7 @@ const statusTitles: Readonly<Record<number, string>> = {
   401: "Unauthorized",
   403: "Forbidden",
   404: "Not Found",
+  405: "Method Not Allowed",
   409: "Conflict",
   413: "Content Too Large",
   415: "Unsupported Media Type",
@@ -219,3 +222,16 @@ export function problemErrorHandler(
 /** For `app.notFound`. */
 export const problemNotFoundHandler: NotFoundHandler = (c) =>
   problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(404), status: 404 });
+
+/**
+ * For `methodNotAllowed({ app, onMethodNotAllowed })` of `hono/method-not-allowed`. The `Allow` header is required in a 405
+ * (RFC 9110 15.5.6), so it is passed here from the methods the middleware collected.
+ */
+export function problemMethodNotAllowedHandler(c: Context, allowedMethods: readonly string[]) {
+  return problemResponse(c, {
+    type: ABOUT_BLANK,
+    title: statusTitle(405),
+    status: 405,
+    headers: { Allow: allowedMethods.join(", ") },
+  });
+}

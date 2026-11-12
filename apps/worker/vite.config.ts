@@ -35,20 +35,8 @@ export default defineConfig({
     ],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。ファイルごとの下限だけ掛ける。
     coverage: {
-      ...recordCoverage({
-        exclude: [
-          // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは createNotificationHandler と pollQueue と
-          // createLambdaHandler を通す。
-          "src/server.ts",
-          "src/lambda.ts",
-          // 期限切れの冪等キーを消すバッチの入口 (Issue #325)。環境変数を読んで runPurgeJob を 1 回呼ぶだけで、テストは runPurgeJob を通す。
-          "src/purge-idempotency-keys.ts",
-          // 手で動かすための入口 (docs/tooling/local-worker.md)。環境変数を読んで SQS を 1 回呼ぶだけ。
-          "src/local/**",
-          // SES を呼ぶ Layer。SES のモックは作らない (docs/adr/0041)。検証環境の試験で本物の SES を通す。
-          "src/mail/ses.ts",
-        ],
-      }),
+      // 測らない入口のファイルは coverage-policy.json の entries に書く (vitest-coverage.ts が読む)。
+      ...recordCoverage(),
       thresholds: ownFilesMinimum,
     },
   },

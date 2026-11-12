@@ -119,13 +119,8 @@ export default defineConfig({
     reporters: ["default", "./test/a11y-warnings-reporter.ts"],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。unit と storybook の両方が通した行を数える。
     coverage: {
-      ...recordCoverage({
-        own: "src/**/*.{ts,tsx}",
-        exclude: [
-          // 実行環境ごとの入口。i18n の初期化と router を作って描画するだけで、story では通らない。
-          "src/main.tsx",
-        ],
-      }),
+      // 測らない入口のファイルは coverage-policy.json の entries に書く (vitest-coverage.ts が読む)。
+      ...recordCoverage({ own: "src/**/*.{ts,tsx}" }),
       thresholds: {
         autoUpdate: floorThreshold,
         // この project の src だけに下限を掛ける。他の project のファイルは CI の合わせた検査が見る。

@@ -32,7 +32,7 @@ describe("guard-push.sh", () => {
       "main among other refs",
       [`refs/heads/x ${a} refs/heads/x ${zero}`, `refs/heads/x ${a} refs/heads/main ${b}`],
     ],
-  ])("refuses %s", (_, lines) => {
+  ])("%s を拒否すること", (_, lines) => {
     const result = push(lines);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("guard-push: refusing to push to main.");
@@ -43,11 +43,11 @@ describe("guard-push.sh", () => {
     ["a branch named like main", [`refs/heads/x ${a} refs/heads/main-fix ${zero}`]],
     ["tags", [`refs/tags/api@1.0.0 ${a} refs/tags/api@1.0.0 ${zero}`]],
     ["an empty push", []],
-  ])("allows %s", (_, lines) => {
+  ])("%s を許可すること", (_, lines) => {
     expect(push(lines)).toMatchObject({ status: 0, stderr: "" });
   });
 
-  it("allows a push to main with ALLOW_PUSH_TO_MAIN=1, and only with 1", () => {
+  it("ALLOW_PUSH_TO_MAIN=1 のときだけ、main への push を許可すること", () => {
     const lines = [`refs/heads/x ${a} refs/heads/main ${b}`];
     expect(push(lines, "1")).toMatchObject({ status: 0, stderr: "" });
     expect(push(lines, "true").status).toBe(1);

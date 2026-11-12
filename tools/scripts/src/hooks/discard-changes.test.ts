@@ -29,7 +29,7 @@ describe("discardsChanges", () => {
     "git checkout -- apps/api/test/auth-fixtures.ts && git status --short",
     "pnpm test; git reset --hard",
     'bash -c "git restore a.ts"',
-  ])("asks before a command that discards uncommitted changes: %j", (command) => {
+  ])("コミットしていない変更を捨てるコマンドの前に尋ねること: %j", (command) => {
     expect(discardsChanges(command)).toBe(true);
   });
 
@@ -53,7 +53,7 @@ describe("discardsChanges", () => {
     // Only text that mentions the command.
     'git commit -m "git reset --hard を避ける"',
     "echo git checkout -- a.ts",
-  ])("allows a command that keeps the changes: %j", (command) => {
+  ])("変更を残すコマンドを許可すること: %j", (command) => {
     expect(discardsChanges(command)).toBe(false);
   });
 });

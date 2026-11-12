@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Git hook
-description: lefthook で設定した commit-msg、pre-commit、pre-push の各 hook と、エージェントの操作を止める Kiro の hook が実行する内容、hook を一時的に飛ばす方法、動かないときの直し方。hook で失敗したとき、hook を変えるときに読む。
+description: lefthook で設定した commit-msg、pre-commit、pre-push の各 hook と、エージェントの操作を止める Kiro の hook が実行する内容、hook を一時的に飛ばす方法、出力を絞る方法、動かないときの直し方。hook で失敗したとき、hook の出力が長すぎるとき、hook を変えるときに読む。
 tags: [tooling, reference, lefthook, git-hooks]
 ---
 
@@ -32,7 +32,22 @@ git commit --no-verify ...               # Git 標準の方法
 ```
 
 飛ばしても CI で同じ検証を実行するので、問題は PR の段階で止まります。
-secret scan を飛ばして秘密情報を push してしまった場合は、[secret scan](secret-scan.md) の手順で対処します。
+
+## 出力を絞る
+
+pre-commit は、成功した job の出力も全部出します。約 3 万文字になり、tool の出力に上限がある実行環境では切り詰められます (Kiro の shell は 30000 文字以上を先頭と末尾の抜粋にして、全文をファイルに保存します。2026-11-12 に commit の出力が 2 回この上限を超えました)。失敗の原因が抜粋の外に落ちることがあります。
+
+環境変数 `LEFTHOOK_OUTPUT` で、出す種類を決めます。値は lefthook の `output` と同じです ([lefthook の output](https://lefthook.dev/configuration/output/))。
+
+```sh
+LEFTHOOK_OUTPUT=meta,summary,failure git commit ...   # 失敗した job の出力と summary だけを出す
+```
+
+- 成功した job の出力が消え、失敗した job の出力は残ります。lefthook 2.2.2 で、成功する job と失敗する job を並べて確かめました (2026-11-12)。
+- 成功した job の警告も出なくなります。docs-check の 250 行超の警告などは、絞らずに流すか、`node tools/scripts/src/checks/docs-check/cli.ts` を直接流して読みます。
+- `lefthook.yml` の `output` は変えません。人が commit するときは、どの job が通ったかも見えるほうが分かりやすいためです (私の判断です)。
+- `git commit ... | tail` や `> /dev/null` では絞りません。失敗の原因が切れるか消えます。pre-push の `nx affected` の job は、同じ理由で `tools/scripts/sh/tee-log.sh` が出力をファイルに残します ([並行作業と worktree](worktrees.md#pr-を出す))。
+  secret scan を飛ばして秘密情報を push してしまった場合は、[secret scan](secret-scan.md) の手順で対処します。
 
 `pre-push` の adr-check は警告だけで、push を止めません。ADR が要らない変更の警告は、`ADR_ACK=1 git push ...` で抑えます ([ADR 0016](../adr/0016-adr-check-warns-without-blocking.md))。判断の基準は [docs の書き方](../knowledge/documentation-authoring.md#adr-を書くかどうか) にあります。
 

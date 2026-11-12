@@ -20,22 +20,22 @@ afterAll(async () => {
 });
 
 describe("isLiveKiro", () => {
-  it("is true for a live process whose command line names kiro", () => {
+  it("コマンドラインに kiro を含む生きたプロセスで true になること", () => {
     expect(isLiveKiro(kiro.pid)).toBe(true);
   });
 
-  it("is false for a live process that is not kiro", () => {
+  it("kiro ではない生きたプロセスで false になること", () => {
     expect(isLiveKiro(other.pid)).toBe(false);
   });
 
   it.each([2 ** 22 + 1, Number.NaN, 0])(
-    "is false for %d, which is not a running process",
+    "実行中のプロセスではない %d で false になること",
     (pid) => {
       expect(isLiveKiro(pid)).toBe(false);
     },
   );
 
-  it("reads the command line from /proc", () => {
+  it("/proc からコマンドラインを読むこと", () => {
     // A /proc whose record of the sleep process names kiro: ps would say it is not kiro.
     const proc = join(box.root, "proc");
     mkdirSync(join(proc, String(other.pid)), { recursive: true });
@@ -43,7 +43,7 @@ describe("isLiveKiro", () => {
     expect(isLiveKiro(other.pid, proc)).toBe(true);
   });
 
-  it("asks ps where there is no /proc", () => {
+  it("/proc がないところでは ps に尋ねること", () => {
     expect(isLiveKiro(kiro.pid, join(box.root, "no-proc"))).toBe(true);
     expect(isLiveKiro(other.pid, join(box.root, "no-proc"))).toBe(false);
   });
