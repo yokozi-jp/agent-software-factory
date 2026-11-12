@@ -51,7 +51,7 @@ async function activeRoles(auth: Auth, headers: Headers): Promise<string[]> {
   return role.split(",").filter((name) => name !== "");
 }
 
-export function meRoutes(auth: Auth | undefined) {
+export function meRouter(auth: Auth | undefined) {
   return createRouter().openapi(meRoute, async (c) => {
     const session = c.get("session");
     const user = session?.user;

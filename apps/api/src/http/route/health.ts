@@ -19,6 +19,6 @@ const healthRoute = createRoute({
   },
 });
 
-export function healthRoutes() {
+export function healthRouter() {
   return createRouter().openapi(healthRoute, (c) => c.json({ status: "ok" as const }, 200));
 }

@@ -22,8 +22,8 @@ import { validationHook } from "./http/hook/validation-hook.ts";
 import { csrfProtection } from "./http/middleware/csrf.ts";
 import { accessLog, logUnexpectedError, type ApiVariables } from "./http/middleware/logging.ts";
 import { sessionGuard } from "./http/middleware/session.ts";
-import { healthRoutes } from "./http/route/health.ts";
-import { meRoutes } from "./http/route/me.ts";
+import { healthRouter } from "./http/route/health.ts";
+import { meRouter } from "./http/route/me.ts";
 import { runtimeWithoutDatabase, type ApiRuntime } from "./runtime.ts";
 
 // セキュリティヘッダーの値は docs/web-api/security.md に従う。
@@ -93,7 +93,7 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
 
   // route は種類ごとの sub-app で、完全な path を持つ (http/route/)。`route()` は sub-app の OpenAPI の定義を写すので、
   // spec (apps/api/openapi.json) と AppType は、ここに route を並べたときと変わらない (docs/adr/0047)。
-  const app = base.route("/", healthRoutes()).route("/", meRoutes(auth));
+  const app = base.route("/", healthRouter()).route("/", meRouter(auth));
 
   return app;
 }
