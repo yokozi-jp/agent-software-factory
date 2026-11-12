@@ -18,6 +18,7 @@
     "production": [
       "default",
       "!{projectRoot}/**/*.test.{ts,tsx}",
+      "!{projectRoot}/**/*.test-d.ts",
       "!{projectRoot}/**/__fixtures__/**"
     ]
   },

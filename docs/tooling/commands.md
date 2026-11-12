@@ -95,6 +95,7 @@ docs/      ドキュメント (入口は docs/index.md)
 
 `test` の target は `cache: true` です (`nx.json` の `targetDefaults`)。Nx は cache を `~/.nx/<id>/cache` に置き、main の作業ツリーと全ての worktree で共有するので、入力が同じなら別の worktree で流した結果も再生します ([Change Cache Location](https://nx.dev/docs/guides/tasks--caching/change-cache-location))。再生した target には `[existing outputs match the cache, left as is]` と出ます。
 
+- `packages/db` の `test` は、`*.test-d.ts` の型のテストも流します (Vitest の `typecheck`。[ADR 0020](../adr/0020-typescript-strictness.md))。`tsc` が `packages/db` の tsconfig が読むファイル全体を検査するので、型エラーが 1 つあれば `test` も落ちます。Vitest の要約の `Type Errors` の行は、失敗しても `no errors` のままなので、`Test Files` の行と終了コードで読みます。
 - `--skip-nx-cache` は、cache の結果を疑うときだけ付けます。作業の確認に付けると、変えていないプロジェクトのテストまで流し直します。
 - プロジェクトのディレクトリで `vp test run` や `pnpm test` を引数なしで流すと、Nx を通らないので、そのプロジェクトのテストを毎回全部流します。
 - 2026-10-31 に、全ての `test` の target を `--skip-nx-cache` で流し (3 分 56 秒。最長は `db:test` の 3 分 17 秒)、続けてもう一度流すと、11 の target の全部が cache から再生されました (38 ms)。テストは入力のファイルを書き換えません。例外は、coverage が上がって `apps/api/vite.config.ts` などの下限が書き換わったときで、次の 1 回は cache に当たりません。
