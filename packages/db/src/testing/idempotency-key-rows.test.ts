@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   countIdempotencyKeys,
   createTestDatabase,
-  idempotencyKeyTableSql,
+  ensureIdempotencyKeyTable,
   seedIdempotencyKeys,
   type TestDatabase,
 } from "../testing.ts";
@@ -18,7 +18,7 @@ describe("冪等キーの行を用意して数える道具", () => {
 
   beforeEach(async () => {
     db = await createTestDatabase();
-    await db.migrator.query(idempotencyKeyTableSql("claim"));
+    await ensureIdempotencyKeyTable(db.migrator, "claim");
   });
   afterEach(async () => {
     await db.close();

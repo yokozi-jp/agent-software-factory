@@ -1,6 +1,6 @@
 import { ClaimTx } from "@agent-software-factory/claim";
 import { createPool } from "@agent-software-factory/db/node";
-import { awaitBlocked, idempotencyKeyTableSql } from "@agent-software-factory/db/testing";
+import { awaitBlocked, ensureIdempotencyKeyTable } from "@agent-software-factory/db/testing";
 import {
   createdColumns,
   CurrentWrite,
@@ -47,7 +47,7 @@ describe("withIdempotencyKey と idempotency_key", () => {
 
   beforeEach(async () => {
     calls = 0;
-    await ctx.db.migrator.query(idempotencyKeyTableSql("claim"));
+    await ensureIdempotencyKeyTable(ctx.db.migrator, "claim");
     baseline = await rawClaimCount();
   });
 

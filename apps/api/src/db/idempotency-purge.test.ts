@@ -2,7 +2,7 @@ import { ClaimTx } from "@agent-software-factory/claim";
 import { createPool } from "@agent-software-factory/db/node";
 import {
   countIdempotencyKeys,
-  idempotencyKeyTableSql,
+  ensureIdempotencyKeyTable,
   seedIdempotencyKeys,
   type ExpiryExpression,
 } from "@agent-software-factory/db/testing";
@@ -36,7 +36,7 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
   let baseline = 0;
 
   beforeEach(async () => {
-    await ctx.db.migrator.query(idempotencyKeyTableSql("claim"));
+    await ensureIdempotencyKeyTable(ctx.db.migrator, "claim");
     baseline = Number(
       (await ctx.db.superuser.query<{ n: string }>("SELECT count(*) AS n FROM claim.t_claim"))
         .rows[0]?.n,
