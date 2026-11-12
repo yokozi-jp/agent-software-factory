@@ -1,13 +1,144 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   envFiles,
+  localOrigin,
   lowestFreeSlot,
+  planAssign,
+  planShow,
   portsFor,
   slotCount,
   slotOf,
   summary,
   worktreePaths,
+  type Worktree,
 } from "./rules.ts";
+
+// main と、そのほかの worktree。files は apps/web と apps/api の .env.local の中身 (なければ undefined)。
+const main: Worktree = { path: "/w/app", exists: true, api: undefined, web: undefined };
+const assigned = (path: string, slot: number, exists = true): Worktree => ({
+  path,
+  exists,
+  api: envFiles(slot).api,
+  web: envFiles(slot).web,
+});
+const fresh = (path: string): Worktree => ({ path, exists: true, api: undefined, web: undefined });
+
+describe("localOrigin", () => {
+  it("ポートから http の origin を組み立てること", () => {
+    expect(localOrigin(5183)).toBe("http://localhost:5183");
+  });
+});
+
+describe("planAssign", () => {
+  it("まだ割り当てのない worktree に、使われていない最小の slot とそのファイルを返すこと", () => {
+    expect(planAssign([main, fresh("/w/a"), assigned("/w/b", 1)], "/w/a")).toEqual({
+      ok: true,
+      slot: 2,
+      files: envFiles(2),
+    });
+  });
+
+  it("main の checkout を、終了コード 2 で断ること", () => {
+    expect(planAssign([main, fresh("/w/a")], "/w/app")).toMatchObject({ ok: false, status: 2 });
+  });
+
+  it("git の worktree でない path を、終了コード 2 で断ること", () => {
+    expect(planAssign([main, fresh("/w/a")], "/elsewhere")).toMatchObject({
+      ok: false,
+      status: 2,
+    });
+  });
+
+  it("どちらかの .env.local がすでにあれば、上書きせず終了コード 1 で断ること", () => {
+    const onlyApi: Worktree = {
+      path: "/w/a",
+      exists: true,
+      api: "AUTH_SECRET=x\n",
+      web: undefined,
+    };
+    const onlyWeb: Worktree = { path: "/w/a", exists: true, api: undefined, web: "X=1\n" };
+    expect(planAssign([main, onlyApi], "/w/a")).toMatchObject({ ok: false, status: 1 });
+    expect(planAssign([main, onlyWeb], "/w/a")).toMatchObject({ ok: false, status: 1 });
+  });
+
+  // git は、ディレクトリを手で消した worktree を prunable として一覧に残す。その slot は使われていない。
+  it("ディレクトリが消えた worktree の slot を、空きとして数えること", () => {
+    const gone = assigned("/w/gone", 1, false);
+    expect(planAssign([main, gone, fresh("/w/a")], "/w/a")).toMatchObject({ ok: true, slot: 1 });
+  });
+
+  // 片方のファイルを消されても、もう片方の印で、その slot は使われているとみなす。
+  it("印が web か api のどちらか 1 つにしかなくても、その slot を使用中として数えること", () => {
+    const onlyWebMarked: Worktree = {
+      path: "/w/b",
+      exists: true,
+      api: undefined,
+      web: envFiles(1).web,
+    };
+    const onlyApiMarked: Worktree = {
+      path: "/w/c",
+      exists: true,
+      api: envFiles(2).api,
+      web: undefined,
+    };
+    expect(planAssign([main, onlyWebMarked, onlyApiMarked, fresh("/w/a")], "/w/a")).toMatchObject({
+      ok: true,
+      slot: 3,
+    });
+  });
+
+  it("slot が尽きたら、worktree を消すよう伝えて終了コード 2 で断ること", () => {
+    const full = Array.from({ length: slotCount - 1 }, (_, index) =>
+      assigned(`/w/${index}`, index + 1),
+    );
+    const plan = planAssign([main, ...full, fresh("/w/new")], "/w/new");
+    expect(plan).toMatchObject({ ok: false, status: 2 });
+    expect(plan.ok ? "" : plan.message).toContain("worktree を消");
+  });
+});
+
+describe("planShow", () => {
+  it("main の checkout では、slot 0 を返すこと", () => {
+    expect(planShow([main, assigned("/w/a", 1)], "/w/app")).toEqual({
+      ok: true,
+      slot: 0,
+      warning: undefined,
+    });
+  });
+
+  it("割り当てた worktree では、その slot を返すこと", () => {
+    expect(planShow([main, assigned("/w/a", 3)], "/w/a")).toEqual({
+      ok: true,
+      slot: 3,
+      warning: undefined,
+    });
+  });
+
+  it("割り当てていない worktree では、assign するよう伝えて終了コード 1 で断ること", () => {
+    const plan = planShow([main, fresh("/w/a")], "/w/a");
+    expect(plan).toMatchObject({ ok: false, status: 1 });
+    expect(plan.ok ? "" : plan.message).toContain("assign");
+  });
+
+  it("worktree の一覧にない場所では、assign するよう伝えて終了コード 1 で断ること", () => {
+    expect(planShow([main, assigned("/w/a", 1)], "/w/unknown")).toMatchObject({
+      ok: false,
+      status: 1,
+    });
+  });
+
+  // 同時に worktree を作ると、同じ slot を取りうる。起動は strictPort が止めるが、原因は show が教える。
+  it("同じ slot を使っているほかの worktree があれば、警告を添えること", () => {
+    const plan = planShow([main, assigned("/w/a", 2), assigned("/w/b", 2)], "/w/a");
+    expect(plan).toMatchObject({ ok: true, slot: 2 });
+    expect(plan.ok ? plan.warning : undefined).toContain("/w/b");
+  });
+
+  it("同じ slot でも、ディレクトリが消えた worktree は警告しないこと", () => {
+    const plan = planShow([main, assigned("/w/a", 2), assigned("/w/b", 2, false)], "/w/a");
+    expect(plan).toMatchObject({ ok: true, warning: undefined });
+  });
+});
 
 describe("summary", () => {
   it("slot の URL を、エージェントが設定ファイルを読まずに知れる形で並べること", () => {
@@ -116,10 +247,8 @@ describe("lowestFreeSlot", () => {
     expect(lowestFreeSlot([])).toBe(1);
   });
 
-  it("すべて使われているとき、worktree を整理するよう伝える例外にすること", () => {
-    expect(() => lowestFreeSlot(Array.from({ length: slotCount }, (_, slot) => slot))).toThrow(
-      /worktree を消/,
-    );
+  it("すべて使われているとき、undefined を返すこと", () => {
+    expect(lowestFreeSlot(Array.from({ length: slotCount }, (_, slot) => slot))).toBeUndefined();
   });
 });
 
@@ -136,14 +265,8 @@ describe("portsFor", () => {
     expect(() => portsFor(slot)).toThrow(RangeError);
   });
 
-  // compose.local.yaml と compose.otel-lgtm.yaml がホスト側に開くポート (docs/tooling/local-worker.md)。
-  // slot 8 の IdP は 9080 になり、人事システムのフェイクと重なる。
-  it("どの slot のポートも、compose が開くポートと重ならないこと", () => {
-    const compose = [1025, 3001, 3200, 4318, 5432, 8025, 9080, 9324];
-    for (let slot = 0; slot < slotCount; slot += 1)
-      expect(Object.values(portsFor(slot)).filter((port) => compose.includes(port))).toEqual([]);
-  });
-
+  // compose のポートとの重なりは、実際の compose ファイルを読む tools のテストで確かめる
+  // (src/configs/dev-ports.tools.test.ts)。ここの手書きの一覧は、compose を変えても失敗しない。
   it("slot の間でポートが重ならないこと", () => {
     const all = Array.from({ length: slotCount }, (_, slot) =>
       Object.values(portsFor(slot)),

@@ -1,7 +1,8 @@
 // What apps/web and apps/api read from their environment to start the dev server (Issue #184,
-// docs/tooling/worktrees.md ("開発サーバーを動かす")). A worktree gets its own ports in apps/*/.env.local, written by
-// tools/scripts/src/dev-ports. Each setting is its own variable, and another app is reached by its URL
-// (twelve-factor: III. Config, VII. Port binding). The defaults are the ports of the main checkout.
+// docs/tooling/worktrees.md ("開発サーバーを動かす")). A worktree gets its own ports in the .env.local files of
+// apps/web and apps/api, written by tools/scripts/src/dev-ports. Each setting is its own variable, and another app is
+// reached by its URL (twelve-factor: III. Config, VII. Port binding). The defaults are the ports of the main checkout,
+// and src/configs/dev-ports.tools.test.ts keeps them equal to slot 0 of tools/scripts/src/dev-ports/rules.ts.
 
 type Env = Readonly<Record<string, string | undefined>>;
 

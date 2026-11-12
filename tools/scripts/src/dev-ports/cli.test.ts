@@ -1,9 +1,9 @@
 // Process tests for cli.ts. Each test makes its own main checkout and git worktrees in the sandbox,
 // so the slots one test takes do not leak into another.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import { gitIn, runIn, sandbox, type Sandbox } from "../test/sandbox.ts";
+import { gitIn, runIn, sandbox, type RunOptions, type Sandbox } from "../test/sandbox.ts";
 import { envFiles, slotCount } from "./rules.ts";
 
 const cli = join(import.meta.dirname, "cli.ts");
@@ -45,7 +45,13 @@ function repo(): Repo {
   };
 }
 
-const run = (dir: string, ...args: string[]) => runIn(dir, "node", [cli, ...args]);
+// 最後の引数がオブジェクトなら、runIn のオプション (env など) として渡す。
+const run = (dir: string, ...args: (string | RunOptions)[]) => {
+  const last = args.at(-1);
+  const options = typeof last === "object" ? last : undefined;
+  const words = args.filter((arg): arg is string => typeof arg === "string");
+  return runIn(dir, "node", [cli, ...words], options);
+};
 const apiFile = (dir: string) => join(dir, "apps/api/.env.local");
 const webFile = (dir: string) => join(dir, "apps/web/.env.local");
 const slotIn = (text: string): number => Number(/^slot (\d+)/m.exec(text)?.[1]);
@@ -120,6 +126,50 @@ describe("dev-ports の assign", () => {
     const result = run(main, "assign");
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("usage:");
+  });
+
+  // git は、ディレクトリを手で消した worktree を一覧に残す。以前は realpath が ENOENT で全部の実行を止めた。
+  it("ディレクトリを手で消した worktree があっても、その slot を空きとして割り当てること", () => {
+    const { main, add } = repo();
+    const gone = add();
+    run(main, "assign", gone);
+    rmSync(gone, { recursive: true });
+    const result = run(main, "assign", add());
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("slot 1");
+  });
+});
+
+// 同時に worktree を作る複数のセッションが、同じ slot を取らないための排他 (git の共通ディレクトリの dev-ports.lock)。
+describe("dev-ports の排他", () => {
+  const lockOf = (main: string) => join(main, ".git", "dev-ports.lock");
+
+  it("割り当てたあとに、ロックを残さないこと", () => {
+    const { main, add } = repo();
+    run(main, "assign", add());
+    expect(existsSync(lockOf(main))).toBe(false);
+  });
+
+  it("ほかの assign がロックを持っている間は待ち、取れなければ何も書かず終了コード 2 で断ること", () => {
+    const { main, add } = repo();
+    const dir = add();
+    mkdirSync(lockOf(main));
+    const result = run(main, "assign", dir, { env: { DEV_PORTS_LOCK_WAIT_MS: "300" } });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("ロック");
+    expect(existsSync(apiFile(dir))).toBe(false);
+    expect(existsSync(lockOf(main))).toBe(true);
+  });
+
+  // assign が途中で殺されると、ロックが残る。いつまでも後続を止めないよう、古いロックは捨てる。
+  it("60 秒より古いロックは捨てて、割り当てること", () => {
+    const { main, add } = repo();
+    mkdirSync(lockOf(main));
+    const old = new Date(Date.now() - 120_000);
+    utimesSync(lockOf(main), old, old);
+    const result = run(main, "assign", add());
+    expect(result.status).toBe(0);
+    expect(existsSync(lockOf(main))).toBe(false);
   });
 });
 

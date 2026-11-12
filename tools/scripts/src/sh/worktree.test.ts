@@ -1,6 +1,6 @@
 // Process tests for sh/worktree.sh in a sandboxed main checkout with a local bare origin.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { gitIn, runIn, sandbox, type Sandbox } from "../test/sandbox.ts";
 
@@ -91,7 +91,7 @@ function makeMain(name: string, withApps: boolean): string {
 }
 
 describe("worktree.sh add の採番 (Issue #184)", () => {
-  // 上の describe の worktree が slot を使うので、専用の main の checkout で数える。
+  // 各テストが自分の main の checkout を持つ。前のテストが slot を使った状態に頼らない。
   it("worktree に開発サーバーの slot を割り当て、URL を stderr に出し、stdout は path だけにすること", () => {
     const own = makeMain("ports", true);
     const result = worktree(own, "add", "feat/slot-a", "--no-install");
@@ -105,9 +105,20 @@ describe("worktree.sh add の採番 (Issue #184)", () => {
     ).toContain("PORT=3010");
   });
 
-  it("次の worktree には、別の slot を割り当てること", () => {
-    const own = join(box.root, "ports");
-    expect(worktree(own, "add", "feat/slot-b", "--no-install").stderr).toContain("slot 2");
+  it("続けて足した worktree には、別の slot を割り当てること", () => {
+    const own = makeMain("ports-two", true);
+    expect(worktree(own, "add", "feat/one", "--no-install").stderr).toContain("slot 1");
+    expect(worktree(own, "add", "feat/two", "--no-install").stderr).toContain("slot 2");
+  });
+
+  // script を相対 path で呼ぶと (docs の書き方)、cd の後の $0 は新しい worktree の中を指す。
+  it("script を相対 path で呼んでも、割り当てること", () => {
+    const own = makeMain("ports-relative", true);
+    const sub = join(own, "deep");
+    mkdirSync(sub);
+    const result = runIn(sub, "sh", [relative(sub, script), "add", "feat/rel", "--no-install"]);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("slot 1");
   });
 
   // 採番に失敗しても worktree は使える。strictPort が衝突を失敗にする。

@@ -44,7 +44,8 @@ case "$command" in
     git worktree add -b "$branch" "$dir" origin/main >&2
     # Give the worktree its own dev-server ports (Issue #184). A failure only warns: the worktree still works,
     # and strictPort turns a clash into a failed start instead of a silent fall-through to another port.
-    ports="$(dirname "$0")/../src/dev-ports/cli.ts"
+    # The path is made absolute before the cd: $0 may be relative, and would then point inside the new worktree.
+    ports="$(cd "$(dirname "$0")" && pwd)/../src/dev-ports/cli.ts"
     if ! (cd "$dir" && node "$ports" assign "$dir") >&2; then
       echo "warning: dev-ports could not assign ports to $dir (docs/tooling/worktrees.md)." >&2
     fi

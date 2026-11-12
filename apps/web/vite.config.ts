@@ -12,7 +12,8 @@ import { playwright } from "vite-plus/test/browser-playwright";
 const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
 
 // WEB_PORT と API_ORIGIN は、環境変数か .env.local から読む。worktree ごとの値は tools/scripts/src/dev-ports が
-// .env.local に書く (docs/tooling/worktrees.md)。Vite は設定を評価する前に .env.local を環境に入れないので、loadEnv で読む。
+// .env.local に書く (docs/tooling/worktrees.md)。Vite は env ファイルを設定の評価後にしか読まないので、設定の中では
+// loadEnv で読む (https://vite.dev/guide/env-and-mode の "NODE_ENV and Modes"。2026-11-12 に読んだ)。
 const env = loadEnv("development", process.cwd(), "");
 
 export default defineConfig({
