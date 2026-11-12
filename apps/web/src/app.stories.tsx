@@ -758,6 +758,8 @@ function mobileMenu(width: MobileWidth): Story {
       }
       // Sheet は開く動きの途中では見えない。
       await waitFor(() => expect(within(sheet).getByText("鈴木 花子")).toBeVisible());
+      // Sheet の中の横あふれは、ドキュメント全体の scrollWidth には出ない。
+      await expect(sheet.scrollWidth).toBeLessThanOrEqual(sheet.clientWidth);
       await expectNoHorizontalScroll(width);
     },
   });
