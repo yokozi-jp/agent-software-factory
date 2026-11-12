@@ -72,8 +72,19 @@ IdP を `127.0.0.1`、web を `localhost` にしているのは、API が IdP �
 
 - 起動直後の `Rate limiting could not determine a client IP` の警告は、Better Auth の rate limit が接続元の IP を取れないときの警告 (出所は Better Auth)。ローカルでは 1 人で使うので無視できる (判断)。
 - ポート 9000 を別のものが使っている: worktree では `worktree.sh add` が `apps/api/` の `.env.local` に `IDP_PORT` と `OIDC_DISCOVERY_URL` を書くので、ポートは重なりません ([並行作業と worktree](worktrees.md))。main の checkout で重なるときは、同じ `.env.local` に `IDP_PORT` を書き、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
-- `__Host-` の Cookie は `Secure` が要る。ブラウザは `http://localhost` を安全な文脈 (potentially trustworthy origin) として扱う ([MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts))。この手順の Cookie を実際のブラウザで受け付けるかは、まだ確かめていない ([Issue #532](https://github.com/yokozi-jp/agent-software-factory/issues/532))。
+- `__Host-` の Cookie は `Secure` が要る。ブラウザは `http://localhost` を安全な文脈 (potentially trustworthy origin) として扱う ([MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts))。Chromium 158 (Playwright 1.65.0) で `http://localhost:5183` (worktree の slot 1) を開いて確かめると、`__Host-session_token` を受け付けた (2026-11-12。属性は `Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なし)。Firefox と WebKit は確かめていない ([Issue #532](https://github.com/yokozi-jp/agent-software-factory/issues/532))。
 
-## この手順で確かめていないもの
+## この手順で確かめたものと、確かめていないもの
 
-- 実際のブラウザ (Playwright を含む) でのログインとログアウト。このコミットを書いたときは、Cookie を保持する使い捨ての Node.js のスクリプトで、5173 経由の `sign-in/social`、IdP のログイン、callback、`get-session`、`sign-out` を通した (スクリプトは残していない)。
+確かめたもの (2026-11-12、Chromium 158、Playwright 1.65.0。web は worktree の slot 1 の `http://localhost:5183`、IdP は `http://127.0.0.1:9010`、API は 3010):
+
+- 実際のブラウザで、console の `sign-in/social` から IdP の画面へ進み、`yamada` でログインして、web の callback に戻ること。戻った後の `get-session` が `yamada@example.com` を返すこと。IdP から戻る cross-site の遷移を通っているので、`state` の Cookie (`SameSite=Lax`) が送られたことも含みます。
+- ログイン後に web の origin (`localhost`) へ付いた Cookie は、`__Host-session_token` だけだった (`Secure`、`HttpOnly`、`SameSite=Strict`、`Path=/`、`Domain` なし)。IdP の origin (`127.0.0.1`) には、IdP 自身の Cookie (`_session` など) が付く。
+
+確かめていないもの:
+
+- 実際のブラウザでのログアウト (`sign-out` と IdP の `/session/end`)。Cookie を保持する使い捨ての Node.js のスクリプトでは、5173 経由の `sign-in/social`、IdP のログイン、callback、`get-session`、`sign-out` を通した。
+- Firefox と WebKit。
+- web にログインとログアウトのボタンを足すか、Playwright の E2E ([ADR 0039](../adr/0039-e2e-playwright-gate-and-ai-for-authoring.md)) にするか。
+
+確認に使ったスクリプトは残していない。
