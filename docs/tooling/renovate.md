@@ -8,7 +8,22 @@ tags: [tooling, runbook, renovate, mise, github-actions, pnpm]
 # Renovate
 
 Renovate は、固定した版を更新する PR を出します ([ADR 0018](../adr/0018-renovate-for-pinned-versions.md))。設定は `renovate.jsonc` です。
-PR は squash merge し、タイトルは `chore(deps): ...` です。
+PR は squash merge し、タイトルは `chore(deps): ...` です。必須チェックが通った PR の一部は、Renovate が自分で merge します ([ADR 0055](../adr/0055-renovate-automerge-by-ci.md))。
+
+## 自動で merge するもの
+
+GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterleaks`、`dependency-review`) が通ったら Renovate が merge します。PR の本文に `Automerge: Enabled` と出ます。リポジトリの設定「Allow auto-merge」が要ります ([GitHub リポジトリの設定](../repository/github-settings.md))。
+
+| 自動にする                                                | 条件                                         |
+| --------------------------------------------------------- | -------------------------------------------- |
+| lock file の更新                                          | なし                                         |
+| npm (catalog) の minor と patch                           | 現在の版が 1.0 以上。公開から 3 日たっている |
+| GitHub Action と mise の道具の patch (betterleaks を含む) | 公開から 3 日たっている                      |
+
+人が merge する PR: メジャー版、0.x、`better-auth`、`oidc-provider`、Node.js、pnpm、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
+
+自動にする PR で CI が落ちたら、PR は open のまま残ります。直して push すれば、CI が通った時点で merge されます。自動にした PR が main を壊したら、その PR を revert します。止めたいときは、`renovate.jsonc` の自動にする規則を消すか、`gh repo edit --enable-auto-merge=false` を実行します。
+本文が `Automerge: Disabled by config` なら、規則が効いていません。
 
 ## インストール (管理者)
 
@@ -45,9 +60,9 @@ Renovate は open の alert を読んでセキュリティ更新の PR を作る
 
 ## PR を merge する前に
 
-CI (`main`、`commitlint`、`betterleaks`) が通ったことを確かめます。そのうえで、PR ごとに次を見ます。
+人が merge する PR (自動にしないもの) の手順です。CI (`main`、`commitlint`、`betterleaks`、`dependency-review`) が通ったことを確かめます。そのうえで、PR ごとに次を見ます。
 
-- **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えていないこと。zizmor や jactionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
+- **mise の道具**: `mise.toml` と `mise.lock` の両方が変わっていること。`mise.lock` が変わっていない PR は、Renovate が `mise lock` を実行できなかったので、そのブランチで `mise lock --platform linux-x64` を実行して commit します (CI は `MISE_LOCKED=1` で落ちます)。`mise.lock` に `linux-x64` 以外の platform が増えると、repo-policy が落ちます ([ADR 0009](../adr/0009-mise-for-pinned-cli-tools.md))。zizmor や jactionlint の版で workflow の指摘が増えたら、同じ PR で直します ([ADR 0012](../adr/0012-lint-workflows.md))。
 - **betterleaks**: `mise.toml`、`mise.lock`、`.betterleaks.toml` の3つが同じ版に変わっていること。repo-policy (`tools/scripts/src/checks/repo-policy/cli.ts`) が落ちたら、そろっていないファイルを直します。 `mise.toml` に `betterleaks = "v1.10.0"` と v 付きで書かれていたら、`renovate.jsonc` の `extractVersion` の規則が効いていません (PR #621 で起きた。リリースの tag が `v1.10.0` で、`.betterleaks.toml` の `1.10.0` と一致しなかった)。
 - **Action**: SHA が変わり、同じ行のコメントの版も変わっていること。リリースノートで権限や入力の変更がないか見ます。
 - **catalog**: `pnpm-lock.yaml` が変わっていること。

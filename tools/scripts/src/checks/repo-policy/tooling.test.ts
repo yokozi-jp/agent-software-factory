@@ -9,6 +9,7 @@ import {
   gitOnOtherRepositories,
   lefthookOwnsHooks,
   migrationsGoForward,
+  miseLockHasOnlyLinuxX64,
   noWorkspaceInCatalog,
   nxRunsTasks,
   oneBetterleaks,
@@ -77,6 +78,50 @@ describe("ADR 0001: lefthook owns the Git hooks", () => {
 
   it("refuses a tracked file in .vite-hooks", () => {
     expect(violations(repo({ ".vite-hooks/pre-commit": "x\n" }))).toEqual([message]);
+  });
+});
+
+describe("ADR 0009: mise.lock records linux-x64 only", () => {
+  const violations = failuresOf(miseLockHasOnlyLinuxX64);
+  const lock = (...platforms: string[]): string =>
+    [
+      "lockfile_version = 3",
+      "",
+      "[[tools.zizmor]]",
+      'version = "1.32.0"',
+      "",
+      ...platforms.flatMap((platform) => [
+        `[tools.zizmor."platforms.${platform}"]`,
+        'checksum = "sha256:00"',
+        "",
+      ]),
+    ].join("\n");
+
+  it("passes a lock that records linux-x64", () => {
+    expect(violations(repo({ "mise.lock": lock("linux-x64") }))).toEqual([]);
+  });
+
+  it("refuses a platform that is not linux-x64, and names the tool", () => {
+    expect(violations(repo({ "mise.lock": lock("linux-x64", "macos-arm64") }))).toEqual([
+      "mise.lock records platforms.macos-arm64 of zizmor. Record linux-x64 only: run `mise lock --platform linux-x64` (docs/adr/0009).",
+    ]);
+  });
+
+  it("refuses a platform of a second entry of the same tool", () => {
+    const text = `${lock("linux-x64")}\n[[tools.zizmor]]\nversion = "1.33.0"\n\n[tools.zizmor."platforms.windows-x64"]\nchecksum = "sha256:00"\n`;
+    expect(violations(repo({ "mise.lock": text }))).toEqual([
+      "mise.lock records platforms.windows-x64 of zizmor. Record linux-x64 only: run `mise lock --platform linux-x64` (docs/adr/0009).",
+    ]);
+  });
+
+  it("passes a repository without mise.lock", () => {
+    expect(violations(repo({ "mise.lock": undefined }))).toEqual([]);
+  });
+
+  it("reports a mise.lock that is not TOML once, and no platform", () => {
+    expect(violations(repo({ "mise.lock": "tools: [" }))).toEqual([
+      "mise.lock is not valid TOML (Error: Invalid TOML document: illegal character in key)",
+    ]);
   });
 });
 

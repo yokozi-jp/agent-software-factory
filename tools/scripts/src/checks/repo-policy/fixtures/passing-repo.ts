@@ -273,6 +273,17 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "packages/db/migrations/20260101000000_create_x.sql": migration(),
   "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
+  // What `mise lock --platform linux-x64` writes: one platform per tool (docs/adr/0009).
+  "mise.lock": [
+    "lockfile_version = 3",
+    "",
+    "[[tools.betterleaks]]",
+    'version = "1.9.0"',
+    "",
+    '[tools.betterleaks."platforms.linux-x64"]',
+    'checksum = "sha256:00"',
+    "",
+  ].join("\n"),
   ".betterleaks.toml":
     'title = "x"\nbetterleaksMinVersion = "1.9.0"\n\n[extend]\nuseDefault = true\n',
   ...packageFiles("shared-kernel"),
