@@ -59,6 +59,13 @@
       "enabled": false,
     },
     {
+      // ADR 0056: @vitejs/plugin-react declares the peer range `oxc-transform-react >=0.152.0 <0.157.0`. Stay inside it
+      // until plugin-react widens it. Remove this rule then.
+      "description": "Keep oxc-transform-react inside the peer range of @vitejs/plugin-react",
+      "matchDepNames": ["oxc-transform-react"],
+      "allowedVersions": "<0.157.0",
+    },
+    {
       // ADR 0028: each @effect/tsgo release supports a range of Oxlint and oxlint-tsgolint (its README), and Vite+
       // carries them. So a Vite+ update outside that range must not merge alone, nor an @effect/tsgo update that
       // needs a Vite+ not yet installed. The `vite` entry of the catalog is Vite+'s core package.
