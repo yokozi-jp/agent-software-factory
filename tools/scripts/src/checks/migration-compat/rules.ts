@@ -7,12 +7,15 @@ import { annotationText, type Env, type Output } from "../output.ts";
 // (docs/adr/0037 "Consequences").
 export const migrationsDirectory = "packages/db/migrations/";
 // The entry of the seed. The base's integration tests run on a database that this seed filled (docs/adr/0036).
+// Stryker disable next-line StringLiteral: equivalent here, configs/migration-compat.tools.test.ts reads the file at this path, and Stryker does not run the tools tests
 export const seedEntry = "packages/db/src/infrastructure/seed/index.ts";
 // The harness: the file that prepares the database for the integration tests, and the name of the environment
 // variable that it reads the migration files from. A base without the name in the file cannot apply the files, and
 // would pass the tests without the pull request's migrations. packages/db/src/testing/prepare-database.ts
 // declares the same name.
+// Stryker disable next-line StringLiteral: equivalent here, configs/migration-compat.tools.test.ts reads the file at this path, and Stryker does not run the tools tests
 export const harnessEntry = "packages/db/src/testing/prepare-database.ts";
+// Stryker disable next-line StringLiteral: equivalent here, configs/migration-compat.tools.test.ts looks for this text in the harness, and Stryker does not run the tools tests
 export const harnessMarker = "MIGRATION_COMPAT_FILES";
 
 export interface MigrationChanges {
@@ -30,6 +33,7 @@ export function classifyMigrations(nameStatus: string): MigrationChanges {
   const deleted: string[] = [];
   for (const line of nameStatus.split("\n")) {
     const tab = line.indexOf("\t");
+    // Stryker disable next-line EqualityOperator: equivalent, git always writes a status before the tab, so none is at 0
     if (tab < 0) continue;
     const path = line.slice(tab + 1);
     if (!path.startsWith(migrationsDirectory)) continue;

@@ -30,6 +30,21 @@ describe("classifyMigrations", () => {
     });
   });
 
+  it("sorts the changed and the deleted files too", () => {
+    const diff = [`M\t${dir}2.sql`, `M\t${dir}1.sql`, `D\t${dir}9.sql`, `D\t${dir}8.sql`].join(
+      "\n",
+    );
+    expect(classifyMigrations(diff)).toEqual({
+      added: [],
+      modified: [`${dir}1.sql`, `${dir}2.sql`],
+      deleted: [`${dir}8.sql`, `${dir}9.sql`],
+    });
+  });
+
+  it("ignores a line that has no tab, though it is the path of a migration", () => {
+    expect(classifyMigrations(`${dir}1.sql\n`)).toEqual(none);
+  });
+
   it("ignores other files, blank lines and a diff with no change", () => {
     expect(
       classifyMigrations(`A\tapps/api/src/a.ts\nM\tpackages/db/src/infrastructure/migrate.ts\n\n`),
@@ -76,6 +91,17 @@ describe("decide", () => {
     );
     expect(decision.kind).toBe("skip");
     expect(message(decision)).toContain(harnessEntry);
+  });
+
+  it("names every changed and deleted migration in the failure, in one list", () => {
+    expect(
+      message(
+        decide(
+          { added: [], modified: [`${dir}1.sql`, `${dir}2.sql`], deleted: [`${dir}3.sql`] },
+          ready,
+        ),
+      ),
+    ).toContain(`${dir}1.sql (changed), ${dir}2.sql (changed), ${dir}3.sql (deleted).`);
   });
 
   it("runs the tests with the added migrations", () => {

@@ -15,7 +15,7 @@ import {
 
 // A file of coverage-final.json: one statement per line, `hits[n]` for line n + 1, and one branch (an `if`) per entry
 // of `branches`, with the hits of its paths.
-function istanbul(hits: number[], branches: number[][] = []): unknown {
+function istanbul(hits: number[], branches: number[][] = []): Record<string, unknown> {
   const at = (line: number) => ({ start: { line, column: 0 }, end: { line, column: 10 } });
   return {
     path: "ignored",
@@ -70,6 +70,9 @@ describe("isMeasured", () => {
     ["apps/api/test/use-database.ts", false],
     ["tools/scripts/src/checks/git.ts", false],
     ["packages/ui/src/vite-env.d.ts", false],
+    ["vendor/apps/api/src/app.ts", false],
+    ["apps/api/src/app.ts.md", false],
+    ["apps/api/src/app.test.tsx/index.ts", true],
   ])("%s → %s", (path, expected) => {
     expect(isMeasured(path)).toBe(expected);
   });
@@ -159,6 +162,7 @@ describe("addFile", () => {
 });
 
 describe("parseFileCoverage", () => {
+  const whole = istanbul([1], [[1, 0]]);
   it.each([
     ["not an object", 1],
     ["no maps", {}],
@@ -167,8 +171,21 @@ describe("parseFileCoverage", () => {
       "a branch without counts",
       { statementMap: {}, s: {}, branchMap: { "0": { type: "if", loc: {} } }, b: {} },
     ],
+    ["null", null],
+    ["no statementMap", { ...whole, statementMap: undefined }],
+    ["no s", { ...whole, s: undefined }],
+    ["no branchMap", { ...whole, branchMap: undefined }],
+    ["no b", { ...whole, b: undefined }],
+    ["a count that is not a number", { ...whole, s: { "0": "1" } }],
+    ["a statement without a line", { ...whole, statementMap: { "0": {} } }],
+    ["branch counts with one that is not a number", { ...whole, b: { "0": [1, "x"] } }],
+    ["branch counts of text only", { ...whole, b: { "0": ["x"] } }],
   ])("refuses %s", (_name, value) => {
     expect(parseFileCoverage(value)).toBeUndefined();
+  });
+
+  it("reads the file that the refusals above break one part of", () => {
+    expect(parseFileCoverage(whole)).toBeDefined();
   });
 });
 
@@ -187,7 +204,17 @@ describe("parsePolicy", () => {
       { minimum: { lines: "90", branches: 90 }, exceptions: {} },
       /minimum/,
     ],
+    [
+      "a minimum of branches that is not a number",
+      { minimum: { lines: 90, branches: "90" }, exceptions: {} },
+      /minimum/,
+    ],
     ["no exceptions", { minimum: { lines: 90, branches: 90 } }, /exceptions/],
+    [
+      "a reason that is not text",
+      { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": 5 } },
+      /a\.ts has no reason/,
+    ],
     [
       "an exception without a reason",
       { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": " " } },
