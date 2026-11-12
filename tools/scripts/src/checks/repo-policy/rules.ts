@@ -18,8 +18,8 @@
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
 // vite.config.ts is read as text, for the names of its rules and its layers only (#136, item 8). What it stops, and
-// the fixtures that show it, are in lint-restrictions.json, which vite.config.ts imports and the checks parse
-// (docs/adr/0050).
+// the fixtures that show it, are in lint-restrictions.json, and the drivers are in drivers.json: vite.config.ts imports
+// both and the checks parse them (docs/adr/0050, docs/adr/0054).
 import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
@@ -27,6 +27,7 @@ import { projectsWriteCoverage } from "./coverage.ts";
 import { codePathReferences, docsReferences } from "./docs-references.ts";
 import {
   driverEntriesOnlyReexport,
+  driversFileIsWellFormed,
   driversAreTagged,
   driversDoNotUseEffect,
   driversAreInLint,
@@ -96,6 +97,7 @@ function run(tree: Tree): string[] {
     ...noResolutionBypass(tree),
     ...modulesLintEffect(tree),
     ...modulesHaveLayers(tree),
+    ...driversFileIsWellFormed(tree),
     ...driversAreTagged(tree),
     ...driversHaveTheirLayout(tree),
     ...driverEntriesOnlyReexport(tree),

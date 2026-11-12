@@ -1,7 +1,7 @@
 // Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
 // Effect lint of each module. The role of a package is its `type:` tag (roles.ts), not a name in a list here.
-import { childOf } from "./drivers.ts";
+import { childOf, readDrivers } from "./drivers.ts";
 import { manifest, packageNames } from "./packages.ts";
 import { namesWithRole, roleOf, tagOf, typeTagsOf } from "./roles.ts";
 import { Tree, list, record } from "./tree.ts";
@@ -26,14 +26,9 @@ const dependencyFields = [
 // The packages with a name of their own in this file: the ones whose exports differ (ownExports) and the ones several checks
 // name. Their role is the tag of their package.json (roles.ts).
 // shared-kernel is the code the modules share. ui holds the shadcn/ui parts that the apps share; it has no layers, and no
-// module depends on it. telemetry, logging and hr-system are drivers (docs/adr/0054): telemetry starts the OpenTelemetry
-// SDK in a Node-only entry (docs/adr/0048), logging holds the Logger interface and the pino implementation in a Node-only
-// entry (docs/adr/0049), hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0052).
+// module depends on it. The drivers (docs/adr/0054) are named in drivers.json, not here.
 const sharedKernel = "shared-kernel";
 const ui = "ui";
-const telemetry = "telemetry";
-const logging = "logging";
-const hrSystem = "hr-system";
 // db holds the tools of the database (migrations, the type generation, the tools of the tests). It is a driver, but it
 // has no layers of a module and, unlike the other drivers, depends on the modules by `import type`, in devDependencies, and
 // only apps/api and apps/worker (the pool and the tools of the tests) depend on it (docs/adr/0038). It is not in
@@ -67,17 +62,11 @@ const uiPublicApi = {
   "./lib/*": "./src/lib/*.ts",
 };
 
-// The packages that are not modules and export something other than src/index.ts: the exports they must have, and
-// what the message says about them. Adding a package of this kind is one entry here (docs/domain-model/add-package.md).
+// The packages that are not modules or drivers and export something other than src/index.ts: the exports they must have,
+// and what the message says about them (docs/domain-model/add-package.md). The drivers write theirs in drivers.json
+// (`exports` and `exportsReason`).
 //   ui         no index.ts: the folders of the parts and the CSS (docs/adr/0034).
 //   shared-kernel  one entry for each feature, and `.` for the contract that imports no library but zod (docs/adr/0051).
-//   db         the Node-only production entry (no `.`), the seed and the tools of the tests as three entries, so that faker,
-//              testcontainers and Vitest stay out of the entry that production code imports (docs/adr/0038).
-//   telemetry  the entry for any code and the Node-only entry that starts the SDK, which the entry files of the
-//              apps import (docs/adr/0048).
-//   logging    the entry for any code (the Logger interface), the Node-only entry that creates the pino logger (which the
-//              entry files of the apps import), and the tools of the tests, so that they stay out of production (docs/adr/0049).
-//   hr-system  the contract, and the entry of the ky client that the infrastructure of a module imports (docs/adr/0052, 0054).
 const ownExports: Readonly<
   Record<string, { readonly exports: Record<string, string>; readonly says: string }>
 > = {
@@ -97,26 +86,6 @@ const ownExports: Readonly<
       "./problem": "./src/problem/index.ts",
     },
     says: "the contract and one entry for each feature, and nothing else (docs/adr/0051)",
-  },
-  [db]: {
-    exports: {
-      "./node": "./src/node.ts",
-      "./seed": "./src/seed.ts",
-      "./testing": "./src/testing.ts",
-    },
-    says: "the Node-only entry of production, the seed and the tools of the tests, and nothing else (docs/adr/0038, 0051, 0054)",
-  },
-  [hrSystem]: {
-    exports: { ".": "./src/index.ts", "./client": "./src/client.ts" },
-    says: "the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054)",
-  },
-  [telemetry]: {
-    exports: { ".": "./src/index.ts", "./node": "./src/node.ts" },
-    says: "the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048)",
-  },
-  [logging]: {
-    exports: { ".": "./src/index.ts", "./node": "./src/node.ts", "./testing": "./src/testing.ts" },
-    says: "the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049)",
   },
 };
 
@@ -142,20 +111,31 @@ export function modulesHaveLayers(tree: Tree): string[] {
   return failures;
 }
 
+// The exports a package must have, and what the failure says about them: the driver's own (drivers.json), then the other
+// packages' own (ownExports), then `.` for src/index.ts.
+function expectedExports(
+  tree: Tree,
+  name: string,
+): { readonly exports: Readonly<Record<string, string>>; readonly says: string | undefined } {
+  const driver = readDrivers(tree).get(name);
+  if (driver?.exports !== undefined) return { exports: driver.exports, says: driver.exportsReason };
+  const own = ownExports[name];
+  return own === undefined ? { exports: publicApi, says: undefined } : own;
+}
+
 export function packageManifests(tree: Tree): string[] {
   return packageNames(tree).flatMap((name) => {
     const path = manifest(name);
     const json = record(tree.parsed(path));
     const failures: string[] = [];
-    const own = ownExports[name];
-    const exported = own?.exports ?? publicApi;
+    const { exports: exported, says } = expectedExports(tree, name);
     if (json.name !== `${scope}/${name}`)
       failures.push(
         `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
       );
     if (JSON.stringify(json.exports) !== JSON.stringify(exported))
       failures.push(
-        `${path} must have the exports ${JSON.stringify(exported)}, ${own?.says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
+        `${path} must have the exports ${JSON.stringify(exported)}, ${says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
       );
     // The first entry is the one the package is named by: src/index.ts, or src/node.ts for db, which has no `.` (docs/adr/0051).
     const mainEntry = Object.values(exported)[0];

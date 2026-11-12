@@ -349,13 +349,9 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
   });
 
   describe("ドライバごとの行 (perDriver)", () => {
-    const vite = passingRepo["vite.config.ts"] ?? "";
     const loggingFile = "packages/logging/src/infrastructure/__fixtures__/outbox.ts";
-    // logging is a driver (ドライバ) that runs on Node.js: it has a package, and nodeDrivers of vite.config.ts names it.
-    const logging = {
-      "packages/logging/package.json": "{}",
-      "vite.config.ts": `${vite}\nconst nodeDrivers = {\n  logging: {\n    nodeFiles: [],\n  },\n};\nconst webDrivers = ["i18n"];\n`,
-    };
+    // logging is a driver (ドライバ) that runs on Node.js: it has a package, and drivers.json gives it the runtime node.
+    const logging = { "packages/logging/package.json": "{}" };
     // The table of the passing repository with `perDriver` and the excuses of outbox set.
     const perDriver = (
       kind: string,
@@ -390,10 +386,10 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       ).toEqual([]);
     });
 
-    it("node のとき、nodeDrivers にないドライバを数えず、all のとき数えること", () => {
+    it("node のとき、runtime が web のドライバを数えず、all のとき数えること", () => {
       const web = {
         ...logging,
-        "vite.config.ts": logging["vite.config.ts"].replace("logging: {", "other: {"),
+        "drivers.json": JSON.stringify({ logging: { runtime: "web" } }),
       };
       expect(failures({ ...web, [tablePath]: perDriver("node") })).toEqual([]);
       expect(failures({ ...web, [tablePath]: perDriver("all") })).toEqual([noDriverRow("logging")]);

@@ -3,12 +3,16 @@
 // names the problem.
 import { describe, expect, it } from "vite-plus/test";
 import { failuresOf, json, repo } from "./fixtures/repo.ts";
+import { Tree } from "./tree.ts";
 import {
   driverEntriesOnlyReexport,
   driversAreInLint,
   driversAreTagged,
   driversDoNotUseEffect,
+  driversFileIsWellFormed,
   driversHaveTheirLayout,
+  driversOf,
+  readDrivers,
 } from "./drivers.ts";
 
 const guide = "docs/domain-model/package-layout.md";
@@ -87,8 +91,8 @@ describe("ADR 0054: driver は、層、入口、道具の置き場所だけを�
     expect(
       violations(repo(logging({ "scripts/run.ts": "export {};\n", "NOTES.md": "x" }))),
     ).toEqual([
-      `packages/logging/NOTES.md is not in the root of the driver logging. The root holds package.json, tsconfig.json, vite.config.ts, src; a file that a tool looks for is added to the tools of logging in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
-      `packages/logging/scripts/ is not in the root of the driver logging. The root holds package.json, tsconfig.json, vite.config.ts, src; a file that a tool looks for is added to the tools of logging in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+      `packages/logging/NOTES.md is not in the root of the driver logging. The root holds package.json, tsconfig.json, vite.config.ts, src; a file that a tool looks for is added to the tools of logging in drivers.json (docs/adr/0054, ${guide}).`,
+      `packages/logging/scripts/ is not in the root of the driver logging. The root holds package.json, tsconfig.json, vite.config.ts, src; a file that a tool looks for is added to the tools of logging in drivers.json (docs/adr/0054, ${guide}).`,
     ]);
   });
 
@@ -390,7 +394,7 @@ describe("ADR 0054: driver は Effect に依存しないこと", () => {
   });
 });
 
-describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にあること", () => {
+describe("ADR 0054: driver が lint の禁止の表にあること", () => {
   const violations = failuresOf(driversAreInLint);
   const table = (values: string[], effectFiles: string[]) =>
     json({
@@ -399,40 +403,29 @@ describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にある�
     });
   const effectFixture = (name: string) =>
     `packages/${name}/src/infrastructure/__fixtures__/driver-effect.ts`;
-  const vite = (node: string, web: string) =>
-    `const nodeDrivers = {\n  ${node}: {\n    nodeFiles: [],\n  },\n};\nconst webDrivers = [${web}];\n`;
   const complete = {
     "lint-restrictions.json": table(
       ["@agent-software-factory/logging"],
       [effectFixture("logging")],
     ),
-    "vite.config.ts": vite("logging", ""),
   };
 
-  it("表にあり、fixture を持ち、vite.config.ts に名前のある driver を通すこと", () => {
+  it("表にあり、fixture を持つ driver を通すこと", () => {
     expect(violations(repo({ ...logging(), ...complete }))).toEqual([]);
-    expect(
-      violations(repo({ ...logging(), ...complete, "vite.config.ts": vite("db", '"logging"') })),
-    ).toEqual([]);
   });
 
-  it("表、fixture の行、vite.config.ts が名指さない driver を拒否すること", () => {
-    expect(
-      violations(
-        repo({
-          ...logging(),
-          "lint-restrictions.json": table([], []),
-          "vite.config.ts": vite("db", '"i18n"'),
-        }),
-      ),
-    ).toEqual([
+  it("表と fixture の行が名指さない driver を拒否すること", () => {
+    expect(violations(repo({ ...logging(), "lint-restrictions.json": table([], []) }))).toEqual([
       `lint-restrictions.json does not have @agent-software-factory/logging in the values of driver-in-module. The application and http of a module may import the driver logging until it is there: add it, with its rows in the fixtures of packages/module-fixtures (docs/adr/0054, ${guide}).`,
       `lint-restrictions.json does not have packages/logging/src/infrastructure/__fixtures__/driver-effect.ts in the rows of driver-effect. Add the fixture that shows the lint rule stops \`effect\` in logging, and its rows (docs/adr/0054, ${guide}).`,
-      `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
     ]);
   });
 
-  it("ツリーに driver がなくても、driver ではない driver-in-module の値を拒否すること", () => {
+  it("package のない driver を、表になくても問わないこと", () => {
+    expect(violations(repo({ "lint-restrictions.json": table([], []) }))).toEqual([]);
+  });
+
+  it("drivers.json の driver ではない driver-in-module の値を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -440,25 +433,8 @@ describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にある�
         }),
       ),
     ).toEqual([
-      `lint-restrictions.json has @agent-software-factory/claim in the values of driver-in-module, but it is not a driver in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts (docs/adr/0054, ${guide}).`,
+      `lint-restrictions.json has @agent-software-factory/claim in the values of driver-in-module, but it is not a driver in drivers.json (docs/adr/0054, ${guide}).`,
     ]);
-  });
-
-  it("driver を nodeDrivers の中だけで、宣言の終わりまで探すこと", () => {
-    const other = "const other = {\n  logging: {\n  },\n};\n";
-    const failure = `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`;
-    // Declared before and after nodeDrivers, and not in webDrivers.
-    expect(
-      violations(repo({ ...logging(), ...complete, "vite.config.ts": other + vite("db", "") })),
-    ).toEqual([failure]);
-    expect(
-      violations(repo({ ...logging(), ...complete, "vite.config.ts": vite("db", "") + other })),
-    ).toEqual([failure]);
-  });
-
-  it("終わりのない宣言を、ファイルの終わりまで続くものとして読むこと", () => {
-    const source = (text: string) => ({ ...logging(), ...complete, "vite.config.ts": text });
-    expect(violations(repo(source("const nodeDrivers = {\n  logging: {")))).toEqual([]);
   });
 
   it("driver 名のテキストではない driver-in-module の値を採らないこと", () => {
@@ -473,19 +449,167 @@ describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にある�
       ),
     ).toEqual([]);
   });
+});
 
-  it("vite.config.ts にどちらの一覧もないとき、何も述べないこと", () => {
+describe("ADR 0054: drivers.json の形", () => {
+  const violations = failuresOf(driversFileIsWellFormed);
+  const withDrivers = (value: unknown) => repo({ "drivers.json": json(value) });
+  const problem = (name: string, text: string) =>
+    `drivers.json: the entry ${name} ${text} (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`;
+
+  it("repository の drivers.json を通すこと", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("drivers.json のない repository を放っておくこと", () => {
+    expect(violations(repo({ "drivers.json": undefined }))).toEqual([]);
+  });
+
+  it("runtime だけの driver と、node だけの欄を持つ node の driver を通すこと", () => {
     expect(
-      violations(repo({ ...logging(), ...complete, "vite.config.ts": "export default {};\n" })),
-    ).toEqual([
-      `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
+      violations(
+        withDrivers({
+          a: { runtime: "web" },
+          b: { runtime: "node", extraNodeFiles: ["packages/b/src/x.ts"], workspaceTypesOnly: true },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("オブジェクトではない drivers.json を拒否すること", () => {
+    expect(violations(withDrivers([]))).toEqual([
+      `drivers.json must be an object with an entry for each driver, by name (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
     ]);
+  });
+
+  it("オブジェクトではない entry を拒否すること", () => {
+    expect(violations(withDrivers({ a: "node" }))).toEqual([problem("a", "is not an object")]);
+  });
+
+  it.each([{}, { runtime: "edge" }, { runtime: 1 }])(
+    "node でも web でもない runtime %j を拒否すること",
+    (entry) => {
+      expect(violations(withDrivers({ a: entry }))).toEqual([
+        problem("a", 'needs "runtime": "node" or "web", where the driver runs'),
+      ]);
+    },
+  );
+
+  it("知らない欄を拒否すること: 綴りの間違いで規則が外れない", () => {
+    expect(violations(withDrivers({ a: { runtime: "node", tool: ["x"] } }))).toEqual([
+      problem(
+        "a",
+        "has the field tool, which is none of runtime, tools, places, rootMay, exports, exportsReason, extraNodeFiles, workspaceTypesOnly",
+      ),
+    ]);
+  });
+
+  it.each(["tools", "places", "rootMay", "extraNodeFiles"])(
+    "文字の一覧ではない %s を拒否すること",
+    (field) => {
+      for (const wrong of ["x", [1], { a: "b" }])
+        expect(violations(withDrivers({ a: { runtime: "node", [field]: wrong } }))).toEqual([
+          problem("a", `has ${field}, which is not a list of text`),
+        ]);
+    },
+  );
+
+  it("web の driver の node だけの欄を拒否すること", () => {
+    expect(
+      violations(
+        withDrivers({ a: { runtime: "web", extraNodeFiles: [], workspaceTypesOnly: true } }),
+      ),
+    ).toEqual([
+      problem("a", 'has extraNodeFiles, which only a driver with "runtime": "node" has'),
+      problem("a", 'has workspaceTypesOnly, which only a driver with "runtime": "node" has'),
+    ]);
+  });
+
+  it("真偽値ではない workspaceTypesOnly を拒否すること", () => {
+    expect(violations(withDrivers({ a: { runtime: "node", workspaceTypesOnly: "yes" } }))).toEqual([
+      problem("a", "has workspaceTypesOnly, which is not true or false"),
+    ]);
+  });
+
+  it.each([{ ".": 1 }, "./src/index.ts", ["./src/index.ts"]])(
+    "文字のオブジェクトではない exports %j を拒否すること",
+    (exports) => {
+      expect(
+        violations(withDrivers({ a: { runtime: "web", exports, exportsReason: "r" } })),
+      ).toEqual([problem("a", "has exports, which is not an object of text")]);
+    },
+  );
+
+  it("exports と exportsReason が片方だけの entry と、文字ではない理由を拒否すること", () => {
+    const together =
+      "needs exports and exportsReason together: the reason is what a wrong exports is told";
+    expect(
+      violations(withDrivers({ a: { runtime: "web", exports: { ".": "./src/index.ts" } } })),
+    ).toEqual([problem("a", together)]);
+    expect(violations(withDrivers({ a: { runtime: "web", exportsReason: "r" } }))).toEqual([
+      problem("a", together),
+    ]);
+    for (const reason of [1, " "])
+      expect(
+        violations(
+          withDrivers({
+            a: { runtime: "web", exports: { ".": "./src/index.ts" }, exportsReason: reason },
+          }),
+        ),
+      ).toEqual([problem("a", "has exportsReason, which is not text")]);
+  });
+
+  it("entry ごとに、すべての問題を挙げること", () => {
+    expect(violations(withDrivers({ a: { tool: 1 }, b: { runtime: "node", tools: "x" } }))).toEqual(
+      [
+        problem(
+          "a",
+          "has the field tool, which is none of runtime, tools, places, rootMay, exports, exportsReason, extraNodeFiles, workspaceTypesOnly",
+        ),
+        problem("a", 'needs "runtime": "node" or "web", where the driver runs'),
+        problem("b", "has tools, which is not a list of text"),
+      ],
+    );
   });
 });
 
-describe("ADR 0054: tag type:driver と driverShapes の名前が合うこと", () => {
+describe("ADR 0054: drivers.json を読むこと", () => {
+  it("runtime が node の driver だけを、package のあるものから挙げること", () => {
+    const files = { ...logging(), "packages/i18n/package.json": "{}" };
+    expect(driversOf(new Tree(repo(files)), "node")).toEqual(["logging"]);
+    expect(driversOf(new Tree(repo(files)), "all")).toEqual(["i18n", "logging"]);
+  });
+
+  it("形に問題のある entry を、driver に数えないこと", () => {
+    const files = {
+      ...logging(),
+      "drivers.json": json({ logging: { runtime: "edge" } }),
+    };
+    expect(driversOf(new Tree(repo(files)), "all")).toEqual([]);
+    expect([...readDrivers(new Tree(repo(files))).keys()]).toEqual([]);
+  });
+
+  it("rootMay を省いたとき domain だけにし、書いたときはそのとおりにすること", () => {
+    const drivers = readDrivers(
+      new Tree(
+        repo({
+          "drivers.json": json({
+            a: { runtime: "web" },
+            b: { runtime: "web", rootMay: [] },
+            c: { runtime: "web", rootMay: ["infrastructure"] },
+          }),
+        }),
+      ),
+    );
+    expect(drivers.get("a")?.rootMay).toEqual(["domain"]);
+    expect(drivers.get("b")?.rootMay).toEqual([]);
+    expect(drivers.get("c")?.rootMay).toEqual(["infrastructure"]);
+  });
+});
+
+describe("ADR 0054: tag type:driver と drivers.json の名前が合うこと", () => {
   const violations = failuresOf(driversAreTagged);
-  const entry = "driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts";
+  const entry = "drivers.json";
   const tagged = (role: string) => ({ nx: { name: "logging", tags: [`type:${role}`] } });
 
   it("tag と名前の両方がある driver と、driver のない repository を通すこと", () => {
@@ -493,7 +617,7 @@ describe("ADR 0054: tag type:driver と driverShapes の名前が合うこと", 
     expect(violations(repo())).toEqual([]);
   });
 
-  it("tag type:driver があって driverShapes に名前のない package を拒否すること", () => {
+  it("tag type:driver があって drivers.json に名前のない package を拒否すること", () => {
     expect(
       violations(
         repo(
@@ -511,7 +635,7 @@ describe("ADR 0054: tag type:driver と driverShapes の名前が合うこと", 
   });
 
   it.each(["module", "fixtures", "shared-kernel", "ui"])(
-    "driverShapes に名前があるのに tag が type:%s の package を拒否すること",
+    "drivers.json に名前があるのに tag が type:%s の package を拒否すること",
     (role) => {
       expect(violations(repo(logging({}, tagged(role))))).toEqual([
         `packages/logging has an entry in ${entry}, but its tag is type:${role}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
@@ -526,7 +650,7 @@ describe("ADR 0054: tag type:driver と driverShapes の名前が合うこと", 
     ).toEqual([]);
   });
 
-  it("repository にない driverShapes の package は問わないこと", () => {
+  it("repository にない drivers.json の package は問わないこと", () => {
     expect(violations(repo({ "packages/logging/NOTES.md": "x" }))).toEqual([]);
   });
 });
