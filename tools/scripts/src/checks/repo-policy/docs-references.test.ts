@@ -39,7 +39,7 @@ describe("references to docs/ from outside docs/", () => {
 
   it("refuses a file that does not exist", () => {
     expect(violations(repo(cite("see docs/tooling/missing.md")))).toEqual([
-      "lefthook.yml cites docs/tooling/missing.md, which does not exist.",
+      "lefthook.yml cites docs/tooling/missing.md, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 
@@ -59,14 +59,14 @@ describe("references to docs/ from outside docs/", () => {
 
   it("refuses an ADR number that does not exist", () => {
     expect(violations(repo(cite("docs/adr/9999")))).toEqual([
-      "lefthook.yml cites docs/adr/9999, which does not exist.",
+      "lefthook.yml cites docs/adr/9999, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 
   it("names every reference of a line", () => {
     expect(violations(repo(cite("docs/adr/9998 and docs/adr/9999.")))).toEqual([
-      "lefthook.yml cites docs/adr/9998, which does not exist.",
-      "lefthook.yml cites docs/adr/9999, which does not exist.",
+      "lefthook.yml cites docs/adr/9998, which does not exist. A new file counts once it is staged (git add).",
+      "lefthook.yml cites docs/adr/9999, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 
@@ -79,8 +79,8 @@ describe("references to docs/ from outside docs/", () => {
         }),
       ),
     ).toEqual([
-      "tools/scripts/src/checks/other.test.ts cites docs/adr/9999, which does not exist.",
-      "tools/scripts/src/checks/other.ts cites docs/tooling/missing.md, which does not exist.",
+      "tools/scripts/src/checks/other.test.ts cites docs/adr/9999, which does not exist. A new file counts once it is staged (git add).",
+      "tools/scripts/src/checks/other.ts cites docs/tooling/missing.md, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 
@@ -99,7 +99,7 @@ describe("references to docs/ from outside docs/", () => {
 
   it("checks a path that only has research/ inside it", () => {
     expect(violations(repo({ "apps/research/a.md": "docs/adr/9999\n" }))).toEqual([
-      "apps/research/a.md cites docs/adr/9999, which does not exist.",
+      "apps/research/a.md cites docs/adr/9999, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 
@@ -115,7 +115,9 @@ describe("references to docs/ from outside docs/", () => {
           ...cite("docs/local-env-setup/setup.md"),
         }),
       ),
-    ).toEqual(["lefthook.yml cites docs/local-env-setup/setup.md, which does not exist."]);
+    ).toEqual([
+      "lefthook.yml cites docs/local-env-setup/setup.md, which does not exist. A new file counts once it is staged (git add).",
+    ]);
   });
 });
 
@@ -226,7 +228,7 @@ describe("references to docs/: the edges", () => {
     "pnpm-lock.yaml.bak",
   ])("checks %s", (path) => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([
-      `${path} cites docs/adr/9999, which does not exist.`,
+      `${path} cites docs/adr/9999, which does not exist. A new file counts once it is staged (git add).`,
     ]);
   });
 
@@ -258,7 +260,7 @@ describe("references to docs/: the edges", () => {
       "lefthook.yml": `${base["lefthook.yml"] ?? ""}# docs/adr/0003\n`,
     };
     expect(violations(repo(files))).toEqual([
-      "lefthook.yml cites docs/adr/0003, which does not exist.",
+      "lefthook.yml cites docs/adr/0003, which does not exist. A new file counts once it is staged (git add).",
     ]);
   });
 });

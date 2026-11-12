@@ -13,6 +13,10 @@ const neverRead = [
   /^mise\.lock$/,
 ];
 
+// What to say after a docs/ path or ADR number that the tree does not have. Only files in the index count, so a
+// file just written and not yet staged is reported as missing too.
+const notStaged = "A new file counts once it is staged (git add).";
+
 // What to say after a path that the tree does not have.
 const moved = "The file was moved or removed: write its path now, or the directory it is in.";
 
@@ -52,12 +56,13 @@ export function docsReferences(tree: Tree): string[] {
         if (
           !tree.paths.some((path) => path.startsWith(`docs/adr/${number}-`) && path.endsWith(".md"))
         )
-          failures.push(`${source} cites docs/adr/${number}, which does not exist.`);
+          failures.push(`${source} cites docs/adr/${number}, which does not exist. ${notStaged}`);
         continue;
       }
       const path = `docs/${file}`;
       const target = tree.maybe(path);
-      if (target === undefined) failures.push(`${source} cites ${path}, which does not exist.`);
+      if (target === undefined)
+        failures.push(`${source} cites ${path}, which does not exist. ${notStaged}`);
       else if (heading !== undefined && !hasHeading(target, heading))
         failures.push(
           `${source} cites the heading "${heading}" in ${path}, which has no such heading.`,
