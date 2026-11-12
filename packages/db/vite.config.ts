@@ -15,6 +15,9 @@ export default defineConfig({
     // __fixtures__/ shows that the lint rules are on; it is not a test (docs/adr/0038).
     exclude: ["**/node_modules/**", "**/__fixtures__/**"],
     globalSetup: ["./test/global-setup.ts"],
+    // The type tests (*.test-d.ts): Vitest runs `tsc --noEmit` and reports a type error as a failed test (docs/adr/0020).
+    // Vitest does not run these files, and the runtime tests above do not match them.
+    typecheck: { enabled: true, include: ["src/**/*.test-d.ts"] },
     hookTimeout: 240_000,
     testTimeout: 60_000,
     // The strength of the tests (#30, docs/tooling/ci.md ("coverage の下限")).

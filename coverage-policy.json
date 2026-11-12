@@ -6,6 +6,7 @@
   "projects": ["apps/*", "packages/*", "packages/*/events"],
   "notMeasured": [
     "**/*.test.{ts,tsx}",
+    "**/*.test-d.ts",
     "**/__fixtures__/**",
     "**/*.gen.ts",
     "**/*.d.ts",
