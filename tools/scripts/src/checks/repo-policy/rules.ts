@@ -11,6 +11,7 @@
 //   modules.ts           the dependencies between the modules, and how each resolves and lints them
 //   drivers.ts           the layout of the drivers and of the modules: what src/ holds, what an entry file contains
 //   ui-stories.ts        a story next to each part of packages/ui
+//   coverage.ts          each project with code writes a coverage record for the merged check
 //   idempotency.ts       the writers of the modules go through withIdempotencyKey
 // Configuration files are read with parsers (yaml, smol-toml, JSON.parse), so quoting, comments and line
 // breaks do not change the values the checks read; steering's fileMatchPattern must still be a one-line array.
@@ -20,6 +21,7 @@
 import { agentPermissions } from "./agent-permissions.ts";
 import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 import { ciTargetsHaveCommands, mainNeedsEveryJob, requiredChecksRun } from "./ci.ts";
+import { projectsWriteCoverage } from "./coverage.ts";
 import { codePathReferences, docsReferences } from "./docs-references.ts";
 import {
   driverEntriesOnlyReexport,
@@ -110,6 +112,7 @@ function run(tree: Tree): string[] {
     ...ciTargetsHaveCommands(tree),
     ...noWorkspaceInCatalog(tree),
     ...uiComponentsHaveStories(tree),
+    ...projectsWriteCoverage(tree),
     ...writersUseIdempotencyKey(tree),
     ...headerNamesAgree(tree),
   ];

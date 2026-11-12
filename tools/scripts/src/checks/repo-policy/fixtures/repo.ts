@@ -1,7 +1,12 @@
 // A small repository held in memory for the tests of the rules: the files of passing-repo, changed per case.
 import { Tree } from "../tree.ts";
 import type { Repo } from "../rules.ts";
-import { apiDependencies, passingRepo } from "./passing-repo.ts";
+import {
+  apiDependencies,
+  coverageDevDependencies,
+  coverageScripts,
+  passingRepo,
+} from "./passing-repo.ts";
 
 export interface Options {
   // Index modes that differ from the default (100755 for *.sh, 100644 otherwise).
@@ -35,7 +40,12 @@ export const json = (value: unknown): string => JSON.stringify(value, undefined,
 
 // The package.json of apps/api with `fields`, and the modules it depends on (docs/adr/0026).
 export const apiManifest = (fields: Record<string, unknown> = {}): string =>
-  json({ dependencies: apiDependencies, ...fields });
+  json({
+    dependencies: apiDependencies,
+    devDependencies: coverageDevDependencies,
+    scripts: coverageScripts,
+    ...fields,
+  });
 
 // Files that remove every module of the passing repository. A test of the fixtures of the overrides starts from a
 // repository with no module.
