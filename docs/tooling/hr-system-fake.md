@@ -46,18 +46,21 @@ docker compose -f compose.local.yaml down
 
 `packages/hr-system/test/global-setup.ts` が、Vitest の `globalSetup` で 1 回の実行につき 1 回だけ起動し、`project.provide("hrSystemFakeOrigin", …)` で渡します。テストは `inject("hrSystemFakeOrigin")` で読みます。Node 向けの WireMock 専用の Testcontainers モジュール（v0.0.1）は使わず、testcontainers 本体の `GenericContainer` で起動します。
 
-- 既定は実行ごとに新しく起動し、終わりに止めます。テストのプロセスが落ちても、Testcontainers の Ryuk が消します。
-- 起動を待ちたくないときだけ、`HR_SYSTEM_FAKE_REUSE=1` を付けると `withReuse()` で使い回します。使い回したコンテナは実行が終わっても残り、Ryuk も消しません（`docker rm -f` で消す）。bind mount 元（worktree ごとに違う）か WireMock の版が変わると別のコンテナが起動し、古いものが残るので、溜まったら `docker ps -a --filter label=org.testcontainers.container-hash` で探して消します。
+- 既定は実行ごとに新しく起動し、終わりに止めます。テストのプロセスが落ちても Testcontainers の Ryuk が消します。
+- 起動を待ちたくないときだけ、`HR_SYSTEM_FAKE_REUSE=1` を付けると `withReuse()` で使い回します。使い回したコンテナは実行が終わっても残り、Ryuk も消しません（`docker rm -f` で消す）。`TESTCONTAINERS_REUSE_ENABLE=false` も付けると、testcontainers が `withReuse()` を無視するので、既定と同じ動きになります。
+- 使い回す相手は、testcontainers が `createOpts`（イメージとラベルなど）のハッシュで決めます。bind mount は入らないので、ラベル `hr-system-fake-directory` にスタブのディレクトリを入れ、worktree ごとに別のコンテナにしています。WireMock の版が変わっても別のコンテナになります。そのため古いコンテナが残ります。溜まったら `docker ps -a --filter label=hr-system-fake-directory` で探して消します。
+- 上の 3 つの項目は testcontainers 12.2.1 の `generic-container.js`（`start` と `reuseOrStartContainer`）を読んで確かめました（2026-11-12）。testcontainers を上げたら確かめ直します。
 - スタブは bind mount で読むので、使い回しても `/__admin/reset` でファイルの最新に戻ります。
 - テストの間は `/__admin/reset` で状態（足したスタブ、シナリオの状態、受けた要求の記録）を消し、テナントの接頭辞をテストごとに変えます。1 つのファイルの中のテストは順に走るので、reset は他のテストを壊しません。ファイルを増やして並列に走らせるときは、reset を `beforeEach` から外し、接頭辞だけで分けます。
 - 遅延、接続断、状態のシナリオのような、テスト固有の振る舞いは、テストが `test/wiremock.ts` の `addStub` で足します。ファイルのスタブは、手で動かす環境と、どのテストも使う社員だけにします。
 
-起動の時間（2026-10-31、WSL、イメージは取得済み。1 つのテストだけを流した実行全体の時間）。
+起動の時間（2026-11-12、WSL、他のセッションが動いている状態、イメージは取得済み。1 つのテストだけを流した実行全体で、既定は終わりの停止を含む）。
 
-| 場合                                               | 実行全体  |
-| -------------------------------------------------- | --------- |
-| コンテナを起動する（既定の毎回、使い回しの初回）   | 約 3.9 秒 |
-| 使い回し（`HR_SYSTEM_FAKE_REUSE=1` の 2 回目から） | 約 0.9 秒 |
+| 場合                                              | 実行全体       |
+| ------------------------------------------------- | -------------- |
+| 既定（毎回起動して止める）                        | 約 2.4〜2.8 秒 |
+| 使い回しの初回（`HR_SYSTEM_FAKE_REUSE=1`）        | 約 2.6 秒      |
+| 使い回しの 2 回目から（`HR_SYSTEM_FAKE_REUSE=1`） | 約 1.1 秒      |
 
 `docker compose up -d --wait` は約 3.8 秒です。CI の値は、CI の実行で測って PR に書きます。
 
