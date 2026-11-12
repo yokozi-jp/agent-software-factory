@@ -12,6 +12,10 @@
     ],
     "message": "Do not send to SQS, SES, SNS, EventBridge, Lambda or Step Functions from a module or a request: put the event in the Outbox with enqueueOutbox, in the same transaction as the update, and let the relay or a consumer send it (docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.",
     "mentions": ["enqueueOutbox"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
@@ -132,6 +136,10 @@
     "values": ["pg"],
     "message": "Do not open a connection of your own: it skips the tenant setting and the module role. Open a transaction with inTenantTransaction (docs/adr/0011, docs/adr/0029 rule 2). A type import is fine; the pool is made in the entry file.",
     "mentions": ["inTenantTransaction"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
@@ -170,6 +178,10 @@
     "values": ["sql", "CompiledQuery"],
     "message": "Do not write raw SQL in a module: `sql` and `CompiledQuery` skip the types of the Kysely builder, so a query can reach a table of another module. Use the builder on your own tables, and read another module's data through its public API function (docs/adr/0029). If a query truly needs raw SQL, put the reason on the disable comment.",
     "mentions": ["public API function"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
@@ -202,6 +214,7 @@
     "values": ["withTables"],
     "message": "Call withTables only in infrastructure/, in the public API function that reads your own tables with the transaction of the caller. Elsewhere, read another module's data through its public API function (docs/adr/0029).",
     "mentions": ["public API function"],
+    "perLayer": true,
     "rows": [
       {
         "files": [
@@ -467,6 +480,10 @@
     ],
     "message": "A driver (db, hr-system, i18n, logging, telemetry) is imported in the infrastructure of a module only: application and http depend on a Port that infrastructure implements with the driver (docs/adr/0054).",
     "mentions": ["infrastructure", "Port"],
+    "perLayer": true,
+    "withoutLayers": {
+      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+    },
     "rows": [
       {
         "files": [
@@ -606,12 +623,16 @@
     "values": ["testing"],
     "message": "Do not import testing/ from the code of a layer: it holds the tools of the tests and imports Vitest and testcontainers. A test may import it; put what production code needs in infrastructure/ (docs/adr/0054).",
     "mentions": ["infrastructure/"],
+    "perLayer": true,
     "rows": [
       {
         "files": [
           "packages/db/src/infrastructure/__fixtures__/testing-import.ts",
           "packages/logging/src/infrastructure/__fixtures__/testing-import.ts",
-          "packages/module-fixtures/src/application/__fixtures__/testing-import.ts"
+          "packages/module-fixtures/src/domain/__fixtures__/testing-import.ts",
+          "packages/module-fixtures/src/application/__fixtures__/testing-import.ts",
+          "packages/module-fixtures/src/infrastructure/__fixtures__/testing-import.ts",
+          "packages/module-fixtures/src/http/__fixtures__/testing-import.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"../../testing.ts\"",

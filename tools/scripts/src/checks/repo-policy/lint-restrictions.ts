@@ -5,7 +5,7 @@
 // (`reportUnusedDisableDirectives`), so the table and the fixtures together show that every value is stopped where it
 // should be and let through where it should be. This check reads both ways: every row has its line, and every line of a
 // fixture of the table has its row, so removing either fails.
-import { Tree, isRecord, record, text } from "./tree.ts";
+import { Tree, isRecord, objectKeys, record, text } from "./tree.ts";
 
 const tablePath = "lint-restrictions.json";
 const howTo = 'docs/tooling/ci.md ("禁止の表")';
@@ -23,12 +23,21 @@ interface Restriction {
   readonly values: readonly string[];
   readonly message?: string;
   readonly mentions: readonly string[];
+  // The restriction is asked of every layer of vite.config.ts: each layer has a row for the fixture of the key in
+  // packages/module-fixtures/src/<layer>/__fixtures__/, or is in `withoutLayers` with the reason it has none (domain
+  // stops every library, so a restriction of one has no message of its own to show there).
+  readonly perLayer?: boolean;
+  readonly withoutLayers?: Readonly<Record<string, string>>;
 }
 
 type Fields = Record<string, unknown>;
 
 const isStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
+
+// An object whose values are all non-empty texts.
+const isReasons = (value: unknown): boolean =>
+  isRecord(value) && Object.values(value).every((reason) => text(reason) !== undefined);
 
 const shapeFailure = (where: string, what: string): string =>
   `${tablePath} の ${where} が${what}でない (${howTo})。`;
@@ -67,6 +76,12 @@ function restrictionProblems(restriction: Fields): Problem[] {
     ...(restriction.message === undefined || typeof restriction.message === "string"
       ? []
       : [problem("message", "文字列")]),
+    ...(restriction.perLayer === undefined || typeof restriction.perLayer === "boolean"
+      ? []
+      : [problem("perLayer", "真偽値")]),
+    ...(restriction.withoutLayers === undefined || isReasons(restriction.withoutLayers)
+      ? []
+      : [problem("withoutLayers", "層の名前と理由の文字列のオブジェクト")]),
     ...(Array.isArray(restriction.rows) ? [] : [problem("rows", "配列")]),
   ];
 }
@@ -191,7 +206,56 @@ function hasName(text: string, value: string): boolean {
   return false;
 }
 
-function restrictionFailures(tree: Tree, { key, restriction, rows }: Entry): string[] {
+// The fixture of the key in a layer of a module: where the table must have a row for each layer of vite.config.ts
+// (`perLayer`), unless the layer is in `withoutLayers`.
+const layerFixture = (layer: string, key: string): string =>
+  `packages/module-fixtures/src/${layer}/__fixtures__/${key}.ts`;
+
+// A key with `perLayer` has a row or an excuse for every layer, so a layer added to vite.config.ts fails until each
+// such restriction says what it does there. The excuses are checked both ways: a layer that is not in vite.config.ts,
+// and a layer that has a row, fail, so an excuse does not outlive its reason. A key without `perLayer` has no row in a
+// layer and no excuse: if it did, the layers added later would go unasked.
+function layerFailures({ key, restriction, rows }: Entry, layers: readonly string[]): string[] {
+  const listed = new Set(rows.flatMap((row) => row.files));
+  const without = restriction.withoutLayers ?? {};
+  const unflagged = (what: string) =>
+    `${tablePath} の ${key} は ${what}が、perLayer が true でない。層ごとに求めるなら perLayer を true にする (${howTo})。`;
+  if (restriction.perLayer !== true)
+    return [
+      ...layers
+        .filter((layer) => listed.has(layerFixture(layer, key)))
+        .map((layer) =>
+          unflagged(`層 \`${layer}\` の fixture (\`${layerFixture(layer, key)}\`) の行を持つ`),
+        ),
+      ...(Object.keys(without).length > 0 ? [unflagged("withoutLayers を持つ")] : []),
+    ];
+  return [
+    ...layers.flatMap((layer) => {
+      const file = layerFixture(layer, key);
+      if (!listed.has(file) && !(layer in without))
+        return [
+          `vite.config.ts の layers に \`${layer}\` があるが、${tablePath} の ${key} に \`${file}\` の行がなく、withoutLayers にもない。止める行か通す行を足す。置かないなら、withoutLayers に層の名前と置かない理由を書く (${howTo})。`,
+        ];
+      if (listed.has(file) && layer in without)
+        return [
+          `${tablePath} の ${key} は withoutLayers に \`${layer}\` を挙げるが、\`${file}\` の行もある。置くなら withoutLayers から消し、置かないなら行を消す (${howTo})。`,
+        ];
+      return [];
+    }),
+    // With no layers read there is nothing to compare the names with.
+    ...(layers.length === 0
+      ? []
+      : Object.keys(without)
+          .filter((layer) => !layers.includes(layer))
+          .map(
+            (layer) =>
+              `${tablePath} の ${key} は withoutLayers に \`${layer}\` を挙げるが、vite.config.ts の layers にその層がない。消す (${howTo})。`,
+          )),
+  ];
+}
+
+function restrictionFailures(tree: Tree, entry: Entry, layers: readonly string[]): string[] {
+  const { key, restriction, rows } = entry;
   const { adr } = restriction;
   const failures: string[] = [];
   const namedAfterKey = (file: string) => fixtureKey(file) === key;
@@ -223,6 +287,7 @@ function restrictionFailures(tree: Tree, { key, restriction, rows }: Entry): str
         failures.push(
           `${tablePath} の ${key} の message に \`${mention}\` がない。止められた人が、代わりに書くものと ADR を知るため (${howTo})。`,
         );
+  failures.push(...layerFailures(entry, layers));
   return failures;
 }
 
@@ -272,9 +337,10 @@ export function lintRestrictionsAgree(tree: Tree): string[] {
           `${tablePath} がない。lint で止める import と呼び出しと、その fixture の行を並べる表で、vite.config.ts と repo-policy が読む (${howTo})。`,
         ];
   const { entries, failures } = readTable(table);
+  const layers = objectKeys(tree.read("vite.config.ts"), "layers");
   return [
     ...failures,
-    ...entries.flatMap((entry) => restrictionFailures(tree, entry)),
+    ...entries.flatMap((entry) => restrictionFailures(tree, entry, layers)),
     ...tree.paths.flatMap((file) =>
       entries
         .filter(({ key }) => key === fixtureKey(file))
