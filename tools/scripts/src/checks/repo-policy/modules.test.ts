@@ -22,9 +22,10 @@ import {
   modulesLintEffect,
   noResolutionBypass,
   packageManifests,
-  packageNames,
   pathsHint,
 } from "./modules.ts";
+import { packageNames } from "./packages.ts";
+import type { Role } from "./roles.ts";
 import { Tree } from "./tree.ts";
 
 const base = passingRepo;
@@ -91,16 +92,19 @@ describe("ADR 0026: packages/ の下のすべての package の package.json", (
 describe("ADR 0026: モジュールが package.json で一方向に依存すること", () => {
   const violations = failuresOf(packageManifests, modulesDependOneWay, modulesLintEffect);
   const table = "tools/scripts/src/checks/repo-policy/modules.ts";
-  const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
-    packageFiles(name, fields);
+  const manifest = (
+    name: string,
+    fields: Record<string, Record<string, string>> = {},
+    role?: Role,
+  ) => packageFiles(name, fields, role);
   const wrong = (from: string, field: string, to: string) =>
-    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`;
+    `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
 
   it("db は dbDependencies に任せること: モジュールではなく、依存する package はここでは拒否しない", () => {
     const only = failuresOf(modulesDependOneWay);
     const dbDependsOnClaim = {
-      "packages/db/package.json": packageJson("db", { devDependencies: workspace }),
+      "packages/db/package.json": packageJson("db", { devDependencies: workspace }, "driver"),
     };
     expect(only(repo(dbDependsOnClaim))).toEqual([]);
     const dependsOnDb = { devDependencies: { "@agent-software-factory/db": "workspace:*" } };
@@ -232,7 +236,7 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
       "./lib/*": "./src/lib/*.ts",
     };
     const ui = (fields: Record<string, unknown>) => ({
-      "packages/ui/package.json": packageJson("ui", { exports: uiExports, ...fields }),
+      "packages/ui/package.json": packageJson("ui", { exports: uiExports, ...fields }, "ui"),
     });
     expect(violations(repo(ui({})))).toEqual([]);
     expect(violations(repo(ui({ exports: { ".": "./src/index.ts" } })))).toEqual([
@@ -255,7 +259,7 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
 
   it("i18n に moduleOrder の位置と lint-effect の script を求めず、依存する workspace の package を拒否すること", () => {
     const i18n = (fields: Record<string, unknown>) => ({
-      "packages/i18n/package.json": packageJson("i18n", fields),
+      "packages/i18n/package.json": packageJson("i18n", fields, "driver"),
       "packages/i18n/src/index.ts": "",
     });
     expect(violations(repo(i18n({})))).toEqual([]);
@@ -270,24 +274,68 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
     "driver %s に依存するモジュールを通すこと (docs/adr/0054)",
     (driver) => {
       expect(
-        violations(
-          repo(
-            manifest("claim", {
+        failuresOf(modulesDependOneWay)(
+          repo({
+            ...manifest(driver, {}, "driver"),
+            ...manifest("claim", {
               dependencies: { [`@agent-software-factory/${driver}`]: "workspace:*" },
             }),
-          ),
+          }),
         ),
       ).toEqual([]);
     },
   );
 
+  it("モジュールが依存してよい driver を、名前の一覧ではなく tag type:driver から求めること", () => {
+    const dependsOn = (name: string) =>
+      manifest("claim", { dependencies: { [`@agent-software-factory/${name}`]: "workspace:*" } });
+    const asDriver = (name: string) => packageFiles(name, { nx: { name, tags: ["type:driver"] } });
+    // A package this file has never heard of is a driver for a module as soon as it carries the tag.
+    expect(violations(repo({ ...asDriver("mail"), ...dependsOn("mail") }))).toEqual([]);
+    // The same package with the role ui is not.
+    expect(
+      violations(
+        repo({
+          ...packageFiles("mail", { nx: { name: "mail", tags: ["type:ui"] } }),
+          ...dependsOn("mail"),
+        }),
+      ),
+    ).toEqual([wrong("claim", "dependencies", "mail")]);
+  });
+
+  it("module 以外の役割の package は moduleOrder に席を求めず、依存する workspace の package を拒否すること", () => {
+    for (const role of ["fixtures", "shared-kernel", "ui", "driver"]) {
+      const name = `any-${role}`;
+      expect(
+        violations(
+          repo(
+            packageFiles(name, {
+              nx: { name, tags: [`type:${role}`] },
+              dependencies: workspace,
+            }),
+          ),
+        ),
+      ).toEqual([wrong(name, "dependencies", "claim")]);
+    }
+  });
+
+  it("役割のない package は packagesHaveOneRole に任せ、ここでは依存を問わないこと", () => {
+    expect(
+      violations(
+        repo(packageFiles("billing", { nx: { name: "billing" }, dependencies: workspace })),
+      ),
+    ).toEqual([]);
+  });
+
   it("別の driver に依存する driver を拒否すること", () => {
     expect(
       failuresOf(modulesDependOneWay)(
         repo(
-          manifest("logging", {
-            dependencies: { "@agent-software-factory/telemetry": "workspace:*" },
-          }),
+          manifest(
+            "logging",
+            { dependencies: { "@agent-software-factory/telemetry": "workspace:*" } },
+            "driver",
+          ),
         ),
       ),
     ).toEqual([wrong("logging", "dependencies", "telemetry")]);
@@ -305,8 +353,17 @@ describe("ADR 0026: モジュールが package.json で一方向に依存する�
     ).toEqual([]);
   });
 
-  it("表のモジュールではない packages/ の下の package を拒否すること", () => {
-    expect(violations(repo(manifest("billing", { dependencies: workspace })))).toEqual([
+  it("役割が module の package が moduleOrder にないことを拒否すること", () => {
+    expect(
+      violations(
+        repo(
+          packageFiles("billing", {
+            nx: { name: "billing", tags: ["type:module"] },
+            dependencies: workspace,
+          }),
+        ),
+      ),
+    ).toEqual([
       `packages/billing is not in moduleOrder in ${table}, so nothing checks which modules it depends on. Add it in the direction the modules depend (docs/adr/0026, docs/domain-model/add-module.md).`,
     ]);
   });
@@ -345,14 +402,20 @@ describe("ADR 0026: 各モジュールの events package", () => {
     ).toEqual([wrongDependency("claim", "dependencies", "claim")]);
   });
 
-  it("tag type:module を持つ events package を拒否すること", () => {
-    expect(
-      violations(
-        repo(eventsFiles("claim", { nx: { name: "claim-events", tags: ["type:module"] } })),
-      ),
-    ).toEqual([
-      `${events("claim")} has the tag type:module. An events package is not a module: a module is a name of moduleOrder, and the tag would ask for a place there (docs/adr/0026).`,
+  it.each([
+    ["type:module", ["type:module"]],
+    ["type:driver", ["type:driver"]],
+    ["type:module, type:ui", ["type:module", "type:ui"]],
+  ])("tag %s を持つ events package を拒否すること", (shown, tags) => {
+    expect(violations(repo(eventsFiles("claim", { nx: { name: "claim-events", tags } })))).toEqual([
+      `${events("claim")} has the tag ${shown}. An events package has no role: it is found by its path packages/<module>/events, and a tag of the dimension type: would make it a package of that role (docs/adr/0026).`,
     ]);
+  });
+
+  it("events package が別の次元の tag を持つことは許すこと", () => {
+    expect(
+      violations(repo(eventsFiles("claim", { nx: { name: "claim-events", tags: ["scope:x"] } }))),
+    ).toEqual([]);
   });
 
   it("packages/<name>/ の package.json と events/package.json だけを、その名前そのままで採ること", () => {
@@ -363,17 +426,42 @@ describe("ADR 0026: 各モジュールの events package", () => {
       "packages/stray/package.json.bak": "{}",
     };
     expect(eventsPackages(new Tree(repo(stray)))).toEqual(eventsPackages(new Tree(repo())));
-    expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
   });
 
-  it("shared-kernel、ui、i18n、telemetry、logging、db をモジュールの package から除くこと", () => {
-    const names = ["shared-kernel", "ui", "i18n", "telemetry", "logging", "db"];
+  it("役割が shared-kernel、ui、driver の package をモジュールの package から除き、module-fixtures は含めること", () => {
+    const roles: Record<string, Role> = {
+      "shared-kernel": "shared-kernel",
+      ui: "ui",
+      i18n: "driver",
+      telemetry: "driver",
+      logging: "driver",
+      db: "driver",
+    };
+    const names = Object.keys(roles);
     const tree = new Tree(
-      repo(Object.fromEntries(names.map((name) => [`packages/${name}/package.json`, "{}"]))),
+      repo(
+        Object.fromEntries(
+          Object.entries(roles).map(([name, role]) => [
+            `packages/${name}/package.json`,
+            packageJson(name, {}, role),
+          ]),
+        ),
+      ),
     );
     expect(packageNames(tree)).toEqual(expect.arrayContaining(names));
     expect(modulePackageNames(tree).filter((name) => names.includes(name))).toEqual([]);
     expect(modulePackageNames(tree)).toContain("module-fixtures");
+  });
+
+  it("モジュールの package を tag から求め、tag のない package はモジュールに数えないこと", () => {
+    const tree = new Tree(
+      repo({
+        ...packageFiles("untagged", { nx: { name: "untagged" } }),
+        ...packageFiles("mod", { nx: { name: "mod", tags: ["type:module"] } }),
+      }),
+    );
+    expect(modulePackageNames(tree)).toEqual(expect.arrayContaining(["mod", "claim"]));
+    expect(modulePackageNames(tree)).not.toContain("untagged");
   });
 
   it("ヒントに、@/* の import に何を書くかを述べること", () => {
@@ -480,8 +568,8 @@ describe("ADR 0026: 各モジュールの events package", () => {
         }),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
-      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
+      `packages/claim/package.json has @agent-software-factory/billing-events in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs billing-events, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
+      `packages/shared-kernel/package.json has @agent-software-factory/claim-events in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs claim-events, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
     ]);
   });
 
@@ -495,7 +583,7 @@ describe("ADR 0026: 各モジュールの events package", () => {
         ),
       ),
     ).toEqual([
-      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
+      `packages/claim/package.json has @agent-software-factory/approval in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs approval, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
     ]);
   });
 });
@@ -581,11 +669,11 @@ describe("ADR 0038: db は type だけでモジュールに依存し、db に依
     "./testing": "./src/testing.ts",
   };
   const db = (fields: Record<string, unknown> = {}) => ({
-    "packages/db/package.json": packageJson("db", {
-      exports: dbExports,
-      scripts: { check: "vp check" },
-      ...fields,
-    }),
+    "packages/db/package.json": packageJson(
+      "db",
+      { exports: dbExports, scripts: { check: "vp check" }, ...fields },
+      "driver",
+    ),
     "packages/db/src/node.ts": "export {};\n",
   });
   const claim = { "@agent-software-factory/claim": "workspace:*" };
@@ -740,7 +828,7 @@ describe("ADR 0048: packages/telemetry の構成", () => {
   const violations = failuresOf(packageManifests, modulesDependOneWay);
   const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
   const withTelemetry = (fields: Record<string, unknown> = {}) =>
-    repo(packageFiles("telemetry", { exports, ...fields }));
+    repo(packageFiles("telemetry", { exports, ...fields }, "driver"));
 
   it("2 つの exports を持つ telemetry を通すこと", () => {
     expect(violations(withTelemetry())).toEqual([]);
@@ -754,7 +842,7 @@ describe("ADR 0048: packages/telemetry の構成", () => {
         withTelemetry({ dependencies: { "@agent-software-factory/claim": "workspace:*" } }),
       ),
     ).toEqual([
-      "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).",
+      "packages/telemetry/package.json has @agent-software-factory/claim in dependencies. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs claim, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).",
     ]);
   });
 
@@ -762,7 +850,7 @@ describe("ADR 0048: packages/telemetry の構成", () => {
     ["only the entry for any code", { ".": "./src/index.ts" }],
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
   ])("%s のある telemetry を拒否すること", (_, wrong) => {
-    expect(violations(repo(packageFiles("telemetry", { exports: wrong })))).toEqual([
+    expect(violations(repo(packageFiles("telemetry", { exports: wrong }, "driver")))).toEqual([
       `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048).`,
     ]);
   });
@@ -777,14 +865,14 @@ describe("ADR 0049: packages/logging の構成", () => {
   };
 
   it("3 つの exports を持つ logging を通すこと", () => {
-    const withLogging = repo(packageFiles("logging", { exports }));
+    const withLogging = repo(packageFiles("logging", { exports }, "driver"));
     expect(violations(withLogging)).toEqual([]);
     expect(modulePackageNames(new Tree(withLogging))).not.toContain("logging");
   });
 
   it("3 つの入口以外の export を持つ logging を拒否すること", () => {
     expect(
-      violations(repo(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
+      violations(repo(packageFiles("logging", { exports: { ".": "./src/index.ts" } }, "driver"))),
     ).toEqual([
       `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049).`,
     ]);
@@ -796,7 +884,7 @@ describe("ADR 0052: packages/hr-system の構成", () => {
   const exports = { ".": "./src/index.ts", "./client": "./src/client.ts" };
 
   it("2 つの exports を持つ hr-system を通し、それはモジュールではないこと", () => {
-    const withHrSystem = repo(packageFiles("hr-system", { exports }));
+    const withHrSystem = repo(packageFiles("hr-system", { exports }, "driver"));
     expect(violations(withHrSystem)).toEqual([]);
     expect(modulePackageNames(new Tree(withHrSystem))).not.toContain("hr-system");
   });
@@ -807,7 +895,7 @@ describe("ADR 0052: packages/hr-system の構成", () => {
     ["a path that is empty", { ".": "", "./client": "./src/client.ts" }],
     ["no exports", {}],
   ])("%s のある hr-system を拒否すること", (_, wrong) => {
-    expect(violations(repo(packageFiles("hr-system", { exports: wrong })))).toEqual(
+    expect(violations(repo(packageFiles("hr-system", { exports: wrong }, "driver")))).toEqual(
       expect.arrayContaining([
         `packages/hr-system/package.json must have the exports ${JSON.stringify(exports)}, the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054).`,
       ]),
@@ -818,10 +906,11 @@ describe("ADR 0052: packages/hr-system の構成", () => {
     expect(
       violations(
         repo(
-          packageFiles("hr-system", {
-            exports,
-            dependencies: { "@agent-software-factory/claim": "workspace:*" },
-          }),
+          packageFiles(
+            "hr-system",
+            { exports, dependencies: { "@agent-software-factory/claim": "workspace:*" } },
+            "driver",
+          ),
         ),
       ),
     ).toEqual([

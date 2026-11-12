@@ -38,6 +38,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "ui"
+    "name": "ui",
+    "tags": [
+      "type:ui"
+    ]
   }
 }

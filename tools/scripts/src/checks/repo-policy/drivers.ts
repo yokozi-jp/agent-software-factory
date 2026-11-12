@@ -1,10 +1,12 @@
 // Checks of the layout of the modules and of the drivers (docs/adr/0054, docs/domain-model/package-layout.md).
 // A driver is a shared package that touches an external system and holds no business rule: db, hr-system, i18n,
-// logging and telemetry. Each has the layers domain/ and infrastructure/ (and testing/ for the tools of its tests),
-// and the files named by its `exports` are the only ones in src/ that are not in a directory; those files only
-// re-export. The libraries a layer may import, and the direction between the layers, are lint rules
-// (vite.config.ts); this file checks what a lint rule cannot see: which names a package and its src/ may hold,
-// what an entry file contains, and that a driver does not depend on Effect.
+// logging and telemetry. It has the tag type:driver (roles.ts), and an entry in driverShapes below. Each has the
+// layers domain/ and infrastructure/ (and testing/ for the tools of its tests), and the files named by its
+// `exports` are the only ones in src/ that are not in a directory; those files only re-export. The libraries a layer
+// may import, and the direction between the layers, are lint rules (vite.config.ts); this file checks what a lint
+// rule cannot see: which names a package and its src/ may hold, what an entry file contains, and that a driver does
+// not depend on Effect.
+import { namesWithRole, roleOf, tagOf } from "./roles.ts";
 import { Tree, list, record } from "./tree.ts";
 
 const guide = "docs/domain-model/package-layout.md";
@@ -38,9 +40,6 @@ const driverShapes: Readonly<Record<string, DriverShape>> = {
 };
 
 const driverNames: readonly string[] = Object.keys(driverShapes);
-// The drivers that the infrastructure of a module may depend on (modulesDependOneWay). db is not one of them: only
-// apps/api and apps/worker depend on it (docs/adr/0038).
-export const driversOfModules: readonly string[] = driverNames.filter((name) => name !== "db");
 
 const standardFiles = ["package.json", "tsconfig.json", "vite.config.ts"];
 const layers = ["domain", "infrastructure"];
@@ -53,6 +52,27 @@ const dependencyFields = [
 
 const isDriver = (tree: Tree, name: string): boolean =>
   tree.paths.includes(`packages/${name}/package.json`);
+
+// The tag type:driver and the entry in driverShapes go together. A driver with the tag and no entry is under none of the
+// rules below (they walk driverShapes), so nothing would check its layout, its entries or that it does not use Effect. An
+// entry for a package with the tag of another role would check a package that is not a driver. A package with no role is
+// refused by packagesHaveOneRole.
+export function driversAreTagged(tree: Tree): string[] {
+  const failures: string[] = [];
+  for (const name of namesWithRole(tree, "driver"))
+    if (!driverNames.includes(name))
+      failures.push(
+        `packages/${name} has the tag type:driver, but driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts has no entry for ${name}, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+      );
+  for (const name of driverNames) {
+    const role = roleOf(tree, name);
+    if (isDriver(tree, name) && role !== undefined && role !== "driver")
+      failures.push(
+        `packages/${name} has an entry in driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts, but its tag is ${tagOf(role)}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
+      );
+  }
+  return failures;
+}
 
 // The first segment under `prefix` of a path, and whether the path has more segments (it is in a directory).
 export function childOf(

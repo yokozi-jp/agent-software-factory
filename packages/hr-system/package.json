@@ -26,6 +26,9 @@
     "zod": "catalog:"
   },
   "nx": {
-    "name": "hr-system"
+    "name": "hr-system",
+    "tags": [
+      "type:driver"
+    ]
   }
 }

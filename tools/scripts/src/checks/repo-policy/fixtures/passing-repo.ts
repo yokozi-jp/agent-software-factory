@@ -1,5 +1,7 @@
 // The files of a small repository that passes every check of repo-policy. The tests of rules.ts and
 // cli.ts start from it and break one thing per case.
+import { tagOf, type Role } from "../roles.ts";
+
 // A detection-power fixture of the module boundaries: an import that the rule must report.
 export const moduleFixture =
   '// oxlint-disable-next-line no-restricted-imports -- fixture\nimport "@x/other";\n';
@@ -170,8 +172,15 @@ export const lintEffect =
 
 // The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
 // its src/index.ts. A module also runs the Effect lint.
-// The modules of the passing repository carry the tag that marks a module (docs/domain-model/add-module.md).
 const modules: readonly string[] = ["claim", "approval", "closing"];
+// The role of the packages that the passing repository has (docs/adr/0026): every package under packages/ has exactly one
+// role tag. A test that adds another package says its role, as the third argument of packageJson and packageFiles; one
+// that gives none gets a package with no tag, which packagesHaveOneRole refuses.
+const passingRepoRoles: Readonly<Record<string, Role>> = {
+  ...Object.fromEntries(modules.map((name) => [name, "module" as const])),
+  "module-fixtures": "fixtures",
+  "shared-kernel": "shared-kernel",
+};
 // What apps/api depends on in the passing repository: hono, and every module (docs/adr/0026).
 export const apiDependencies: Record<string, string> = {
   hono: "catalog:",
@@ -212,7 +221,11 @@ export const coveragePolicy = {
   entries: {},
   exceptions: {},
 };
-export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
+export const packageJson = (
+  name: string,
+  fields: Record<string, unknown> = {},
+  role: Role | undefined = passingRepoRoles[name],
+): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
     exports: name === "shared-kernel" ? sharedKernelExports : { ".": "./src/index.ts" },
@@ -222,14 +235,15 @@ export const packageJson = (name: string, fields: Record<string, unknown> = {}):
       check: "vp check",
       ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
     },
-    nx: { name, ...(modules.includes(name) ? { tags: ["type:module"] } : {}) },
+    nx: { name, ...(role === undefined ? {} : { tags: [tagOf(role)] }) },
     ...fields,
   });
 export const packageFiles = (
   name: string,
   fields: Record<string, unknown> = {},
+  role?: Role,
 ): Record<string, string> => ({
-  [`packages/${name}/package.json`]: packageJson(name, fields),
+  [`packages/${name}/package.json`]: packageJson(name, fields, role),
   [`packages/${name}/src/index.ts`]: "export {};\n",
   [`packages/${name}/vite.config.ts`]: coverageConfig,
 });

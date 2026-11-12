@@ -28,6 +28,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "telemetry"
+    "name": "telemetry",
+    "tags": [
+      "type:driver"
+    ]
   }
 }

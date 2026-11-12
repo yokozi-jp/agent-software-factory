@@ -33,6 +33,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "shared-kernel"
+    "name": "shared-kernel",
+    "tags": [
+      "type:shared-kernel"
+    ]
   }
 }

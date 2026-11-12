@@ -20,6 +20,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "module-fixtures"
+    "name": "module-fixtures",
+    "tags": [
+      "type:fixtures"
+    ]
   }
 }

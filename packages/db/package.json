@@ -36,6 +36,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "db"
+    "name": "db",
+    "tags": [
+      "type:driver"
+    ]
   }
 }

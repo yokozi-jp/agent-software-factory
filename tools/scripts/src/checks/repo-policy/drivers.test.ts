@@ -6,9 +6,9 @@ import { failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   driverEntriesOnlyReexport,
   driversAreInLint,
+  driversAreTagged,
   driversDoNotUseEffect,
   driversHaveTheirLayout,
-  driversOfModules,
 } from "./drivers.ts";
 
 const guide = "docs/domain-model/package-layout.md";
@@ -127,10 +127,6 @@ describe("ADR 0054: driver は、層、入口、道具の置き場所だけを�
       },
     );
     expect(violations(repo({ ...db, ...i18n, ...hr }))).toEqual([]);
-  });
-
-  it("モジュールの infrastructure が依存してよい driver を挙げること: db 以外のすべて", () => {
-    expect(driversOfModules).toEqual(["hr-system", "i18n", "logging", "telemetry"]);
   });
 
   it("package.json のない driver 名の下のファイルを放っておくこと", () => {
@@ -484,5 +480,53 @@ describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にある�
     ).toEqual([
       `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`,
     ]);
+  });
+});
+
+describe("ADR 0054: tag type:driver と driverShapes の名前が合うこと", () => {
+  const violations = failuresOf(driversAreTagged);
+  const entry = "driverShapes of tools/scripts/src/checks/repo-policy/drivers.ts";
+  const tagged = (role: string) => ({ nx: { name: "logging", tags: [`type:${role}`] } });
+
+  it("tag と名前の両方がある driver と、driver のない repository を通すこと", () => {
+    expect(violations(repo(logging({}, tagged("driver"))))).toEqual([]);
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("tag type:driver があって driverShapes に名前のない package を拒否すること", () => {
+    expect(
+      violations(
+        repo(
+          driver(
+            "mail",
+            { ".": "./src/index.ts" },
+            {},
+            { nx: { name: "mail", tags: ["type:driver"] } },
+          ),
+        ),
+      ),
+    ).toEqual([
+      `packages/mail has the tag type:driver, but ${entry} has no entry for mail, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+    ]);
+  });
+
+  it.each(["module", "fixtures", "shared-kernel", "ui"])(
+    "driverShapes に名前があるのに tag が type:%s の package を拒否すること",
+    (role) => {
+      expect(violations(repo(logging({}, tagged(role))))).toEqual([
+        `packages/logging has an entry in ${entry}, but its tag is type:${role}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
+      ]);
+    },
+  );
+
+  it("役割がない package と 2 つある package は packagesHaveOneRole に任せること", () => {
+    expect(violations(repo(logging()))).toEqual([]);
+    expect(
+      violations(repo(logging({}, { nx: { name: "logging", tags: ["type:driver", "type:ui"] } }))),
+    ).toEqual([]);
+  });
+
+  it("repository にない driverShapes の package は問わないこと", () => {
+    expect(violations(repo({ "packages/logging/NOTES.md": "x" }))).toEqual([]);
   });
 });

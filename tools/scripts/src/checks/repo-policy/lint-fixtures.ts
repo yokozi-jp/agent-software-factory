@@ -1,7 +1,8 @@
 // Checks that every lint rule, tsconfig flag, module layer and Effect rule has a fixture that shows it is on (#43, #230; docs/adr/0020, 0026, 0027, 0028).
 // The restrictions of the table (lint-restrictions.json) are checked in lint-restrictions.ts.
 import { isRestrictionFixture } from "./lint-restrictions.ts";
-import { modulePackageNames, packageNames } from "./modules.ts";
+import { modulePackageNames } from "./modules.ts";
+import { packageNames } from "./packages.ts";
 import { Tree, objectKeys, record } from "./tree.ts";
 
 // The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or

@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0038: migration と DB の道具は module ではない package の packages/db に置き、モジュールには型だけで依存する"
-description: apps/api/db にあった migration、bootstrap.sql、migrate、型の生成と、DB だけのテストの道具を packages/db (@agent-software-factory/db) に移す決定。ADR 0034 の手順に沿って、db を module ではない package にし、moduleOrder にも依存なしの一覧にも入れず、モジュールには import type だけで devDependencies に依存し、db に依存できるのは apps/api だけにする。exports は "." と ./seed と ./testing の 3 つで、層の規則と lint-effect は掛けず、packages/db/src ではランタイムの制限を外して深い import の禁止とモジュールの値の import の禁止を残す。migration や DB のテストの道具を足すとき、ワーカーやバッチが migration を使うとき、db の依存や exports を変えるとき、packages/ の直下に module ではない package を足すときに読む。
+description: apps/api/db にあった migration、bootstrap.sql、migrate、型の生成と、DB だけのテストの道具を packages/db (@agent-software-factory/db) に移す決定。ADR 0034 の手順に沿って、db を module ではない package にし、moduleOrder にも入れず、「どの package にも依存しない」規則からも名前で外し、モジュールには import type だけで devDependencies に依存し、db に依存できるのは apps/api だけにする。exports は "." と ./seed と ./testing の 3 つで、層の規則と lint-effect は掛けず、packages/db/src ではランタイムの制限を外して深い import の禁止とモジュールの値の import の禁止を残す。migration や DB のテストの道具を足すとき、ワーカーやバッチが migration を使うとき、db の依存や exports を変えるとき、packages/ の直下に module ではない package を足すときに読む。
 tags: [adr, db, migration, monorepo, repo-policy, lint]
 ---
 
@@ -23,7 +23,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
   - `db` はモジュール (`claim`、`approval`、`closing`) に `import type` だけで依存し、`devDependencies` に書きます。`dependencies` に書いた module、`shared-kernel` や `ui`、`apps/*` への依存は repo-policy が止めます。
   - 実行時に要る `dbmate` と `pg` は `db` の `dependencies`、`kysely-codegen` と testcontainers は `devDependencies` に置きます。
   - `db` に依存できるのは `apps/api` と `apps/worker` だけです (repo-policy が、ほかのすべての `package.json` を確かめます)。ワーカーは接続の pool (`createPool`) とテストの道具を使います ([Issue #366](https://github.com/yokozi-jp/agent-software-factory/issues/366))。モジュール、`shared-kernel`、`apps/web`、`tools/*` は `db` に依存しません。
-- **`moduleOrder` と依存なしの一覧**: `db` はどちらにも入れず、`modules.ts` の `dbDependencies` が上の規則で見ます。`moduleOrder` は module の方向を決める表で、`db` はその中のどこにも置けません。依存なしの一覧は「workspace の package に依存しない」という意味で、`db` はモジュールに依存します。
+- **`moduleOrder` と「依存しない」規則**: `db` の役割の tag は `type:driver` ですが、`moduleOrder` には入れず、ドライバの「workspace の package に依存しない」規則からも名前で外し、`modules.ts` の `dbDependencies` が上の規則で見ます。`moduleOrder` は module の方向を決める表で、`db` はその中のどこにも置けません。「依存しない」規則は、`type:module` 以外の役割にかかります。`db` はモジュールに依存するので、その例外です ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md)、[Issue #552](https://github.com/yokozi-jp/agent-software-factory/issues/552))。
 - **層の規則と Effect**: `db` は業務のコードを持たず、層に分けません。層の override は `packages/*/src/<layer>/**` だけに掛かるので届きません。`lint-effect` の script も求めません。
 - **Oxlint**: `packages/db/src/**` では、入口のファイルと同じく ADR 0007 のランタイムの制限 (`process` など) と `import/no-nodejs-modules` を外します。migration を流す `child_process` と、テストの `process` を使うためです。深い import の禁止は残します。workspace の package からの値の import は `no-restricted-imports` の `allowTypeImports` で止め、`import type` だけを通します。`packages/db/src/__fixtures__/db-imports.ts` が、値の import が止まること、`import type` と `node:child_process` が通ることを確かめ、repo-policy が禁止の表 (`lint-restrictions.json` の `db-imports`、[ADR 0050](0050-lint-restrictions-table-in-json.md)) と fixture が合うことを確かめます。
 - **テストの道具の import**: `apps/api/src` の本番のコードは `@agent-software-factory/db/testing` と `./seed` を import できません (深い import として止まります)。`apps/api/src/**/*.test.ts` と `apps/worker/src/**/*.test.ts` だけが、この 2 つの subpath を import できます。
@@ -41,7 +41,7 @@ DB の道具は `apps/api/db/` (migration、`bootstrap.sql`、`migrate.ts`、`ty
 
 - migration を足すときは `packages/db/migrations/` に書き、`pnpm exec nx db-types db` で型を生成し直します ([PostgreSQL のマイグレーション](../db/postgresql-migration.md))。
 - ワーカー、バッチ、migrate のタスクは `@agent-software-factory/db/node` の `migrate` を import できます。本番の入口の形 (rds-signer、bootstrap、dbmate の 2 段、イメージへの入れ方) は、サンプル機能とインフラの spec で決めます。
-- `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。 手順は [module ではない package を足す手順](../domain-model/add-package.md) にあります。
+- `packages/` の直下に module ではない package を足すときは、ADR 0034 と同じく、`moduleOrder`、`exports`、層の規則、`lint-effect` をどうするかを決め、役割の tag を付けて、`tools/scripts/src/checks/repo-policy/modules.ts` に書きます。 手順は [module ではない package を足す手順](../domain-model/add-package.md) にあります。
 - `db:seed` は `packages/db/package.json` の script (`node src/infrastructure/seed/index.ts`。[ADR 0054](0054-drivers-with-domain-and-infrastructure-layers.md) で移した) で、`db:migrate` と同じ形です。`DATABASE_URL` に `migrator` の接続 URL を渡します。
 - `knip.jsonc` の `packages/db` の `ignoreDependencies` には、seed がまだ import していないモジュール (`approval`、`closing`) が残っています。そのモジュールの seed を足すときに外します。
 

@@ -19,8 +19,12 @@ _Avoid_: 参照業務機能、デモ
 _Avoid_: 機能、ドメイン、コンポーネント
 
 **ドライバ**:
-外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。モジュールのうち import してよいのは `infrastructure` だけ(`apps/*` の入口も組み立てで import する)で、そこで包んで Port を実装する（それが**アダプター**）。`pg` のような DB のドライバ、デバイスドライバ、非機能要件の「アーキテクチャドライバ」とは別のもの。`db` は `pg` を包む側にあたる。構成は [package の構成](docs/domain-model/package-layout.md)。
+外部のシステムや道具（DB、人事システム、OpenTelemetry の SDK、pino、i18next）を直接触り、業務の規則を持たない共有の package。クリーンアーキテクチャの Frameworks & Drivers の輪にあたり、`packages/` の `db`、`hr-system`、`i18n`、`logging`、`telemetry` の 5 つ(役割の tag は `type:driver`)。層は `domain` と `infrastructure` だけで、`Promise` を返し、Effect を import しない。モジュールのうち import してよいのは `infrastructure` だけ(`apps/*` の入口も組み立てで import する)で、そこで包んで Port を実装する（それが**アダプター**）。`pg` のような DB のドライバ、デバイスドライバ、非機能要件の「アーキテクチャドライバ」とは別のもの。`db` は `pg` を包む側にあたる。構成は [package の構成](docs/domain-model/package-layout.md)。
 _Avoid_: ライブラリ、アダプター、共通基盤
+
+**package の役割**:
+`packages/` の package が、`package.json` の `nx.tags` に `type:` の次元で名乗る種類。`type:module`、`type:fixtures`、`type:shared-kernel`、`type:ui`、`type:driver` の 5 つで、1 つの package にちょうど 1 つ付ける。repo-policy が、層、`lint-effect`、依存の向きの規則を役割から決める。業務の担当(経理など)の「役割」とは別のもの。手順は [module ではない package を足す手順](docs/domain-model/add-package.md)。
+_Avoid_: package の型、package の種類
 
 **アダプター**:
 モジュールの `infrastructure` にある、Port を実装するコード（`Layer`）。ドライバを `Effect.tryPromise` で包み、業務の言葉の Port とドライバの API を変換する。ヘキサゴナルアーキテクチャの Adapter、クリーンアーキテクチャの Interface Adapters の輪にあたる。package には分けず、モジュールの中に置く。つながりは「Port（`application`）← アダプター（モジュールの `infrastructure`）← ドライバ（共有の package）← 外部の道具」。

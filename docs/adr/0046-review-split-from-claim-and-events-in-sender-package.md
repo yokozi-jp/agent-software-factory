@@ -22,7 +22,7 @@ tags: [adr, architecture, modules, events, domain-model, ordering]
 - **イベントのスキーマの置き場所**:
   - モジュールをまたぐイベントは、依存の向きに関係なく、送る側のモジュールの events の package（`packages/<module>/events`）に置きます。zod のスキーマ、`version`、過去の版の fixture のテストもそこに置きます。
   - events の package は `zod` と `shared-kernel` にだけ依存します。モジュールは、どのモジュールの events の package にも依存できます。モジュール本体どうしの依存は、今のとおり「締め → 承認 → 申請」の一方向です。
-  - events の package はモジュールではありません。`moduleOrder` に入れず、`type:module` の印を付けません。
+  - events の package はモジュールではありません。`moduleOrder` に入れず、役割の `type:` の tag を付けません ([ADR 0026](0026-modules-as-packages-with-oxlint-boundaries.md))。
   - 申請、承認、締めの events の package と、その依存の検査（repo-policy の `eventsPackages`）は Issue #409 で入れました。
 - **届く順序**: 標準キューのままにし、FIFO にしません。
   - 申請のモジュールは、最後に反映した `(回, 審査の版)` を持ち、それより新しいイベントだけを反映します。古いものは何もせずに受け取り済みにします。
