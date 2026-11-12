@@ -76,6 +76,7 @@
       // Renovate's own guidance: automerge what you would merge anyway, and keep the major versions and the 0.x
       // versions (which may break at any time) for a person. CI exercises these, so a failing update stays open.
       "description": "Automerge minor and patch updates of npm packages that are 1.0 or later",
+      "matchManagers": ["npm"],
       "matchDatasources": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "matchCurrentVersion": "!/^0/",
@@ -94,8 +95,8 @@
     },
     // The next two come last, so that they win over the rules above.
     {
-      // The Node.js runtime and pnpm are set together with the Lambda runtime and the lock file format (ADR 0013).
-      // The authentication libraries are read by a person even when the tests pass.
+      // The Node.js runtime is set together with the Lambda runtime (ADR 0013). pnpm runs every check, so a person
+      // reads its update (a judgement). The authentication libraries are read by a person even when the tests pass.
       "description": "A person merges Node.js, pnpm and the authentication libraries",
       "matchDepNames": ["node", "pnpm", "better-auth", "oidc-provider"],
       "automerge": false,

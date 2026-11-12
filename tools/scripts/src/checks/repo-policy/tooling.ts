@@ -46,14 +46,16 @@ export function oneBetterleaks(tree: Tree): string[] {
 // ADR 0009: mise.lock records linux-x64 only. A tool update that adds a platform changes what CI downloads, so it
 // stops here. Renovate may merge the update of a tool by itself (docs/tooling/renovate.md), so a person no longer
 // sees the diff of mise.lock first.
+const onlyPlatform = "linux-x64";
+
 export function miseLockHasOnlyLinuxX64(tree: Tree): string[] {
   const failures: string[] = [];
   for (const [tool, entries] of Object.entries(record(record(tree.parsed("mise.lock")).tools)))
     for (const entry of list(entries))
       for (const key of Object.keys(record(entry)))
-        if (key.startsWith("platforms.") && key !== "platforms.linux-x64")
+        if (key.startsWith("platforms.") && key !== `platforms.${onlyPlatform}`)
           failures.push(
-            `mise.lock records ${key} of ${tool}. Record linux-x64 only: run \`mise lock --platform linux-x64\` (docs/adr/0009).`,
+            `mise.lock records ${key} of ${tool}. Record ${onlyPlatform} only: run \`mise lock --platform ${onlyPlatform}\` (docs/adr/0009).`,
           );
   return failures;
 }
