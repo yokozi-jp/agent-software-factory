@@ -8,7 +8,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AppLayout } from "./components/app-layout.tsx";
 import { RouteError } from "./components/route-error.tsx";
@@ -702,3 +702,84 @@ export const ThemeChoiceIsRestoredWhenTheMenuOpens: Story = {
     );
   },
 };
+
+// スマホ (縦持ち、幅 320px から) の保証 (Issue #724、docs/web-frontend/mobile.md)。
+// ログイン、トップ、メニュー、ユーザーメニュー、403/404 の 5 つを、下限の 320px と iPhone の 390px で確かめる。
+// 保証は、横スクロールが出ないこと、axe の違反がないこと (`target-size` を含む。preview.ts)、主な操作が 44px 以上であること。
+
+/** 主な操作の大きさの下限 (WCAG 2.2 SC 2.5.5 の値。`md` 未満で適用する)。 */
+const touchTarget = 44;
+
+type MobileWidth = 320 | 390;
+
+function onMobile(width: MobileWidth, story: Story): Story {
+  return {
+    ...story,
+    globals: { viewport: { value: `mobile${String(width)}`, isRotated: false } },
+  };
+}
+
+async function expectNoHorizontalScroll(width: MobileWidth) {
+  await expect(window.innerWidth).toBe(width);
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+}
+
+async function expectTouchTarget(element: HTMLElement) {
+  const { width, height } = element.getBoundingClientRect();
+  await expect(width).toBeGreaterThanOrEqual(touchTarget);
+  await expect(height).toBeGreaterThanOrEqual(touchTarget);
+}
+
+function mobileLogin(width: MobileWidth): Story {
+  return onMobile(width, {
+    args: { path: "/login?reason=session-expired" },
+    play: async ({ canvas }) => {
+      await expectTouchTarget(await canvas.findByRole("button", { name: "IdP でログイン" }));
+      await expect(canvas.getByRole("alert")).toBeVisible();
+      await expectNoHorizontalScroll(width);
+    },
+  });
+}
+
+function mobileMenu(width: MobileWidth): Story {
+  return onMobile(width, {
+    args: { path: "/", session: accounting },
+    play: async ({ canvas }) => {
+      await expectNoHorizontalScroll(width);
+      const trigger = await canvas.findByRole("button", { name: "メニューを開閉" });
+      await expectTouchTarget(trigger);
+      await userEvent.click(trigger);
+      const sheet = await screen.findByRole("dialog");
+      for (const name of ["承認", "確認", "締め"]) {
+        await expectTouchTarget(within(sheet).getByRole("link", { name }));
+      }
+      for (const name of ["ライト", "ダーク", "システム", "ログアウト"]) {
+        await expectTouchTarget(within(sheet).getByRole("button", { name }));
+      }
+      // Sheet は開く動きの途中では見えない。
+      await waitFor(() => expect(within(sheet).getByText("鈴木 花子")).toBeVisible());
+      // Sheet の中の横あふれは、ドキュメント全体の scrollWidth には出ない。
+      await expect(sheet.scrollWidth).toBeLessThanOrEqual(sheet.clientWidth);
+      await expectNoHorizontalScroll(width);
+    },
+  });
+}
+
+function mobileErrorPage(width: MobileWidth, path: string, title: string): Story {
+  return onMobile(width, {
+    args: { path, session: member },
+    play: async ({ canvas }) => {
+      await expect(await canvas.findByRole("heading", { name: title })).toBeVisible();
+      await expectNoHorizontalScroll(width);
+    },
+  });
+}
+
+export const Mobile320Login: Story = mobileLogin(320);
+export const Mobile390Login: Story = mobileLogin(390);
+export const Mobile320Menu: Story = mobileMenu(320);
+export const Mobile390Menu: Story = mobileMenu(390);
+export const Mobile320NotFound: Story = mobileErrorPage(320, "/no-such-page", notFoundTitle);
+export const Mobile390NotFound: Story = mobileErrorPage(390, "/no-such-page", notFoundTitle);
+export const Mobile320Forbidden: Story = mobileErrorPage(320, "/closing", forbiddenTitle);
+export const Mobile390Forbidden: Story = mobileErrorPage(390, "/closing", forbiddenTitle);
