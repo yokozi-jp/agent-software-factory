@@ -58,7 +58,7 @@ tags: [adr, architecture, packages, exports, lint]
 
 - **外部依存ごとに切る (`./db`、`./http`、`./effect`)**: `hono` や `kysely` を import してよい場所を lint で絞りやすい。Effect のような手段が入口の名前になり、機能が複数の入口に散る。
 - **ディレクトリだけを分け、入口は `.` のまま**: `exports` と repo-policy を変えずに済む。import の書き方から外部依存が分からず、lint で境界を止められない。
-- **package を分ける (純粋な `shared-kernel` と DB や HTTP の共有 package)**: 境界が強い。`moduleOrder`、`notModules`、`ownExports`、Knip、fixture の手間が package ごとに増える ([module ではない package を足す手順](../domain-model/add-package.md))。
+- **package を分ける (純粋な `shared-kernel` と DB や HTTP の共有 package)**: 境界が強い。役割の tag、`ownExports`、Knip、fixture の手間が package ごとに増える ([module ではない package を足す手順](../domain-model/add-package.md))。
 - **`domain`/`application`/`infrastructure` の層を共有 package にも入れる**: `db` と `i18n` は中身のほとんどが外部依存の薄い包みで、`domain` が空になる。([ADR 0054](0054-drivers-with-domain-and-infrastructure-layers.md) で、中身のある層だけを、モジュールと同じ名前で入れることにした。`application` は作らず、`db` は `domain` を持たない。入口の切り方はこの ADR のまま)
 
 ## Consequences

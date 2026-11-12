@@ -26,6 +26,8 @@ describe("isTestFile", () => {
     "x.test.mjs",
     "x.test.cts",
     "x.test.jsx",
+    "packages/db/src/testing/generated-types.test-d.ts",
+    "x.spec-d.ts",
   ])("%s をテストファイルに数えること", (path) => {
     expect(isTestFile(path)).toBe(true);
   });
@@ -34,11 +36,14 @@ describe("isTestFile", () => {
     "apps/api/src/app.ts",
     "test.ts",
     "x.test.ts.orig",
+    "x.test-d.ts.orig",
+    "x.test-d",
     "x.test.json",
     "x.test.d.ts.map",
     "x-test.ts",
     "tools/scripts/src/test/sandbox.ts",
     "tools/scripts/src/test/fixtures/expect.test.ts",
+    "tools/scripts/src/test/fixtures/type-test.test-d.ts",
     "fixtures/a.test.ts",
     "apps/api/__fixtures__/a.test.ts",
   ])("%s を数えないこと", (path) => {

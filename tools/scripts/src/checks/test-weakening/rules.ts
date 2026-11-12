@@ -3,8 +3,9 @@
 // Pure functions; cli.ts reads git, stdin and the environment and prints what these return.
 import { annotationText, type Env, type Output } from "../output.ts";
 
-// Test files, as Vitest finds them. Fixtures are files that other checks read, not tests to run.
-const testName = /\.(test|spec)\.[cm]?[jt]sx?$/;
+// Test files, as Vitest finds them (*.test-d.ts are the type tests of its typecheck). Fixtures are files that other
+// checks read, not tests to run.
+const testName = /\.(test|spec)(-d)?\.[cm]?[jt]sx?$/;
 const fixture = /(^|\/)(fixtures|__fixtures__)\//;
 
 export function isTestFile(path: string): boolean {

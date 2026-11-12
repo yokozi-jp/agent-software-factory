@@ -108,3 +108,10 @@ export const list = (value: unknown): unknown[] => (Array.isArray(value) ? value
 
 export const text = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim() !== "" ? value : undefined;
+
+// The keys of `const <name> ... = { ... };` in the text: the keys of an object literal that holds no other object.
+export function objectKeys(source: string, name: string): string[] {
+  const body = new RegExp(`^const ${name}\\b[^=]*=\\s*\\{([^}]*)\\}`, "m").exec(source)?.[1];
+  if (body === undefined) return [];
+  return Array.from(body.matchAll(/([A-Za-z0-9_-]+)"?\s*:/g), (match) => String(match[1]));
+}
