@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { checkConventions } from "../infrastructure/convention-catalog.ts";
 import { checkModuleRoles } from "../infrastructure/module-roles-catalog.ts";
-import { createTestDatabase, idempotencyKeyTableSql, type TestDatabase } from "../testing.ts";
+import {
+  createTestDatabase,
+  ensureIdempotencyKeyTable,
+  idempotencyKeyTableSql,
+  type TestDatabase,
+} from "../testing.ts";
 
 // idempotency_key の migration の雛形 (packages/db/templates/idempotency_key.sql、docs/adr/0040)。
 // 雛形から作った表が、DB の規約とモジュールのロールの検査を通り、RLS とロールの権限が決めたとおりであることを確かめる。
@@ -25,12 +30,22 @@ describe("idempotency_key の雛形", () => {
   beforeEach(async () => {
     db = await createTestDatabase();
     for (const module of Object.keys(reads)) {
-      await db.migrator.query(idempotencyKeyTableSql(module));
+      await ensureIdempotencyKeyTable(db.migrator, module);
     }
   });
 
   afterEach(async () => {
     await db.close();
+  });
+
+  it("表がすでにあるモジュールには、ensureIdempotencyKeyTable が何もしないこと", async () => {
+    await expect(ensureIdempotencyKeyTable(db.migrator, "claim")).resolves.toBeUndefined();
+  });
+
+  it("モジュール名に使えない文字があれば、ensureIdempotencyKeyTable が DB に触れずに失敗すること", async () => {
+    await expect(
+      ensureIdempotencyKeyTable(db.migrator, "claim; DROP SCHEMA claim"),
+    ).rejects.toThrow(/Invalid module/);
   });
 
   it("モジュール名を替えた SQL が、migrate:up の部分だけであること", () => {

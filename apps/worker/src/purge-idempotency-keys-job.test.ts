@@ -4,7 +4,7 @@ import { createDatabase } from "@agent-software-factory/db/node";
 import {
   countIdempotencyKeys,
   createTestDatabase,
-  idempotencyKeyTableSql,
+  ensureIdempotencyKeyTable,
   seedIdempotencyKeys,
   type ExpiryExpression,
 } from "@agent-software-factory/db/testing";
@@ -47,8 +47,8 @@ describe("期限切れの冪等キーを消すバッチ", () => {
     countIdempotencyKeys(current.db.superuser, module, tenant);
 
   it("モジュールごとに、指定したテナントの期限切れの行だけを、上限ごとに消すこと", async () => {
-    await current.db.migrator.query(idempotencyKeyTableSql("claim"));
-    await current.db.migrator.query(idempotencyKeyTableSql("approval"));
+    await ensureIdempotencyKeyTable(current.db.migrator, "claim");
+    await ensureIdempotencyKeyTable(current.db.migrator, "approval");
     for (const module of ["claim", "approval"]) {
       await seed(module, tenantId, 3, "expired");
       await seed(module, tenantId, 2, "alive");

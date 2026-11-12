@@ -23,7 +23,7 @@ export {
   type RolledBackSession,
 } from "./testing/rolled-back.ts";
 export { startPostgres } from "./testing/postgres-container.ts";
-export { idempotencyKeyTableSql } from "./testing/idempotency-key.ts";
+export { ensureIdempotencyKeyTable, idempotencyKeyTableSql } from "./testing/idempotency-key.ts";
 export {
   countIdempotencyKeys,
   seedIdempotencyKeys,
