@@ -2,7 +2,12 @@
 // (./tooling.ts), each called alone on a small repository held in memory: a case breaks one file of
 // a repository that passes, and expects the message that names the problem.
 import { describe, expect, it } from "vite-plus/test";
-import { apiDependencies, migration, passingRepo } from "./fixtures/passing-repo.ts";
+import {
+  apiDependencies,
+  migration,
+  passingRepo,
+  renovateConfig,
+} from "./fixtures/passing-repo.ts";
 import { apiManifest, failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   executableScripts,
@@ -15,6 +20,7 @@ import {
   oneBetterleaks,
   oneNodeMajor,
   onePostgresVersion,
+  renovateAutomergeIsBounded,
   shellScriptsHaveTests,
   steeringFrontmatter,
   uniqueAdrNumbers,
@@ -121,6 +127,175 @@ describe("ADR 0009: mise.lock が linux-x64 だけを記録すること", () => 
   it("TOML でない mise.lock を 1 回だけ報告し、プラットフォームは報告しないこと", () => {
     expect(violations(repo({ "mise.lock": "tools: [" }))).toEqual([
       "mise.lock is not valid TOML (Error: Invalid TOML document: illegal character in key)",
+    ]);
+  });
+});
+
+describe("ADR 0055: Renovate が自分で merge する範囲が決まっていること", () => {
+  const violations = failuresOf(renovateAutomergeIsBounded);
+  const [npm, nodes, tsgo] = renovateConfig.packageRules;
+  const withConfig = (change: Record<string, unknown>): ReturnType<typeof repo> =>
+    repo({ "renovate.jsonc": json({ ...renovateConfig, ...change }) });
+  const withRules = (...packageRules: unknown[]): ReturnType<typeof repo> =>
+    withConfig({ packageRules });
+  const npmRule = 'renovate.jsonc rule "Automerge minor and patch updates of npm packages"';
+
+  it("auto-merge の規則と、人が merge する規則がそろった設定を通すこと", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("renovate.jsonc のないリポジトリを通すこと", () => {
+    expect(violations(repo({ "renovate.jsonc": undefined }))).toEqual([]);
+  });
+
+  it("読めない renovate.jsonc を 1 回だけ報告し、規則は報告しないこと", () => {
+    expect(violations(repo({ "renovate.jsonc": "{" }))).toEqual([
+      "renovate.jsonc is not valid JSONC (SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2))",
+    ]);
+  });
+
+  it("全体の automerge を拒否すること", () => {
+    expect(violations(withConfig({ automerge: true }))).toEqual([
+      "renovate.jsonc sets automerge at the top level, so Renovate would merge every update. Set it in rules that name update types and managers (docs/adr/0055).",
+    ]);
+  });
+
+  it("全体の automerge が false の設定は通すこと", () => {
+    expect(violations(withConfig({ automerge: false }))).toEqual([]);
+  });
+
+  it("automerge ラベルのない lock file の更新を拒否すること", () => {
+    expect(
+      violations(withConfig({ lockFileMaintenance: { automerge: true, labels: [] } })),
+    ).toEqual([
+      'renovate.jsonc lockFileMaintenance sets automerge, so its labels must include "automerge" (docs/tooling/renovate.md).',
+    ]);
+  });
+
+  it("lock file の更新を自動にしない設定は、ラベルがなくても通すこと", () => {
+    expect(violations(withConfig({ lockFileMaintenance: { automerge: false } }))).toEqual([]);
+  });
+
+  it.each([
+    ["matchUpdateTypes がない", undefined],
+    ["matchUpdateTypes が空", []],
+    ["major を含む", ["minor", "major"]],
+    ["minor と patch 以外を含む", ["patch", "digest"]],
+  ])("auto-merge の規則で matchUpdateTypes が %s ものを拒否すること", (_name, matchUpdateTypes) => {
+    expect(violations(withRules({ ...npm, matchUpdateTypes }, nodes, tsgo))).toEqual([
+      `${npmRule} sets automerge, so matchUpdateTypes must list minor and patch only (docs/adr/0055).`,
+    ]);
+  });
+
+  it.each([
+    ["matchManagers がない", undefined],
+    ["matchManagers が空", []],
+    ["GitHub Actions を含む", ["npm", "github-actions"]],
+    ["mise を含む", ["mise"]],
+    ["custom.regex を含む", ["custom.regex"]],
+  ])("auto-merge の規則で %s ものを拒否すること", (_name, matchManagers) => {
+    expect(violations(withRules({ ...npm, matchManagers }, nodes, tsgo))).toEqual([
+      `${npmRule} sets automerge, so matchManagers must list npm only. A person merges GitHub Actions and mise tools (docs/adr/0055).`,
+    ]);
+  });
+
+  it("automerge ラベルのない auto-merge の規則を拒否すること", () => {
+    expect(violations(withRules({ ...npm, labels: ["dependencies"] }, nodes, tsgo))).toEqual([
+      `${npmRule} sets automerge, so its labels must include "automerge" (docs/tooling/renovate.md).`,
+    ]);
+  });
+
+  it("description のない規則を、packageRules の番号で挙げること", () => {
+    expect(
+      violations(
+        withRules({ ...npm, description: undefined, matchUpdateTypes: ["major"] }, nodes, tsgo),
+      ),
+    ).toEqual([
+      "renovate.jsonc rule packageRules[0] sets automerge, so matchUpdateTypes must list minor and patch only (docs/adr/0055).",
+    ]);
+  });
+
+  it("automerge を false にした規則は、manager や update type がなくても通すこと", () => {
+    expect(violations(withRules(npm, nodes, tsgo))).toEqual([]);
+  });
+
+  it.each(["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"])(
+    "人が merge する %s の規則がないものを拒否すること",
+    (dependency) => {
+      const matchDepNames = (nodes?.matchDepNames ?? []).filter((name) => name !== dependency);
+      expect(violations(withRules(npm, { ...nodes, matchDepNames }, tsgo))).toEqual([
+        `renovate.jsonc needs a rule after the last automerge rule that sets automerge to false for ${dependency}. A person merges it (docs/adr/0055).`,
+      ]);
+    },
+  );
+
+  it.each(["@effect/tsgo", "vite-plus", "@voidzero-dev/vite-plus-core"])(
+    "人が merge する %s の規則がないものを拒否すること",
+    (dependency) => {
+      const matchPackageNames = (tsgo?.matchPackageNames ?? []).filter(
+        (name) => name !== dependency,
+      );
+      expect(violations(withRules(npm, nodes, { ...tsgo, matchPackageNames }))).toEqual([
+        `renovate.jsonc needs a rule after the last automerge rule that sets automerge to false for ${dependency}. A person merges it (docs/adr/0055).`,
+      ]);
+    },
+  );
+
+  it("auto-merge の規則より前にある、人が merge する規則を数えないこと", () => {
+    expect(violations(withRules(tsgo, nodes, npm))).toEqual(
+      [
+        "node",
+        "pnpm",
+        "kiro-cli",
+        "better-auth",
+        "oidc-provider",
+        "@effect/tsgo",
+        "vite-plus",
+        "@voidzero-dev/vite-plus-core",
+      ].map(
+        (dependency) =>
+          `renovate.jsonc needs a rule after the last automerge rule that sets automerge to false for ${dependency}. A person merges it (docs/adr/0055).`,
+      ),
+    );
+  });
+
+  it("automerge を true にした規則を、人が merge する規則の代わりに数えないこと", () => {
+    expect(violations(withRules(npm, { ...nodes, automerge: true }, tsgo))).toEqual([
+      `renovate.jsonc rule "A person merges Node.js, pnpm, kiro-cli and the authentication libraries" sets automerge, so matchUpdateTypes must list minor and patch only (docs/adr/0055).`,
+      `renovate.jsonc rule "A person merges Node.js, pnpm, kiro-cli and the authentication libraries" sets automerge, so matchManagers must list npm only. A person merges GitHub Actions and mise tools (docs/adr/0055).`,
+      `renovate.jsonc rule "A person merges Node.js, pnpm, kiro-cli and the authentication libraries" sets automerge, so its labels must include "automerge" (docs/tooling/renovate.md).`,
+      ...["node", "pnpm", "kiro-cli", "better-auth", "oidc-provider"].map(
+        (dependency) =>
+          `renovate.jsonc needs a rule after the last automerge rule that sets automerge to false for ${dependency}. A person merges it (docs/adr/0055).`,
+      ),
+    ]);
+  });
+
+  it.each([
+    ["labels がない", undefined],
+    ["labels が空でない", ["automerge"]],
+  ])("人が merge する規則で %s ものを拒否すること", (_name, labels) => {
+    expect(violations(withRules(npm, { ...nodes, labels }, tsgo))).toEqual([
+      'renovate.jsonc rule "A person merges Node.js, pnpm, kiro-cli and the authentication libraries" sets automerge to false after the automerge rules, so it must set labels to [] and the PR does not carry "automerge" (docs/tooling/renovate.md).',
+    ]);
+  });
+
+  it("全体を止める規則 (docs/tooling/renovate.md の止め方) を通すこと", () => {
+    const stop = { matchPackageNames: ["*"], automerge: false, labels: [] };
+    expect(
+      violations(
+        withConfig({
+          lockFileMaintenance: { automerge: false },
+          packageRules: [npm, nodes, tsgo, stop],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("ラベルを空にしない、全体を止める規則を拒否すること", () => {
+    const stop = { matchPackageNames: ["*"], automerge: false };
+    expect(violations(withRules(npm, nodes, tsgo, stop))).toEqual([
+      'renovate.jsonc rule packageRules[3] sets automerge to false after the automerge rules, so it must set labels to [] and the PR does not carry "automerge" (docs/tooling/renovate.md).',
     ]);
   });
 });

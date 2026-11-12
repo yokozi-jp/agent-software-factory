@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0055: Renovate の PR は、CI が通れば Renovate が merge する範囲を決めて自動にする"
-description: 人が毎回 merge していた Renovate の PR のうち、npm の minor と patch (1.0 以上)、Action と mise の道具の patch、lock file の更新を、必須チェックが通れば GitHub の auto-merge で Renovate が merge する決定。メジャー版、0.x、認証のライブラリ、Node.js と pnpm、effect-tsgo と Vite+ は人が merge する。自動にする範囲を広げる、狭める、止めるとき、Renovate の PR が人の確認なしに merge されて困ったときに読む。
+description: 人が毎回 merge していた Renovate の PR のうち、npm の minor と patch (1.0 以上) と lock file の更新を、必須チェックが通れば GitHub の auto-merge で Renovate が merge する決定。メジャー版、0.x、GitHub Action と mise の道具、認証のライブラリ、Node.js と pnpm、effect-tsgo と Vite+ は人が merge する。自動にした PR には automerge のラベルを付け、手戻りが出たら止める。自動にする範囲を広げる、狭める、止めるとき、Renovate の PR が人の確認なしに merge されて困ったときに読む。
 tags: [adr, tooling, renovate, github, supply-chain]
 ---
 
@@ -21,16 +21,22 @@ ruleset は必須チェック (`main`、`commitlint`、`betterleaks`、`dependen
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | lock file の更新 (`pnpm-lock.yaml`、`mise.lock`、semgrep の sidecar) | 依存の定義を変えず lock を作り直すだけの更新。Renovate の文書は、自動にする更新の中で最も危険が小さいだろうと書く ([Renovate の automerge](https://docs.renovatebot.com/key-concepts/automerge/))       |
 | npm の minor と patch。現在の版が 1.0 以上のもの                     | [Renovate が勧める範囲](https://docs.renovatebot.com/key-concepts/automerge/)。0.x は semver 上いつ壊れてもよいので除く。公開から 3 日待つ (`config:best-practices` の `security:minimumReleaseAgeNpm`) |
-| GitHub Action と mise の道具の patch。公開から 3 日たったもの        | CI の PR で実際に動く。minor は人が見る                                                                                                                                                                 |
 
-人が merge するもの: メジャー版、0.x、`better-auth` と `oidc-provider` (認証)、Node.js ([ADR 0013](0013-api-on-ecs-and-lambda-web-functions.md))、pnpm (全ての検査の土台なので、人が見る。判断です)、`renovate.sh` が使う Renovate 自身、`@effect/tsgo` と Vite+ の PR ([ADR 0028](0028-effect-in-application-and-infrastructure.md))、docker のタグ (ローカルの開発用で、CI が動かさない)。
+自動にした PR には `automerge` のラベルを付けます。人が merge する PR には付けません。
+
+人が merge するもの: メジャー版、0.x、GitHub Action と mise の道具 (patch も)、`better-auth` と `oidc-provider` (認証)、Node.js ([ADR 0013](0013-api-on-ecs-and-lambda-web-functions.md))、pnpm (全ての検査の土台なので、人が見る。判断です)、`renovate.sh` が使う Renovate 自身、`@effect/tsgo` と Vite+ の PR ([ADR 0028](0028-effect-in-application-and-infrastructure.md))、docker のタグ (ローカルの開発用で、CI が動かさない)。
+
+Action と mise の道具は、最初の版 (PR #692) では patch を自動にしていましたが、同じ日に外しました ([Issue #201](https://github.com/yokozi-jp/agent-software-factory/issues/201))。Action は CI の中で実行され、更新は `.github/workflows` を変えます。mise の道具には検査器 (betterleaks、zizmor、osv-scanner、semgrep) があり、検出の漏れが「指摘なし」の成功と見分けられません (下の Considered Options)。判断です。
 
 CI が落ちた PR は、これまでどおり open のまま残り、人が直します。
 
 ## Considered Options
 
 - **全て手で merge する (現状)**: 確認の中身が CI の結果だけなので、手間に見合う確認になっていません。
-- **Action と mise の minor も自動にする**: minor は挙動や入力の変更を含みやすく、検出の漏れが「指摘なし」の成功と見分けられない道具 (betterleaks、zizmor、osv-scanner、semgrep) もあります。patch に留め、実績を見て広げます。
+- **Action と mise の道具を自動にする (patch まで、minor まで)**: 検出の漏れが「指摘なし」の成功と見分けられない道具 (betterleaks、zizmor、osv-scanner、semgrep) があり、Action の更新は CI の中で実行される workflow を変えます。patch でも自動にしません。Issue #35 の決定とも合います。
+- **devDependencies と `@types/*` だけに絞る (Issue #35)**: pnpm の catalog の依存は、Renovate が depType を `pnpm.catalog.<名前>` にするので、`devDependencies` では絞れません ([Renovate の npm manager](https://docs.renovatebot.com/modules/manager/npm/))。絞るなら `matchPackageNames` の許可リストを手で保守することになり、依存を足すたびに書き足しが要ります。メジャー版と 0.x を除き、人が merge する依存を名指しで外すことで、同じ目的を満たします (判断)。
+- **自動にする PR だけ待機期間を 7 日にする (Issue #35)**: npm の 3 日は、公開から 72 時間は package を取り消せることが根拠です ([Renovate の minimumReleaseAge](https://docs.renovatebot.com/configuration-options/#minimumreleaseage))。7 日の根拠になる出典は見つかっていないので、足しません。足りないと分かったら、自動にする規則の `minimumReleaseAge` で延ばせます。
+- **着手の条件 (集計できてから、4 週間連続で人の手入れなしに merge できてから) を置く (Issue #201)**: PR #692 が先に自動にしたので、置けません。止める手順を整え、手戻りが出たら止める (下の「影響」) ことで代えます。
 - **GitHub の merge queue を使う**: Renovate の文書が [GitHub の merge queue](https://docs.renovatebot.com/key-concepts/automerge/#github-merge-queue) として挙げる方式で、変更を base と合わせて検査してから merge します。全ての必須 workflow に `merge_group` を足し、人の merge にも効くので、重くなります。今は入れません (下の「影響」)。
 - **Renovate を ruleset の bypass に入れる、approve 用の helper app を入れる**: 承認が 0 なので不要で、入れると main に入る経路が増えるだけです。
 
@@ -38,8 +44,9 @@ CI が落ちた PR は、これまでどおり open のまま残り、人が直�
 
 - リポジトリの設定「Allow auto-merge」を有効にします (`gh repo edit --enable-auto-merge`、管理者)。
 - 自動にする範囲は、CI が行使するものに限りました。更新が正しいかは CI の結果で決まり、人は見ません。この前提が崩れる更新 (CI が動かさない道具) は、自動にしません。
-- 待機期間 (`minimumReleaseAge` の 3 日) は、公開された版がすぐ main に入る供給網の攻撃への防御です。npm は `config:best-practices` の `security:minimumReleaseAgeNpm` で効き ([Renovate の presets](https://docs.renovatebot.com/presets-config/))、Action と mise の道具は `renovate.jsonc` で足しました。
+- 待機期間 (`minimumReleaseAge` の 3 日) は、公開された版がすぐ main に入る供給網の攻撃への防御です。npm は `config:best-practices` の `security:minimumReleaseAgeNpm` で効きます ([Renovate の presets](https://docs.renovatebot.com/presets-config/))。Action と mise の道具は人が merge するので、この規則は置いていません。
+- 自動にした PR が手戻りになったら (`revert:` の PR に戻された、「直す PR: #」で名指しされた、merge の直後に main の CI が落ちた)、その種類の自動 merge を止めます。`rework` のラベルは信号にしません。人が見ないまま merge した PR には付かないためです。手順は [Renovate](../tooling/renovate.md) にあります (判断)。
+- repo-policy が `renovate.jsonc` を読み、`automerge: true` の規則が npm の minor と patch だけを対象にしていること、`automerge` のラベルが付くこと、人が merge する依存の規則がその後ろにあることを確かめます。Renovate の規則の重なりを再現しない簡単な検査で、実際の結果は `renovate.sh preview` で見ます。
 - `mise.lock` に `linux-x64` だけを記録することを、repo-policy が検査します ([ADR 0009](0009-mise-for-pinned-cli-tools.md))。人が見ていた項目を CI に移したものです。
 - `strict_required_status_checks_policy` は `false` のままです。GitHub の auto-merge は base に遅れた PR も merge するので ([Renovate の platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))、同じ `pnpm-lock.yaml` を触る 2 本が、互いの変更を知らずに通る可能性があります。main への push でも CI が動くので気づけます。事故が出たら merge queue を入れます (判断)。
-- 止めるには、`renovate.jsonc` の自動にする規則を消すか、`gh repo edit --enable-auto-merge=false` を実行します。
-- mise の `minimum_release_age` は固定日時です ([ADR 0021](0021-sast-and-dependency-scan.md))。この日付より新しい版を `mise lock` が解決できない道具があると、その更新の PR は CI で落ち、自動にならず人に残ります。mise の道具の更新に Renovate の待機期間が効くか (datasource が公開日時を返すか) も含め、App を有効にした後の最初の Action と mise の patch の PR で確かめます。確かめるまでは、この 2 つは動かない可能性があります。動かなくても、人が merge する今までの手順に戻るだけです。
+- 止めるには、`renovate.jsonc` の自動にする規則を直します。「Allow auto-merge」を無効にしても止まりません。GitHub の auto-merge が使えないと、Renovate は自分で merge するためです ([platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))。PR #692 の初版はこの手順を書いていて、誤りでした。

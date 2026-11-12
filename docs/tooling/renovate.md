@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: Renovate
-description: Renovate の GitHub App のインストール、更新の対象と対象外、Renovate の PR を merge する前の確認、更新を止めるメジャー版を人が上げる手順、設定を変えたときの検査。Renovate の PR が出たとき、Renovate の設定を変えるとき、App をインストールするときに読む。
+description: Renovate の GitHub App のインストール、Renovate が自分で merge する範囲と、止める手順、更新の対象と対象外、Renovate の PR を merge する前の確認、更新を止めるメジャー版を人が上げる手順、設定を変えたときの検査。Renovate の PR が出たとき、自動 merge した PR が手戻りになったとき、Renovate の設定を変えるとき、App をインストールするときに読む。
 tags: [tooling, runbook, renovate, mise, github-actions, pnpm]
 ---
 
@@ -12,18 +12,51 @@ PR は squash merge し、タイトルは `chore(deps): ...` です。必須チ�
 
 ## 自動で merge するもの
 
-GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterleaks`、`dependency-review`) が通ったら Renovate が merge します。PR の本文に `Automerge: Enabled` と出ます。リポジトリの設定「Allow auto-merge」が要ります ([GitHub リポジトリの設定](../repository/github-settings.md))。
+GitHub の auto-merge で、必須チェック (`main`、`commitlint`、`betterleaks`、`dependency-review`) と CodeQL が通ったら Renovate が merge します。PR の本文に `Automerge: Enabled` と出ます。リポジトリの設定「Allow auto-merge」が要ります ([GitHub リポジトリの設定](../repository/github-settings.md))。
 
-| 自動にする                                                | 条件                                         |
-| --------------------------------------------------------- | -------------------------------------------- |
-| lock file の更新                                          | なし                                         |
-| npm (catalog) の minor と patch                           | 現在の版が 1.0 以上。公開から 3 日たっている |
-| GitHub Action と mise の道具の patch (betterleaks を含む) | 公開から 3 日たっている                      |
+| 自動にする                      | 条件                                         |
+| ------------------------------- | -------------------------------------------- |
+| lock file の更新                | なし                                         |
+| npm (catalog) の minor と patch | 現在の版が 1.0 以上。公開から 3 日たっている |
 
-人が merge する PR: メジャー版、0.x (`oxc-transform-react` は `renovate.jsonc` の `allowedVersions` で、`@vitejs/plugin-react` の peer の範囲を超える更新も出さない。[ADR 0056](../adr/0056-react-compiler-via-oxc-transform-react.md))、`better-auth`、`oidc-provider`、Node.js、pnpm、`kiro-cli`、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、Action と mise の道具の minor、docker のタグ。
+自動にした PR には `automerge` のラベルが付きます (lock file の更新を含む)。人が merge する PR には付きません。
 
-自動にする PR で CI が落ちたら、PR は open のまま残ります。直して push すれば、CI が通った時点で merge されます。自動にした PR が main を壊したら、その PR を revert します。止めたいときは、`renovate.jsonc` の自動にする規則を消すか、`gh repo edit --enable-auto-merge=false` を実行します。
+人が merge する PR: メジャー版、0.x (`oxc-transform-react` は `renovate.jsonc` の `allowedVersions` で、`@vitejs/plugin-react` の peer の範囲を超える更新も出さない。[ADR 0056](../adr/0056-react-compiler-via-oxc-transform-react.md))、`better-auth`、`oidc-provider`、Node.js、pnpm、`kiro-cli`、`renovate.sh` が使う Renovate 自身、effect-tsgo と Vite+ の PR、GitHub Action と mise の道具 (betterleaks を含む。patch も)、docker のタグ。
+Action は CI の中で実行され、更新は `.github/workflows` を変えます。mise の道具には betterleaks、zizmor、osv-scanner、semgrep のような検査器があり、検査器が壊れて何も見つけなくなっても、「指摘なし」の成功と見分けられません ([ADR 0055](../adr/0055-renovate-automerge-by-ci.md))。
+
+自動にする PR で CI が落ちたら、PR は open のまま残ります。直して push すれば、CI が通った時点で merge されます。
 本文が `Automerge: Disabled by config` なら、規則が効いていません。
+
+### 自動 merge した PR が手戻りになったとき
+
+自動 merge した PR が次のどれかに当たったら、手戻りです ([GLOSSARY.md](../../GLOSSARY.md))。
+
+- `revert:` の PR に戻された。
+- PR テンプレートの「直す PR: #」で名指しされた。
+- merge の直後に main の CI が落ちた。
+
+`rework` のラベルは、信号にしません。`rework` は人の指摘を受けて push したときに付けるラベルで、人が見ないまま merge した PR には付かないためです ([工場の成果の指標](../agents/factory-metrics.md)。信号にする範囲は判断です)。
+手戻りは次のコマンドで探します。
+
+```sh
+gh pr list --state merged --label automerge --limit 100 --json number,title,mergedAt   # 自動 merge した PR
+gh pr list --state merged --search 'revert in:title' --json number,title,body --jq '.[] | select(.body | test("Reverts yokozi-jp/agent-software-factory#")) | {number, title}'   # revert の PR
+gh pr list --state merged --search '"直す PR" in:body' --json number,title                # 名指しした PR
+gh run list --workflow CI --branch main --status failure --limit 20                       # main の CI の失敗
+```
+
+手戻りが1件でも出たら、その種類の自動 merge を止め、人が見る状態に戻します。止めたあとは、原因を直してから再開するかを決めます。
+
+### 自動 merge を止める
+
+「Allow auto-merge」を無効にしても止まりません。Renovate は GitHub の auto-merge が使えないと、自分で merge するためです ([platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge))。止めるには、`renovate.jsonc` を直す PR を出します。
+
+- **一部だけ止める**: その規則の `automerge` を `false` にし、`labels` を `[]` にします。規則を消しても構いません。
+- **全部止める**: `packageRules` の最後に `{ "matchPackageNames": ["*"], "automerge": false, "labels": [] }` を足し、`lockFileMaintenance.automerge` を `false` にします ([Overriding global automerge](https://docs.renovatebot.com/key-concepts/automerge/))。
+
+`labels` は規則の間で合成されず、最後に一致した規則の値が使われます ([labels](https://docs.renovatebot.com/configuration-options/#labels))。人が merge する規則が `labels` を `[]` にしているのは、前の規則の `automerge` のラベルを、自動にしない PR に残さないためです。
+すでに GitHub の auto-merge が予約された PR は、PR の画面の「Disable auto-merge」か `gh pr merge --disable-auto <番号>` で外します (エージェントは `gh pr merge` を実行しません。[エージェントの権限](agent-permissions.md))。
+自動にした PR が main を壊したら、その PR を revert します。
 
 ## インストール (管理者)
 
@@ -77,7 +110,7 @@ Renovate は open の alert を読んでセキュリティ更新の PR を作る
 ## 設定を変えたとき
 
 `renovate.jsonc` と `tools/scripts/sh/renovate.sh` を変えた commit では、pre-commit hook が `tools/scripts/sh/renovate.sh validate` を実行します。CI も同じコマンドを実行します。
-`validate` は `renovate-config-validator --strict` で、知らない設定項目や不正な値を拒否します。実行する Renovate の版は `tools/scripts/sh/renovate.sh` の `renovate_version` に固定してあり、Renovate が週に1回の PR で上げます。どちらも `pnpm dlx` でその版を取るので、ネットワークが要ります。
+`validate` は `renovate-config-validator --strict` で、知らない設定項目や不正な値を拒否します。repo-policy も `renovate.jsonc` を読み、`automerge: true` の規則が npm の minor と patch だけを対象にしていること、`automerge` のラベルが付くこと、人が merge する依存の規則がその後ろにあることを確かめます ([CI](ci.md)、`tools/scripts/src/checks/repo-policy/tooling.ts`)。Renovate の規則の重なりまでは再現しないので、実際の結果は `preview` で見ます。実行する Renovate の版は `tools/scripts/sh/renovate.sh` の `renovate_version` に固定してあり、Renovate が週に1回の PR で上げます。どちらも `pnpm dlx` でその版を取るので、ネットワークが要ります。
 
 実際にどの PR が出るかは、`preview` で確かめます。
 
@@ -87,7 +120,7 @@ tools/scripts/sh/renovate.sh preview
 
 `--platform=local` で Renovate を動かし、出るはずのブランチ名、PR のタイトル、`automerge: yes` か `no` (yes には待つ公開からの日数)、依存ごとの `現在の版 -> 新しい版` を表示します。GitHub の rate limit を避けるため、`GITHUB_COM_TOKEN` か、ログイン済みの `gh` を使います。
 Renovate のログは 500 MB を超えることがあるので、`preview` は 1 行ずつ読み、ブランチの一覧の行だけを取り出します。
-設定を変えたあとは、意図した PR が出て、止めたはずの更新 (betterleaks の v2 など) が出ないことを見ます。
+設定を変えたあとは、意図した PR が出て、止めたはずの更新 (betterleaks の v2 など) が出ないことを見ます。`automerge: yes` の PR が、Action、mise の道具、メジャー版、0.x、人が merge する依存でないことも見ます。
 
 エージェントは、トークンを読む処理を `renovate.sh` に任せ、`gh auth token` を自分で実行しません。トークンを読む自前のスクリプトも書きません ([エージェントの権限](agent-permissions.md))。`renovate.sh preview` が rate limit で止まったら、利用者に `GITHUB_COM_TOKEN` を設定して実行するよう頼みます。
 
