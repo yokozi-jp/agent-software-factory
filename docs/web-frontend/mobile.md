@@ -25,8 +25,9 @@ tags: [web-frontend, convention, mobile, accessibility]
 ## 押せる大きさ
 
 - 24×24 CSS px 未満は CI で止める。axe の `target-size` (WCAG 2.2 SC 2.5.8、AA) を `apps/web/.storybook/preview.ts` の `a11y.options.runOnly` で有効にしている。`target-size` は `wcag22aa` のタグだけに付く。`runOnly` は書いたタグの規則だけを動かすので、`wcag2a`、`wcag2aa`、`wcag21a`、`wcag21aa`、`best-practice` も並べる。`wcag22aa` だけを書くと、既存の規則が外れる。
-- 主な操作は `md` 未満で 44×44 CSS px 以上にする (WCAG 2.2 SC 2.5.5、AAA の値。アプリ全体で AAA を採るわけではない)。主な操作は、ログインのボタン、メニューを開くボタン、メニューの項目、ユーザーメニューの項目 (テーマの 3 択とログアウト) の 4 つ。PC の寸法は変えない。クラスは `max-md:h-11` と `max-md:size-11`。
-- スマホの主な操作に、`Button` の `xs` (24px) と `icon-xs` (24px) は使わない。
+- `Button` の `default`、`lg`、`icon`、`icon-lg` と、`SidebarMenuButton` の `default` は、`md` 未満で 44×44 CSS px 以上にする (WCAG 2.2 SC 2.5.5、AAA の値。アプリ全体で AAA を採るわけではない)。モバイルファースト (Tailwind の公式の基本) で、部品の `cva` に `h-11 md:h-8` の形で持つ。呼び出し側に `max-md:` を書かない。`SidebarTrigger` は `size="icon"` を使う。
+- `xs`、`sm`、`icon-xs`、`icon-sm` は、PC 向けの小さい寸法で、スマホでも小さいままになる。密な表など、小さいことを選ぶ場所だけで使い、スマホの主な操作 (ログインのボタン、メニューを開くボタン、メニューの項目、ユーザーメニューの項目) には使わない。
+- 切り替えの条件は画面の幅 (`md`) にする。入力装置 (`pointer-coarse:`) の方が「指で触るか」を正確に表すが、story の環境は `pointer: fine` で、`contextOptions` の `hasTouch: true` を全 story に効かせる Vitest のプロジェクトを足す必要がある。縦持ちのスマホだけを保証する間は、幅で結果は同じで、サイドバーの切り替え (`use-mobile.ts`) とも条件がそろう。横持ちやタブレットを保証に含めるときに、`pointer-coarse:` へ移す。
 - Oxlint の `jsx-a11y` は、描画後の大きさを見られないので、この検査には使えない。
 
 ## 検査
