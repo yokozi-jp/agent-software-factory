@@ -16,6 +16,18 @@ shellcheck = "0.11.0"
 uv = "0.13.7"
 zizmor = "1.32.0"
 
+# Kiro CLI has no mise registry entry, so the http backend downloads the official zip (docs/adr/0057).
+# The version list and the sha256 of every package are in the official index.json; mise.lock records the sha256.
+# renovate.jsonc has a regex manager that reads the `version` line right under this table header, so keep them adjacent.
+[tools."http:kiro-cli"]
+version = "3.2.1"
+bin_path = "kirocli/bin"
+checksum_url = "https://prod.download.cli.kiro.dev/stable/index.json"
+checksum_expr = '"sha256:" + filter(filter(fromJSON(body).versions, { #.version == version })[0].packages, { #.download == version + "/" + filename })[0].sha256'
+
+[tools."http:kiro-cli".platforms]
+linux-x64 = { url = "https://prod.download.cli.kiro.dev/stable/{{ version }}/kirocli-x86_64-linux.zip" }
+
 [settings]
 # minimum_release_age は供給網リスク対策の cooldown (新しすぎる版を避ける) です (docs/adr/0021)。
 # 既定の "24h" は duration で now を基準にするため、pypi backend が uv に渡す exclude-newer が
