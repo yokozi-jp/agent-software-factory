@@ -7,7 +7,7 @@ import { catalogMatchesConfigs } from "./assurance-catalog.ts";
 
 const base = passingRepo;
 
-describe("the assurance catalog has one row per sensor of the configs", () => {
+describe("保証カタログに、設定の sensor ごとに 1 行あること", () => {
   const violations = failuresOf(catalogMatchesConfigs);
   const path = "docs/tooling/assurance-catalog.md";
   const catalog = base[path] ?? "";
@@ -25,7 +25,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
   const gateNoRow = (sensor: string) =>
     `\`${sensor}\` has no row in ${path}. A gate is a row of its own; add one.`;
 
-  it("refuses a step of ci.yml that has no row", () => {
+  it("行のない ci.yml の step を拒否すること", () => {
     const step = "      - name: Lint Markdown\n        run: pnpm lint:md\n";
     const added = ci.replace("  nx:\n", `${step}  nx:\n`);
     expect(violations(repo({ ".github/workflows/ci.yml": added }))).toEqual([
@@ -33,21 +33,24 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("refuses a step that runs a command without a name, but not one that only uses an action", () => {
+  it("名前のないコマンドを実行する step を拒否し、action を使うだけの step は拒否しないこと", () => {
     const added = ci.replace("  nx:\n", "      - run: pnpm lint:md\n      - uses: a/b@v1\n  nx:\n");
     expect(violations(repo({ ".github/workflows/ci.yml": added }))).toEqual([
       `.github/workflows/ci.yml: a step of the job \`checks\` runs a command without a name. Name it, so that ${path} can list it.`,
     ]);
   });
 
-  it.each(['""', '" "', "1"])("refuses a step named %s, as one without a name", (name) => {
-    const added = ci.replace("  nx:\n", `      - name: ${name}\n        run: x\n  nx:\n`);
-    expect(violations(repo({ ".github/workflows/ci.yml": added }))).toEqual([
-      `.github/workflows/ci.yml: a step of the job \`checks\` runs a command without a name. Name it, so that ${path} can list it.`,
-    ]);
-  });
+  it.each(['""', '" "', "1"])(
+    "名前が %s の step を、名前のない step として拒否すること",
+    (name) => {
+      const added = ci.replace("  nx:\n", `      - name: ${name}\n        run: x\n  nx:\n`);
+      expect(violations(repo({ ".github/workflows/ci.yml": added }))).toEqual([
+        `.github/workflows/ci.yml: a step of the job \`checks\` runs a command without a name. Name it, so that ${path} can list it.`,
+      ]);
+    },
+  );
 
-  it("does not list the steps of main, which is the required check `main` of the ruleset", () => {
+  it("ruleset の必須チェック `main` である main の step を一覧にしないこと", () => {
     const named = ci.replace("      - run: exit 0", "      - name: Collect\n        run: exit 0");
     expect(violations(repo({ ".github/workflows/ci.yml": named }))).toEqual([]);
   });
@@ -59,24 +62,24 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
       "    - name: format-and-lint\n      group:\n        jobs:\n          - name: check\n            run: x\n          - name: markdownlint\n            run: x\n",
       ["lefthook: pre-commit/check", "lefthook: pre-commit/markdownlint"],
     ],
-  ])("refuses %s of lefthook.yml that has no row", (_, job, sensors) => {
+  ])("行のない lefthook.yml の %s を拒否すること", (_, job, sensors) => {
     expect(violations(repo({ "lefthook.yml": lefthook + job }))).toEqual(sensors.map(noRow));
   });
 
-  it("refuses a command of lefthook.yml that has no row", () => {
+  it("行のない lefthook.yml のコマンドを拒否すること", () => {
     const commands = "pre-push:\n  commands:\n    adr-check:\n      run: x\n";
     expect(violations(repo({ "lefthook.yml": lefthook + commands }))).toEqual([
       noRow("lefthook: pre-push/adr-check"),
     ]);
   });
 
-  it("refuses a job of lefthook.yml without a name", () => {
+  it("名前のない lefthook.yml の job を拒否すること", () => {
     expect(violations(repo({ "lefthook.yml": `${lefthook}    - run: x\n` }))).toEqual([
       `lefthook.yml: a job of pre-commit has no name. Name it, so that ${path} can list it.`,
     ]);
   });
 
-  it("passes a job of lefthook.yml that is a row of its own, or a local copy of another row", () => {
+  it("自分の行を持つ lefthook.yml の job と、別の行の写しである job を通すこと", () => {
     const job = "    - name: adr-number\n      run: x\n";
     expect(
       violations(
@@ -93,7 +96,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     expect(violations(repo({ "lefthook.yml": lefthook + job, [path]: copy }))).toEqual([]);
   });
 
-  it("refuses a hook of .kiro/hooks without a row, and one without a name", () => {
+  it("行のない .kiro/hooks の hook と、名前のない hook を拒否すること", () => {
     const hooks = json({ hooks: [{ name: "session-start" }, { trigger: "Stop" }] });
     expect(violations(repo({ ".kiro/hooks/session-start.json": hooks }))).toEqual([
       `.kiro/hooks/session-start.json: a hook has no name. Name it, so that ${path} can list it.`,
@@ -101,7 +104,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("reads only the JSON files directly in .kiro/hooks", () => {
+  it(".kiro/hooks 直下の JSON ファイルだけを読むこと", () => {
     const hooks = json({ hooks: [{ name: "session-start" }] });
     const elsewhere = {
       "apps/.kiro/hooks/a.json": hooks,
@@ -111,7 +114,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     expect(violations(repo(elsewhere))).toEqual([]);
   });
 
-  it("refuses a rule, a required check and a code scanning tool of the ruleset without a row", () => {
+  it("行のない ruleset の規則、必須チェック、code scanning の道具を拒否すること", () => {
     const ruleset = json({
       rules: [
         { type: "deletion" },
@@ -134,7 +137,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("reads required checks only from required_status_checks, and skips an entry without a context", () => {
+  it("必須チェックを required_status_checks からだけ読み、context のない項目を読み飛ばすこと", () => {
     const ruleset = json({
       rules: [
         { type: "deletion" },
@@ -151,7 +154,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     expect(violations(repo({ ".github/rulesets/protect-main.json": ruleset }))).toEqual([]);
   });
 
-  it("refuses a gate that is only named as a local copy", () => {
+  it("写しとしてだけ名前の挙がった gate を拒否すること", () => {
     const step = "      - name: Lint Markdown\n        run: pnpm lint:md\n";
     const added = ci.replace("  nx:\n", `${step}  nx:\n`);
     const copy = catalog.replace(
@@ -184,33 +187,33 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
       "kiro: pre-tool-use/block-gone",
       "a hook of .kiro/hooks/*.json and a check of tools/scripts/src/hooks/, written `kiro: <hook>/<check>`",
     ],
-  ])("refuses a row for %s, which the configs do not have", (sensor, where) => {
+  ])("設定にない %s の行を拒否すること", (sensor, where) => {
     expect(violations(repo(withRow(row(`\`${sensor}\``))))).toEqual([
       `${path} names \`${sensor}\`, which is not in ${where}.`,
     ]);
   });
 
-  it("refuses a local copy that the configs do not have", () => {
+  it("設定にない写しを拒否すること", () => {
     const copy = row("`kiro: pre-tool-use/block-force-push`", "`lefthook: pre-push/gone`");
     expect(violations(repo(withKiroRow(copy)))).toEqual([
       `${path} names \`lefthook: pre-push/gone\`, which is not in lefthook.yml.`,
     ]);
   });
 
-  it("does not compare the rows for ci.yml when there is no ci.yml, but still the others", () => {
+  it("ci.yml がないとき ci.yml の行を比べないが、ほかは比べること", () => {
     const files = { ".github/workflows/ci.yml": undefined, ...withRow(row("`ruleset: gone`")) };
     expect(violations(repo(files)).filter((failure) => failure.includes(path))).toEqual([
       `${path} names \`ruleset: gone\`, which is not in .github/rulesets/protect-main.json.`,
     ]);
   });
 
-  it("refuses two rows for one sensor", () => {
+  it("1 つの sensor に 2 つの行があることを拒否すること", () => {
     expect(violations(repo(withRow(row("`ruleset: deletion`"))))).toEqual([
       `${path} names \`ruleset: deletion\` more than once. Each sensor has one row, and each local copy is named in one row.`,
     ]);
   });
 
-  it("refuses a local copy named in two rows, or as a row and a copy", () => {
+  it("2 つの行、または行と写しの両方で名前の挙がった写しを拒否すること", () => {
     const twice = row("`ruleset: gone2`", "`lefthook: pre-commit/scripts-test-tools`");
     const failures = violations(repo(withRow(twice)));
     expect(failures).toContain(
@@ -222,14 +225,14 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("refuses a check that asks the user and has no row", () => {
+  it("利用者に尋ね、行のないチェックを拒否すること", () => {
     const check = { "tools/scripts/src/hooks/discard-changes.ts": "// ask-discard-changes: x\n" };
     expect(violations(repo(check))).toEqual([
       `\`ask-discard-changes\` (tools/scripts/src/hooks/discard-changes.ts) has no row in ${path}. Add a row \`kiro: <hook>/ask-discard-changes\` for the hook that runs it.`,
     ]);
   });
 
-  it("refuses a check of the Kiro hooks that has no row", () => {
+  it("行のない Kiro の hook のチェックを拒否すること", () => {
     const check = { "tools/scripts/src/hooks/iwe-normalize.ts": "// block-iwe-normalize: x\n" };
     expect(violations(repo(check))).toEqual([
       `\`block-iwe-normalize\` (tools/scripts/src/hooks/iwe-normalize.ts) has no row in ${path}. Add a row \`kiro: <hook>/block-iwe-normalize\` for the hook that runs it.`,
@@ -238,7 +241,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     expect(violations(repo({ ...check, ...withRow(row2) }))).toEqual([]);
   });
 
-  it("does not count a lefthook job of the same name as the row of a Kiro check", () => {
+  it("同じ名前の lefthook の job を、Kiro のチェックの行に数えないこと", () => {
     const files = {
       "tools/scripts/src/hooks/iwe-normalize.ts": "// block-iwe-normalize: x\n",
       "lefthook.yml": `${lefthook}    - name: block-iwe-normalize\n      run: x\n`,
@@ -249,7 +252,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("names a check only by the first line of a file directly in tools/scripts/src/hooks", () => {
+  it("tools/scripts/src/hooks 直下のファイルの最初の行だけで、チェックを名付けること", () => {
     expect(
       violations(
         repo({
@@ -283,14 +286,14 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("reads a cell with an escaped pipe, and stops at the end of the table", () => {
+  it("エスケープした縦棒のあるセルを読み、表の終わりで止まること", () => {
     // Split at the escaped pipe, the row would have an empty 検出力の確かめ方.
     const pipe = "| `kiro: pre-tool-use/block-force-push` | x \\| y | g | | | t |\n";
     const after = "Text after the table |\n\n| 名前 |\n| --- |\n| `ruleset: gone` |\n";
     expect(violations(repo(withKiroRow(pipe + after)))).toEqual([]);
   });
 
-  it("finds the columns by their names, in any order", () => {
+  it("列を名前で、順序を問わず見つけること", () => {
     const swapped = [
       "| 検出力の確かめ方 | ローカルの写し | 名前 |",
       "| --- | --- | --- |",
@@ -305,7 +308,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     expect(violations(repo({ [path]: swapped }))).toEqual([]);
   });
 
-  it("reads the cells that a short row leaves out as empty", () => {
+  it("短い行が省いたセルを空として読むこと", () => {
     const short = "| `kiro: pre-tool-use/block-force-push` |\n";
     expect(violations(repo(withKiroRow(short)))).toEqual([
       `${path}: the row for \`kiro: pre-tool-use/block-force-push\` must fill in 検出力の確かめ方 (docs/tooling/ci.md ("検査を足すとき")).`,
@@ -316,7 +319,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("refuses a repository without the catalog", () => {
+  it("カタログのないリポジトリを拒否すること", () => {
     expect(violations(repo({ [path]: undefined }))).toEqual([
       `${path} does not exist. It lists every sensor of the gates, and repo-policy compares it with the configs.`,
     ]);
@@ -326,14 +329,14 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ["名前", "| 表 | ローカルの写し | 検出力の確かめ方 |"],
     ["ローカルの写し", "| 名前 | 写し | 検出力の確かめ方 |"],
     ["検出力の確かめ方", "| 名前 | ローカルの写し | 検出力 |"],
-  ])("refuses a table without the column %s", (_, header) => {
+  ])("列 %s のない表を拒否すること", (_, header) => {
     const other = `${header}\n| --- | --- | --- |\n| \`ruleset: deletion\` | | t |\n`;
     expect(violations(repo({ [path]: other }))).toEqual([
       `${path} has no table with the columns 名前, ローカルの写し and 検出力の確かめ方.`,
     ]);
   });
 
-  it("refuses a catalog without the table", () => {
+  it("表のないカタログを拒否すること", () => {
     const other =
       "# 保証カタログ\n\n| 名前 | ゲート |\n| --- | --- |\n| `ruleset: deletion` | g |\n";
     expect(violations(repo({ [path]: other }))).toEqual([
@@ -341,7 +344,7 @@ describe("the assurance catalog has one row per sensor of the configs", () => {
     ]);
   });
 
-  it("wants a row for the agent in the catalog, and none for an agent that is gone", () => {
+  it("カタログに agent の行を求め、なくなった agent の行を求めないこと", () => {
     const rows = (base[path] ?? "").split("\n").filter((line) => !line.includes("kiro-agent"));
     expect(violations(repo({ [path]: rows.join("\n") }))).toEqual([
       `\`kiro-agent: factory\` has no row in ${path}. Add a row for the agent.`,

@@ -32,9 +32,9 @@ const forcePushMessage =
   "block-force-push: refused. Force push rewrites the remote branch. Ask the user to run it, or merge without rewriting history (PRs are squash merged, docs/adr/0004).";
 const iweNormalizeMessage =
   "block-iwe-normalize: refused. `iwe normalize` rewrites every document under docs/ (docs/adr/0006). Edit files directly instead; see docs/knowledge/documentation-authoring.md.";
-describe("preToolUse: force push", () => {
+describe("preToolUse: force push の拒否", () => {
   it.each(["execute_bash", "shell"])(
-    "refuses a force push from %s with exit 2 and the reason on stderr",
+    "%s からの force push を終了コード 2 で拒否し、理由を stderr に出力すること",
     (tool) => {
       expect(preToolUse(shell("git push -f", tool), {}, deps())).toEqual({
         status: 2,
@@ -44,21 +44,21 @@ describe("preToolUse: force push", () => {
     },
   );
 
-  it("allows an ordinary push", () => {
+  it("通常の push を許可すること", () => {
     expect(preToolUse(shell("git push"), {}, deps())).toEqual(allow);
   });
 
-  it("allows a force push with KIRO_ALLOW_FORCE_PUSH=1", () => {
+  it("KIRO_ALLOW_FORCE_PUSH=1 のとき force push を許可すること", () => {
     expect(preToolUse(shell("git push -f"), { KIRO_ALLOW_FORCE_PUSH: "1" }, deps())).toEqual(allow);
   });
 
-  it("does not look at a tool that is not the shell", () => {
+  it("シェルでない tool を見ないこと", () => {
     expect(preToolUse(write("fs_write", "git push -f"), {}, deps())).toEqual(allow);
   });
 });
 
-describe("preToolUse: iwe normalize", () => {
-  it("refuses the subcommand from the shell", () => {
+describe("preToolUse: iwe normalize の拒否", () => {
+  it("シェルからのサブコマンドを拒否すること", () => {
     expect(preToolUse(shell("iwe normalize"), {}, deps())).toEqual({
       status: 2,
       stdout: "",
@@ -66,18 +66,18 @@ describe("preToolUse: iwe normalize", () => {
     });
   });
 
-  it("refuses the iwe MCP tool", () => {
+  it("iwe の MCP tool を拒否すること", () => {
     const event = { tool_name: "@iwe/iwe_normalize", tool_input: {} };
     expect(preToolUse(event, {}, deps()).status).toBe(2);
   });
 
-  it("allows both with IWE_ALLOW_NORMALIZE=1", () => {
+  it("IWE_ALLOW_NORMALIZE=1 のとき両方を許可すること", () => {
     const env = { IWE_ALLOW_NORMALIZE: "1" };
     expect(preToolUse(shell("iwe normalize"), env, deps())).toEqual(allow);
     expect(preToolUse({ tool_name: "@iwe/iwe_normalize" }, env, deps())).toEqual(allow);
   });
 
-  it("gives every reason when a command does both", () => {
+  it("コマンドが両方に当たるとき、すべての理由を述べること", () => {
     expect(preToolUse(shell("git push -f; iwe normalize"), {}, deps())).toEqual({
       status: 2,
       stdout: "",
@@ -85,41 +85,44 @@ describe("preToolUse: iwe normalize", () => {
     });
   });
 
-  it("does not look at a tool outside its matcher", () => {
+  it("matcher の外の tool を見ないこと", () => {
     expect(preToolUse({ tool_name: "fs_write_iwe_normalize" }, {}, deps()).status).toBe(0);
   });
 });
 
-describe("preToolUse: generated files", () => {
-  it.each(["fs_write", "str_replace", "fs_append"])("refuses %s on a generated file", (tool) => {
-    const result = preToolUse(write(tool, "pnpm-lock.yaml"), {}, deps());
-    expect(result.status).toBe(2);
-    expect(result.stderr).toMatch(
-      new RegExp(
-        `^block-generated-writes: refused ${tool} on pnpm-lock.yaml\\. .*pnpm install.*\\n$`,
-      ),
-    );
-  });
+describe("preToolUse: 生成されたファイル", () => {
+  it.each(["fs_write", "str_replace", "fs_append"])(
+    "生成されたファイルへの %s を拒否すること",
+    (tool) => {
+      const result = preToolUse(write(tool, "pnpm-lock.yaml"), {}, deps());
+      expect(result.status).toBe(2);
+      expect(result.stderr).toMatch(
+        new RegExp(
+          `^block-generated-writes: refused ${tool} on pnpm-lock.yaml\\. .*pnpm install.*\\n$`,
+        ),
+      );
+    },
+  );
 
-  it("refuses delete_file, which names the file targetFile", () => {
+  it("ファイルを targetFile と名付ける delete_file を拒否すること", () => {
     const event = { tool_name: "delete_file", tool_input: { targetFile: "skills-lock.json" } };
     expect(preToolUse(event, {}, deps()).stderr).toContain("pnpm dlx skills update");
   });
 
-  it("allows another file", () => {
+  it("ほかのファイルを許可すること", () => {
     expect(preToolUse(write("fs_write", "README.md"), {}, deps())).toEqual(allow);
   });
 
-  it("allows a write the hook cannot place", () => {
+  it("hook が位置づけられない書き込みを許可すること", () => {
     expect(preToolUse({ tool_name: "fs_write", tool_input: {} }, {}, deps())).toEqual(allow);
   });
 
-  it("allows a generated file with KIRO_ALLOW_GENERATED_WRITE=1", () => {
+  it("KIRO_ALLOW_GENERATED_WRITE=1 のとき生成されたファイルを許可すること", () => {
     const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
     expect(preToolUse(write("fs_write", "pnpm-lock.yaml"), env, deps())).toEqual(allow);
   });
 
-  it("does not resolve the path of a read or of a tool with a similar name", () => {
+  it("読み取りや、似た名前の tool の path を解決しないこと", () => {
     const d = deps();
     preToolUse(write("read_file", "pnpm-lock.yaml"), {}, d);
     preToolUse(write("fs_write2", "pnpm-lock.yaml"), {}, d);
@@ -128,8 +131,8 @@ describe("preToolUse: generated files", () => {
   });
 });
 
-describe("preToolUse: forbidden commands", () => {
-  it.each(["execute_bash", "shell"])("refuses gh pr merge from %s", (tool) => {
+describe("preToolUse: 禁止のコマンド", () => {
+  it.each(["execute_bash", "shell"])("%s からの gh pr merge を拒否すること", (tool) => {
     const result = preToolUse(shell("gh pr merge 12", tool), {}, deps());
     expect(result.status).toBe(2);
     expect(result.stderr).toMatch(
@@ -137,11 +140,11 @@ describe("preToolUse: forbidden commands", () => {
     );
   });
 
-  it("allows an ordinary command", () => {
+  it("通常のコマンドを許可すること", () => {
     expect(preToolUse(shell("gh pr create --fill"), {}, deps())).toEqual(allow);
   });
 
-  it("has no variable that lets it through", () => {
+  it("通す変数がないこと", () => {
     const env = {
       KIRO_ALLOW_FORCE_PUSH: "1",
       IWE_ALLOW_NORMALIZE: "1",
@@ -150,18 +153,18 @@ describe("preToolUse: forbidden commands", () => {
     expect(preToolUse(shell("git push origin main"), env, deps()).status).toBe(2);
   });
 
-  it("does not look at a tool that is not the shell", () => {
+  it("シェルでない tool を見ないこと", () => {
     expect(preToolUse(write("fs_write", "gh pr merge 12"), {}, deps())).toEqual(allow);
   });
 
-  it("gives the reasons of both checks when a command does both", () => {
+  it("コマンドが両方に当たるとき、両方の検査の理由を述べること", () => {
     const result = preToolUse(shell("git push -f origin main"), {}, deps());
     expect(result.stderr).toContain("block-force-push");
     expect(result.stderr).toContain("block-forbidden-commands");
   });
 });
 
-describe("preToolUse: discarding uncommitted changes", () => {
+describe("preToolUse: コミットしていない変更を捨てること", () => {
   const ask = (reason: string) => ({
     status: 0,
     stdout: JSON.stringify({
@@ -174,7 +177,7 @@ describe("preToolUse: discarding uncommitted changes", () => {
     "ask-discard-changes: this git command discards uncommitted changes, which git cannot restore. The working tree may hold another session's edits or your own uncommitted ones. To undo your own edit, write the file back with the file tools, or keep the changes with `git stash` (docs/tooling/agent-permissions.md).";
 
   it.each(["execute_bash", "shell"])(
-    "asks the user with exit 0 and the decision on stdout, from %s",
+    "%s のとき、終了コード 0 で尋ね、判断を stdout に出力すること",
     (tool) => {
       expect(preToolUse(shell("git checkout -- src/a.ts", tool), {}, deps())).toEqual(
         ask(discardReason),
@@ -182,22 +185,22 @@ describe("preToolUse: discarding uncommitted changes", () => {
     },
   );
 
-  it("does not ask for a command that keeps the changes", () => {
+  it("変更を残すコマンドでは尋ねないこと", () => {
     expect(preToolUse(shell("git restore --staged src/a.ts"), {}, deps())).toEqual(allow);
   });
 
-  it("does not look at a tool that is not the shell", () => {
+  it("シェルでない tool を見ないこと", () => {
     expect(preToolUse(write("fs_write", "git reset --hard"), {}, deps())).toEqual(allow);
   });
 
-  it("refuses rather than asks when the command is also refused", () => {
+  it("コマンドが拒否にも当たるとき、尋ねずに拒否すること", () => {
     const result = preToolUse(shell("git reset --hard && git push -f"), {}, deps());
     expect(result).toEqual({ status: 2, stdout: "", stderr: `${forcePushMessage}\n` });
   });
 });
 
-describe("preToolUse: .kiro/settings", () => {
-  it.each(["fs_write", "str_replace", "fs_append", "delete_file"])("refuses %s", (tool) => {
+describe("preToolUse: .kiro/settings の保護", () => {
+  it.each(["fs_write", "str_replace", "fs_append", "delete_file"])("%s を拒否すること", (tool) => {
     const event = {
       tool_name: tool,
       tool_input:
@@ -212,12 +215,12 @@ describe("preToolUse: .kiro/settings", () => {
     );
   });
 
-  it("has no variable that lets it through", () => {
+  it("通す変数がないこと", () => {
     const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
     expect(preToolUse(write("fs_write", ".kiro/settings/cli.json"), env, deps()).status).toBe(2);
   });
 
-  it("allows .kiro/agents", () => {
+  it(".kiro/agents を許可すること", () => {
     expect(preToolUse(write("fs_write", ".kiro/agents/factory.json"), {}, deps())).toEqual(allow);
   });
 });
@@ -232,7 +235,7 @@ describe("preToolUseMatcher", () => {
     "str_replace",
     "fs_append",
     "delete_file",
-  ])("starts the hook for %s, which a check looks at", (tool) => {
+  ])("検査が見る %s のとき、hook を起動すること", (tool) => {
     expect(matcher.test(tool)).toBe(true);
   });
 
@@ -248,12 +251,12 @@ describe("preToolUseMatcher", () => {
     "fsAppend",
     "deleteFile",
     "write",
-  ])("does not start it for %s", (tool) => {
+  ])("%s のとき起動しないこと", (tool) => {
     expect(matcher.test(tool)).toBe(false);
   });
 });
 
-describe("preToolUse: an event it cannot read", () => {
+describe("preToolUse: 読めないイベント", () => {
   it.each([
     undefined,
     null,
@@ -264,7 +267,7 @@ describe("preToolUse: an event it cannot read", () => {
     { tool_name: 1 },
     { tool_name: "execute_bash" },
     { tool_name: "execute_bash", tool_input: { command: 1 } },
-  ])("allows %j", (event) => {
+  ])("%j を許可すること", (event) => {
     expect(preToolUse(event, {}, deps())).toEqual(allow);
   });
 });

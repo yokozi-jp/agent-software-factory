@@ -50,13 +50,13 @@ afterAll(() => {
   box.remove();
 });
 
-describe("secret-scan with the real betterleaks and .betterleaks.toml", () => {
-  it("passes clean history and files", () => {
+describe("本物の betterleaks と .betterleaks.toml による secret-scan", () => {
+  it("きれいな履歴とファイルを通すこと", () => {
     expect(scan(["all"]).status).toBe(0);
     expect(scan(["worktree"]).status).toBe(0);
   }, 300_000);
 
-  it("finds a staged token, and passes it on a line marked betterleaks:allow", () => {
+  it("ステージした token を見つけ、betterleaks:allow の印のある行は通すこと", () => {
     writeFileSync(
       join(repo, "allowed.ts"),
       `export const key = "${token}"; // betterleaks:allow\n`,
@@ -73,7 +73,7 @@ describe("secret-scan with the real betterleaks and .betterleaks.toml", () => {
     head = git("rev-parse", "HEAD");
   }, 120_000);
 
-  it("finds the committed token in a range, the whole history and a push", () => {
+  it("commit の範囲、履歴全体、push の中に commit された token を見つけること", () => {
     expect(scan(["range", base, head]).status).toBe(1);
     expect(scan(["all"]).status).toBe(1);
     expect(scan(["pre-push"], `refs/heads/main ${head} refs/heads/main ${base}\n`).status).toBe(1);

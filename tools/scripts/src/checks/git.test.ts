@@ -11,12 +11,12 @@ afterEach(() => {
 });
 
 describe("tryGit", () => {
-  it("returns what git prints", () => {
+  it("git が出力したものを返すこと", () => {
     gitIn(box.root, ["init", "-q", "."]);
     expect(tryGit(box.root, ["rev-parse", "--show-toplevel"])?.trim()).toBe(box.root);
   });
 
-  it("returns output larger than the default buffer of 1 MiB", () => {
+  it("既定のバッファ 1 MiB より大きい出力を返すこと", () => {
     gitIn(box.root, ["init", "-q", "."]);
     const big = gitIn(box.root, ["hash-object", "-w", "--stdin"], {
       input: "x".repeat(2 * 1024 * 1024),
@@ -24,11 +24,11 @@ describe("tryGit", () => {
     expect(tryGit(box.root, ["cat-file", "blob", big])).toHaveLength(2 * 1024 * 1024);
   });
 
-  it("returns undefined when git fails, such as outside a repository", () => {
+  it("リポジトリの外などで git が失敗したとき、undefined を返すこと", () => {
     expect(tryGit(box.root, ["rev-parse", "--show-toplevel"])).toBeUndefined();
   });
 
-  it("returns undefined when the directory does not exist", () => {
+  it("ディレクトリがないとき、undefined を返すこと", () => {
     expect(tryGit(`${box.root}/missing`, ["status"])).toBeUndefined();
   });
 });

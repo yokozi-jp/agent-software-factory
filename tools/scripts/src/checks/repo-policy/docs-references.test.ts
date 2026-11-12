@@ -11,7 +11,7 @@ const base = passingRepo;
 // Said after a docs/ path or ADR number that the tree does not have.
 const stagingHint = " A new file counts once it is staged (git add).";
 
-describe("references to docs/ from outside docs/", () => {
+describe("docs/ の外から docs/ への参照", () => {
   const violations = failuresOf(docsReferences);
   const cite = (line: string, path = "lefthook.yml") => ({
     [path]: `${base["lefthook.yml"] ?? ""}# ${line}\n`,
@@ -36,17 +36,17 @@ describe("references to docs/ from outside docs/", () => {
     ["an ADR number at the end of a line", "docs/adr/0002"],
     ["a path inside another path", "see apps/docs/missing.md and ../docs/missing.md"],
     ["an ADR number with more digits", "docs/adr/99999"],
-  ])("passes %s that exists", (_, line) => {
+  ])("存在する %s を通すこと", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
   });
 
-  it("refuses a file that does not exist", () => {
+  it("存在しないファイルを拒否すること", () => {
     expect(violations(repo(cite("see docs/tooling/missing.md")))).toEqual([
       `lefthook.yml cites docs/tooling/missing.md, which does not exist.${stagingHint}`,
     ]);
   });
 
-  it("refuses a heading that does not exist", () => {
+  it("存在しない見出しを拒否すること", () => {
     expect(violations(repo(cite('see docs/local-env-setup/setup.md ("No such heading")')))).toEqual(
       [
         'lefthook.yml cites the heading "No such heading" in docs/local-env-setup/setup.md, which has no such heading.',
@@ -54,26 +54,26 @@ describe("references to docs/ from outside docs/", () => {
     );
   });
 
-  it("matches the whole heading line, not a part of it", () => {
+  it("見出しの行の一部ではなく、全体に一致すること", () => {
     expect(violations(repo(cite('docs/local-env-setup/setup.md ("Ubuntu")')))).toEqual([
       'lefthook.yml cites the heading "Ubuntu" in docs/local-env-setup/setup.md, which has no such heading.',
     ]);
   });
 
-  it("refuses an ADR number that does not exist", () => {
+  it("存在しない ADR 番号を拒否すること", () => {
     expect(violations(repo(cite("docs/adr/9999")))).toEqual([
       `lefthook.yml cites docs/adr/9999, which does not exist.${stagingHint}`,
     ]);
   });
 
-  it("names every reference of a line", () => {
+  it("行のすべての参照を挙げること", () => {
     expect(violations(repo(cite("docs/adr/9998 and docs/adr/9999.")))).toEqual([
       `lefthook.yml cites docs/adr/9998, which does not exist.${stagingHint}`,
       `lefthook.yml cites docs/adr/9999, which does not exist.${stagingHint}`,
     ]);
   });
 
-  it("checks the code and the tests of tools/scripts", () => {
+  it("tools/scripts のコードとテストを検査すること", () => {
     expect(
       violations(
         repo({
@@ -96,21 +96,21 @@ describe("references to docs/ from outside docs/", () => {
     "tools/scripts/src/checks/repo-policy/rules.test.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/passing-repo.ts",
     "pnpm-lock.yaml",
-  ])("does not check %s, which may cite missing docs on purpose", (path) => {
+  ])("わざと存在しない文書を引用してよい %s を検査しないこと", (path) => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([]);
   });
 
-  it("checks a path that only has research/ inside it", () => {
+  it("中に research/ があるだけの path を検査すること", () => {
     expect(violations(repo({ "apps/research/a.md": "docs/adr/9999\n" }))).toEqual([
       `apps/research/a.md cites docs/adr/9999, which does not exist.${stagingHint}`,
     ]);
   });
 
-  it("does not read binary files", () => {
+  it("バイナリファイルを読まないこと", () => {
     expect(violations(repo({ "assets/a.png": "\0docs/adr/9999\n" }))).toEqual([]);
   });
 
-  it("counts a doc only if the tree has it", () => {
+  it("ツリーにあるときだけ、文書を数えること", () => {
     expect(
       violations(
         repo({
@@ -124,7 +124,7 @@ describe("references to docs/ from outside docs/", () => {
   });
 });
 
-describe("references from docs/ to files of the code", () => {
+describe("docs/ からコードのファイルへの参照", () => {
   const violations = failuresOf(codePathReferences);
   const cite = (line: string, path = "docs/tooling/ci.md") => ({
     [path]: `# A doc\n\n${line}\n`,
@@ -139,7 +139,7 @@ describe("references from docs/ to files of the code", () => {
     ["a Kiro file", "`.kiro/a-b.txt`", [".kiro/a-b.txt"]],
     ["a type file", "`types/a.d.ts`", ["types/a.d.ts"]],
     ["a path in a sentence", "see `tools/a_b/@c.ts` for it", ["tools/a_b/@c.ts"]],
-  ])("passes %s that exists", (_, line, exists) => {
+  ])("存在する %s を通すこと", (_, line, exists) => {
     expect(
       violations(repo({ ...cite(line), ...Object.fromEntries(exists.map((path) => [path, ""])) })),
     ).toEqual([]);
@@ -154,11 +154,11 @@ describe("references from docs/ to files of the code", () => {
     ["apps/api/missing.json"],
     ["packages/claim/src/missing.d.ts"],
     ["tools/scripts/src/a-b_c.d/@x.ts"],
-  ])("refuses `%s`, which does not exist", (path) => {
+  ])("存在しない `%s` を拒否すること", (path) => {
     expect(violations(repo(cite(`\`${path}\``)))).toEqual([missing(path)]);
   });
 
-  it("names each citing doc, and each path once per citation", () => {
+  it("引用する文書ごとに、引用ごとの path を 1 回ずつ挙げること", () => {
     expect(
       violations(
         repo({
@@ -186,23 +186,23 @@ describe("references from docs/ to files of the code", () => {
       "an upstream repository path",
       "`<upstream>/.github/workflows/ci.yml` and `owner/repo/.github/ISSUE_TEMPLATE/idea.yml`",
     ],
-  ])("skips %s", (_, line) => {
+  ])("%s を読み飛ばすこと", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
   });
 
-  it("reads every top-level directory of the tree, as the configs do", () => {
+  it("設定と同じく、ツリーのすべての最上位ディレクトリを読むこと", () => {
     expect(violations(repo({ ...cite("`docker/missing.yml`"), "docker/a.yml": "" }))).toEqual([
       missing("docker/missing.yml"),
     ]);
   });
 
-  it("checks the ADRs too", () => {
+  it("ADR も検査すること", () => {
     expect(violations(repo(cite("`tools/a.ts`", "docs/adr/0002-nx.md")))).toEqual([
       missing("tools/a.ts", "docs/adr/0002-nx.md"),
     ]);
   });
 
-  it("skips a file under docs/ that is not Markdown", () => {
+  it("docs/ の下の Markdown ではないファイルを読み飛ばすこと", () => {
     expect(
       violations(
         repo({
@@ -214,7 +214,7 @@ describe("references from docs/ to files of the code", () => {
   });
 });
 
-describe("references to docs/: the edges", () => {
+describe("docs/ への参照: 辺", () => {
   const violations = failuresOf(docsReferences);
   const withSetup = (setup: string, line: string) => ({
     "docs/local-env-setup/setup.md": setup,
@@ -229,13 +229,13 @@ describe("references to docs/: the edges", () => {
     "tools/scripts/src/checks/adr-check/a.test.ts.bak",
     "apps/pnpm-lock.yaml",
     "pnpm-lock.yaml.bak",
-  ])("checks %s", (path) => {
+  ])("%s を検査すること", (path) => {
     expect(violations(repo({ [path]: "docs/adr/9999\n" }))).toEqual([
       `${path} cites docs/adr/9999, which does not exist.${stagingHint}`,
     ]);
   });
 
-  it("passes a heading with a number of two digits", () => {
+  it("2 桁の番号の見出しを通すこと", () => {
     const files = withSetup(
       "# Setup\n\n## 10. Ubuntu の初期セットアップ\n",
       'docs/local-env-setup/setup.md ("Ubuntu の初期セットアップ")',
@@ -246,18 +246,18 @@ describe("references to docs/: the edges", () => {
   it.each([
     ["a number inside the heading", "## Node 24. Ubuntu", "Node Ubuntu"],
     ["text that is not a heading", "see # Ubuntu", "Ubuntu"],
-  ])("does not drop %s", (_, line, heading) => {
+  ])("%s を落とさないこと", (_, line, heading) => {
     const files = withSetup(`# Setup\n\n${line}\n`, `docs/local-env-setup/setup.md ("${heading}")`);
     expect(violations(repo(files))).toEqual([
       `lefthook.yml cites the heading "${heading}" in docs/local-env-setup/setup.md, which has no such heading.`,
     ]);
   });
 
-  it("passes a file cited without a heading, whatever it holds", () => {
+  it("中身にかかわらず、見出しなしで引用されたファイルを通すこと", () => {
     expect(violations(repo(withSetup("# Setup", "docs/local-env-setup/setup.md")))).toEqual([]);
   });
 
-  it("does not count a file of another type as an ADR", () => {
+  it("別の type のファイルを ADR に数えないこと", () => {
     const files = {
       "docs/adr/0003-notes.txt": "x\n",
       "lefthook.yml": `${base["lefthook.yml"] ?? ""}# docs/adr/0003\n`,
@@ -268,7 +268,7 @@ describe("references to docs/: the edges", () => {
   });
 });
 
-describe("references from the configs and the scripts to files of the code", () => {
+describe("設定とスクリプトからコードのファイルへの参照", () => {
   const violations = failuresOf(codePathReferences);
   const cite = (line: string, path = "lefthook.yml") => ({ [path]: `${line}\n` });
   const missing = (path: string, source = "lefthook.yml") =>
@@ -281,7 +281,7 @@ describe("references from the configs and the scripts to files of the code", () 
     ["a path with a line number", "# tools/a.ts:12", ["tools/a.ts"]],
     ["a path in a dot directory", "# .github/workflows/a.yml", [".github/workflows/a.yml"]],
     ["a path in single quotes", "const p = 'packages/a/b.ts';", ["packages/a/b.ts"]],
-  ])("passes %s that exists", (_, line, exists) => {
+  ])("存在する %s を通すこと", (_, line, exists) => {
     expect(
       violations(repo({ ...cite(line), ...Object.fromEntries(exists.map((path) => [path, ""])) })),
     ).toEqual([]);
@@ -310,11 +310,11 @@ describe("references from the configs and the scripts to files of the code", () 
       "# coverage/coverage-final.json and .nx/cache/a.json",
     ],
     ["an untracked output under a root, as a glob", '- "apps/api/dist/**"'],
-  ])("does not read %s as a file the tree must have", (_, line) => {
+  ])("%s を、ツリーが持つべきファイルとして読まないこと", (_, line) => {
     expect(violations(repo(cite(line)))).toEqual([]);
   });
 
-  it("reads a directory with a slash, which must have a file of the tree under it", () => {
+  it("スラッシュ付きのディレクトリを、その下にツリーのファイルがあるべきものとして読むこと", () => {
     expect(violations(repo({ ...cite("# packages/a/src/"), "packages/a/src/x.ts": "" }))).toEqual(
       [],
     );
@@ -324,7 +324,7 @@ describe("references from the configs and the scripts to files of the code", () 
     ]);
   });
 
-  it("resolves a relative path from the directory of the file that names it", () => {
+  it("相対 path を、それを挙げるファイルのディレクトリから解決すること", () => {
     const named = cite('import("../../../apps/c.ts") and "./packages/d.ts"', "packages/x/y/z.ts");
     expect(
       violations(repo({ ...named, "apps/c.ts": "", "packages/x/y/packages/d.ts": "" })),
@@ -335,14 +335,14 @@ describe("references from the configs and the scripts to files of the code", () 
     ]);
   });
 
-  it("takes the top-level directories from the tree, so a directory of its own is read too", () => {
+  it("最上位ディレクトリをツリーから採るので、自分のディレクトリも読むこと", () => {
     expect(violations(repo({ ...cite("# docker/a/b.sh"), "docker/c.txt": "" }))).toEqual([
       missing("docker/a/b.sh"),
     ]);
     expect(violations(repo(cite("# docker/a/b.sh")))).toEqual([]);
   });
 
-  it("refuses a path that does not exist, in a config, a workflow and a script", () => {
+  it("設定、workflow、スクリプトの中の存在しない path を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -358,14 +358,14 @@ describe("references from the configs and the scripts to files of the code", () 
     ]);
   });
 
-  it("names a path once for a file, and every path of a line", () => {
+  it("ファイルごとに path を 1 回、行のすべての path を挙げること", () => {
     expect(violations(repo(cite("# apps/a/x.ts apps/a/x.ts packages/b/y.ts")))).toEqual([
       missing("apps/a/x.ts"),
       missing("packages/b/y.ts"),
     ]);
   });
 
-  it("refuses a path in Markdown outside docs/ too", () => {
+  it("docs/ の外の Markdown の path も拒否すること", () => {
     expect(
       violations(
         repo({
@@ -394,15 +394,15 @@ describe("references from the configs and the scripts to files of the code", () 
     "packages/a/src/db.gen.ts",
     ".gitignore",
     "apps/web/.prettierignore",
-  ])("does not check %s, which may name a missing file on purpose", (path) => {
+  ])("わざと存在しないファイルを挙げてよい %s を検査しないこと", (path) => {
     expect(violations(repo({ [path]: "apps/a/missing.ts\n" }))).toEqual([]);
   });
 
-  it("does not read binary files", () => {
+  it("バイナリファイルを読まないこと", () => {
     expect(violations(repo({ "assets/a.png": "\0apps/a/missing.ts\n" }))).toEqual([]);
   });
 
-  it("reads nothing in a tree that has no directory", () => {
+  it("ディレクトリのないツリーでは何も読まないこと", () => {
     const flat = {
       tracked: new Map([["a.md", "100644"]]),
       untrackedSteering: [],
@@ -414,11 +414,11 @@ describe("references from the configs and the scripts to files of the code", () 
     );
   });
 
-  it("does not take the name of a file at the root for a top-level directory", () => {
+  it("ルートのファイルの名前を最上位ディレクトリと取り違えないこと", () => {
     expect(violations(repo({ ...cite("# see notes.md/a.ts"), "notes.md": "" }))).toEqual([]);
   });
 
-  it("does not read research/ and .agents/ as top-level directories of the code", () => {
+  it("research/ と .agents/ を、コードの最上位ディレクトリとして読まないこと", () => {
     expect(
       violations(
         repo({
@@ -430,7 +430,7 @@ describe("references from the configs and the scripts to files of the code", () 
     ).toEqual([]);
   });
 
-  it("skips a root alone from a file in a directory, whose relative path leads nowhere", () => {
+  it("相対 path がどこにも着かない、ディレクトリのファイルからのルート単体を読み飛ばすこと", () => {
     expect(violations(repo(cite("# ../packages/ and ../../apps/", "tools/b/c.yml")))).toEqual([]);
   });
 
@@ -443,13 +443,13 @@ describe("references from the configs and the scripts to files of the code", () 
     "apps/web/src/a.test.ts.bak",
     "packages/a/src/db.gen.tsx",
     "apps/web/.gitignore.bak",
-  ])("checks %s, whose name only looks like one that is not read", (path) => {
+  ])("読まないものに見えるだけの名前の %s を検査すること", (path) => {
     expect(violations(repo({ [path]: "apps/a/missing.ts\n" }))).toEqual([
       missing("apps/a/missing.ts", path),
     ]);
   });
 
-  it("does not check a changelog at the root of the tree", () => {
+  it("ツリーのルートの changelog を検査しないこと", () => {
     expect(violations(repo({ "CHANGELOG.md": "apps/a/missing.ts\n" }))).toEqual([]);
   });
 });

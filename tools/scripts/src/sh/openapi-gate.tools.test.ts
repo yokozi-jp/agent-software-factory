@@ -121,13 +121,13 @@ afterAll(() => {
   box.remove();
 });
 
-describe("openapi-lint.sh with the real Spectral", () => {
-  it("passes the spec that the API generates", () => {
+describe("本物の Spectral による openapi-lint.sh", () => {
+  it("API が生成する spec を通すこと", () => {
     write(committed());
     expect(lint()).toMatchObject({ status: 0 });
   }, 300_000);
 
-  it("fails an operation without operationId", () => {
+  it("operationId のない operation で失敗すること", () => {
     const spec = committed();
     delete operation(spec, "/health", "get").operationId;
     write(spec);
@@ -137,7 +137,7 @@ describe("openapi-lint.sh with the real Spectral", () => {
     expect(output(result)).toContain("operation-operationId");
   }, 300_000);
 
-  it("fails a 4xx response that is not Problem Details", () => {
+  it("Problem Details でない 4xx の応答で失敗すること", () => {
     const spec = committed();
     const responses = operation(spec, "/api/me", "get").responses;
     const media = responses["401"]?.content?.["application/problem+json"];
@@ -150,7 +150,7 @@ describe("openapi-lint.sh with the real Spectral", () => {
     expect(output(result)).toContain("problem-details-error-response");
   }, 300_000);
 
-  it("fails a 5xx Problem Details response without title", () => {
+  it("title のない 5xx の Problem Details の応答で失敗すること", () => {
     const spec = committed();
     const schema = structuredClone(problemSchema(spec));
     delete schema.properties["title"];
@@ -166,9 +166,9 @@ describe("openapi-lint.sh with the real Spectral", () => {
   }, 300_000);
 });
 
-describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/0040)", () => {
+describe("openapi-lint.sh: すべての POST と PATCH に Idempotency-Key があること (docs/adr/0040)", () => {
   it.each(["post", "patch"] as const)(
-    "passes a %s operation with the required Idempotency-Key header",
+    "必須の Idempotency-Key header を持つ %s の operation を通すこと",
     (method) => {
       const spec = committed();
       addWrite(spec, method, [idempotencyKey()]);
@@ -179,7 +179,7 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
     300_000,
   );
 
-  it("passes the header name in another case, because HTTP header names are case-insensitive", () => {
+  it("HTTP header 名は大文字小文字を区別しないので、別の大文字小文字の header 名を通すこと", () => {
     const spec = committed();
     addWrite(spec, "post", [idempotencyKey({ name: "idempotency-key" })]);
     write(spec);
@@ -188,7 +188,7 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
   }, 300_000);
 
   it.each(["post", "patch"] as const)(
-    "fails a %s operation without parameters",
+    "parameters のない %s の operation で失敗すること",
     (method) => {
       const spec = committed();
       addWrite(spec, method, undefined);
@@ -202,7 +202,7 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
   );
 
   it.each(["post", "patch"] as const)(
-    "fails a %s operation whose parameters are not the Idempotency-Key",
+    "parameters が Idempotency-Key でない %s の operation で失敗すること",
     (method) => {
       const spec = committed();
       addWrite(spec, method, [idempotencyKey({ name: "X-Request-Id" })]);
@@ -215,7 +215,7 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
     300_000,
   );
 
-  it("fails an Idempotency-Key header that is optional", () => {
+  it("任意の Idempotency-Key header で失敗すること", () => {
     const spec = committed();
     addWrite(spec, "post", [idempotencyKey({ required: false })]);
     write(spec);
@@ -225,7 +225,7 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
     expect(output(result)).toContain("idempotency-key-required");
   }, 300_000);
 
-  it("fails an Idempotency-Key that is not a header", () => {
+  it("header でない Idempotency-Key で失敗すること", () => {
     const spec = committed();
     addWrite(spec, "patch", [idempotencyKey({ in: "query" })]);
     write(spec);
@@ -235,14 +235,14 @@ describe("openapi-lint.sh: Idempotency-Key on every POST and PATCH (docs/adr/004
     expect(output(result)).toContain("idempotency-key-required");
   }, 300_000);
 
-  it("does not ask a GET operation for the header", () => {
+  it("GET の operation に header を求めないこと", () => {
     write(committed());
 
     expect(lint()).toMatchObject({ status: 0 });
   }, 300_000);
 });
 
-describe("openapi-breaking.sh with the real oasdiff", () => {
+describe("本物の oasdiff による openapi-breaking.sh", () => {
   // Each case compares the working tree with `main`, so a case that commits a new base puts it back afterwards.
   const resetBase = (): void => {
     git("checkout", "-q", "main", "--", specPath);
@@ -251,12 +251,12 @@ describe("openapi-breaking.sh with the real oasdiff", () => {
     git("commit", "-qm", "reset", "--allow-empty");
   };
 
-  it("passes an unchanged spec", () => {
+  it("変更のない spec を通すこと", () => {
     resetBase();
     expect(breaking()).toMatchObject({ status: 0 });
   }, 300_000);
 
-  it("fails when a property is removed from a response, and says how to go in two steps", () => {
+  it("応答からプロパティを消したとき、2 段階で行う方法を示して失敗すること", () => {
     resetBase();
     const spec = committed();
     const schema = meSchema(spec);
@@ -270,7 +270,7 @@ describe("openapi-breaking.sh with the real oasdiff", () => {
     expect(result.stderr).toContain("docs/web-api/versioning.md");
   }, 300_000);
 
-  it("fails when an operation is removed that was not deprecated", () => {
+  it("deprecated でない operation を消したとき失敗すること", () => {
     resetBase();
     const spec = committed();
     delete spec.paths["/health"];
@@ -281,7 +281,7 @@ describe("openapi-breaking.sh with the real oasdiff", () => {
     expect(output(result)).toContain("api-path-removed-without-deprecation");
   }, 300_000);
 
-  it("fails when a deprecated operation is removed before its sunset date", () => {
+  it("deprecated の operation を sunset の日付より前に消したとき失敗すること", () => {
     resetBase();
     const base = committed();
     Object.assign(operation(base, "/health", "get"), {
@@ -298,7 +298,7 @@ describe("openapi-breaking.sh with the real oasdiff", () => {
     expect(output(result)).toContain("api-path-removed-before-sunset");
   }, 300_000);
 
-  it("passes when a deprecated operation is removed after its sunset date", () => {
+  it("deprecated の operation を sunset の日付より後に消したとき通すこと", () => {
     resetBase();
     const base = committed();
     Object.assign(operation(base, "/health", "get"), {
@@ -313,7 +313,7 @@ describe("openapi-breaking.sh with the real oasdiff", () => {
     expect(breaking()).toMatchObject({ status: 0 });
   }, 300_000);
 
-  it("passes when a value is added to the x-extensible-enum of the error type", () => {
+  it("エラー type の x-extensible-enum に値を足したとき通すこと", () => {
     resetBase();
     const spec = committed();
     const type = problemSchema(spec).properties["type"];

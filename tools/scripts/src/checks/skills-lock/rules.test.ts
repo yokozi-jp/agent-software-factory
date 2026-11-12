@@ -4,7 +4,7 @@ import { parseLock, problems, report, skillHash } from "./rules.ts";
 const bytes = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 describe("skillHash", () => {
-  it("matches the hash the skills CLI records", () => {
+  it("skills CLI が記録する hash と一致すること", () => {
     // Expected value: scripts/verify-skills-lock.mjs (removed in #165; its hashes matched skills-lock.json, written by
     // the skills CLI) on these files, 2026-10-26. localeCompare puts refs/ between B.md and SKILL.md.
     const files = [
@@ -17,7 +17,7 @@ describe("skillHash", () => {
     );
   });
 
-  it("changes when a file's content or name changes", () => {
+  it("ファイルの中身または名前が変わると変わること", () => {
     const base = skillHash([{ relativePath: "SKILL.md", content: bytes("a") }]);
     expect(skillHash([{ relativePath: "SKILL.md", content: bytes("b") }])).not.toBe(base);
     expect(skillHash([{ relativePath: "OTHER.md", content: bytes("a") }])).not.toBe(base);
@@ -25,7 +25,7 @@ describe("skillHash", () => {
 });
 
 describe("parseLock", () => {
-  it("reads the computed hash of each skill", () => {
+  it("各 skill の計算した hash を読むこと", () => {
     const lock = JSON.stringify({
       version: 1,
       skills: { tdd: { source: "x", computedHash: "aa" }, pr: { computedHash: "bb" } },
@@ -36,7 +36,7 @@ describe("parseLock", () => {
     ]);
   });
 
-  it("refuses a lock without skills or without a hash", () => {
+  it("skill のない lock、または hash のない lock を拒否すること", () => {
     expect(() => parseLock("{}")).toThrow("skills-lock.json has no skills object");
     expect(() => parseLock('{"skills": []}')).toThrow("skills-lock.json has no skills object");
     expect(() => parseLock('{"skills": null}')).toThrow("skills-lock.json has no skills object");
@@ -61,23 +61,23 @@ describe("problems", () => {
     ["pr", "../../.agents/skills/pr"],
   ]);
 
-  it("passes when every skill matches the lock and has its symlink", () => {
+  it("すべての skill が lock と一致し、symlink を持つとき通すこと", () => {
     expect(problems({ lock, installed, kiro })).toEqual([]);
   });
 
-  it("refuses a skill whose content differs from the lock", () => {
+  it("中身が lock と違う skill を拒否すること", () => {
     expect(problems({ lock, installed: new Map([...installed, ["pr", "cc"]]), kiro })).toEqual([
       ".agents/skills/pr: content differs from skills-lock.json",
     ]);
   });
 
-  it("refuses a skill without its symlink in .kiro/skills", () => {
+  it(".kiro/skills に symlink のない skill を拒否すること", () => {
     expect(
       problems({ lock, installed, kiro: new Map([["tdd", "../../.agents/skills/tdd"]]) }),
     ).toEqual([".kiro/skills/pr: missing (must be a symlink to ../../.agents/skills/pr)"]);
   });
 
-  it("refuses an entry in .kiro/skills that is not a symlink to the skill", () => {
+  it(".kiro/skills の中で、skill への symlink でない項目を拒否すること", () => {
     const wrong = new Map<string, string | undefined>([
       ["tdd", undefined],
       ["pr", "../../.agents/skills/tdd"],
@@ -88,7 +88,7 @@ describe("problems", () => {
     ]);
   });
 
-  it("refuses skills and links that the lock does not record, and recorded skills that are missing", () => {
+  it("lock が記録しない skill と link、記録されて欠けている skill を拒否すること", () => {
     expect(
       problems({
         lock,
@@ -107,7 +107,7 @@ describe("problems", () => {
 });
 
 describe("report", () => {
-  it("says how many skills match", () => {
+  it("一致する skill の数を述べること", () => {
     expect(report([], 2)).toEqual({
       status: 0,
       stdout: "skills-lock: 2 skills match skills-lock.json\n",
@@ -115,7 +115,7 @@ describe("report", () => {
     });
   });
 
-  it("lists the problems and how to restore the skills", () => {
+  it("問題と、skill を戻す方法を一覧にすること", () => {
     expect(report(["a", "b"], 2)).toEqual({
       status: 1,
       stdout: "",

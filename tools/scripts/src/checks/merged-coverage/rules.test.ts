@@ -73,13 +73,13 @@ describe("isMeasured", () => {
     ["vendor/apps/api/src/app.ts", false],
     ["apps/api/src/app.ts.md", false],
     ["apps/api/src/app.test.tsx/index.ts", true],
-  ])("%s → %s", (path, expected) => {
+  ])("%s が測定対象かどうかは %s であること", (path, expected) => {
     expect(isMeasured(path)).toBe(expected);
   });
 });
 
 describe("projectOf", () => {
-  it("returns the deepest project that holds the file", () => {
+  it("ファイルを持つ最も深い project を返すこと", () => {
     const all = ["packages/approval", "packages/approval/events"];
     expect(projectOf("packages/approval/events/src/index.ts", all)).toBe(
       "packages/approval/events",
@@ -87,13 +87,13 @@ describe("projectOf", () => {
     expect(projectOf("packages/approval/src/index.ts", all)).toBe("packages/approval");
   });
 
-  it("does not take a project whose name only starts the same", () => {
+  it("名前の先頭だけが同じ project を取らないこと", () => {
     expect(projectOf("packages/approval-extra/src/a.ts", ["packages/approval"])).toBeUndefined();
   });
 });
 
 describe("summarize", () => {
-  it("counts a line once, covered when a statement that starts on it ran", () => {
+  it("行を 1 回だけ数え、そこから始まる文が実行されたら covered とすること", () => {
     const twoOnOneLine = parseFileCoverage({
       statementMap: {
         "0": { start: { line: 1, column: 0 }, end: { line: 1, column: 3 } },
@@ -109,7 +109,7 @@ describe("summarize", () => {
     });
   });
 
-  it("counts every path of a branch", () => {
+  it("分岐のすべての path を数えること", () => {
     expect(
       summarize(
         file(
@@ -128,7 +128,7 @@ describe("summarize", () => {
 });
 
 describe("mergeFileCoverage", () => {
-  it("adds up what the two records ran of the same source", () => {
+  it("2 つの記録が同じソースで実行したものを合計すること", () => {
     const merged = mergeFileCoverage(file([1, 0], [[1, 0]]), file([0, 3], [[0, 2]]));
     expect(summarize(merged)).toEqual({
       lines: { covered: 2, total: 2 },
@@ -136,7 +136,7 @@ describe("mergeFileCoverage", () => {
     });
   });
 
-  it("keeps what only one record has", () => {
+  it("片方の記録だけが持つものを残すこと", () => {
     const merged = mergeFileCoverage(file([1]), file([1, 1], [[0, 1]]));
     expect(summarize(merged)).toEqual({
       lines: { covered: 2, total: 2 },
@@ -144,14 +144,14 @@ describe("mergeFileCoverage", () => {
     });
   });
 
-  it("keeps the paths of the first record when the second has fewer for a branch", () => {
+  it("分岐について 2 番目の記録の path が少ないとき、最初の記録の path を残すこと", () => {
     const merged = mergeFileCoverage(file([1], [[0, 1, 1]]), file([1], [[1, 0]]));
     expect(summarize(merged).branches).toEqual({ covered: 3, total: 3 });
   });
 });
 
 describe("addFile", () => {
-  it("keeps the first record of a file, and adds up the next ones", () => {
+  it("ファイルの最初の記録を残し、次のものを合計すること", () => {
     const coverage = new Map<string, FileCoverage>();
     addFile(coverage, "a.ts", file([1, 0]));
     expect(summarize(coverage.get("a.ts") ?? file([])).lines).toEqual({ covered: 1, total: 2 });
@@ -180,17 +180,17 @@ describe("parseFileCoverage", () => {
     ["a statement without a line", { ...whole, statementMap: { "0": {} } }],
     ["branch counts with one that is not a number", { ...whole, b: { "0": [1, "x"] } }],
     ["branch counts of text only", { ...whole, b: { "0": ["x"] } }],
-  ])("refuses %s", (_name, value) => {
+  ])("%s を拒否すること", (_name, value) => {
     expect(parseFileCoverage(value)).toBeUndefined();
   });
 
-  it("reads the file that the refusals above break one part of", () => {
+  it("上の拒否が 1 つずつ壊すファイルを読むこと", () => {
     expect(parseFileCoverage(whole)).toBeDefined();
   });
 });
 
 describe("parsePolicy", () => {
-  it("reads the minimum and the exceptions", () => {
+  it("下限と例外を読むこと", () => {
     expect(
       parsePolicy({ minimum: { lines: 90, branches: 80 }, exceptions: { "a.ts": "why" } }),
     ).toEqual({ minimum: { lines: 90, branches: 80 }, exceptions: new Map([["a.ts", "why"]]) });
@@ -220,7 +220,7 @@ describe("parsePolicy", () => {
       { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": " " } },
       /a\.ts has no reason/,
     ],
-  ])("refuses %s", (_name, value, message) => {
+  ])("%s を拒否すること", (_name, value, message) => {
     expect(parsePolicy(value)).toMatch(message);
   });
 });
@@ -228,7 +228,7 @@ describe("parsePolicy", () => {
 describe("violations", () => {
   const app = "apps/api/src/app.ts";
 
-  it("passes a file at the minimum, and a file with nothing to count", () => {
+  it("下限ちょうどのファイルと、数えるものがないファイルを通すこと", () => {
     expect(
       check(
         {
@@ -240,7 +240,7 @@ describe("violations", () => {
     ).toEqual([]);
   });
 
-  it("stops a file under the minimum for lines, and one for branches", () => {
+  it("行と分岐で下限に達しないファイルを止めること", () => {
     const failures = check(
       {
         [app]: file([1, 1, 1, 0]),
@@ -254,7 +254,7 @@ describe("violations", () => {
     ]);
   });
 
-  it("counts a file by what the tests of every project ran", () => {
+  it("すべての project のテストが実行したもので、ファイルを数えること", () => {
     const kernel = "packages/shared-kernel/src/tenant-db/db-call.ts";
     const fromApi = file([1, 1, 0, 0]);
     const fromKernel = file([0, 0, 1, 1]);
@@ -262,19 +262,19 @@ describe("violations", () => {
     expect(check({ [kernel]: mergeFileCoverage(fromApi, fromKernel) }, [kernel])).toEqual([]);
   });
 
-  it("stops a file that no record has, and says how to let it pass", () => {
+  it("どの記録にもないファイルを止め、通す方法を述べること", () => {
     expect(check({}, [app])).toEqual([
       `${app}: no test of any project ran it, and it is not an exception. Add a test, or a row to coverage-policy.json with the reason.`,
     ]);
   });
 
-  it("lets an exception pass, with or without a record", () => {
+  it("記録の有無にかかわらず、例外を通すこと", () => {
     const server = "apps/api/src/server.ts";
     expect(check({}, [server])).toEqual([]);
     expect(check({ [server]: file([0]) }, [server])).toEqual([]);
   });
 
-  it("stops an exception for a file that reaches the minimum now, and keeps one that does not", () => {
+  it("今は下限に達するファイルの例外を止め、達しないものは残すこと", () => {
     const server = "apps/api/src/server.ts";
     expect(check({ [server]: file([1, 1]) }, [])).toEqual([
       `${server}: the file reaches the minimum now. Remove its row from coverage-policy.json.`,
@@ -282,13 +282,13 @@ describe("violations", () => {
     expect(check({ [server]: file([1, 0]) }, [])).toEqual([]);
   });
 
-  it("ignores the files of a project without a record, and the files that are not measured", () => {
+  it("記録のない project のファイルと、測らないファイルを無視すること", () => {
     expect(
       check({}, ["apps/web/src/main.tsx", "apps/api/src/app.test.ts", "apps/api/src/db.gen.ts"]),
     ).toEqual([]);
   });
 
-  it("stops an exception for a file that does not exist, or that is not measured anyway", () => {
+  it("存在しないファイル、または元から測らないファイルの例外を止めること", () => {
     const stale: Policy = {
       minimum: policy.minimum,
       exceptions: new Map([
@@ -304,7 +304,7 @@ describe("violations", () => {
 });
 
 describe("scopeOf", () => {
-  it("reads the records of the affected projects and leaves out the others, in the order of the records", () => {
+  it("影響を受ける project の記録を読み、ほかを除き、記録の順に並べること", () => {
     expect(
       scopeOf(
         ["apps/api", "apps/web", "packages/shared-kernel"],
@@ -313,14 +313,14 @@ describe("scopeOf", () => {
     ).toEqual({ projects: ["apps/api", "packages/shared-kernel"], stale: ["apps/web"] });
   });
 
-  it("ignores an affected project that has no record: that is for the caller to say", () => {
+  it("記録のない影響を受ける project を無視すること: それは呼び出し側が言うこと", () => {
     expect(scopeOf(["apps/api"], ["apps/api", "apps/web"])).toEqual({
       projects: ["apps/api"],
       stale: [],
     });
   });
 
-  it("reads nothing when no project is affected", () => {
+  it("影響を受ける project がないとき、何も読まないこと", () => {
     expect(scopeOf(["apps/api"], [])).toEqual({ projects: [], stale: ["apps/api"] });
   });
 });

@@ -46,12 +46,12 @@ afterAll(() => {
 });
 
 describe("adr-check", () => {
-  it("is silent and exits 0 when nothing decision-related changed", () => {
+  it("判断に関わる変更がないとき、何も出力せず 0 で終了すること", () => {
     change("README.md");
     expect(adrCheck(repo)).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("warns on stderr and still exits 0 when a decision file changed without an ADR", () => {
+  it("ADR なしで判断のファイルを変えたとき、stderr に警告して 0 で終了すること", () => {
     change("package.json", "src/index.ts");
     const result = adrCheck(repo);
     expect(result.status).toBe(0);
@@ -60,17 +60,17 @@ describe("adr-check", () => {
     expect(result.stderr).not.toContain("src/index.ts");
   });
 
-  it("is silent when the change adds an ADR", () => {
+  it("変更が ADR を足すとき、何も出力しないこと", () => {
     change("package.json", "docs/adr/0002-new.md");
     expect(adrCheck(repo)).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("is silent with ADR_ACK=1", () => {
+  it("ADR_ACK=1 のとき、何も出力しないこと", () => {
     change("package.json");
     expect(adrCheck(repo, [], { ADR_ACK: "1" })).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("compares with origin/$GITHUB_BASE_REF and writes an annotation in GitHub Actions", () => {
+  it("origin/$GITHUB_BASE_REF と比べ、GitHub Actions では annotation を書くこと", () => {
     change("package.json");
     const result = adrCheck(repo, [], { GITHUB_ACTIONS: "true", GITHUB_BASE_REF: "main" });
     expect(result.status).toBe(0);
@@ -78,7 +78,7 @@ describe("adr-check", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("pre-push compares each pushed commit from stdin, not HEAD", () => {
+  it("pre-push は HEAD ではなく、stdin の push する commit ごとに比べること", () => {
     const withAdr = change("nx.json", "docs/adr/0002-new.md");
     const withoutAdr = change("package.json");
     git("switch", "-q", "main");
@@ -95,7 +95,7 @@ describe("adr-check", () => {
     ).toBe("");
   });
 
-  it("says why and passes when origin/main does not exist", () => {
+  it("origin/main がないとき、理由を述べて通すこと", () => {
     const other = join(box.root, "no-origin");
     gitIn(other, ["init", "-q", "-b", "main"]);
     gitIn(other, ["commit", "-q", "--allow-empty", "-m", "base"]);
@@ -106,7 +106,7 @@ describe("adr-check", () => {
     expect(ci.stdout).toContain("::notice title=adr-check::skipped.");
   });
 
-  it("says why and passes in a shallow clone that lacks the merge base", () => {
+  it("merge base のない浅い clone のとき、理由を述べて通すこと", () => {
     // origin/main moves on, so the branch's parent is not in a depth-1 clone.
     git("switch", "-q", "main");
     appendFileSync(join(repo, "more.txt"), "more\n");

@@ -57,13 +57,13 @@ afterEach(() => {
 
 // Each case runs iwe two or more times, which takes seconds on a loaded machine.
 describe("docs-check", { timeout: 120_000 }, () => {
-  it("passes a valid bundle and says OK", () => {
+  it("有効なバンドルを通し、OK と述べること", () => {
     const result = docsCheck();
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("docs-check: OK\n");
   });
 
-  it("fails when a type is not in the vocabulary of the schema", () => {
+  it("type がスキーマの語彙にないとき失敗すること", () => {
     doc("tooling/a.md", "Guide", "a");
     const result = docsCheck();
     expect(result.status).toBe(1);
@@ -71,7 +71,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
     expect(result.stdout).not.toContain("docs-check: OK");
   });
 
-  it("fails on missing frontmatter fields and an orphan", () => {
+  it("frontmatter の項目の欠落と孤立で失敗すること", () => {
     write("tooling/stray.md", "---\ntype: Reference\ntitle: x\n---\n\n# x\n");
     const result = docsCheck();
     expect(result.status).toBe(1);
@@ -81,7 +81,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
     );
   });
 
-  it("names the unquoted value before the schema reports the fields as missing", () => {
+  it("スキーマが項目の欠落を報告する前に、引用符のない値を挙げること", () => {
     write(
       "tooling/a.md",
       "---\ntype: Reference\ntitle: a\ndescription: javascript: x\ntags: [t]\n---\n\n# a\n",
@@ -93,7 +93,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
     expect(cause).toBeLessThan(stderr.indexOf("OKF schema validation failed"));
   });
 
-  it("fails on a broken link inside docs/, not on a link to a repository file", () => {
+  it("docs/ 内のリンク切れで失敗し、リポジトリのファイルへのリンクでは失敗しないこと", () => {
     append("tooling/a.md", "See [r](../../README.md).\n");
     expect(docsCheck().status).toBe(0);
     append("tooling/a.md", "See [missing](missing.md).\n");
@@ -102,7 +102,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
     expect(result.stderr).toContain("docs-check: broken link: tooling/a -> tooling/missing\n");
   });
 
-  it("reports the rules of the documents with the docs-check prefix, and warns without failing", () => {
+  it("文書の規則を docs-check の接頭辞つきで報告し、失敗せずに警告すること", () => {
     append("tooling/a.md", "See [b](b.md#none) and [b](b).\n");
     append("tooling/index.md", "- [A](a.md): half\n");
     append("guide/page.md", `[log](${site}x.html)\n`);
@@ -127,7 +127,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
   });
 
   describe("staged", () => {
-    it("needs about.md staged with a change to an imported area; CI does not check it", () => {
+    it("取り込んだ領域の変更には about.md のステージが必要で、CI は確かめないこと", () => {
       append("guide/page.md", "more\n");
       git("add", "-A");
       const result = docsCheck("staged");
@@ -141,7 +141,7 @@ describe("docs-check", { timeout: 120_000 }, () => {
       expect(docsCheck("staged").status).toBe(0);
     });
 
-    it("counts only what is staged", () => {
+    it("ステージしたものだけを数えること", () => {
       append("guide/page.md", "more\n");
       expect(docsCheck("staged").status).toBe(0);
       append("tooling/a.md", "more\n");

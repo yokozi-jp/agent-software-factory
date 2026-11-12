@@ -74,28 +74,28 @@ afterAll(() => {
   box.remove();
 });
 
-describe("the inputs of the test-isolation target", () => {
-  it("select the scripts project for a file under src/test/ and for the Vitest config", () => {
+describe("test-isolation の target の inputs", () => {
+  it("src/test/ の下のファイルと Vitest の設定で、scripts project を選ぶこと", () => {
     expect(selected("tools/scripts/src/test/sandbox.ts")).toEqual(["scripts"]);
     expect(selected("tools/scripts/src/test/fixtures/focus-and-skip.test.ts")).toEqual(["scripts"]);
     expect(selected("tools/scripts/vite.config.ts")).toEqual(["scripts"]);
   });
 
-  it("do not select it for other files of the project or of another project", () => {
+  it("project のほかのファイルや別の project のファイルでは選ばないこと", () => {
     expect(selected("tools/scripts/src/checks/ci.ts")).toEqual([]);
     expect(selected("tools/scripts/src/test-helpers/a.ts")).toEqual([]);
     expect(selected("apps/api/src/app.ts")).toEqual([]);
   });
 });
 
-describe("the inputs of the mutation-dry-run target", () => {
-  it("select the scripts project for any file of it and for the Kiro hooks that its tests read", () => {
+describe("mutation-dry-run の target の inputs", () => {
+  it("scripts のどのファイルと、そのテストが読む Kiro の hook でも、scripts project を選ぶこと", () => {
     expect(selected("tools/scripts/src/checks/ci.ts", "mutation-dry-run")).toEqual(["scripts"]);
     expect(selected("tools/scripts/stryker.config.mjs", "mutation-dry-run")).toEqual(["scripts"]);
     expect(selected(".kiro/hooks/block-force-push.json", "mutation-dry-run")).toEqual(["scripts"]);
   });
 
-  it("do not select it for a file of another project", () => {
+  it("別の project のファイルでは選ばないこと", () => {
     expect(selected("apps/api/src/app.ts", "mutation-dry-run")).toEqual([]);
   });
 });

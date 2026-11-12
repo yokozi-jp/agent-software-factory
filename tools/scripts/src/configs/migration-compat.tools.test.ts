@@ -14,13 +14,13 @@ import {
 
 const root = join(import.meta.dirname, "../../../..");
 
-describe("the files of the base that the migration-compat rules look for", () => {
-  it("exist in this repository, and the harness reads the variable that cli.ts passes", () => {
+describe("migration-compat の規則が探す base のファイル", () => {
+  it("このリポジトリにあり、harness が cli.ts の渡す変数を読むこと", () => {
     expect(readFileSync(join(root, seedEntry), "utf8")).not.toBe("");
     expect(readFileSync(join(root, harnessEntry), "utf8")).toContain(harnessMarker);
   });
 
-  it("include a migrations directory that has migrations", () => {
+  it("migration のある migrations ディレクトリを含むこと", () => {
     expect(readdirSync(join(root, migrationsDirectory)).length).toBeGreaterThan(0);
   });
 });

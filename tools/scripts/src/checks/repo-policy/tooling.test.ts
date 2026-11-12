@@ -22,10 +22,10 @@ import {
 
 const base = passingRepo;
 
-describe("ADR 0002: Nx runs the tasks", () => {
+describe("ADR 0002: Nx がタスクを実行すること", () => {
   const violations = failuresOf(nxRunsTasks);
   it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
-    "refuses @nx/vite in %s of any package.json",
+    "どの package.json の %s にも @nx/vite を拒否すること",
     (field) => {
       expect(
         violations(
@@ -43,13 +43,13 @@ describe("ADR 0002: Nx runs the tasks", () => {
     },
   );
 
-  it("passes a package.json that names @nx/vite outside its dependencies", () => {
+  it("dependencies の外に @nx/vite を挙げる package.json を通すこと", () => {
     expect(
       violations(repo({ "apps/api/package.json": apiManifest({ description: "not @nx/vite" }) })),
     ).toEqual([]);
   });
 
-  it("refuses a run block in a vite.config.ts", () => {
+  it("vite.config.ts の run ブロックを拒否すること", () => {
     expect(
       violations(
         repo({ "apps/web/vite.config.ts": "export default {\n  run: { cache: true },\n};\n" }),
@@ -59,7 +59,7 @@ describe("ADR 0002: Nx runs the tasks", () => {
     ]);
   });
 
-  it("passes a run key that is not at the top of the config", () => {
+  it("設定の先頭にない run キーを通すこと", () => {
     expect(
       violations(
         repo({ "apps/web/vite.config.ts": "export default {\n  test: { run: 1 },\n};\n" }),
@@ -68,20 +68,20 @@ describe("ADR 0002: Nx runs the tasks", () => {
   });
 });
 
-describe("ADR 0001: lefthook owns the Git hooks", () => {
+describe("ADR 0001: lefthook が Git hook を持つこと", () => {
   const violations = failuresOf(lefthookOwnsHooks);
   const message = ".vite-hooks exists. Git hooks are managed by lefthook.yml (docs/adr/0001).";
 
-  it("refuses a .vite-hooks directory in the working tree", () => {
+  it("作業ツリーの .vite-hooks ディレクトリを拒否すること", () => {
     expect(violations(repo({}, { viteHooks: true }))).toEqual([message]);
   });
 
-  it("refuses a tracked file in .vite-hooks", () => {
+  it(".vite-hooks の追跡されたファイルを拒否すること", () => {
     expect(violations(repo({ ".vite-hooks/pre-commit": "x\n" }))).toEqual([message]);
   });
 });
 
-describe("ADR 0009: mise.lock records linux-x64 only", () => {
+describe("ADR 0009: mise.lock が linux-x64 だけを記録すること", () => {
   const violations = failuresOf(miseLockHasOnlyLinuxX64);
   const lock = (...platforms: string[]): string =>
     [
@@ -97,37 +97,37 @@ describe("ADR 0009: mise.lock records linux-x64 only", () => {
       ]),
     ].join("\n");
 
-  it("passes a lock that records linux-x64", () => {
+  it("linux-x64 を記録する lock を通すこと", () => {
     expect(violations(repo({ "mise.lock": lock("linux-x64") }))).toEqual([]);
   });
 
-  it("refuses a platform that is not linux-x64, and names the tool", () => {
+  it("linux-x64 ではないプラットフォームを拒否し、道具を挙げること", () => {
     expect(violations(repo({ "mise.lock": lock("linux-x64", "macos-arm64") }))).toEqual([
       "mise.lock records platforms.macos-arm64 of zizmor. Record linux-x64 only: run `mise lock --platform linux-x64` (docs/adr/0009).",
     ]);
   });
 
-  it("refuses a platform of a second entry of the same tool", () => {
+  it("同じ道具の 2 つ目の項目のプラットフォームを拒否すること", () => {
     const text = `${lock("linux-x64")}\n[[tools.zizmor]]\nversion = "1.33.0"\n\n[tools.zizmor."platforms.windows-x64"]\nchecksum = "sha256:00"\n`;
     expect(violations(repo({ "mise.lock": text }))).toEqual([
       "mise.lock records platforms.windows-x64 of zizmor. Record linux-x64 only: run `mise lock --platform linux-x64` (docs/adr/0009).",
     ]);
   });
 
-  it("passes a repository without mise.lock", () => {
+  it("mise.lock のないリポジトリを通すこと", () => {
     expect(violations(repo({ "mise.lock": undefined }))).toEqual([]);
   });
 
-  it("reports a mise.lock that is not TOML once, and no platform", () => {
+  it("TOML でない mise.lock を 1 回だけ報告し、プラットフォームは報告しないこと", () => {
     expect(violations(repo({ "mise.lock": "tools: [" }))).toEqual([
       "mise.lock is not valid TOML (Error: Invalid TOML document: illegal character in key)",
     ]);
   });
 });
 
-describe("ADR 0003, 0009: one betterleaks version", () => {
+describe("ADR 0003、0009: betterleaks の版が 1 つであること", () => {
   const violations = failuresOf(oneBetterleaks);
-  it("refuses a .betterleaks.toml whose minimum version is not the one in mise.toml", () => {
+  it("最小の版が mise.toml のものと違う .betterleaks.toml を拒否すること", () => {
     expect(violations(repo({ "mise.toml": '[tools]\nbetterleaks = "9.9.9"\n' }))).toEqual([
       ".betterleaks.toml betterleaksMinVersion must equal the betterleaks version in mise.toml (9.9.9).",
     ]);
@@ -137,24 +137,24 @@ describe("ADR 0003, 0009: one betterleaks version", () => {
     ["no betterleaks", '[tools]\nshellcheck = "0.11.0"\n'],
     ["a version that is not a string", "[tools]\nbetterleaks = 1\n"],
     ["betterleaks outside [tools]", '[env]\nbetterleaks = "1.9.0"\n'],
-  ])("refuses a mise.toml with %s", (_, text) => {
+  ])("%s のある mise.toml を拒否すること", (_, text) => {
     expect(violations(repo({ "mise.toml": text }))).toEqual([
       "mise.toml must pin betterleaks to an exact version (docs/adr/0009).",
     ]);
   });
 
-  it("reads the version however the TOML is written", () => {
+  it("TOML の書き方にかかわらず、版を読むこと", () => {
     const mise = "[tools]\n# pinned\n\"betterleaks\"   =   '1.9.0' # v1 only\n";
     expect(violations(repo({ "mise.toml": mise }))).toEqual([]);
   });
 
-  it("refuses a repository without mise.toml", () => {
+  it("mise.toml のないリポジトリを拒否すること", () => {
     expect(violations(repo({ "mise.toml": undefined }))).toEqual([
       "mise.toml must pin betterleaks to an exact version (docs/adr/0009).",
     ]);
   });
 
-  it("refuses a .betterleaks.toml without the minimum version", () => {
+  it("最小の版のない .betterleaks.toml を拒否すること", () => {
     expect(
       violations(repo({ ".betterleaks.toml": "[extend]\nbetterleaksMinVersion = '1.9.0'\n" })),
     ).toEqual([
@@ -163,14 +163,14 @@ describe("ADR 0003, 0009: one betterleaks version", () => {
   });
 });
 
-describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
+describe("steering の frontmatter (docs/knowledge/steering-authoring.md)", () => {
   const violations = failuresOf(steeringFrontmatter);
   const guide = "(docs/knowledge/steering-authoring.md)";
   const steering = (frontmatter: string) => ({
     ".kiro/steering/x.md": `---\n${frontmatter}---\n\n# X\n`,
   });
 
-  it("passes each inclusion, and fileMatch with a one-line array", () => {
+  it("各 inclusion と、1 行の配列を持つ fileMatch を通すこと", () => {
     for (const inclusion of ["always", "manual", "auto"])
       expect(
         violations(repo(steering(`inclusion: ${inclusion}\nname: x\ndescription: d\n`))),
@@ -186,13 +186,13 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
     ).toEqual([]);
   });
 
-  it("refuses a file without frontmatter", () => {
+  it("frontmatter のないファイルを拒否すること", () => {
     expect(violations(repo({ ".kiro/steering/x.md": "no frontmatter\n" }))).toEqual([
       `.kiro/steering/x.md: must start with a frontmatter block ${guide}`,
     ]);
   });
 
-  it("refuses frontmatter that is not closed", () => {
+  it("閉じていない frontmatter を拒否すること", () => {
     expect(
       violations(
         repo({ ".kiro/steering/x.md": "---\ninclusion: auto\nname: x\ndescription: d\n" }),
@@ -200,7 +200,7 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
     ).toEqual([`.kiro/steering/x.md: frontmatter is not closed ${guide}`]);
   });
 
-  it("names every missing or wrong field", () => {
+  it("欠けている、または誤っているすべての項目を挙げること", () => {
     expect(violations(repo(steering("inclusion: sometimes\nname: y\n")))).toEqual([
       `.kiro/steering/x.md: inclusion must be always, fileMatch, manual or auto ${guide}`,
       `.kiro/steering/x.md: name must be "x" ${guide}`,
@@ -208,13 +208,13 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
     ]);
   });
 
-  it("refuses an empty description", () => {
+  it("空の description を拒否すること", () => {
     expect(violations(repo(steering('inclusion: auto\nname: x\ndescription: ""\n')))).toEqual([
       `.kiro/steering/x.md: description is required ${guide}`,
     ]);
   });
 
-  it("requires fileMatchPattern for fileMatch, and only for fileMatch", () => {
+  it("fileMatch には fileMatchPattern を求め、fileMatch 以外には求めないこと", () => {
     expect(violations(repo(steering("inclusion: fileMatch\nname: x\ndescription: d\n")))).toEqual([
       `.kiro/steering/x.md: fileMatchPattern is required for inclusion: fileMatch ${guide}`,
     ]);
@@ -228,13 +228,13 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
   it.each([
     ["a block list", "fileMatchPattern:\n  - a\n"],
     ["a string", "fileMatchPattern: a\n"],
-  ])("refuses fileMatchPattern written as %s", (_, pattern) => {
+  ])("%s と書いた fileMatchPattern を拒否すること", (_, pattern) => {
     expect(
       violations(repo(steering(`inclusion: fileMatch\n${pattern}name: x\ndescription: d\n`))),
     ).toEqual([`.kiro/steering/x.md: fileMatchPattern must be a one-line array ${guide}`]);
   });
 
-  it("refuses frontmatter that is not valid YAML", () => {
+  it("有効な YAML でない frontmatter を拒否すること", () => {
     expect(
       violations(repo(steering("inclusion: auto\nname: x\ndescription: javascript: x\n"))),
     ).toEqual([
@@ -242,20 +242,20 @@ describe("steering frontmatter (docs/knowledge/steering-authoring.md)", () => {
     ]);
   });
 
-  it("checks untracked steering files too", () => {
+  it("追跡されていない steering ファイルも検査すること", () => {
     expect(
       violations(repo({}, { untracked: { ".kiro/steering/broken.md": "no frontmatter\n" } })),
     ).toEqual([`.kiro/steering/broken.md: must start with a frontmatter block ${guide}`]);
   });
 
-  it("checks only the Markdown files in .kiro/steering", () => {
+  it(".kiro/steering の Markdown ファイルだけを検査すること", () => {
     expect(
       violations(repo({ ".kiro/steering/notes.txt": "x\n", ".kiro/skills/a/SKILL.md": "x\n" })),
     ).toEqual([]);
   });
 });
 
-describe("git on another repository, never from a shell wrapper", () => {
+describe("別のリポジトリへの git は、シェルのラッパーからは使わないこと", () => {
   const violations = failuresOf(gitOnOtherRepositories);
   const wrapper = "tools/scripts/sh/guard-push.sh";
   const anywhere = (path: string) =>
@@ -268,7 +268,7 @@ describe("git on another repository, never from a shell wrapper", () => {
     ["--git-dir", "git --git-dir=/tmp/x/.git log"],
     ["GIT_DIR=", "GIT_DIR=/tmp/x git log"],
     ["git init at the end of a line", "cd /tmp/x && git init"],
-  ])("refuses %s in a shell wrapper", (_, line) => {
+  ])("シェルのラッパーの %s を拒否すること", (_, line) => {
     expect(violations(repo({ [wrapper]: `#!/bin/sh\n${line}\n` }))).toEqual([anywhere(wrapper)]);
   });
 
@@ -276,11 +276,11 @@ describe("git on another repository, never from a shell wrapper", () => {
     ["a word that ends in git", "legit init"],
     ["git with another command", "git initialize"],
     ["a git command on this repository", "git rev-parse --show-toplevel"],
-  ])("passes %s", (_, line) => {
+  ])("%s を通すこと", (_, line) => {
     expect(violations(repo({ [wrapper]: `#!/bin/sh\n${line}\n` }))).toEqual([]);
   });
 
-  it("applies only to tools/scripts/sh/*.sh, and not to the upstream skills", () => {
+  it("tools/scripts/sh/*.sh にだけ当てはめ、upstream の skill には当てはめないこと", () => {
     expect(
       violations(
         repo({
@@ -298,16 +298,16 @@ describe("git on another repository, never from a shell wrapper", () => {
   });
 });
 
-describe("shell scripts are executable in git", () => {
+describe("シェルスクリプトが git で実行可能であること", () => {
   const violations = failuresOf(executableScripts);
-  it("refuses a shell script whose index mode is not 100755", () => {
+  it("index の mode が 100755 でないシェルスクリプトを拒否すること", () => {
     const path = "tools/scripts/sh/guard-push.sh";
     expect(violations(repo({}, { modes: { [path]: "100644" } }))).toEqual([
       `${path} is not executable in git. Run \`chmod +x ${path}\` and stage it again.`,
     ]);
   });
 
-  it("checks only tools/scripts/sh/*.sh, so not the upstream skills", () => {
+  it("tools/scripts/sh/*.sh だけを検査し、upstream の skill は検査しないこと", () => {
     const paths = [".agents/skills/a/x.sh", ".kiro/skills/a/x.sh", "other/x.sh"];
     const files = Object.fromEntries(paths.map((path) => [path, "x\n"]));
     const modes = Object.fromEntries(paths.map((path) => [path, "100644"]));
@@ -315,44 +315,44 @@ describe("shell scripts are executable in git", () => {
   });
 });
 
-describe("every shell wrapper has a process test", () => {
+describe("すべてのシェルのラッパーにプロセスのテストがあること", () => {
   const violations = failuresOf(shellScriptsHaveTests);
   const path = "tools/scripts/sh/other.sh";
   const test = "tools/scripts/src/sh/other.test.ts";
   const missing = `${path} has no process test. Write ${test}, with a stub tool from src/test/stubs.ts that checks what the script hands to the tool and its exit code (docs/tooling/ci.md, "検査を足すとき" の 5).`;
 
-  it("refuses a wrapper with no src/sh/<name>.test.ts", () => {
+  it("src/sh/<name>.test.ts のないラッパーを拒否すること", () => {
     expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n" }))).toEqual([missing]);
   });
 
-  it("passes a wrapper with its test", () => {
+  it("テストのあるラッパーを通すこと", () => {
     expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n", [test]: "// test\n" }))).toEqual([]);
   });
 
-  it("does not take the test of the real tool for the process test", () => {
+  it("本物の道具のテストを、プロセスのテストと取り違えないこと", () => {
     const tools = "tools/scripts/src/sh/other.tools.test.ts";
     expect(violations(repo({ [path]: "#!/bin/sh\ntrue\n", [tools]: "// test\n" }))).toEqual([
       missing,
     ]);
   });
 
-  it("checks only tools/scripts/sh/*.sh, so not the upstream skills", () => {
+  it("tools/scripts/sh/*.sh だけを検査し、upstream の skill は検査しないこと", () => {
     expect(violations(repo({ ".agents/skills/a/run.sh": "x\n", "other/run.sh": "x\n" }))).toEqual(
       [],
     );
   });
 });
 
-describe("ADR 0013: one Node.js major version", () => {
+describe("ADR 0013: Node.js のメジャーバージョンが 1 つであること", () => {
   const violations = failuresOf(oneNodeMajor);
   it.each(["v24.1.2\n", "24\n", "24.22.1\n\n# comment\n", "\n# pinned\n24.22.1\n"])(
-    "passes a .node-version of %j",
+    "%j の .node-version を通すこと",
     (version) => {
       expect(violations(repo({ ".node-version": version }))).toEqual([]);
     },
   );
 
-  it("refuses a .node-version that moves alone", () => {
+  it("単独で動く .node-version を拒否すること", () => {
     expect(violations(repo({ ".node-version": "25\n" }))).toEqual([
       "package.json engines.node (24) must be Node.js 25, the major of .node-version (docs/adr/0013).",
       "pnpm-workspace.yaml catalog @types/node (24) must be Node.js 25, the major of .node-version (docs/adr/0013).",
@@ -360,13 +360,13 @@ describe("ADR 0013: one Node.js major version", () => {
     ]);
   });
 
-  it.each(["lts\n", "", undefined])("refuses a .node-version of %j", (version) => {
+  it.each(["lts\n", "", undefined])("%j の .node-version を拒否すること", (version) => {
     expect(violations(repo({ ".node-version": version }))).toEqual([
       ".node-version must start with a Node.js version such as 24 or 24.22.1 (docs/adr/0013).",
     ]);
   });
 
-  it("refuses engines.node of another major, and names an unreadable one", () => {
+  it("別のメジャーの engines.node を拒否し、読めないものを挙げること", () => {
     expect(violations(repo({ "package.json": json({ engines: { node: ">=25" } }) }))).toEqual([
       "package.json engines.node (25) must be Node.js 24, the major of .node-version (docs/adr/0013).",
     ]);
@@ -375,7 +375,7 @@ describe("ADR 0013: one Node.js major version", () => {
     ]);
   });
 
-  it("refuses a @types/node catalog of another major, and names an unreadable one", () => {
+  it("別のメジャーの @types/node の catalog を拒否し、読めないものを挙げること", () => {
     expect(
       violations(repo({ "pnpm-workspace.yaml": 'catalog:\n  "@types/node": 25.0.1\n' })),
     ).toEqual([
@@ -386,12 +386,12 @@ describe("ADR 0013: one Node.js major version", () => {
     ]);
   });
 
-  it("reads the catalog however the YAML is written", () => {
+  it("YAML の書き方にかかわらず、catalog を読むこと", () => {
     const flow = 'catalog: { "@types/node": "~24.3.0" }\n';
     expect(violations(repo({ "pnpm-workspace.yaml": flow }))).toEqual([]);
   });
 
-  it("refuses a build target of another major in any vite.config.ts", () => {
+  it("どの vite.config.ts でも、別のメジャーの build target を拒否すること", () => {
     expect(
       violations(
         repo({ "apps/web/vite.config.ts": 'export default { build: { target: "node25" } };\n' }),
@@ -402,24 +402,24 @@ describe("ADR 0013: one Node.js major version", () => {
   });
 });
 
-describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)", () => {
+describe("compose.local.yaml と postgresImage の PostgreSQL の版が 1 つであること (#515)", () => {
   const violations = failuresOf(onePostgresVersion);
   const connection = "packages/db/src/testing/connection.ts";
   const compose = (image: string): string => `services:\n  postgres:\n    image: ${image}\n`;
 
   // The passing repo's compose has a digest after the tag; this case has none.
-  it("passes a compose tag without a digest", () => {
+  it("digest のない compose の tag を通すこと", () => {
     expect(violations(repo({ "compose.local.yaml": compose("postgres:18") }))).toEqual([]);
   });
 
   it.each([
     ["no space", 'export const postgresImage="postgres:18";\n'],
     ["many spaces", 'export const postgresImage   =   "postgres:18";\n'],
-  ])("reads postgresImage with %s around the equal sign", (_, text) => {
+  ])("等号の前後に %s のある postgresImage を読むこと", (_, text) => {
     expect(violations(repo({ [connection]: text }))).toEqual([]);
   });
 
-  it("refuses a compose that moves alone, and a postgresImage that moves alone", () => {
+  it("単独で動く compose と、単独で動く postgresImage を拒否すること", () => {
     expect(violations(repo({ "compose.local.yaml": compose("postgres:19@sha256:abc") }))).toEqual([
       `compose.local.yaml postgres image (postgres:19) must be the tag of postgresImage in ${connection} (postgres:18) (docs/tooling/local-worker.md).`,
     ]);
@@ -430,7 +430,7 @@ describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)"
     ]);
   });
 
-  it("names a compose without the postgres image, and a postgresImage that is not a literal", () => {
+  it("postgres の image のない compose と、リテラルでない postgresImage を挙げること", () => {
     expect(violations(repo({ "compose.local.yaml": "services: {}\n" }))).toEqual([
       "compose.local.yaml must set services.postgres.image (docs/tooling/local-worker.md).",
     ]);
@@ -440,32 +440,32 @@ describe("one PostgreSQL version in compose.local.yaml and postgresImage (#515)"
   });
 });
 
-describe("ADR numbers are unique", () => {
+describe("ADR 番号が一意であること", () => {
   const violations = failuresOf(uniqueAdrNumbers);
-  it("refuses two ADRs with the same number", () => {
+  it("同じ番号の 2 つの ADR を拒否すること", () => {
     expect(violations(repo({ "docs/adr/0001-duplicate.md": "# x\n" }))).toEqual([
       "ADR 0001 is used by more than one file: docs/adr/0001-duplicate.md docs/adr/0001-lefthook.md",
     ]);
   });
 
-  it("does not count files that are not ADRs", () => {
+  it("ADR でないファイルを数えないこと", () => {
     expect(
       violations(repo({ "docs/adr/index.md": "# x\n", "docs/adr/0001/notes.md": "# x\n" })),
     ).toEqual([]);
   });
 });
 
-describe("ADR 0025: migrations go forward only", () => {
+describe("ADR 0025: migration が前にだけ進むこと", () => {
   const violations = failuresOf(migrationsGoForward);
   const path = "packages/db/migrations/20260102000000_add_y.sql";
   const downProblem = `${path} has a down section that is not only \`DO $$ BEGIN RAISE EXCEPTION '...'; END $$;\`. Migrations go forward only (docs/adr/0025).`;
   const lockProblem = `${path} does not start its up section with SET LOCAL lock_timeout. Add it, or mark the file transaction:false (docs/adr/0025).`;
 
-  it("passes a migration with a raising down and a lock_timeout", () => {
+  it("raise する down と lock_timeout を持つ migration を通すこと", () => {
     expect(violations(repo({ [path]: migration() }))).toEqual([]);
   });
 
-  it("passes comments around the statements and a lower-case down", () => {
+  it("文の前後のコメントと、小文字の down を通すこと", () => {
     expect(
       violations(
         repo({
@@ -487,11 +487,11 @@ describe("ADR 0025: migrations go forward only", () => {
       "DO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\nDROP TABLE x;\n",
     ],
     ["a down that does something else in the block", "DO $$ BEGIN DROP TABLE x; END $$;\n"],
-  ])("refuses %s", (_name, down) => {
+  ])("%s を拒否すること", (_name, down) => {
     expect(violations(repo({ [path]: migration({ down }) }))).toEqual([downProblem]);
   });
 
-  it("refuses a migration without a down section", () => {
+  it("down の節のない migration を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -501,7 +501,7 @@ describe("ADR 0025: migrations go forward only", () => {
     ).toEqual([downProblem]);
   });
 
-  it("refuses an up section that does not start with SET LOCAL lock_timeout", () => {
+  it("SET LOCAL lock_timeout で始まらない up の節を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -511,11 +511,11 @@ describe("ADR 0025: migrations go forward only", () => {
     ).toEqual([lockProblem]);
   });
 
-  it("refuses an up section that is empty", () => {
+  it("空の up の節を拒否すること", () => {
     expect(violations(repo({ [path]: migration({ up: "" }) }))).toEqual([lockProblem]);
   });
 
-  it("does not ask a transaction:false file for lock_timeout", () => {
+  it("transaction:false のファイルには lock_timeout を求めないこと", () => {
     expect(
       violations(
         repo({
@@ -532,7 +532,7 @@ describe("ADR 0025: migrations go forward only", () => {
     ["a statement before the block", "SELECT 1;\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n"],
     ["a statement after the block", "DO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\nSELECT 1;\n"],
     ["a block that raises with an empty message", "DO $$ BEGIN RAISE EXCEPTION ''; END $$;\n"],
-  ])("refuses a down with %s", (_name, down) => {
+  ])("%s のある down を拒否すること", (_name, down) => {
     expect(violations(repo({ [path]: migration({ down }) }))).toEqual([downProblem]);
   });
 
@@ -543,7 +543,7 @@ describe("ADR 0025: migrations go forward only", () => {
       "DO   $$\n  BEGIN\n\tRAISE   EXCEPTION   'x'   ;\n  END   $$   ;\n",
     ],
     ["with a `--` inside the message", "DO $$ BEGIN RAISE EXCEPTION 'a -- b'; END $$;\n"],
-  ])("passes a down %s", (_name, down) => {
+  ])("down %s を通すこと", (_name, down) => {
     expect(violations(repo({ [path]: migration({ down }) }))).toEqual([]);
   });
 
@@ -555,28 +555,28 @@ describe("ADR 0025: migrations go forward only", () => {
       "a comment that mentions the marker",
       "-- run it -- migrate: later\nSET LOCAL lock_timeout = '5s';\n",
     ],
-  ])("passes an up section with %s", (_name, up) => {
+  ])("%s のある up の節を通すこと", (_name, up) => {
     expect(violations(repo({ [path]: migration({ up }) }))).toEqual([]);
   });
 
-  it("reads the lock_timeout of the up section, not the one in the down section", () => {
+  it("down の節ではなく、up の節の lock_timeout を読むこと", () => {
     expect(
       violations(repo({ [path]: migration({ up: "", down: "SET LOCAL lock_timeout = '5s';\n" }) })),
     ).toEqual([downProblem, lockProblem]);
   });
 
-  it("reads an up section that comes after the down section, to the last character", () => {
+  it("down の節の後ろにある up の節を、最後の文字まで読むこと", () => {
     const sql =
       "-- migrate:down\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n-- migrate:up\nSET LOCAL lock_timeout";
     expect(violations(repo({ [path]: sql }))).toEqual([]);
   });
 
-  it("refuses a migration without an up section", () => {
+  it("up の節のない migration を拒否すること", () => {
     const sql = "-- migrate:down\nDO $$ BEGIN RAISE EXCEPTION 'no'; END $$;\n";
     expect(violations(repo({ [path]: sql }))).toEqual([lockProblem]);
   });
 
-  it("refuses transaction:false that is only another word", () => {
+  it("別の単語でしかない transaction:false を拒否すること", () => {
     expect(
       violations(
         repo({ [path]: migration({ upOptions: " transaction:falsy", up: "SELECT 1;\n" }) }),
@@ -584,7 +584,7 @@ describe("ADR 0025: migrations go forward only", () => {
     ).toEqual([lockProblem]);
   });
 
-  it("checks a migration at the root of the repository, not a file that only starts like one", () => {
+  it("リポジトリのルートの migration を検査し、先頭だけが似たファイルを検査しないこと", () => {
     expect(
       violations(repo({ "db/migrations/20260104000000_w.sql": "", "db/migrations/x.sql.bak": "" })),
     ).toEqual([
@@ -593,7 +593,7 @@ describe("ADR 0025: migrations go forward only", () => {
     ]);
   });
 
-  it("reports both problems of one file, and the file of another module", () => {
+  it("1 つのファイルの 2 つの問題と、別のモジュールのファイルを報告すること", () => {
     const other = "packages/claim/db/migrations/20260103000000_z.sql";
     expect(
       violations(repo({ [path]: migration({ up: "SELECT 1;\n", down: "" }), [other]: "" })),
@@ -605,7 +605,7 @@ describe("ADR 0025: migrations go forward only", () => {
     ]);
   });
 
-  it("does not read files outside db/migrations, or that are not SQL", () => {
+  it("db/migrations の外のファイルと、SQL でないファイルを読まないこと", () => {
     expect(
       violations(
         repo({
@@ -618,24 +618,24 @@ describe("ADR 0025: migrations go forward only", () => {
   });
 });
 
-describe("the pnpm catalog has no workspace packages", () => {
+describe("pnpm の catalog に workspace の package がないこと", () => {
   const violations = failuresOf(noWorkspaceInCatalog);
   const refused = (where: string, name: string) =>
     `pnpm-workspace.yaml ${where} has ${name}: workspace:*. A workspace package is not a catalog entry: write "workspace:*" in the package.json that depends on it and run pnpm install. With catalogMode: prefer, \`pnpm add <package>@workspace:*\` puts it in the catalog.`;
 
-  it("refuses a workspace: version in the default catalog", () => {
+  it("既定の catalog の workspace: の版を拒否すること", () => {
     const workspace = `${base["pnpm-workspace.yaml"] ?? ""}  "@x/shared": workspace:*\n`;
     expect(violations(repo({ "pnpm-workspace.yaml": workspace }))).toEqual([
       refused("catalog", "@x/shared"),
     ]);
   });
 
-  it("passes a version that is not a string", () => {
+  it("文字列でない版を通すこと", () => {
     const workspace = `${base["pnpm-workspace.yaml"] ?? ""}  "@x/number": 1\n`;
     expect(violations(repo({ "pnpm-workspace.yaml": workspace }))).toEqual([]);
   });
 
-  it("refuses a workspace: version in a named catalog", () => {
+  it("名前つき catalog の workspace: の版を拒否すること", () => {
     const workspace = `${base["pnpm-workspace.yaml"] ?? ""}catalogs:\n  tools:\n    "@x/shared": workspace:^\n`;
     expect(violations(repo({ "pnpm-workspace.yaml": workspace }))).toEqual([
       refused("catalogs.tools", "@x/shared").replace("workspace:*.", "workspace:^."),
@@ -644,9 +644,9 @@ describe("the pnpm catalog has no workspace packages", () => {
 });
 
 // The edges of nxRunsTasks: inputs just inside and just outside what it matches.
-describe("ADR 0002: the edges", () => {
+describe("ADR 0002: 辺", () => {
   const violations = failuresOf(nxRunsTasks);
-  it("refuses @nx/vite in the root package.json", () => {
+  it("ルートの package.json の @nx/vite を拒否すること", () => {
     const root = json({ engines: { node: "^24" }, devDependencies: { "@nx/vite": "24.0.0" } });
     expect(violations(repo({ "package.json": root }))).toEqual([
       "package.json depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).",
@@ -659,13 +659,13 @@ describe("ADR 0002: the edges", () => {
     ["resolutions", { resolutions: { "@nx/vite": "-" } }],
     ["pnpm.overrides", { pnpm: { overrides: { "@nx/vite": "-" } } }],
     ["a list", { pnpm: { packageExtensions: [{}, { x: { "@nx/vite": "-" } }] } }],
-  ])("refuses @nx/vite as a key in %s", (_, manifest) => {
+  ])("%s のキーとしての @nx/vite を拒否すること", (_, manifest) => {
     expect(violations(repo({ "apps/api/package.json": apiManifest(manifest) }))).toEqual([
       "apps/api/package.json depends on @nx/vite. Targets come from package.json scripts (docs/adr/0002).",
     ]);
   });
 
-  it("passes dependency fields that are null", () => {
+  it("null の dependency の項目を通すこと", () => {
     expect(
       violations(
         repo({
@@ -679,30 +679,30 @@ describe("ADR 0002: the edges", () => {
     ).toEqual([]);
   });
 
-  it("refuses a run block with spaces before its colon", () => {
+  it("コロンの前に空白のある run ブロックを拒否すること", () => {
     const config = `${base["vite.config.ts"] ?? ""}  run  : {}\n`;
     expect(violations(repo({ "vite.config.ts": config }))).toEqual([
       "vite.config.ts has a `run` block. Task running and caching belong to Nx (docs/adr/0002).",
     ]);
   });
 
-  it("passes a run key nested deeper in the config", () => {
+  it("設定のより深くに入れ子になった run キーを通すこと", () => {
     const nested = "export default {\n  test: {\n    run: 1,\n  },\n};\n";
     expect(violations(repo({ "apps/web/vite.config.ts": nested }))).toEqual([]);
   });
 });
 
-describe("steering frontmatter: the edges", () => {
+describe("steering の frontmatter: 辺", () => {
   const violations = failuresOf(steeringFrontmatter);
   const guide = "(docs/knowledge/steering-authoring.md)";
 
-  it("names the file by its whole name", () => {
+  it("ファイルをその名前全体で挙げること", () => {
     expect(violations(repo({ ".kiro/steering/long-name.md": "no frontmatter\n" }))).toEqual([
       `.kiro/steering/long-name.md: must start with a frontmatter block ${guide}`,
     ]);
   });
 
-  it.each(['" "', "1"])("refuses a description of %s", (description) => {
+  it.each(['" "', "1"])("%s の description を拒否すること", (description) => {
     const text = `---\ninclusion: auto\nname: x\ndescription: ${description}\n---\n`;
     expect(violations(repo({ ".kiro/steering/x.md": text }))).toEqual([
       `.kiro/steering/x.md: description is required ${guide}`,
@@ -710,13 +710,13 @@ describe("steering frontmatter: the edges", () => {
   });
 
   // The untracked files come from the pathspec .kiro/steering/*.md, whose * matches / too (gitglossary(7)).
-  it("checks tracked steering files at any depth, as the pathspec does for untracked ones", () => {
+  it("追跡されていない steering ファイルに pathspec がするのと同じく、どの深さでも追跡された steering ファイルを検査すること", () => {
     expect(violations(repo({ ".kiro/steering/sub/y.md": "x\n" }))).toEqual([
       `.kiro/steering/sub/y.md: must start with a frontmatter block ${guide}`,
     ]);
   });
 
-  it("does not check other files that look like steering", () => {
+  it("steering に見えるだけのほかのファイルを検査しないこと", () => {
     expect(
       violations(
         repo({
@@ -729,7 +729,7 @@ describe("steering frontmatter: the edges", () => {
   });
 });
 
-describe("git on another repository: the edges", () => {
+describe("別のリポジトリへの git: 辺", () => {
   const violations = failuresOf(gitOnOtherRepositories);
   const wrapper = "tools/scripts/sh/guard-push.sh";
   const anywhere = (path: string) =>
@@ -740,7 +740,7 @@ describe("git on another repository: the edges", () => {
     ["git and -C apart", "#!/bin/sh\ngit  -C x log\n"],
     ["git at the start of the file", "git clone a b\n"],
     ["git init at the end of the file", "#!/bin/sh\ngit init"],
-  ])("refuses %s", (_, text) => {
+  ])("%s を拒否すること", (_, text) => {
     expect(violations(repo({ [wrapper]: text }))).toEqual([anywhere(wrapper)]);
   });
 
@@ -749,27 +749,27 @@ describe("git on another repository: the edges", () => {
     ["git and init", "echo git\ninit x\n"],
     ["git and -C", "echo git\n-C x\n"],
     ["-C and its argument", "git -C\nx\n"],
-  ])("passes %s on separate lines", (_, text) => {
+  ])("別の行に書かれた %s を通すこと", (_, text) => {
     expect(violations(repo({ [wrapper]: `#!/bin/sh\n${text}` }))).toEqual([]);
   });
 });
 
-describe("ADR 0013: the edges", () => {
+describe("ADR 0013: 辺", () => {
   const violations = failuresOf(oneNodeMajor);
-  it("refuses a .node-version that does not start with the version", () => {
+  it("版で始まらない .node-version を拒否すること", () => {
     expect(violations(repo({ ".node-version": "lts-24\n" }))).toEqual([
       ".node-version must start with a Node.js version such as 24 or 24.22.1 (docs/adr/0013).",
     ]);
   });
 
-  it("reads a @types/node catalog entry that YAML reads as a number", () => {
+  it("YAML が数値と読む @types/node の catalog の項目を読むこと", () => {
     expect(violations(repo({ "pnpm-workspace.yaml": 'catalog:\n  "@types/node": 24\n' }))).toEqual(
       [],
     );
   });
 
   it.each([["latest"], [["24"]], [{ major: 24 }]])(
-    "names an engines.node of %j unreadable",
+    "%j の engines.node を読めないと挙げること",
     (node) => {
       expect(violations(repo({ "package.json": json({ engines: { node } }) }))).toEqual([
         "package.json engines.node (unreadable) must be Node.js 24, the major of .node-version (docs/adr/0013).",
@@ -777,7 +777,7 @@ describe("ADR 0013: the edges", () => {
     },
   );
 
-  it("reads a build target written without a space", () => {
+  it("空白なしで書いた build target を読むこと", () => {
     const config = 'export default { build: { target:"node25" } };\n';
     expect(violations(repo({ "apps/web/vite.config.ts": config }))).toEqual([
       "apps/web/vite.config.ts builds for node25, but .node-version is Node.js 24 (docs/adr/0013).",
@@ -785,9 +785,9 @@ describe("ADR 0013: the edges", () => {
   });
 });
 
-describe("ADR numbers: the edges", () => {
+describe("ADR 番号: 辺", () => {
   const violations = failuresOf(uniqueAdrNumbers);
-  it("does not count files that only look like ADRs", () => {
+  it("ADR に見えるだけのファイルを数えないこと", () => {
     expect(
       violations(repo({ "docs/adr/0001-old.md.bak": "# x\n", "apps/docs/adr/0001-a.md": "# x\n" })),
     ).toEqual([]);

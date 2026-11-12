@@ -35,11 +35,11 @@ afterAll(() => {
 });
 
 describe("stop", { timeout: processTimeout }, () => {
-  it("exits 0 and says nothing when the tree is clean and pushed", () => {
+  it("ツリーがきれいで push 済みのとき、何も言わず終了コード 0 で終了すること", () => {
     expect(stop("s1")).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("sends the agent back once for a state, and lets it stop the second time", () => {
+  it("状態ごとに agent を 1 回だけ戻し、2 回目は止まらせること", () => {
     writeFileSync(join(clone, "a.txt"), "a\n");
     const first = stop("s2");
     expect(first.status).toBe(1);
@@ -47,7 +47,7 @@ describe("stop", { timeout: processTimeout }, () => {
     expect(stop("s2")).toEqual({ status: 0, stdout: "", stderr: "" });
   });
 
-  it("reports the same state again to another session, and a changed state again to the same one", () => {
+  it("同じ状態をほかのセッションにもう一度、変わった状態を同じセッションにもう一度報告すること", () => {
     expect(stop("s3").status).toBe(1);
     writeFileSync(join(clone, "b.txt"), "b\n");
     expect(stop("s3").status).toBe(1);

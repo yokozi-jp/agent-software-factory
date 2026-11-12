@@ -6,11 +6,11 @@ import { repo } from "./fixtures/repo.ts";
 import { violations } from "./rules.ts";
 
 describe("violations", () => {
-  it("finds nothing in a repository that keeps every rule", () => {
+  it("すべての規則を守るリポジトリでは、何も見つけないこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
-  it("reports the files that do not parse first, then the failures of the rules", () => {
+  it("parse できないファイルを先に、次に規則の失敗を報告すること", () => {
     expect(violations(repo({ "mise.toml": "[tools\n", ".vite-hooks/pre-commit": "x\n" }))).toEqual([
       expect.stringMatching(/^mise\.toml is not valid TOML/),
       ".vite-hooks exists. Git hooks are managed by lefthook.yml (docs/adr/0001).",

@@ -35,24 +35,24 @@ beforeEach(() => {
   put("ok.md", "# Title\n\nText.\n");
 });
 
-describe("markdownlint-cli2 with .markdownlint-cli2.yaml", () => {
-  it("passes a clean document", () => {
+describe(".markdownlint-cli2.yaml による markdownlint-cli2", () => {
+  it("きれいな文書を通すこと", () => {
     expect(lint()).toMatchObject({ status: 0 });
   });
 
-  it("fails on a heading level that jumps (MD001), so the rules are on", () => {
+  it("見出しの階層が飛ぶと失敗し (MD001)、規則が有効であること", () => {
     put("a.md", "# Title\n\n### Jump\n");
     const result = lint();
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("MD001");
   });
 
-  it("passes a line of any length (MD013 off)", () => {
+  it("どの長さの行も通すこと (MD013 は off)", () => {
     put("a.md", `# Title\n\n${Array(100).fill("長い行").join(" ")}\n`);
     expect(lint().status).toBe(0);
   });
 
-  it("passes the same heading under different parents, and fails under the same parent (MD024)", () => {
+  it("異なる親の下の同じ見出しを通し、同じ親の下では失敗すること (MD024)", () => {
     put("a.md", "# Title\n\n## One\n\n### Consequences\n\n## Two\n\n### Consequences\n");
     expect(lint().status).toBe(0);
     put("a.md", "# Title\n\n## One\n\n### Same\n\n### Same\n");
@@ -61,7 +61,7 @@ describe("markdownlint-cli2 with .markdownlint-cli2.yaml", () => {
     expect(result.stderr).toContain("MD024");
   });
 
-  it("does not count the title of the front matter as an H1 (MD025), and counts a second H1", () => {
+  it("front matter の title を H1 に数えず (MD025)、2 つ目の H1 を数えること", () => {
     put("a.md", "---\ntitle: Front matter\n---\n\n# Title\n");
     expect(lint().status).toBe(0);
     put("a.md", "# Title\n\n# Second\n");
@@ -70,7 +70,7 @@ describe("markdownlint-cli2 with .markdownlint-cli2.yaml", () => {
     expect(result.stderr).toContain("MD025");
   });
 
-  it("leaves the layout of a table to the formatter (MD060 off)", () => {
+  it("表の体裁を formatter に任せること (MD060 は off)", () => {
     put("a.md", "# Title\n\n| a | b |\n|---|---|\n| longer cell | c |\n");
     expect(lint().status).toBe(0);
   });
@@ -80,7 +80,7 @@ describe("markdownlint-cli2 with .markdownlint-cli2.yaml", () => {
     ".kiro/skills/s/SKILL.md",
     "node_modules/pkg/README.md",
     "apps/api/CHANGELOG.md",
-  ])("does not lint %s", (path) => {
+  ])("%s を lint しないこと", (path) => {
     put(path, "# Title\n\n### Jump\n");
     expect(lint().status).toBe(0);
   });

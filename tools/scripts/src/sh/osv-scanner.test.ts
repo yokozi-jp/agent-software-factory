@@ -31,18 +31,18 @@ const scan = (code: number, env: Record<string, string> = {}) =>
     },
   });
 
-describe("osv-scanner.sh without pnpm-lock.yaml", () => {
-  it("passes without scanning", () => {
+describe("pnpm-lock.yaml がないときの osv-scanner.sh", () => {
+  it("検査せずに通すこと", () => {
     expect(scan(1)).toMatchObject({ status: 0, stdout: "", stderr: "" });
   });
 });
 
-describe("osv-scanner.sh with pnpm-lock.yaml", () => {
+describe("pnpm-lock.yaml があるときの osv-scanner.sh", () => {
   beforeAll(() => {
     writeFileSync(join(repo, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
   });
 
-  it("passes without a warning when there is no vulnerability, or no package", () => {
+  it("脆弱性も package もないとき、警告なしで通すこと", () => {
     for (const code of [0, 128]) {
       const result = scan(code);
       expect(result.status).toBe(0);
@@ -51,7 +51,7 @@ describe("osv-scanner.sh with pnpm-lock.yaml", () => {
     }
   });
 
-  it("passes with a warning when it finds a vulnerability", () => {
+  it("脆弱性を見つけたとき、警告を出して通すこと", () => {
     const result = scan(1);
     expect(result.status).toBe(0);
     expect(result.stderr).toContain(
@@ -59,20 +59,20 @@ describe("osv-scanner.sh with pnpm-lock.yaml", () => {
     );
   });
 
-  it("warns with an annotation in GitHub Actions", () => {
+  it("GitHub Actions では annotation で警告すること", () => {
     const result = scan(1, { GITHUB_ACTIONS: "true" });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("::warning title=osv-scanner::pnpm-lock.yaml has dependencies");
     expect(result.stderr).toBe("");
   });
 
-  it("passes and says that the scan failed when OSV-Scanner could not run", () => {
+  it("OSV-Scanner を実行できなかったとき、通して検査に失敗したと述べること", () => {
     const result = scan(127);
     expect(result.status).toBe(0);
     expect(result.stderr).toContain("the scan failed (exit 127)");
   });
 
-  it("passes and says that mise is missing", () => {
+  it("通して mise がないと述べること", () => {
     const path = onlyCommands(box.root, "no-mise", ["git", "sh"]);
     const result = runIn(repo, "sh", [script], { env: { GITHUB_ACTIONS: "", PATH: path } });
     expect(result.status).toBe(0);
@@ -100,27 +100,27 @@ const scanWithSarif = (table: number, sarif: number) => {
   return { result, file };
 };
 
-describe("osv-scanner.sh with OSV_SARIF_FILE", () => {
-  it("writes SARIF when it finds a vulnerability, and still passes with the warning", () => {
+describe("OSV_SARIF_FILE があるときの osv-scanner.sh", () => {
+  it("脆弱性を見つけたとき SARIF を書き、警告を出して通すこと", () => {
     const { result, file } = scanWithSarif(1, 1);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("::warning title=osv-scanner::");
     expect(readFileSync(file, "utf8")).toContain("2.1.0");
   });
 
-  it("leaves no file when the SARIF scan failed", () => {
+  it("SARIF の検査が失敗したとき、ファイルを残さないこと", () => {
     const { result, file } = scanWithSarif(1, 127);
     expect(result.status).toBe(0);
     expect(existsSync(file)).toBe(false);
   });
 
-  it("does not run the SARIF scan when the first scan failed", () => {
+  it("最初の検査が失敗したとき、SARIF の検査を実行しないこと", () => {
     const { result, file } = scanWithSarif(127, 0);
     expect(result.status).toBe(0);
     expect(existsSync(file)).toBe(false);
   });
 
-  it("writes no SARIF when OSV_SARIF_FILE is not set", () => {
+  it("OSV_SARIF_FILE がないとき、SARIF を書かないこと", () => {
     expect(scan(1, { GITHUB_ACTIONS: "true" }).stdout).not.toContain("sarif");
   });
 });

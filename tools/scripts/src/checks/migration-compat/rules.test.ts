@@ -15,7 +15,7 @@ const message = (decision: Decision): string => ("message" in decision ? decisio
 const none: MigrationChanges = { added: [], modified: [], deleted: [] };
 
 describe("classifyMigrations", () => {
-  it("sorts the files under the migrations directory into added, changed and deleted", () => {
+  it("migrations ディレクトリの下のファイルを、追加、変更、削除に分けること", () => {
     const diff = [
       `A\t${dir}2.sql`,
       `A\t${dir}1.sql`,
@@ -30,7 +30,7 @@ describe("classifyMigrations", () => {
     });
   });
 
-  it("sorts the changed and the deleted files too", () => {
+  it("変更と削除のファイルも分けること", () => {
     const diff = [`M\t${dir}2.sql`, `M\t${dir}1.sql`, `D\t${dir}9.sql`, `D\t${dir}8.sql`].join(
       "\n",
     );
@@ -41,11 +41,11 @@ describe("classifyMigrations", () => {
     });
   });
 
-  it("ignores a line that has no tab, though it is the path of a migration", () => {
+  it("migration の path であっても、タブのない行を無視すること", () => {
     expect(classifyMigrations(`${dir}1.sql\n`)).toEqual(none);
   });
 
-  it("ignores other files, blank lines and a diff with no change", () => {
+  it("ほかのファイル、空行、変更のない diff を無視すること", () => {
     expect(
       classifyMigrations(`A\tapps/api/src/a.ts\nM\tpackages/db/src/infrastructure/migrate.ts\n\n`),
     ).toEqual(none);
@@ -54,13 +54,13 @@ describe("classifyMigrations", () => {
 });
 
 describe("decide", () => {
-  it("fails when a migration of the base is changed", () => {
+  it("base の migration が変更されたとき失敗すること", () => {
     const decision = decide({ ...none, modified: [`${dir}1.sql`] }, ready);
     expect(decision.kind).toBe("fail");
     expect(message(decision)).toContain(`${dir}1.sql (changed)`);
   });
 
-  it("fails when a migration of the base is deleted, even if another is added and the base has no seed", () => {
+  it("別の migration が足され、base に seed がなくても、base の migration が削除されたとき失敗すること", () => {
     const decision = decide(
       { added: [`${dir}2.sql`], modified: [], deleted: [`${dir}1.sql`] },
       { hasSeed: false, hasHarness: false },
@@ -69,13 +69,13 @@ describe("decide", () => {
     expect(message(decision)).toContain(`${dir}1.sql (deleted)`);
   });
 
-  it("passes when no migration is added", () => {
+  it("migration が足されないとき通すこと", () => {
     const decision = decide(none, ready);
     expect(decision.kind).toBe("skip");
     expect(message(decision)).toContain("no migration");
   });
 
-  it("passes with a notice when the base has no seed entry", () => {
+  it("base に seed の入口がないとき、notice を出して通すこと", () => {
     const decision = decide(
       { ...none, added: [`${dir}1.sql`] },
       { hasSeed: false, hasHarness: true },
@@ -84,7 +84,7 @@ describe("decide", () => {
     expect(message(decision)).toContain(seedEntry);
   });
 
-  it("passes with a notice when the base's harness cannot apply the files", () => {
+  it("base の harness がファイルを適用できないとき、notice を出して通すこと", () => {
     const decision = decide(
       { ...none, added: [`${dir}1.sql`] },
       { hasSeed: true, hasHarness: false },
@@ -93,7 +93,7 @@ describe("decide", () => {
     expect(message(decision)).toContain(harnessEntry);
   });
 
-  it("names every changed and deleted migration in the failure, in one list", () => {
+  it("変更と削除のすべての migration を、1 つの一覧で失敗に挙げること", () => {
     expect(
       message(
         decide(
@@ -104,7 +104,7 @@ describe("decide", () => {
     ).toContain(`${dir}1.sql (changed), ${dir}2.sql (changed), ${dir}3.sql (deleted).`);
   });
 
-  it("runs the tests with the added migrations", () => {
+  it("足した migration でテストを実行すること", () => {
     expect(decide({ ...none, added: [`${dir}1.sql`, `${dir}2.sql`] }, ready)).toEqual({
       kind: "run",
       files: [`${dir}1.sql`, `${dir}2.sql`],
@@ -113,7 +113,7 @@ describe("decide", () => {
 });
 
 describe("report", () => {
-  it("writes an ::error:: annotation for a failure and a ::notice:: for a skip in GitHub Actions", () => {
+  it("GitHub Actions では、失敗を ::error::、スキップを ::notice:: の annotation で書くこと", () => {
     const env = { GITHUB_ACTIONS: "true" };
     expect(report({ kind: "fail", message: "a\nb 100%" }, env)).toEqual({
       stdout: "::error title=migration-compat::a%0Ab 100%25\n",
@@ -125,7 +125,7 @@ describe("report", () => {
     });
   });
 
-  it("writes a failure to stderr and a skip to stdout elsewhere", () => {
+  it("失敗を stderr に、スキップを stdout に書くこと (GitHub Actions 以外)", () => {
     expect(report({ kind: "fail", message: "bad" }, {})).toEqual({
       stdout: "",
       stderr: "migration-compat: bad\n",

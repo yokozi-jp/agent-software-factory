@@ -32,25 +32,25 @@ afterAll(() => {
 });
 
 describe("openapi-lint.sh", () => {
-  it("lints apps/api/openapi.json with .spectral.yaml, failing on warnings too", () => {
+  it("apps/api/openapi.json を .spectral.yaml で lint し、警告でも失敗すること", () => {
     expect(lint([]).status).toBe(0);
     expect(calls()).toBe(
       "exec -- spectral lint apps/api/openapi.json --ruleset .spectral.yaml --fail-severity=warn",
     );
   });
 
-  it("takes the spec and the ruleset as arguments", () => {
+  it("spec と ruleset を引数に取ること", () => {
     expect(lint(["other.json", "other.yaml"]).status).toBe(0);
     expect(calls()).toBe(
       "exec -- spectral lint other.json --ruleset other.yaml --fail-severity=warn",
     );
   });
 
-  it("fails when Spectral reports a finding", () => {
+  it("Spectral が指摘を報告したとき失敗すること", () => {
     expect(lint([], 1).status).toBe(1);
   });
 
-  it("fails, instead of skipping the check, without mise", () => {
+  it("mise がないとき、検査を飛ばさずに失敗すること", () => {
     const path = onlyCommands(box.root, "no-mise", ["git", "sh"]);
     const result = runIn(repo, "sh", [script], { env: { PATH: path } });
     expect(result.status).toBe(1);

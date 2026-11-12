@@ -127,18 +127,18 @@ const allowed = [
 ];
 
 describe("forbiddenCommand", () => {
-  it.each(refused)("refuses (%s): %j", (kind, command) => {
+  it.each(refused)("拒否すること (%s): %j", (kind, command) => {
     const message = forbiddenCommand(command);
     expect(message).toMatch(/^block-forbidden-commands: refused\. /);
     expect(message).toContain("docs/tooling/agent-permissions.md");
     expect(message).toContain(kind);
   });
 
-  it.each(allowed)("allows %j", (command) => {
+  it.each(allowed)("%j を許可すること", (command) => {
     expect(forbiddenCommand(command)).toBeUndefined();
   });
 
-  it("names what to do instead", () => {
+  it("代わりにすることを述べること", () => {
     expect(forbiddenCommand("gh pr merge 12")).toContain("`gh pr merge` (merge)");
     expect(forbiddenCommand("gh pr merge 12")).toContain("The user merges");
     expect(forbiddenCommand("git push origin main")).toContain("Push a branch");

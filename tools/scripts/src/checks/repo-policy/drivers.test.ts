@@ -49,19 +49,19 @@ const logging = (files: Record<string, string> = {}, fields: Record<string, unkn
     fields,
   );
 
-describe("ADR 0054: a driver holds its layers, its entries and the places of its tools, and nothing else", () => {
+describe("ADR 0054: driver は、層、入口、道具の置き場所だけを持つこと", () => {
   const violations = failuresOf(driversHaveTheirLayout);
 
-  it("passes a driver with entries, domain/, infrastructure/, testing/ and __fixtures__/", () => {
+  it("入口、domain/、infrastructure/、testing/、__fixtures__/ を持つ driver を通すこと", () => {
     expect(violations(repo(logging()))).toEqual([]);
   });
 
-  it("leaves a repository without drivers alone", () => {
+  it("driver のないリポジトリを放っておくこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
   it.each(["application", "http"])(
-    "refuses src/%s/ in a driver: it is a layer of a module",
+    "driver の src/%s/ を拒否すること: それはモジュールの層である",
     (layer) => {
       expect(violations(repo(logging({ [`src/${layer}/x.ts`]: "export {};\n" })))).toEqual([
         `packages/logging/src/${layer}/ is a layer of a module. The driver logging has domain/ and infrastructure/ only: it has no use case or route of its own, so put its code in infrastructure/ (docs/adr/0054, ${guide}).`,
@@ -69,7 +69,7 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
     },
   );
 
-  it("refuses a directory of src/ that is not a place of the driver, once for all its files", () => {
+  it("driver の置き場所ではない src/ のディレクトリを、すべてのファイルについて 1 回だけ拒否すること", () => {
     expect(
       violations(repo(logging({ "src/helpers/a.ts": "export {};\n", "src/helpers/b.ts": "x" }))),
     ).toEqual([
@@ -77,13 +77,13 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
     ]);
   });
 
-  it("refuses a file in src/ that its exports do not name", () => {
+  it("exports が名指さない src/ のファイルを拒否すること", () => {
     expect(violations(repo(logging({ "src/util.ts": "export {};\n" })))).toEqual([
       `packages/logging/src/util.ts is not an entry of the driver logging. The files in src/ outside a directory are the ones that its exports name (index.ts, node.ts, testing.ts), and they only re-export: move the code into domain/, infrastructure/ or testing/ (docs/adr/0054, ${guide}).`,
     ]);
   });
 
-  it("refuses a name at the root that no tool decides", () => {
+  it("どの道具も決めないルートの名前を拒否すること", () => {
     expect(
       violations(repo(logging({ "scripts/run.ts": "export {};\n", "NOTES.md": "x" }))),
     ).toEqual([
@@ -92,7 +92,7 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
     ]);
   });
 
-  it("passes the places that a tool decides: the migrations of db, and the locales of i18n", () => {
+  it("道具が決める場所を通すこと: db の migrations と i18n の locales", () => {
     const db = driver(
       "db",
       { "./node": "./src/node.ts" },
@@ -129,33 +129,33 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
     expect(violations(repo({ ...db, ...i18n, ...hr }))).toEqual([]);
   });
 
-  it("names the drivers that the infrastructure of a module may depend on: all but db", () => {
+  it("モジュールの infrastructure が依存してよい driver を挙げること: db 以外のすべて", () => {
     expect(driversOfModules).toEqual(["hr-system", "i18n", "logging", "telemetry"]);
   });
 
-  it("leaves the files under the name of a driver alone when it has no package.json", () => {
+  it("package.json のない driver 名の下のファイルを放っておくこと", () => {
     expect(
       violations(repo({ "packages/logging/NOTES.md": "x", "packages/db/src/a.ts": "x" })),
     ).toEqual([]);
   });
 
-  it("does not stop at a file that is named src", () => {
+  it("src という名前のファイルで止まらないこと", () => {
     expect(violations(repo({ ...logging(), "packages/logging/src": "x" }))).toEqual([]);
   });
 
-  it("reports a name at the root once, whatever the number of its files", () => {
+  it("ファイル数にかかわらず、ルートの名前を 1 回だけ報告すること", () => {
     expect(
       violations(repo(logging({ "scripts/a.ts": "x", "scripts/b.ts": "x", "scripts/c.ts": "x" }))),
     ).toHaveLength(1);
   });
 
-  it("refuses the locales of i18n in a driver that has no such place", () => {
+  it("その置き場所のない driver の i18n の locales を拒否すること", () => {
     expect(violations(repo(logging({ "src/locales/ja/translation.json": "{}" })))).toEqual([
       `packages/logging/src/locales/ is not a place of the driver logging. src/ holds domain, infrastructure, testing, __fixtures__: move the code into one of them (docs/adr/0054, ${guide}).`,
     ]);
   });
 
-  it("counts as an entry only an export that names a file directly in src/", () => {
+  it("src/ 直下のファイルを直接名指す export だけを入口に数えること", () => {
     const odd = driver(
       "telemetry",
       {
@@ -185,7 +185,7 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
     ]);
   });
 
-  it("takes the entries from the exports, so a driver with an entry file of another name passes", () => {
+  it("入口を exports から採るので、別の名前の入口ファイルを持つ driver を通すこと", () => {
     const hr = driver(
       "hr-system",
       { ".": "./src/index.ts", "./client": "./src/client.ts" },
@@ -202,7 +202,7 @@ describe("ADR 0054: a driver holds its layers, its entries and the places of its
   });
 });
 
-describe("ADR 0054: an entry file of a driver only re-exports, from the places its entry may use", () => {
+describe("ADR 0054: driver の入口ファイルは、入口が使える場所からの再 export だけをすること", () => {
   const violations = failuresOf(driverEntriesOnlyReexport);
   const may = {
     index: "domain/",
@@ -210,7 +210,7 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     testing: "testing/",
   };
 
-  it("passes the entries of a driver that re-export their layers, with comments and several statements", () => {
+  it("コメントと複数の文を持つ、層を再 export する driver の入口を通すこと", () => {
     expect(
       violations(
         repo(
@@ -236,13 +236,13 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
       notReexport('import { a } from "./domain/logger.ts"'),
     ],
     ["a re-export of a package", 'export * from "pino";\n', 're-exports "pino"'],
-  ])("refuses an entry file with %s", (_, text, message) => {
+  ])("%s のある入口ファイルを拒否すること", (_, text, message) => {
     const failures = violations(repo(logging({ "src/index.ts": text })));
     expect(failures).toHaveLength(1);
     expect(failures[0]).toContain(`packages/logging/src/index.ts ${message}`);
   });
 
-  it("refuses the entry `.` that re-exports infrastructure/: it must not pull in an external library", () => {
+  it("infrastructure/ を再 export する入口 `.` を拒否すること: 外部の library を引き込んではならない", () => {
     expect(
       violations(
         repo(logging({ "src/index.ts": 'export * from "./infrastructure/node-logger.ts";\n' })),
@@ -252,7 +252,7 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ]);
   });
 
-  it("allows i18n to re-export infrastructure/ from `.`, and a type import that carries an augmentation", () => {
+  it("i18n が `.` から infrastructure/ を再 export することと、拡張を運ぶ型の import を許可すること", () => {
     const i18n = driver(
       "i18n",
       { ".": "./src/index.ts" },
@@ -264,7 +264,7 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     expect(violations(repo(i18n))).toEqual([]);
   });
 
-  it("refuses ./testing that re-exports domain/, and ./node that re-exports testing/", () => {
+  it("domain/ を再 export する ./testing と、testing/ を再 export する ./node を拒否すること", () => {
     expect(
       violations(
         repo(
@@ -280,7 +280,7 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ]);
   });
 
-  it("reads a re-export however it is spaced and quoted", () => {
+  it("空白と引用符の書き方にかかわらず、再 export を読むこと", () => {
     expect(
       violations(
         repo(
@@ -299,7 +299,7 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ).toEqual([]);
   });
 
-  it("takes a line comment after a statement for a comment, not for code", () => {
+  it("文の後の行コメントを、コードではなくコメントとして採ること", () => {
     expect(
       violations(
         repo(
@@ -320,11 +320,11 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ["an import that is not a type import", 'import {} from "./domain/logger.ts"'],
     ["a path that leaves the entry's folder", 'export * from "../domain/logger.ts"'],
     ["a path that is not in a layer folder", 'export * from "./logger.ts"'],
-  ])("refuses %s", (_, text) => {
+  ])("%s を拒否すること", (_, text) => {
     expect(violations(repo(logging({ "src/index.ts": `${text};\n` })))).toHaveLength(1);
   });
 
-  it("says what is in the entry file and where the code goes, for each entry", () => {
+  it("入口ごとに、入口ファイルに書くものとコードの置き場所を述べること", () => {
     const body = (statement: string, layers: string) =>
       `has \`${statement}\`. An entry file only re-exports (\`export … from "./<layer>/…"\`): put the code in ${layers} (docs/adr/0054, ${guide}).`;
     expect(
@@ -344,22 +344,22 @@ describe("ADR 0054: an entry file of a driver only re-exports, from the places i
     ]);
   });
 
-  it("skips an entry file that the tree does not have (the exports check reports it)", () => {
+  it("ツリーにない入口ファイルを読み飛ばすこと (exports の検査が報告する)", () => {
     expect(violations(repo({ ...logging(), "packages/logging/src/node.ts": undefined }))).toEqual(
       [],
     );
   });
 });
 
-describe("ADR 0054: a driver does not depend on Effect", () => {
+describe("ADR 0054: driver は Effect に依存しないこと", () => {
   const violations = failuresOf(driversDoNotUseEffect);
 
-  it("passes a driver without effect", () => {
+  it("effect のない driver を通すこと", () => {
     expect(violations(repo(logging({}, { dependencies: { pino: "catalog:" } })))).toEqual([]);
   });
 
   it.each(["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"])(
-    "refuses effect and @effect/* in %s",
+    "%s の effect と @effect/* を拒否すること",
     (field) => {
       expect(
         violations(
@@ -383,7 +383,7 @@ describe("ADR 0054: a driver does not depend on Effect", () => {
     },
   );
 
-  it("leaves a package that is not a driver alone", () => {
+  it("driver ではない package を放っておくこと", () => {
     expect(
       violations(
         repo({
@@ -394,7 +394,7 @@ describe("ADR 0054: a driver does not depend on Effect", () => {
   });
 });
 
-describe("ADR 0054: the drivers are in the table of lint restrictions and in vite.config.ts", () => {
+describe("ADR 0054: driver が lint の禁止の表と vite.config.ts にあること", () => {
   const violations = failuresOf(driversAreInLint);
   const table = (values: string[], effectFiles: string[]) =>
     json({
@@ -413,14 +413,14 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     "vite.config.ts": vite("logging", ""),
   };
 
-  it("passes a driver that is in the table, has its fixture, and is named in vite.config.ts", () => {
+  it("表にあり、fixture を持ち、vite.config.ts に名前のある driver を通すこと", () => {
     expect(violations(repo({ ...logging(), ...complete }))).toEqual([]);
     expect(
       violations(repo({ ...logging(), ...complete, "vite.config.ts": vite("db", '"logging"') })),
     ).toEqual([]);
   });
 
-  it("refuses a driver that the table, the fixture rows and vite.config.ts do not name", () => {
+  it("表、fixture の行、vite.config.ts が名指さない driver を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -436,7 +436,7 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     ]);
   });
 
-  it("refuses a value of driver-in-module that is no driver, even when the tree has no driver", () => {
+  it("ツリーに driver がなくても、driver ではない driver-in-module の値を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -448,7 +448,7 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     ]);
   });
 
-  it("looks for the driver in nodeDrivers only, up to the end of its declaration", () => {
+  it("driver を nodeDrivers の中だけで、宣言の終わりまで探すこと", () => {
     const other = "const other = {\n  logging: {\n  },\n};\n";
     const failure = `vite.config.ts names the driver logging in neither nodeDrivers nor webDrivers, so the rules of the drivers do not reach its infrastructure/. Add it to the one that fits where it runs (docs/adr/0054, ${guide}).`;
     // Declared before and after nodeDrivers, and not in webDrivers.
@@ -460,12 +460,12 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     ).toEqual([failure]);
   });
 
-  it("reads a declaration that has no end as running to the end of the file", () => {
+  it("終わりのない宣言を、ファイルの終わりまで続くものとして読むこと", () => {
     const source = (text: string) => ({ ...logging(), ...complete, "vite.config.ts": text });
     expect(violations(repo(source("const nodeDrivers = {\n  logging: {")))).toEqual([]);
   });
 
-  it("does not take a value of driver-in-module that is not text for a driver name", () => {
+  it("driver 名のテキストではない driver-in-module の値を採らないこと", () => {
     expect(
       violations(
         repo({
@@ -478,7 +478,7 @@ describe("ADR 0054: the drivers are in the table of lint restrictions and in vit
     ).toEqual([]);
   });
 
-  it("finds nothing to say when vite.config.ts has neither list", () => {
+  it("vite.config.ts にどちらの一覧もないとき、何も述べないこと", () => {
     expect(
       violations(repo({ ...logging(), ...complete, "vite.config.ts": "export default {};\n" })),
     ).toEqual([

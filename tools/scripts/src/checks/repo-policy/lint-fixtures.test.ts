@@ -21,7 +21,7 @@ import {
 
 const base = passingRepo;
 
-describe("Detection power (#43): every lint rule that is an error has a fixture", () => {
+describe("検出力 (#43): error の lint 規則のすべてに fixture があること", () => {
   const violations = failuresOf(lintRulesHaveFixtures);
   const config = base["vite.config.ts"] ?? "";
   const noFixture = (rule: string) =>
@@ -37,13 +37,13 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     ["a rule on one line with others", 'rules: { "x/y": "off", "no-console": "error" },'],
     ["a rule with a space before the colon", '"no-console" : "error",'],
     ["a rule with no space after the colon", '"no-console":"error",'],
-  ])("asks for the fixture of %s", (_, rule) => {
+  ])("%s の fixture を求めること", (_, rule) => {
     expect(violations(repo({ "vite.config.ts": withRules(rule) }))).toEqual([
       noFixture("no-console"),
     ]);
   });
 
-  it("names each rule without a fixture once, in the order of the config", () => {
+  it("fixture のない規則を、設定の順に 1 回ずつ挙げること", () => {
     const rules = '"b/second": "error",\n"a/first": ["error"],\n"b/second": "error",';
     expect(violations(repo({ "vite.config.ts": withRules(rules) }))).toEqual([
       noFixture("b/second"),
@@ -51,7 +51,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     ]);
   });
 
-  it.each(["off", "warn"])("asks for nothing for a rule that is %s", (severity) => {
+  it.each(["off", "warn"])("%s の規則には何も求めないこと", (severity) => {
     const rules = `"no-console": "${severity}",\n"x/y": ["${severity}", "error"],`;
     expect(violations(repo({ "vite.config.ts": withRules(rules) }))).toEqual([]);
   });
@@ -93,7 +93,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
       "a comment in a file with CRLF line ends",
       "// oxlint-disable-next-line no-console -- r\r\nx;\r\n",
     ],
-  ])("accepts %s in a fixture", (_, text) => {
+  ])("fixture の %s を受け付けること", (_, text) => {
     expect(
       violations(repo({ "vite.config.ts": withRules('"no-console": "error",'), ...fixture(text) })),
     ).toEqual([]);
@@ -118,7 +118,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
       "const a = 1; // oxlint-disable-next-line no-console\n",
     ],
     ["a comment inside a string", "const a = '// oxlint-disable-next-line no-console -- r';\n"],
-  ])("refuses %s", (_, text) => {
+  ])("%s を拒否すること", (_, text) => {
     expect(
       violations(repo({ "vite.config.ts": withRules('"no-console": "error",'), ...fixture(text) })),
     ).toEqual([noFixture("no-console")]);
@@ -131,7 +131,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     "tools/scripts/src/test/fixtures/console.test.ts",
     "packages/module-fixtures/src/domain/__fixtures__/deeper/console.ts",
     "__fixtures__/console.ts",
-  ])("counts the comment in %s", (path) => {
+  ])("%s の中のコメントを数えること", (path) => {
     expect(
       violations(
         repo({ "vite.config.ts": withRules('"no-console": "error",'), [path]: annotation }),
@@ -148,7 +148,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     "apps/web/src/xfixtures/console.ts",
     "tools/scripts/src/checks/repo-policy/fixtures/console.ts",
     "tools/scripts/src/checks/other/__fixtures__/console.ts",
-  ])("does not count the comment in %s", (path) => {
+  ])("%s の中のコメントを数えないこと", (path) => {
     expect(
       violations(
         repo({ "vite.config.ts": withRules('"no-console": "error",'), [path]: annotation }),
@@ -156,12 +156,12 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
     ).toEqual([noFixture("no-console")]);
   });
 
-  it("asks for nothing when vite.config.ts is missing", () => {
+  it("vite.config.ts がないとき、何も求めないこと", () => {
     expect(violations(repo({ "vite.config.ts": undefined }))).toEqual([]);
   });
 
   it.each(["import/no-nodejs-modules", "no-restricted-imports", "no-restricted-globals"])(
-    "refuses a repository whose only fixture of %s is gone",
+    "%s の唯一の fixture がなくなったリポジトリを拒否すること",
     (rule) => {
       const files = Object.fromEntries(
         Object.entries(base)
@@ -175,7 +175,7 @@ describe("Detection power (#43): every lint rule that is an error has a fixture"
   );
 });
 
-describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
+describe("ADR 0020: 有効な tsconfig のフラグのすべてに fixture があること", () => {
   const violations = failuresOf(tsconfigFlagsHaveFixtures);
   const noFixture = (flag: string) =>
     `tsconfig.json turns on ${flag}, but no fixture has \`@ts-expect-error -- fixture: ${flag}\`. Add a line that the flag makes an error, in the form \`-- fixture: ${flag}: <why>\`, to apps/api/src/__fixtures__/tsconfig-flags.ts, so that removing the flag fails \`vp check\` (docs/tooling/ci.md ("lint の規則と tsconfig のフラグの fixture")).`;
@@ -187,17 +187,17 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
       .map((flag) => `// @ts-expect-error -- fixture: ${flag}: why\nexport const x = 1;`)
       .join("\n");
 
-  it("asks for a flag that no fixture names", () => {
+  it("どの fixture も名指さないフラグを求めること", () => {
     expect(
       violations(repo({ "tsconfig.json": tsconfig({ strict: true, noImplicitAny: true }) })),
     ).toEqual([noFixture("noImplicitAny")]);
   });
 
-  it("asks for nothing when tsconfig.json is missing", () => {
+  it("tsconfig.json がないとき、何も求めないこと", () => {
     expect(violations(repo({ "tsconfig.json": undefined }))).toEqual([]);
   });
 
-  it("reports a tsconfig.json that is not valid JSON, and asks for nothing", () => {
+  it("JSON として正しくない tsconfig.json を報告し、何も求めないこと", () => {
     expect(
       violations(repo({ "tsconfig.json": '{ "compilerOptions": { "strict": true, }' })),
     ).toEqual([expect.stringMatching(/^tsconfig\.json is not valid JSON \(/)]);
@@ -228,7 +228,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     ["strictPropertyInitialization", true],
     ["useUnknownInCatchVariables", true],
     ["verbatimModuleSyntax", true],
-  ])("knows %s as a checking flag, and is satisfied by its fixture", (flag, on) => {
+  ])("%s を検査のフラグとして知り、その fixture で満たされること", (flag, on) => {
     const tsconfigText = tsconfig({ [flag]: on });
     expect(violations(repo({ "tsconfig.json": tsconfigText, [flagsFile]: "" }))).toEqual([
       noFixture(flag),
@@ -238,7 +238,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     ).toEqual([]);
   });
 
-  it("asks for the flags that are on, not for the ones that are off or that check nothing", () => {
+  it("有効なフラグだけを求め、無効なフラグや何も検査しないフラグを求めないこと", () => {
     const options = {
       noEmit: true,
       skipLibCheck: true,
@@ -249,7 +249,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     expect(violations(repo({ "tsconfig.json": tsconfig(options), [flagsFile]: "" }))).toEqual([]);
   });
 
-  it("asks for allowUnreachableCode and allowUnusedLabels when they are false", () => {
+  it("allowUnreachableCode と allowUnusedLabels が false のとき求めること", () => {
     expect(
       violations(
         repo({
@@ -260,7 +260,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     ).toEqual([noFixture("allowUnreachableCode"), noFixture("allowUnusedLabels")]);
   });
 
-  it("reads a tsconfig.json whose comments are indented, and keeps a // inside a string", () => {
+  it("コメントがインデントされた tsconfig.json を読み、文字列の中の // を残すこと", () => {
     const text =
       '{\n    // a comment\n  "compilerOptions": {\n\t// another\n    "strict": true,\n    "rootDir": "https://x"\n  }\n}\n';
     expect(violations(repo({ "tsconfig.json": text, [flagsFile]: "" }))).toEqual([
@@ -282,7 +282,7 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     ],
     ["a @ts-expect-error without the fixture form", "// @ts-expect-error -- strict\n"],
     ["a @ts-expect-error without a separator", "// @ts-expect-error fixture: strict\n"],
-  ])("refuses %s", (_, text) => {
+  ])("%s を拒否すること", (_, text) => {
     expect(
       violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
     ).toEqual([noFixture("strict")]);
@@ -292,13 +292,13 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
     "// @ts-expect-error -- fixture: strict\n",
     "// @ts-expect-error -- fixture: strict: the parameter has no type\n",
     "  // @ts-expect-error   --   fixture:   strict (noImplicitAny)\n",
-  ])("accepts the flag named in %j", (text) => {
+  ])("%j に挙げたフラグを受け付けること", (text) => {
     expect(
       violations(repo({ "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: text })),
     ).toEqual([]);
   });
 
-  it("counts a fixture in any __fixtures__/ directory, and not one outside", () => {
+  it("どの __fixtures__/ ディレクトリの fixture も数え、その外のものを数えないこと", () => {
     const options = { "tsconfig.json": tsconfig({ strict: true }), [flagsFile]: undefined };
     const text = flagsFixture("strict");
     expect(
@@ -313,14 +313,14 @@ describe("ADR 0020: every tsconfig flag that is on has a fixture", () => {
   });
 });
 
-describe("ADR 0020: a project tsconfig.json takes the checking flags from the root", () => {
+describe("ADR 0020: project の tsconfig.json が、検査のフラグをルートから採ること", () => {
   const violations = failuresOf(projectTsconfigs);
   const extendsRoot = (depth: number) => `${"../".repeat(depth)}tsconfig.json`;
   const project = (path: string, tsconfig: Record<string, unknown>) => ({
     [path]: json(tsconfig),
   });
 
-  it("passes a project that extends the root and sets its runtime only", () => {
+  it("ルートを extends し、runtime だけを設定する project を通すこと", () => {
     expect(
       violations(
         repo(
@@ -333,7 +333,7 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
     ).toEqual([]);
   });
 
-  it("passes a project with no compilerOptions", () => {
+  it("compilerOptions のない project を通すこと", () => {
     expect(
       violations(repo(project("apps/web/tsconfig.json", { extends: extendsRoot(2) }))),
     ).toEqual([]);
@@ -344,13 +344,13 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
     ["an extends that is not the root", { extends: "../tsconfig.base.json" }],
     ["an extends of the wrong depth", { extends: extendsRoot(1) }],
     ["an extends that is not a string", { extends: ["../../tsconfig.json"] }],
-  ])("refuses a project with %s", (_, tsconfig) => {
+  ])("%s のある project を拒否すること", (_, tsconfig) => {
     expect(violations(repo(project("apps/web/tsconfig.json", tsconfig)))).toEqual([
       'apps/web/tsconfig.json must have "extends": "../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
     ]);
   });
 
-  it("follows the depth of the project", () => {
+  it("project の深さに従うこと", () => {
     expect(
       violations(repo(project("tools/x/y/tsconfig.json", { extends: extendsRoot(3) }))),
     ).toEqual([]);
@@ -365,7 +365,7 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
     ["strict", false],
     ["noUncheckedIndexedAccess", false],
     ["allowUnreachableCode", true],
-  ])("refuses a project that sets %s", (flag, value) => {
+  ])("%s を設定する project を拒否すること", (flag, value) => {
     expect(
       violations(
         repo(
@@ -380,7 +380,7 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
     ]);
   });
 
-  it("names each problem of each project", () => {
+  it("各 project の問題を、それぞれ挙げること", () => {
     expect(
       violations(
         repo({
@@ -401,26 +401,26 @@ describe("ADR 0020: a project tsconfig.json takes the checking flags from the ro
     ]);
   });
 
-  it("does not check the root tsconfig.json as a project", () => {
+  it("ルートの tsconfig.json を project として検査しないこと", () => {
     expect(
       violations(repo({ "tsconfig.json": json({ compilerOptions: { target: "es2024" } }) })),
     ).toEqual([]);
   });
 
-  it("reads the comments of a tsconfig.json", () => {
+  it("tsconfig.json のコメントを読むこと", () => {
     const text = '{\n  // a comment\n  "compilerOptions": {}\n}\n';
     expect(violations(repo({ "apps/web/tsconfig.json": text }))).toEqual([
       'apps/web/tsconfig.json must have "extends": "../../tsconfig.json", or the strictness of the root tsconfig.json does not reach it (docs/adr/0020).',
     ]);
   });
 
-  it("checks a file named tsconfig.json only, at any depth", () => {
+  it("どの深さでも、tsconfig.json という名前のファイルだけを検査すること", () => {
     expect(violations(repo(project("apps/web/tsconfig.app.json", {})))).toEqual([]);
     expect(violations(repo(project("apps/web/xtsconfig.json", {})))).toEqual([]);
   });
 });
 
-describe("ADR 0026: some package under packages/ has the fixtures of each override", () => {
+describe("ADR 0026: packages/ のいずれかの package に、各 override の fixture があること", () => {
   const violations = failuresOf(moduleBoundaries);
   const config = base["vite.config.ts"] ?? "";
   const noFixture = (dir: string) =>
@@ -444,7 +444,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
       }),
     );
 
-  it("passes the fixtures in any one package: an override reaches every package alike", () => {
+  it("どれか 1 つの package の fixture を通すこと: override はどの package にも同じく届く", () => {
     expect(
       violations(
         repo({
@@ -455,7 +455,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([]);
   });
 
-  it("refuses a repository without the fixture of src/ or of a layer", () => {
+  it("src/ か層の fixture のないリポジトリを拒否すること", () => {
     expect(
       violations(
         repo({
@@ -466,7 +466,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([noFixture("src"), noFixture("src/http")]);
   });
 
-  it("refuses a fixture without the disable comment of no-restricted-imports", () => {
+  it("no-restricted-imports の disable コメントのない fixture を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -477,7 +477,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([noFixture("src/domain")]);
   });
 
-  it("refuses a fixture that is outside __fixtures__/ of its directory, or of a package", () => {
+  it("そのディレクトリまたは package の __fixtures__/ の外にある fixture を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -491,7 +491,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([noFixture("src/domain")]);
   });
 
-  it("counts a fixture in a directory under __fixtures__/", () => {
+  it("__fixtures__/ の下のディレクトリにある fixture を数えること", () => {
     expect(
       violations(
         repo({
@@ -502,7 +502,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([]);
   });
 
-  it("asks only for the fixture of src/ when the only package is shared", () => {
+  it("唯一の package が shared のとき、src/ の fixture だけを求めること", () => {
     expect(
       violations(
         repo({
@@ -527,7 +527,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([noFixture("src")]);
   });
 
-  it("asks for nothing when there is no package under packages/", () => {
+  it("packages/ の下に package がないとき、何も求めないこと", () => {
     expect(
       violations(
         repo({
@@ -546,7 +546,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ).toEqual([]);
   });
 
-  it("refuses a repository without the fixtures of the runtime restrictions or of the tests", () => {
+  it("runtime の禁止かテストの fixture のないリポジトリを拒否すること", () => {
     expect(
       violations(
         repo({
@@ -567,7 +567,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ]);
   });
 
-  it("does not count a test file for the runtime restrictions, nor another file for the tests", () => {
+  it("runtime の禁止にテストファイルを、テストにそれ以外のファイルを数えないこと", () => {
     expect(
       violations(
         repo({
@@ -585,7 +585,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ]);
   });
 
-  it("refuses a domain whose fixture does not show the runtime restrictions", () => {
+  it("fixture が runtime の禁止を示さない domain を拒否すること", () => {
     const runtime = "packages/module-fixtures/src/domain/__fixtures__/runtime-apis.ts";
     expect(violations(repo({ [runtime]: undefined }))).toEqual([
       noDomainRuntime("no-restricted-globals"),
@@ -609,12 +609,12 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
     ]);
   });
 
-  it("follows the layers that vite.config.ts lists", () => {
+  it("vite.config.ts が挙げる層に従うこと", () => {
     const threeLayers = config.replace('  http: ["domain"],', '  http: ["domain"],\n  infra: [],');
     expect(violations(repo({ "vite.config.ts": threeLayers }))).toEqual([noFixture("src/infra")]);
   });
 
-  it("asks for the fixture of src/ only when vite.config.ts has no layers object", () => {
+  it("vite.config.ts に layers のオブジェクトがないときだけ、src/ の fixture を求めること", () => {
     const none = config.replace("const layers", "const tiers");
     expect(
       violations(
@@ -629,7 +629,7 @@ describe("ADR 0026: some package under packages/ has the fixtures of each overri
   });
 });
 
-describe("ADR 0027: some module has the fixtures of the rules that keep domain pure", () => {
+describe("ADR 0027: いずれかのモジュールに、domain を純粋に保つ規則の fixture があること", () => {
   const violations = failuresOf(domainPurity);
   const config = base["vite.config.ts"] ?? "";
   const purity = "packages/module-fixtures/src/domain/__fixtures__/purity.ts";
@@ -642,13 +642,13 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
       .join("\n");
 
   it.each(["domain/no-throw", "no-restricted-globals", "no-restricted-properties"])(
-    "refuses a domain whose fixtures lack the disable comment of %s",
+    "fixture に %s の disable コメントのない domain を拒否すること",
     (rule) => {
       expect(violations(repo({ [purity]: without(rule) }))).toEqual([noFixture(rule)]);
     },
   );
 
-  it("names every rule that has no fixture, in the order of the rules", () => {
+  it("fixture のないすべての規則を、規則の順に挙げること", () => {
     expect(violations(repo({ [purity]: undefined }))).toEqual([
       noFixture("domain/no-throw"),
       noFixture("no-restricted-globals"),
@@ -656,12 +656,12 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
     ]);
   });
 
-  it("refuses a disable comment of a rule of a similar name", () => {
+  it("似た名前の規則の disable コメントを拒否すること", () => {
     const similar = domainFixture.replace("domain/no-throw", "other/no-throw");
     expect(violations(repo({ [purity]: similar }))).toEqual([noFixture("domain/no-throw")]);
   });
 
-  it("passes fixtures that are spread over several files, and over several modules", () => {
+  it("複数のファイルと複数のモジュールにまたがる fixture を通すこと", () => {
     const lines = domainFixture.split("\n");
     expect(
       violations(
@@ -675,7 +675,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
     ).toEqual([]);
   });
 
-  it("refuses fixtures that are outside __fixtures__/ of domain, or in runtime-apis.ts", () => {
+  it("domain の __fixtures__/ の外、または runtime-apis.ts にある fixture を拒否すること", () => {
     expect(
       violations(
         repo({
@@ -693,7 +693,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
     ]);
   });
 
-  it("asks nothing when vite.config.ts has no domain layer, or when the only package is shared", () => {
+  it("vite.config.ts に domain の層がないとき、または唯一の package が shared のとき、何も求めないこと", () => {
     expect(
       violations(
         repo({
@@ -718,7 +718,7 @@ describe("ADR 0027: some module has the fixtures of the rules that keep domain p
   });
 });
 
-describe("ADR 0028: application and infrastructure have the fixtures of the Effect rules", () => {
+describe("ADR 0028: application と infrastructure に、Effect の規則の fixture があること", () => {
   const violations = failuresOf(effectBoundaries);
   const config = base["vite.config.ts"] ?? "";
   const withLayers = (layers: string) =>
@@ -740,11 +740,11 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     `No packages/*/src/${layer}/__fixtures__/${file} has \`oxlint-disable-next-line ${comment}\`, so nothing shows the rule reaches ${layer}/ (docs/adr/0028).`;
   const both = withLayers("  application: [],\n  infrastructure: [],");
 
-  it("asks for nothing when vite.config.ts has neither layer", () => {
+  it("vite.config.ts にどちらの層もないとき、何も求めないこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
-  it("passes a module whose layers have both fixtures", () => {
+  it("層が両方の fixture を持つモジュールを通すこと", () => {
     expect(
       violations(
         repo({
@@ -758,7 +758,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ).toEqual([]);
   });
 
-  it("asks a layer for every fixture when it has none", () => {
+  it("fixture が 1 つもない層に、すべての fixture を求めること", () => {
     expect(
       violations(
         repo({
@@ -775,7 +775,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ]);
   });
 
-  it("names the one rule whose disable comment is missing", () => {
+  it("disable コメントのない規則を 1 つ挙げること", () => {
     expect(
       violations(
         repo({
@@ -789,7 +789,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ).toEqual([missing("infrastructure", "effect-tsgo.ts", "effecttsgo/unstable-api-usage")]);
   });
 
-  it("reads each comment in its own file", () => {
+  it("各コメントをそれ自身のファイルで読むこと", () => {
     expect(
       violations(
         repo({
@@ -804,7 +804,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ]);
   });
 
-  it("asks only for the package.json of a package under the root packages/, and once", () => {
+  it("ルートの packages/ の下にある package の package.json だけを、1 回求めること", () => {
     expect(
       violations(
         repo({
@@ -823,7 +823,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ]);
   });
 
-  it("asks for nothing when the only package is shared", () => {
+  it("唯一の package が shared のとき、何も求めないこと", () => {
     expect(
       violations(
         repo({
@@ -840,7 +840,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
     ).toEqual([]);
   });
 
-  it("does not ask shared", () => {
+  it("shared には求めないこと", () => {
     expect(
       violations(
         repo({
@@ -856,7 +856,7 @@ describe("ADR 0028: application and infrastructure have the fixtures of the Effe
   });
 });
 
-describe("ADR 0026: the edges", () => {
+describe("ADR 0026: 辺", () => {
   const violations = failuresOf(moduleBoundaries);
   const config = base["vite.config.ts"] ?? "";
   const noFixture = (dir: string) =>
@@ -884,13 +884,13 @@ describe("ADR 0026: the edges", () => {
     ["a key of digits and an underscore", "\n  a_2: [],\n", ["a_2"]],
     ["keys on one line", ' a: ["b"], b: [] ', ["a", "b"]],
     ["a space before the colon", "\n  c : [],\n", ["c"]],
-  ])("reads %s", (_, body, layers) => {
+  ])("%s を読むこと", (_, body, layers) => {
     expect(layersOf(after(withBody(body)))).toEqual(
       layers.map((layer) => noFixture(`src/${layer}`)),
     );
   });
 
-  it("reads only a top-level `const layers`, not one indented or of a longer name", () => {
+  it("最上位の `const layers` だけを読み、インデントされたものや長い名前のものを読まないこと", () => {
     const others = `const layers2 = { a: [] };\n${config.replace("const layers", "  const layers")}`;
     expect(layersOf(others)).toEqual([]);
   });
@@ -899,7 +899,7 @@ describe("ADR 0026: the edges", () => {
     "apps/packages/approval/package.json",
     "packages/approval/package.json.orig",
     "packages/claim/nested/package.json",
-  ])("passes %s, which is not the manifest of a package under packages/", (path) => {
+  ])("packages/ の下の package のマニフェストではない %s を通すこと", (path) => {
     expect(violations(repo({ [path]: "{}" }))).toEqual([]);
   });
 });
