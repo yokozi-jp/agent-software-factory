@@ -18,7 +18,7 @@ zizmor = "1.32.0"
 
 # Kiro CLI has no mise registry entry, so the http backend downloads the official zip (docs/adr/0057).
 # The version list and the sha256 of every package are in the official index.json; mise.lock records the sha256.
-# Keep the version in step with the dependency named kiro-cli in renovate.jsonc (a regex manager reads this table).
+# renovate.jsonc has a regex manager that reads the `version` line right under this table header, so keep them adjacent.
 [tools."http:kiro-cli"]
 version = "3.2.1"
 bin_path = "kirocli/bin"

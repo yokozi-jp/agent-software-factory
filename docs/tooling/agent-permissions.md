@@ -19,7 +19,7 @@ Kiro 側の規則は**ガードレール**です。誤操作と、読んだ内�
 
 ## 使い方
 
-- **起動:** `kiro-cli chat` と起動すれば、ワークスペースの既定の agent `factory` (`.kiro/agents/factory.json`) が有効になります。`.kiro/settings/cli.json` の `chat.defaultAgent` が決めます。`--agent <別の agent>` と `/agent` で別の agent を選ぶと外れます。hook は agent に依らず効きます。
+- **起動:** `kiro-cli chat` (mise で固定した版で動かすなら `mise exec -- kiro-cli chat`) と起動すれば、ワークスペースの既定の agent `factory` (`.kiro/agents/factory.json`) が有効になります。`.kiro/settings/cli.json` の `chat.defaultAgent` が決めます。`--agent <別の agent>` と `/agent` で別の agent を選ぶと外れます。hook は agent に依らず効きます。
 - **`--trust-all-tools` を付けない:** 付けると「確認」の区分が無効になり、確認を求める操作が自動で承認されます。「許可」と、deny の規則は変わりません。ただし、deny をすり抜ける形 (下の表) は確認に落ちる操作なので、`--trust-all-tools` ではそのまま実行されます。hook の禁止だけが残ります。
 - **worktree ごとに workspace を信頼する:** 信頼していない workspace では、hook も agent も読まれません ([Git hook](git-hooks.md#kiro-の-hook)、[並行作業と worktree](worktrees.md))。worktree を作ったら、そこで Kiro を初めて開くときの「Trust this workspace?」に答えます。
 - **止められたとき:** hook の拒否は、理由と代わりの手順を stderr に返します。agent の規則の deny は、理由を返しません (`policyDenial` に規則が残ります)。どちらも、人に確認を求める以外の道 (PR を出す、人に実行を頼む) を選びます。

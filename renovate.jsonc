@@ -109,8 +109,8 @@
       "automerge": false,
     },
   ],
-  // The official version list of Kiro CLI (docs/adr/0057). The official installer reads this index.json (not GitHub
-  // Releases), so it is the registry URL. The list is newest first and has no pre-release versions (checked 2026-11-12).
+  // The official version list of Kiro CLI (docs/adr/0057). The official installer reads this index.json, so it is the
+  // registry URL. The mise manager skips `http:` tools (unsupported-datasource), hence the regex manager below.
   "customDatasources": {
     "kiro-cli": {
       "defaultRegistryUrlTemplate": "https://prod.download.cli.kiro.dev/stable/index.json",
