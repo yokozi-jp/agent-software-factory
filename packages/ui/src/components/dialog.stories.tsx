@@ -48,9 +48,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** ダイアログを開き、内容が見えるまで待つ。 */
-const openDialog = async (canvas: {
-  getByRole: (role: "button", options: { name: string }) => HTMLElement;
-}) => {
+const openDialog = async (canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"]) => {
   await userEvent.click(canvas.getByRole("button", { name: "開く" }));
   // ダイアログは portal で body の直下に出るので、canvas ではなく screen から探す。
   const dialog = await screen.findByRole("dialog", { name: "確認" });

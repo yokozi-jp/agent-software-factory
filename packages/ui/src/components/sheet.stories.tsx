@@ -46,36 +46,53 @@ export const Default: Story = {
   },
 };
 
-const withContent = (content: Partial<ComponentProps<typeof SheetContent>>) => (
-  <Sheet>
-    <SheetTrigger render={<Button />}>メニューを開く</SheetTrigger>
-    <SheetContent {...content}>
-      <SheetHeader>
-        <SheetTitle>メニュー</SheetTitle>
-        <SheetDescription>項目を選びます。</SheetDescription>
-      </SheetHeader>
-      <SheetFooter>
-        <SheetClose render={<Button variant="outline" />}>閉じる</SheetClose>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-);
+/** 置いた SheetClose で閉じられるシート。向きと閉じるボタンは story ごとに替える。 */
+function SheetExample({
+  label,
+  ...content
+}: { label: string } & Pick<ComponentProps<typeof SheetContent>, "side" | "showCloseButton">) {
+  return (
+    <Sheet>
+      <SheetTrigger render={<Button />}>{label}</SheetTrigger>
+      <SheetContent {...content}>
+        <SheetHeader>
+          <SheetTitle>メニュー</SheetTitle>
+          <SheetDescription>項目を選びます。</SheetDescription>
+        </SheetHeader>
+        <SheetFooter>
+          <SheetClose render={<Button variant="outline" />}>閉じる</SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
-export const Sides: Story = {
-  render: () => withContent({ side: "left" }),
+const sides = ["top", "right", "bottom", "left"] as const;
+
+export const AllSides: Story = {
+  render: () => (
+    <>
+      {sides.map((side) => (
+        <SheetExample key={side} label={`${side} を開く`} side={side} />
+      ))}
+    </>
+  ),
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "メニューを開く" }));
-    const sheet = await screen.findByRole("dialog", { name: "メニュー" });
-    await expect(sheet).toHaveAttribute("data-side", "left");
+    for (const side of sides) {
+      await userEvent.click(canvas.getByRole("button", { name: `${side} を開く` }));
+      const sheet = await screen.findByRole("dialog", { name: "メニュー" });
+      await expect(sheet).toHaveAttribute("data-side", side);
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
   },
 };
 
 export const WithoutCloseButton: Story = {
-  render: () => withContent({ side: "bottom", showCloseButton: false }),
+  render: () => <SheetExample label="メニューを開く" side="bottom" showCloseButton={false} />,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "メニューを開く" }));
     const sheet = await screen.findByRole("dialog", { name: "メニュー" });
-    await expect(sheet).toHaveAttribute("data-side", "bottom");
     // 右上の閉じるボタンは出さない。置いた SheetClose だけで閉じる。
     await expect(within(sheet).queryByRole("button", { name: "Close" })).toBeNull();
     await userEvent.click(within(sheet).getByRole("button", { name: "閉じる" }));

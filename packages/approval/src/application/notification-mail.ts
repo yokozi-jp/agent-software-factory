@@ -4,13 +4,16 @@ import { Data, Effect } from "effect";
 
 import type { OutgoingMail } from "./mail-sender.ts";
 
-/** A message whose `values` lack an item that its template fills in. It can never succeed, so it is a defect (a DLQ). */
+/**
+ * A message whose `values` lack items that its template fills in: every missing name, in the order of the template. It
+ * can never succeed, so it is a defect (a DLQ).
+ */
 export class MissingTemplateValue extends Data.TaggedError("MissingTemplateValue")<{
   readonly template: string;
-  readonly name: string;
+  readonly names: readonly string[];
 }> {
   override get message(): string {
-    return `The template ${this.template} needs the value ${this.name}`;
+    return `The template ${this.template} is missing the values: ${this.names.join(", ")}`;
   }
 }
 
@@ -32,16 +35,16 @@ const formatBusinessInstant = (instant: Temporal.Instant): string =>
 
 type Values = Readonly<Record<string, string>>;
 
-/** The items of `values` that the templates fill in. */
-type ValueName = "applicantName" | "claimTitle" | "reason";
-
 interface Content {
   readonly subject: string;
   readonly lines: readonly string[];
 }
 
+/** What a template makes of `values`: the content, or the names of the items that are not there. */
+type Rendered = Content | { readonly missing: readonly string[] };
+
 /** Whether `values` has every item of `names`. After it, the type says so: an item of `names` reads as a string. */
-const hasAll = <N extends ValueName>(
+const hasAll = <N extends string>(
   values: Values,
   names: readonly N[],
 ): values is Values & Readonly<Record<N, string>> =>
@@ -53,11 +56,11 @@ const hasAll = <N extends ValueName>(
  * and needs no fallback for a missing one.
  */
 const template =
-  <N extends ValueName>(
+  <N extends string>(
     names: readonly N[],
     content: (value: Readonly<Record<N, string>>) => Content,
   ) =>
-  (values: Values): Content | { readonly missing: readonly N[] } =>
+  (values: Values): Rendered =>
     hasAll(values, names)
       ? content(values)
       : { missing: names.filter((name) => values[name] === undefined) };
@@ -74,7 +77,7 @@ const templates = {
     subject: `【差戻し】${value.claimTitle}`,
     lines: ["次の申請が差し戻されました。", `申請: ${value.claimTitle}`, `理由: ${value.reason}`],
   })),
-} satisfies Record<NotificationRequested["template"], (values: Values) => unknown>;
+} satisfies Record<NotificationRequested["template"], (values: Values) => Rendered>;
 
 /**
  * The mail for a notification message. Review requests and send-backs have one message shape and differ in the
@@ -89,7 +92,7 @@ export const renderNotificationMail = (
   const content = templates[message.template](message.values);
   if ("missing" in content) {
     return Effect.die(
-      new MissingTemplateValue({ template: message.template, name: content.missing.join(", ") }),
+      new MissingTemplateValue({ template: message.template, names: content.missing }),
     );
   }
   const body = [

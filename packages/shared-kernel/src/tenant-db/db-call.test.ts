@@ -1,4 +1,4 @@
-import { Context, Effect, Exit } from "effect";
+import { Cause, Context, Effect, Exit } from "effect";
 import type { QueryExecutorProvider } from "kysely";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -52,10 +52,10 @@ describe("dbCallUnique", () => {
     ["code のない object", { constraint: "t_claim_pkey" }],
     ["23505 でない code", { code: "40001", constraint: "t_claim_pkey" }],
     ["数値の 23505", { code: 23_505 }],
-  ])("%s の失敗は、型つきの失敗にせず defect にすること", async (_name, reason) => {
+  ])("%s の失敗は、型つきの失敗にせず、その値のまま defect にすること", async (_name, reason) => {
     const exit = await Effect.runPromise(Effect.exit(rejectedWith(reason)));
 
-    expect(Exit.hasDies(exit)).toBe(true);
     expect(Exit.hasFails(exit)).toBe(false);
+    expect(Exit.isFailure(exit) && Cause.squash(exit.cause)).toBe(reason);
   });
 });
