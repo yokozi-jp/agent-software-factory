@@ -243,7 +243,7 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
     const application = layerFile("application", "outbox");
     const http = layerFile("http", "outbox");
     const noLayerRow = (layer: string, key: string) =>
-      `vite.config.ts の layers に \`${layer}\` があるが、${tablePath} の ${key} に \`${layerFile(layer, key)}\` の行がなく、withoutLayers にもない。止める行か通す行を足す。置かないなら、withoutLayers に層の名前と置かない理由を書く (${howTo})。`;
+      `vite.config.ts の layers に \`${layer}\` があるが、${tablePath} の ${key} に \`${layerFile(layer, key)}\` の行がなく、withoutLayers にもない。止める行か通す行を足す。置かないなら、withoutLayers に、層の名前と置かない理由を書く (${howTo})。`;
     const unflagged = (what: string, key = "outbox") =>
       `${tablePath} の ${key} は ${what}が、perLayer が true でない。層ごとに求めるなら perLayer を true にする (${howTo})。`;
     const staleExcuse = (layer: string) =>
@@ -322,6 +322,98 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
     });
   });
 
+  describe("driver ごとの行 (perDriver)", () => {
+    const vite = passingRepo["vite.config.ts"] ?? "";
+    const loggingFile = "packages/logging/src/infrastructure/__fixtures__/outbox.ts";
+    // logging is a driver that runs on Node.js: it has a package, and nodeDrivers of vite.config.ts names it.
+    const logging = {
+      "packages/logging/package.json": "{}",
+      "vite.config.ts": `${vite}\nconst nodeDrivers = {\n  logging: {\n    nodeFiles: [],\n  },\n};\nconst webDrivers = ["i18n"];\n`,
+    };
+    // The table of the passing repository with `perDriver` and the excuses of outbox set.
+    const perDriver = (
+      kind: string,
+      without: Record<string, string> = {},
+      change: (copy: Table) => void = () => undefined,
+    ) =>
+      table((copy) => {
+        Object.assign(copy.outbox, { perDriver: kind, withoutDrivers: without });
+        change(copy);
+      });
+    const noDriverRow = (name: string) =>
+      `driver \`${name}\` があるが、${tablePath} の outbox に \`packages/${name}/src/\` の下の fixture の行がなく、withoutDrivers にもない。止める行か通す行を足す。置かないなら、withoutDrivers に、driver の名前と置かない理由を書く (${howTo})。`;
+
+    it("Node.js で動く driver の行も理由もないとき、driver と禁止の名前を挙げて拒否すること", () => {
+      expect(failures({ ...logging, [tablePath]: perDriver("node") })).toEqual([
+        noDriverRow("logging"),
+      ]);
+    });
+
+    it("driver の fixture の行があるとき通すこと", () => {
+      const added = perDriver("node", {}, (copy) => {
+        copy.outbox.rows[0]?.files.push(loggingFile);
+      });
+      expect(failures({ ...logging, [tablePath]: added, [loggingFile]: outboxFixture })).toEqual(
+        [],
+      );
+    });
+
+    it("driver を withoutDrivers に挙げたとき通すこと", () => {
+      expect(
+        failures({ ...logging, [tablePath]: perDriver("node", { logging: "送らない" }) }),
+      ).toEqual([]);
+    });
+
+    it("node のとき、nodeDrivers にない driver を数えず、all のとき数えること", () => {
+      const web = {
+        ...logging,
+        "vite.config.ts": logging["vite.config.ts"].replace("logging: {", "other: {"),
+      };
+      expect(failures({ ...web, [tablePath]: perDriver("node") })).toEqual([]);
+      expect(failures({ ...web, [tablePath]: perDriver("all") })).toEqual([noDriverRow("logging")]);
+    });
+
+    it("package のない driver を数えないこと", () => {
+      expect(
+        failures({
+          ...logging,
+          "packages/logging/package.json": undefined,
+          [tablePath]: perDriver("all"),
+        }),
+      ).toEqual([]);
+    });
+
+    it("driver がない repository では、withoutDrivers の名前を古いと数えないこと", () => {
+      expect(failures({ [tablePath]: perDriver("node", { logging: "x" }) })).toEqual([]);
+    });
+
+    it("行も理由もある driver を拒否すること", () => {
+      const both = perDriver("node", { logging: "x" }, (copy) => {
+        copy.outbox.rows[0]?.files.push(loggingFile);
+      });
+      expect(failures({ ...logging, [tablePath]: both, [loggingFile]: outboxFixture })).toEqual([
+        `${tablePath} の outbox は withoutDrivers に \`logging\` を挙げるが、\`packages/logging/src/\` の下の fixture の行もある。置くなら withoutDrivers から消し、置かないなら行を消す (${howTo})。`,
+      ]);
+    });
+
+    it("driver でない名前を withoutDrivers に挙げたとき拒否すること", () => {
+      expect(
+        failures({ ...logging, [tablePath]: perDriver("node", { logging: "x", gone: "x" }) }),
+      ).toEqual([
+        `${tablePath} の outbox は withoutDrivers に \`gone\` を挙げるが、perDriver が数える driver にその名前がない。消す (${howTo})。`,
+      ]);
+    });
+
+    it("perDriver のない禁止の withoutDrivers を拒否すること", () => {
+      const flagless = table((copy) => {
+        Object.assign(copy.outbox, { withoutDrivers: { logging: "x" } });
+      });
+      expect(failures({ ...logging, [tablePath]: flagless })).toEqual([
+        `${tablePath} の outbox は withoutDrivers を持つが、perDriver がない。driver ごとに求めるなら perDriver を "node" か "all" にする (${howTo})。`,
+      ]);
+    });
+  });
+
   describe("表そのもの", () => {
     it("求められること", () => {
       expect(failures({ [tablePath]: undefined })).toEqual([
@@ -378,6 +470,18 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
         { outbox: { ...lintRestrictions.outbox, perLayer: "yes" } },
         "outbox.perLayer",
         "真偽値",
+      ],
+      [
+        "a perDriver that is neither node nor all",
+        { outbox: { ...lintRestrictions.outbox, perDriver: "web" } },
+        "outbox.perDriver",
+        '"node" か "all"',
+      ],
+      [
+        "a withoutDrivers with a reason that is not text",
+        { outbox: { ...lintRestrictions.outbox, withoutDrivers: { logging: 1 } } },
+        "outbox.withoutDrivers",
+        "driver の名前と理由の文字列のオブジェクト",
       ],
       [
         "a withoutLayers with a reason that is not text",

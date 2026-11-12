@@ -5,6 +5,7 @@
 // (`reportUnusedDisableDirectives`), so the table and the fixtures together show that every value is stopped where it
 // should be and let through where it should be. This check reads both ways: every row has its line, and every line of a
 // fixture of the table has its row, so removing either fails.
+import { driversOf } from "./drivers.ts";
 import { Tree, isRecord, objectKeys, record, text } from "./tree.ts";
 
 const tablePath = "lint-restrictions.json";
@@ -28,6 +29,9 @@ interface Restriction {
   // stops every library, so a restriction of one has no message of its own to show there).
   readonly perLayer?: boolean;
   readonly withoutLayers?: Readonly<Record<string, string>>;
+  // The same for the drivers (docs/adr/0054): `node` for the drivers that run on Node.js, `all` for every driver.
+  readonly perDriver?: "node" | "all";
+  readonly withoutDrivers?: Readonly<Record<string, string>>;
 }
 
 type Fields = Record<string, unknown>;
@@ -82,6 +86,14 @@ function restrictionProblems(restriction: Fields): Problem[] {
     ...(restriction.withoutLayers === undefined || isReasons(restriction.withoutLayers)
       ? []
       : [problem("withoutLayers", "層の名前と理由の文字列のオブジェクト")]),
+    ...(restriction.perDriver === undefined ||
+    restriction.perDriver === "node" ||
+    restriction.perDriver === "all"
+      ? []
+      : [problem("perDriver", '"node" か "all"')]),
+    ...(restriction.withoutDrivers === undefined || isReasons(restriction.withoutDrivers)
+      ? []
+      : [problem("withoutDrivers", "driver の名前と理由の文字列のオブジェクト")]),
     ...(Array.isArray(restriction.rows) ? [] : [problem("rows", "配列")]),
   ];
 }
@@ -206,55 +218,125 @@ function hasName(text: string, value: string): boolean {
   return false;
 }
 
+// The places of one kind (the layers of vite.config.ts, the drivers) that a restriction is asked of, and what the table
+// says about each: a row of a fixture there, or an excuse (the name, with the reason it has none).
+interface Places {
+  readonly names: readonly string[];
+  // Whether a row of the key is in the place.
+  readonly hasRow: (name: string, files: ReadonlySet<string>) => boolean;
+  readonly excuses: Readonly<Record<string, string>>;
+  readonly excuseField: string;
+  // The place in words: what its name is (for the excuse), where it is named, what its row is for, why a name is stale.
+  readonly nameOf: string;
+  readonly named: (name: string) => string;
+  readonly rowFor: (name: string) => string;
+  readonly staleBecause: string;
+}
+
+// Every place has a row or an excuse, so a place added to the repository fails until each restriction says what it does
+// there. The excuses are checked both ways: a name that is not a place, and a place that has a row, fail, so an excuse
+// does not outlive its reason.
+function placeFailures(key: string, places: Places, files: ReadonlySet<string>): string[] {
+  const { names, excuses, excuseField, nameOf, named, rowFor } = places;
+  return [
+    ...names.flatMap((name) => {
+      const hasRow = places.hasRow(name, files);
+      if (!hasRow && !(name in excuses))
+        return [
+          `${named(name)} があるが、${tablePath} の ${key} に ${rowFor(name)} の行がなく、${excuseField} にもない。止める行か通す行を足す。置かないなら、${excuseField} に、${nameOf}と置かない理由を書く (${howTo})。`,
+        ];
+      if (hasRow && name in excuses)
+        return [
+          `${tablePath} の ${key} は ${excuseField} に \`${name}\` を挙げるが、${rowFor(name)} の行もある。置くなら ${excuseField} から消し、置かないなら行を消す (${howTo})。`,
+        ];
+      return [];
+    }),
+    // With no place read there is nothing to compare the names with.
+    ...(names.length === 0
+      ? []
+      : Object.keys(excuses)
+          .filter((name) => !names.includes(name))
+          .map(
+            (name) =>
+              `${tablePath} の ${key} は ${excuseField} に \`${name}\` を挙げるが、${places.staleBecause}。消す (${howTo})。`,
+          )),
+  ];
+}
+
 // The fixture of the key in a layer of a module: where the table must have a row for each layer of vite.config.ts
 // (`perLayer`), unless the layer is in `withoutLayers`.
 const layerFixture = (layer: string, key: string): string =>
   `packages/module-fixtures/src/${layer}/__fixtures__/${key}.ts`;
 
-// A key with `perLayer` has a row or an excuse for every layer, so a layer added to vite.config.ts fails until each
-// such restriction says what it does there. The excuses are checked both ways: a layer that is not in vite.config.ts,
-// and a layer that has a row, fail, so an excuse does not outlive its reason. A key without `perLayer` has no row in a
-// layer and no excuse: if it did, the layers added later would go unasked.
+// A key with `perLayer` is asked of every layer. A key without it has no row in a layer and no excuse: if it did, the
+// layers added later would go unasked.
 function layerFailures({ key, restriction, rows }: Entry, layers: readonly string[]): string[] {
-  const listed = new Set(rows.flatMap((row) => row.files));
-  const without = restriction.withoutLayers ?? {};
+  const files = new Set(rows.flatMap((row) => row.files));
+  const excuses = restriction.withoutLayers ?? {};
+  if (restriction.perLayer === true)
+    return placeFailures(
+      key,
+      {
+        names: layers,
+        hasRow: (layer, listed) => listed.has(layerFixture(layer, key)),
+        excuses,
+        excuseField: "withoutLayers",
+        nameOf: "層の名前",
+        named: (layer) => `vite.config.ts の layers に \`${layer}\``,
+        rowFor: (layer) => `\`${layerFixture(layer, key)}\``,
+        staleBecause: "vite.config.ts の layers にその層がない",
+      },
+      files,
+    );
   const unflagged = (what: string) =>
     `${tablePath} の ${key} は ${what}が、perLayer が true でない。層ごとに求めるなら perLayer を true にする (${howTo})。`;
-  if (restriction.perLayer !== true)
-    return [
-      ...layers
-        .filter((layer) => listed.has(layerFixture(layer, key)))
-        .map((layer) =>
-          unflagged(`層 \`${layer}\` の fixture (\`${layerFixture(layer, key)}\`) の行を持つ`),
-        ),
-      ...(Object.keys(without).length > 0 ? [unflagged("withoutLayers を持つ")] : []),
-    ];
   return [
-    ...layers.flatMap((layer) => {
-      const file = layerFixture(layer, key);
-      if (!listed.has(file) && !(layer in without))
-        return [
-          `vite.config.ts の layers に \`${layer}\` があるが、${tablePath} の ${key} に \`${file}\` の行がなく、withoutLayers にもない。止める行か通す行を足す。置かないなら、withoutLayers に層の名前と置かない理由を書く (${howTo})。`,
-        ];
-      if (listed.has(file) && layer in without)
-        return [
-          `${tablePath} の ${key} は withoutLayers に \`${layer}\` を挙げるが、\`${file}\` の行もある。置くなら withoutLayers から消し、置かないなら行を消す (${howTo})。`,
-        ];
-      return [];
-    }),
-    // With no layers read there is nothing to compare the names with.
-    ...(layers.length === 0
-      ? []
-      : Object.keys(without)
-          .filter((layer) => !layers.includes(layer))
-          .map(
-            (layer) =>
-              `${tablePath} の ${key} は withoutLayers に \`${layer}\` を挙げるが、vite.config.ts の layers にその層がない。消す (${howTo})。`,
-          )),
+    ...layers
+      .filter((layer) => files.has(layerFixture(layer, key)))
+      .map((layer) =>
+        unflagged(`層 \`${layer}\` の fixture (\`${layerFixture(layer, key)}\`) の行を持つ`),
+      ),
+    ...(Object.keys(excuses).length > 0 ? [unflagged("withoutLayers を持つ")] : []),
   ];
 }
 
-function restrictionFailures(tree: Tree, entry: Entry, layers: readonly string[]): string[] {
+// A key with `perDriver` is asked of the drivers (`node`: those that run on Node.js, named in nodeDrivers of
+// vite.config.ts; `all`: every driver), and a row anywhere under packages/<driver>/src/ is the driver's. Other keys
+// have rows in drivers for their own reasons (db opens the connections), so only `withoutDrivers` is asked of them.
+function driverFailures(
+  { key, restriction, rows }: Entry,
+  driversFor: (kind: "node" | "all") => string[],
+): string[] {
+  const excuses = restriction.withoutDrivers ?? {};
+  if (restriction.perDriver === undefined)
+    return Object.keys(excuses).length > 0
+      ? [
+          `${tablePath} の ${key} は withoutDrivers を持つが、perDriver がない。driver ごとに求めるなら perDriver を "node" か "all" にする (${howTo})。`,
+        ]
+      : [];
+  return placeFailures(
+    key,
+    {
+      names: driversFor(restriction.perDriver),
+      hasRow: (driver, listed) =>
+        [...listed].some((file) => file.startsWith(`packages/${driver}/src/`)),
+      excuses,
+      excuseField: "withoutDrivers",
+      nameOf: "driver の名前",
+      named: (driver) => `driver \`${driver}\``,
+      rowFor: (driver) => `\`packages/${driver}/src/\` の下の fixture`,
+      staleBecause: "perDriver が数える driver にその名前がない",
+    },
+    new Set(rows.flatMap((row) => row.files)),
+  );
+}
+
+interface Context {
+  readonly layers: readonly string[];
+  readonly driversFor: (kind: "node" | "all") => string[];
+}
+
+function restrictionFailures(tree: Tree, entry: Entry, context: Context): string[] {
   const { key, restriction, rows } = entry;
   const { adr } = restriction;
   const failures: string[] = [];
@@ -287,7 +369,10 @@ function restrictionFailures(tree: Tree, entry: Entry, layers: readonly string[]
         failures.push(
           `${tablePath} の ${key} の message に \`${mention}\` がない。止められた人が、代わりに書くものと ADR を知るため (${howTo})。`,
         );
-  failures.push(...layerFailures(entry, layers));
+  failures.push(
+    ...layerFailures(entry, context.layers),
+    ...driverFailures(entry, context.driversFor),
+  );
   return failures;
 }
 
@@ -337,10 +422,13 @@ export function lintRestrictionsAgree(tree: Tree): string[] {
           `${tablePath} がない。lint で止める import と呼び出しと、その fixture の行を並べる表で、vite.config.ts と repo-policy が読む (${howTo})。`,
         ];
   const { entries, failures } = readTable(table);
-  const layers = objectKeys(tree.read("vite.config.ts"), "layers");
+  const context: Context = {
+    layers: objectKeys(tree.read("vite.config.ts"), "layers"),
+    driversFor: (kind) => driversOf(tree, kind),
+  };
   return [
     ...failures,
-    ...entries.flatMap((entry) => restrictionFailures(tree, entry, layers)),
+    ...entries.flatMap((entry) => restrictionFailures(tree, entry, context)),
     ...tree.paths.flatMap((file) =>
       entries
         .filter(({ key }) => key === fixtureKey(file))

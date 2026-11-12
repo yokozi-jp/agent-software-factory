@@ -210,6 +210,17 @@ function declaration(source: string, name: string): string {
   return stop === -1 ? rest : rest.slice(0, stop);
 }
 
+// The drivers of the repository, those of driverShapes that have a package. With "node", only those that nodeDrivers of
+// vite.config.ts names: they run on Node.js, and their infrastructure/ imports their own libraries.
+export function driversOf(tree: Tree, kind: "node" | "all"): string[] {
+  const nodeDrivers = declaration(tree.read("vite.config.ts"), "nodeDrivers");
+  return driverNames.filter(
+    (name) =>
+      isDriver(tree, name) &&
+      (kind === "all" || new RegExp(`^\\s+"?${name}"?: \\{`, "m").test(nodeDrivers)),
+  );
+}
+
 export function driversAreInLint(tree: Tree): string[] {
   const failures: string[] = [];
   const table = record(tree.parsed(tablePath));

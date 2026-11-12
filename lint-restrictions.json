@@ -12,6 +12,7 @@
     ],
     "message": "Do not send to SQS, SES, SNS, EventBridge, Lambda or Step Functions from a module or a request: put the event in the Outbox with enqueueOutbox, in the same transaction as the update, and let the relay or a consumer send it (docs/adr/0029). A place that may send is an entry file, added to the override of the entry files.",
     "mentions": ["enqueueOutbox"],
+    "perDriver": "node",
     "perLayer": true,
     "withoutLayers": {
       "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
@@ -26,7 +27,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-sqs\"",
@@ -42,7 +44,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-ses\"",
@@ -58,7 +61,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-sesv2\"",
@@ -74,7 +78,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-sns\"",
@@ -90,7 +95,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-eventbridge\"",
@@ -106,7 +112,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-lambda\"",
@@ -122,7 +129,8 @@
           "apps/api/src/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
           "packages/db/src/__fixtures__/outbox.ts",
-          "packages/telemetry/src/__fixtures__/outbox.ts"
+          "packages/telemetry/src/__fixtures__/outbox.ts",
+          "packages/logging/src/infrastructure/__fixtures__/outbox.ts"
         ],
         "rule": "no-restricted-imports",
         "text": "\"@aws-sdk/client-sfn\"",
@@ -570,6 +578,7 @@
     "values": ["effect"],
     "message": "A driver returns a Promise and does not import Effect: the infrastructure of the module wraps it with Effect.tryPromise (docs/adr/0054).",
     "mentions": ["Promise", "Effect.tryPromise"],
+    "perDriver": "all",
     "rows": [
       {
         "files": [
