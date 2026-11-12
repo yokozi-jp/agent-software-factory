@@ -2,8 +2,9 @@ name: Mutation
 
 # Stryker on the pure functions of tools/scripts. It is not a required check: it takes minutes to tens of
 # minutes and grows with the code, so it runs outside the pull request (docs/adr/0031, docs/tooling/ci.md).
-# GitHub mails a failed scheduled run only to whoever last changed the cron line, and the run failed for twelve
-# days without anyone reading it (#570), so a failed scheduled run also opens an issue (the report job).
+# GitHub mails a failed scheduled run only to whoever last changed the cron line (docs.github.com, "Events that
+# trigger workflows", "Notifications for scheduled workflows"). No scheduled run has passed from 2026-10-28 to
+# 2026-11-11 and nobody read the failures (#570), so a failed scheduled run also opens an issue (the report job).
 on:
   schedule:
     # Every day, 03:00 UTC.
@@ -57,7 +58,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TITLE: mutation.yml の毎日の実行が失敗している
         run: |
-          number="$(gh issue list --state open --limit 100 --json number,title \
+          number="$(gh issue list --state open --search "\"$TITLE\" in:title" --limit 5 --json number,title \
             --jq '.[] | select(.title == env.TITLE) | .number' | head -n 1)"
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "また失敗した: $RUN_URL"
@@ -66,6 +67,6 @@ jobs:
 
           次を確かめる (docs/adr/0031、docs/tooling/ci.md)。
 
-          - 初回の実行 (dry run) が落ちた: sandbox の外のファイルを読む unit のテストを \`*.tools.test.ts\` に移す。
+          - 初回の実行 (dry run) が落ちた: sandbox の外のファイルを読む unit のテストを \`*.tools.test.ts\` に移し、読むファイルを test-tools の inputs に足す。
           - 生き残った mutant がある: その違いで失敗するテストを足す。等価な mutant だけ \`// Stryker disable next-line\` を書く。"
           fi

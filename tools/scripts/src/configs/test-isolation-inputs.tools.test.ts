@@ -2,6 +2,8 @@
 // the `inputs` of the test-isolation target (tools/scripts/package.json) are the one place that says when the
 // isolation test runs (docs/adr/0024, "隔離"). This test runs the real Nx on a sandbox workspace that holds a copy of
 // that package.json: a change to the isolation files selects the project, any other change does not (#477).
+// The same sandbox shows that `nx affected -t mutation-dry-run`, which ci.yml and the pre-push hook run too, selects
+// the project for any change to it and to the hooks that its tests read, and not for another project (#570).
 // Reads tools/scripts/package.json of the workspace, which is part of the project and so an input of test-tools.
 import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -17,8 +19,8 @@ const nxPackage = dirname(dirname(dirname(nxBin)));
 let box: Sandbox;
 let repo: string;
 
-// The projects that `nx affected -t test-isolation` selects when only <file> changed.
-function selected(file: string): string[] {
+// The projects that `nx affected -t <target>` selects when only <file> changed.
+function selected(file: string, target = "test-isolation"): string[] {
   const result = runIn(
     repo,
     process.execPath,
@@ -28,7 +30,7 @@ function selected(file: string): string[] {
       "projects",
       "--affected",
       "-t",
-      "test-isolation",
+      target,
       `--files=${file}`,
     ],
     { env: { NX_DAEMON: "false", NX_NO_CLOUD: "true" } },
@@ -83,5 +85,17 @@ describe("the inputs of the test-isolation target", () => {
     expect(selected("tools/scripts/src/checks/ci.ts")).toEqual([]);
     expect(selected("tools/scripts/src/test-helpers/a.ts")).toEqual([]);
     expect(selected("apps/api/src/app.ts")).toEqual([]);
+  });
+});
+
+describe("the inputs of the mutation-dry-run target", () => {
+  it("select the scripts project for any file of it and for the Kiro hooks that its tests read", () => {
+    expect(selected("tools/scripts/src/checks/ci.ts", "mutation-dry-run")).toEqual(["scripts"]);
+    expect(selected("tools/scripts/stryker.config.mjs", "mutation-dry-run")).toEqual(["scripts"]);
+    expect(selected(".kiro/hooks/block-force-push.json", "mutation-dry-run")).toEqual(["scripts"]);
+  });
+
+  it("do not select it for a file of another project", () => {
+    expect(selected("apps/api/src/app.ts", "mutation-dry-run")).toEqual([]);
   });
 });
