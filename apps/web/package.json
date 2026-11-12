@@ -45,6 +45,11 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "web"
+    "name": "web",
+    "targets": {
+      "test": {
+        "parallelism": false
+      }
+    }
   }
 }

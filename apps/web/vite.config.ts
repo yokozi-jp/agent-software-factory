@@ -32,6 +32,11 @@ export default defineConfig({
     proxy: { "/api": "http://localhost:3000" },
   },
   test: {
+    // この test target は、Nx が他の task と同時に流さない (package.json の `nx.targets.test.parallelism: false`、#523)。
+    // CI で api:test や worker:test (testcontainers) と同時に流れると、`iframe ... did not become ready` や
+    // `Failed to fetch dynamically imported module` で落ちた。コンテナの起動や停止でホストの IP アドレスが変わると、
+    // Chromium が通信中の localhost のリクエストを中断し、Vitest は tester の読み込みの失敗を知らずに 60 秒待つ
+    // (https://github.com/vitest-dev/vitest/issues/11636)。因果は確かめていない (docs/tooling/ci.md)。
     // 日時の表示が実行環境のタイムゾーンに頼っていれば、東京とも本番 (UTC) とも違う夏時間のあるタイムゾーンで見つかる。
     // 効いていることは src/lib/date-time.test.ts が確かめる (docs/adr/0043)。story も同じブラウザで流す。
     browser: {
@@ -40,12 +45,6 @@ export default defineConfig({
       provider: playwright({ contextOptions: { timezoneId: "America/New_York" } }),
       instances: [{ browser: "chromium" }],
     },
-    // 同時に開くブラウザのページ数の上限 (#523)。browser mode では maxWorkers が、開いているページの数の予算になる
-    // (https://vitest.dev/config/maxworkers の "Browser Mode")。既定は使える並列度の全部で、CI の runner (4 vCPU) では
-    // api:test (testcontainers) や web:build と同時に 4 ページを開く。Storybook の FAQ は、`iframe` や
-    // `Failed to fetch dynamically imported module` で落ちる原因を CI の資源不足と説明している。2 は判断で、
-    // 効果は CI で繰り返し流して確かめる。
-    maxWorkers: 2,
     // project は 2 つ。unit は src/ の `*.test.ts` で、純粋な関数の確認 (ブラウザで流すのは、上の timezoneId を効かせるため)。
     // storybook は story の `play` で、画面と部品の component test (docs/adr/0033)。`*.test.tsx` は ADR 0033 で使わないが、
     // 置かれても黙って流れないことがないよう、unit の include に入れてある。
