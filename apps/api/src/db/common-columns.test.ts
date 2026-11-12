@@ -17,7 +17,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { useDatabase } from "../../test/use-database.ts";
 
 // 共通カラムの値の入れ方と楽観排他 (docs/db/postgresql-keys.md、docs/db/postgresql-concurrency.md)。
-// 時刻は入口が 1 回読んで scope の now で渡す (docs/adr/0043)。inTenantTransaction は時計を読まない。テストは now を値で渡し、バインドした値になることを確かめる。
+// 時刻は入口が 1 回読んで scope の now で渡す (docs/adr/0043)。inTenantTransaction は時計を読まない。
+// テストは now を値で渡し、バインドした値になることを確かめる。
 const tenantA = "00000000-0000-4000-8000-00000000000a";
 const tenantB = "00000000-0000-4000-8000-00000000000b";
 
@@ -172,16 +173,18 @@ describe("共通カラムの値と楽観排他", () => {
     });
   });
 
-  it("同じ now で開く複数のトランザクションは、同じ時刻を共通カラムに入れること", async () => {
-    const first = await run(insertClaim(tenantA));
-    const second = await run(insertClaim(tenantA));
+  it("同じ now で 2 つのトランザクションを開くと、間に時計が進んでも、同じ時刻を共通カラムに入れること", async () => {
+    const { first, second } = await run(
+      Effect.gen(function* () {
+        const first = yield* insertClaim(tenantA);
+        yield* TestClock.adjust("1 hour");
+        const second = yield* insertClaim(tenantA);
+        return { first, second };
+      }).pipe(Effect.provide(TestClock.layer())),
+    );
 
-    const rows = await Promise.all([readRow(first.claim_id), readRow(second.claim_id)]);
-
-    expect(rows.map((row) => row?.created_at)).toEqual([
-      new Date("2026-10-29T01:00:00Z"),
-      new Date("2026-10-29T01:00:00Z"),
-    ]);
+    expect((await readRow(first.claim_id))?.created_at).toEqual(new Date("2026-10-29T01:00:00Z"));
+    expect((await readRow(second.claim_id))?.created_at).toEqual(new Date("2026-10-29T01:00:00Z"));
   });
 
   it("UPDATE で、updated_* が更新の時刻と実行者になり、lock_no が 1 上がり、created_* は変わらないこと", async () => {

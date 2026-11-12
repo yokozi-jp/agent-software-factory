@@ -8,10 +8,12 @@ import { afterEach, beforeEach } from "vite-plus/test";
 
 /**
  * `inTenantTransaction` の scope の、共通カラムに入れる値。実行者、プログラム、呼び出しの ID は固定の値で足りる。
- * `now` は、読むたびに時計の今を返す getter にする: `...writer` で展開した時点の値になり、DB の `now()` を基準に行を作るテスト
- * (期限切れの冪等キーなど) が、モジュールを読み込んだ時刻とのずれで崩れない。入口が 1 回読む形をテストで再現している (docs/adr/0043)。
+ * `now` は、入口が 1 回読む現在時刻 (docs/adr/0043) の代わりに、展開するたび (`...writeContext`) に時計の今を返す getter にする。
+ * 固定の時刻にすると、DB の `now()` を基準に行を作るテストが崩れるため: `idempotency.test.ts` は期限を `now() - interval '1 second'` に
+ * 書き換えてから、その行を期限切れとして扱う要求を流す。共通カラムの時刻そのものを確かめるテスト (`common-columns.test.ts`) は、
+ * この getter を使わず、固定の `now` を直接渡す。
  */
-export const writer: WriteContext = {
+export const writeContext: WriteContext = {
   get now() {
     return Effect.runSync(currentInstant);
   },

@@ -8,7 +8,7 @@ import { Effect } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 
 import { consumerProblems } from "../../test/consumer-check.ts";
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // 受信の処理の全件テスト (consumers.test.ts) の検査 consumerProblems が、規則を破った処理を見つけること (#30)。
 // ここで登録する処理は、全件テストの一覧に載せないよう、別のファイルに置く。
@@ -35,7 +35,7 @@ describe("consumerProblems の検出力", () => {
       consumers: [registered],
       examples: {},
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 
@@ -49,7 +49,7 @@ describe("consumerProblems の検出力", () => {
       consumers: [],
       examples: { "check/gone": example },
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 
@@ -67,7 +67,7 @@ describe("consumerProblems の検出力", () => {
       consumers: [never],
       examples: { "check/never": example },
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 
@@ -86,7 +86,7 @@ describe("consumerProblems の検出力", () => {
       consumers: [leaky],
       examples: { "check/leaky": example },
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 
@@ -116,7 +116,7 @@ describe("consumerProblems の検出力", () => {
       consumers: [writes],
       examples: { "check/writes": example },
       db: ctx.db,
-      write: writer,
+      write: writeContext,
       run: ctx.run,
     });
 

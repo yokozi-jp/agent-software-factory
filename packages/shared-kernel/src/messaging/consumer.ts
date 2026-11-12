@@ -54,7 +54,8 @@ export const registeredConsumers = (): readonly RegisteredConsumer[] => [...regi
  * the commit and returns `Duplicate`, or the rollback and processes the message.
  *
  * `write` gives the moment, the actor, the program code and the id of the call for the common columns; the entry file
- * of the consumer decides them, and reads the moment once per message (`currentInstant`, docs/adr/0043). `name` must be unique: registering a name twice throws.
+ * of the consumer decides them, and reads the moment once per message (`currentInstant`, docs/adr/0043). `name` must
+ * be unique: registering a name twice throws.
  */
 export function defineConsumer<
   K extends ModuleTx,

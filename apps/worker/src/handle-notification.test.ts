@@ -20,7 +20,7 @@ describe("通知メールの処理 handleNotification", () => {
   const ctx = useWorker();
 
   const handle = (runtime: ReturnType<typeof ctx.worker>["runtime"], message: unknown) =>
-    runtime.runPromise(handleNotification(message, { now: fixedNow, write }));
+    runtime.runPromise(handleNotification(message, { now: fixedNow, ...write }));
 
   it("同じメッセージを 2 回渡すと、Mailpit に 1 通だけ届き、2 回目は Duplicate を返すこと", async () => {
     const { runtime } = ctx.worker();
