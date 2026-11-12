@@ -33,54 +33,7 @@ function Link(props: ComponentProps<"a">) {
   return <a {...props} />;
 }
 
-const sidebarElement = () => document.querySelector("[data-slot='sidebar']");
 const triggerName = "メニューを開閉";
-
-const meta = {
-  title: "ui/Sidebar",
-  component: SidebarProvider,
-  render: (args) => (
-    <SidebarProvider {...args}>
-      <Sidebar collapsible="offcanvas">
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>承認</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link href="/approvals" />}>承認</SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset>
-        <SidebarTrigger aria-label={triggerName} />
-      </SidebarInset>
-    </SidebarProvider>
-  ),
-} satisfies Meta<typeof SidebarProvider>;
-
-export default meta;
-
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByRole("link", { name: "承認" })).toHaveAttribute(
-      "href",
-      "/approvals",
-    );
-  },
-};
-
-export const Toggle: Story = {
-  play: async ({ canvas }) => {
-    // 広い画面 (story の既定の幅) では開いていて、トリガーで閉じる。狭い画面は MobileSheet が確かめる。
-    await expect(sidebarElement()).toHaveAttribute("data-state", "expanded");
-    await userEvent.click(canvas.getByRole("button", { name: triggerName }));
-    await expect(sidebarElement()).toHaveAttribute("data-state", "collapsed");
-  },
-};
 
 /** 項目が 1 つだけのメニュー。Sidebar の props と、本体の外に置くものを受ける。 */
 function Menu({
@@ -114,6 +67,36 @@ function Menu({
     </SidebarProvider>
   );
 }
+
+const sidebarElement = () => document.querySelector("[data-slot='sidebar']");
+
+const meta = {
+  title: "ui/Sidebar",
+  component: SidebarProvider,
+  render: (args) => <Menu provider={args} />,
+} satisfies Meta<typeof SidebarProvider>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("link", { name: "承認" })).toHaveAttribute(
+      "href",
+      "/approvals",
+    );
+  },
+};
+
+export const Toggle: Story = {
+  play: async ({ canvas }) => {
+    // 広い画面 (story の既定の幅) では開いていて、トリガーで閉じる。狭い画面は MobileSheet が確かめる。
+    await expect(sidebarElement()).toHaveAttribute("data-state", "expanded");
+    await userEvent.click(canvas.getByRole("button", { name: triggerName }));
+    await expect(sidebarElement()).toHaveAttribute("data-state", "collapsed");
+  },
+};
 
 function ControlledMenu() {
   const [open, setOpen] = useState(true);
