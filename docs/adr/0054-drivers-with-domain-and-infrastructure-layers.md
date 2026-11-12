@@ -38,7 +38,7 @@ tags: [adr, architecture, packages, drivers, clean-architecture, lint, effect]
 
 規則の一覧 (C1〜C5、M1〜M5、D1〜D7) と、規則ごとの仕組みは [package の構成](../domain-model/package-layout.md) が正本です。lint (層の規則と、禁止の表の `driver-in-module`、`driver-effect`、`testing-import`) と repo-policy (`drivers.ts`) が止め、Port の置き場と `signal` を渡すことの 2 つだけをレビューで見ます。
 
-道具が決める置き場 (dbmate の `migrations/`、`openapi.yaml`、WireMock の `fake/`、i18next-cli の `locales/`) は動かさず、ルートの `drivers.json` に package ごとに書きます。`vite.config.ts` が JSON の import で、repo-policy が `tree.parsed` で、同じファイルを読みます ([ADR 0050](0050-lint-restrictions-table-in-json.md) と同じ形)。ドライバごとの `runtime` (`node` か `web`)、`tools`、`places`、`rootMay`、`exports` も同じ欄に書きます ([Issue #589](https://github.com/yokozi-jp/agent-software-factory/issues/589))。
+道具が決める置き場 (dbmate の `migrations/`、`openapi.yaml`、WireMock の `fake/`、i18next-cli の `locales/`) は動かさず、ルートの `drivers.json` に package ごとに書きます。`vite.config.ts` が JSON の import で、repo-policy が `tree.parsed` で、同じファイルを読みます ([ADR 0050](0050-lint-restrictions-table-in-json.md) と同じ形)。実行環境 (`runtime`) や `exports` など、ドライバごとの性質も同じファイルに書きます。欄の意味は [module ではない package を足す手順](../domain-model/add-package.md) の表が正本です ([Issue #589](https://github.com/yokozi-jp/agent-software-factory/issues/589))。
 
 ## Considered Options
 

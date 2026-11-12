@@ -24,14 +24,16 @@ const guide = "docs/domain-model/package-layout.md";
 //   rootMay            the layers that the entry `.` may re-export. Other entries are fixed: `./testing` re-exports testing/, and
 //                      the rest re-export infrastructure/ and domain/. `.` re-exports domain/ only, because it is the entry that any
 //                      code imports and it must not pull in an external library (docs/adr/0051). i18n is the exception: it is a thin
-//                      wrapper that web alone uses.
+//                      wrapper that web alone uses (docs/adr/0054, docs/adr/0044).
 //   exports            the `exports` of its package.json, when it is not `{".": "./src/index.ts"}`; `exportsReason` is what the
 //                      failure says about it (modules.ts).
 //   extraNodeFiles     "node" only: files besides infrastructure/ and testing/ that get the same relaxation (a fixture that
 //                      shows the lint rule still stops what the driver may not do).
 //   workspaceTypesOnly "node" only: the driver imports the packages of the workspace as types only (db, docs/adr/0038).
+type Runtime = "node" | "web";
+
 export interface Driver {
-  readonly runtime: "node" | "web";
+  readonly runtime: Runtime;
   readonly tools: readonly string[];
   readonly places: readonly string[];
   readonly rootMay: readonly string[];
@@ -42,7 +44,7 @@ export interface Driver {
 }
 
 const driversPath = "drivers.json";
-const runtimes = ["node", "web"] as const;
+const runtimes: readonly Runtime[] = ["node", "web"];
 const nodeOnly = ["extraNodeFiles", "workspaceTypesOnly"];
 const fields = ["runtime", "tools", "places", "rootMay", "exports", "exportsReason", ...nodeOnly];
 
@@ -120,6 +122,11 @@ export function readDrivers(tree: Tree): ReadonlyMap<string, Driver> {
   }
   return drivers;
 }
+
+// A name in drivers.json whose entry cannot be read. The check of its exports (modules.ts) leaves it alone: it would compare
+// the package against `.` only, and add a failure to the one that driversFileIsWellFormed gives with the reason.
+export const isBrokenDriver = (tree: Tree, name: string): boolean =>
+  name in record(tree.parsed(driversPath)) && !readDrivers(tree).has(name);
 
 // Every entry of drivers.json is an object with a runtime and the fields above, and no other. A misspelled field or a runtime
 // that is neither node nor web would otherwise leave the driver out of a rule without a word, so it fails here.
@@ -319,7 +326,7 @@ const scope = "@agent-software-factory";
 const tablePath = "lint-restrictions.json";
 
 // Which drivers a restriction is asked of: `node` for those that run on Node.js, `all` for every driver.
-export type DriverKind = "node" | "all";
+export type DriverKind = Runtime | "all";
 
 // The drivers of the repository, those of drivers.json that have a package. With "node", only those whose runtime is node: they
 // run on Node.js, and their infrastructure/ imports their own libraries.

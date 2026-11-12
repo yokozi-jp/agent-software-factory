@@ -457,7 +457,7 @@ describe("ADR 0054: drivers.json の形", () => {
   const problem = (name: string, text: string) =>
     `drivers.json: the entry ${name} ${text} (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`;
 
-  it("repository の drivers.json を通すこと", () => {
+  it("passing-repo の drivers.json を通すこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
@@ -609,7 +609,7 @@ describe("ADR 0054: drivers.json を読むこと", () => {
 
 describe("ADR 0054: tag type:driver と drivers.json の名前が合うこと", () => {
   const violations = failuresOf(driversAreTagged);
-  const entry = "drivers.json";
+  const driversFile = "drivers.json";
   const tagged = (role: string) => ({ nx: { name: "logging", tags: [`type:${role}`] } });
 
   it("tag と名前の両方がある driver と、driver のない repository を通すこと", () => {
@@ -630,7 +630,7 @@ describe("ADR 0054: tag type:driver と drivers.json の名前が合うこと", 
         ),
       ),
     ).toEqual([
-      `packages/mail has the tag type:driver, but ${entry} has no entry for mail, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
+      `packages/mail has the tag type:driver, but ${driversFile} has no entry for mail, so nothing checks its layout, its entries or that it does not depend on Effect. Add the entry (docs/adr/0054, ${guide}, docs/domain-model/add-package.md).`,
     ]);
   });
 
@@ -638,7 +638,7 @@ describe("ADR 0054: tag type:driver と drivers.json の名前が合うこと", 
     "drivers.json に名前があるのに tag が type:%s の package を拒否すること",
     (role) => {
       expect(violations(repo(logging({}, tagged(role))))).toEqual([
-        `packages/logging has an entry in ${entry}, but its tag is type:${role}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
+        `packages/logging has an entry in ${driversFile}, but its tag is type:${role}, not type:driver. A driver has the tag type:driver; take the entry out if it is not one (docs/adr/0054, ${guide}).`,
       ]);
     },
   );

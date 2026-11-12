@@ -545,16 +545,18 @@ const runtimeRulesOff = {
 // (driversAreInLint) fails when one is missing from the `driver-in-module` values of lint-restrictions.json.
 // A driver that runs on Node.js has its infrastructure/ and testing/ under the relaxation, and `extraNodeFiles` adds the
 // fixtures that show what it still may not do.
+// The root config does not import tools/scripts, so this is the part of `Driver` (tools/scripts/src/checks/repo-policy/
+// drivers.ts) that the overrides read; repo-policy checks the whole file.
 interface DriverEntry {
   readonly runtime: string;
   readonly extraNodeFiles?: readonly string[];
   readonly workspaceTypesOnly?: boolean;
 }
-const driverEntries: readonly (readonly [string, DriverEntry])[] = Object.entries(drivers);
-const nodeDrivers = driverEntries.filter(([, { runtime }]) => runtime === "node");
-const webDrivers = driverEntries.filter(([, { runtime }]) => runtime === "web");
+const driverList: readonly (readonly [string, DriverEntry])[] = Object.entries(drivers);
+const nodeDrivers = driverList.filter(([, { runtime }]) => runtime === "node");
+const webDrivers = driverList.filter(([, { runtime }]) => runtime === "web");
 // A runtime that is neither would leave the driver out of the rules above without a word.
-for (const [name, { runtime }] of driverEntries)
+for (const [name, { runtime }] of driverList)
   if (runtime !== "node" && runtime !== "web")
     throw new Error(
       `drivers.json: the driver ${name} has the runtime "${runtime}", not "node" or "web".`,

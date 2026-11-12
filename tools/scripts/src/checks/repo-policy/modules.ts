@@ -1,7 +1,7 @@
 // Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
 // Effect lint of each module. The role of a package is its `type:` tag (roles.ts), not a name in a list here.
-import { childOf, readDrivers } from "./drivers.ts";
+import { childOf, isBrokenDriver, readDrivers } from "./drivers.ts";
 import { manifest, packageNames } from "./packages.ts";
 import { namesWithRole, roleOf, tagOf, typeTagsOf } from "./roles.ts";
 import { Tree, list, record } from "./tree.ts";
@@ -112,11 +112,15 @@ export function modulesHaveLayers(tree: Tree): string[] {
 }
 
 // The exports a package must have, and what the failure says about them: the driver's own (drivers.json), then the other
-// packages' own (ownExports), then `.` for src/index.ts.
+// packages' own (ownExports), then `.` for src/index.ts. A driver whose entry in drivers.json cannot be read has none: that
+// file is what driversFileIsWellFormed reports.
 function expectedExports(
   tree: Tree,
   name: string,
-): { readonly exports: Readonly<Record<string, string>>; readonly says: string | undefined } {
+):
+  | { readonly exports: Readonly<Record<string, string>>; readonly says: string | undefined }
+  | undefined {
+  if (isBrokenDriver(tree, name)) return undefined;
   const driver = readDrivers(tree).get(name);
   if (driver?.exports !== undefined) return { exports: driver.exports, says: driver.exportsReason };
   const own = ownExports[name];
@@ -128,26 +132,29 @@ export function packageManifests(tree: Tree): string[] {
     const path = manifest(name);
     const json = record(tree.parsed(path));
     const failures: string[] = [];
-    const { exports: exported, says } = expectedExports(tree, name);
+    const expected = expectedExports(tree, name);
     if (json.name !== `${scope}/${name}`)
       failures.push(
         `${path} must have the name "${scope}/${name}", the scope and the directory (docs/adr/0026).`,
       );
-    if (JSON.stringify(json.exports) !== JSON.stringify(exported))
-      failures.push(
-        `${path} must have the exports ${JSON.stringify(exported)}, ${says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
-      );
-    // The first entry is the one the package is named by: src/index.ts, or src/node.ts for db, which has no `.` (docs/adr/0051).
-    const mainEntry = Object.values(exported)[0];
-    if (
-      name !== ui &&
-      // Stryker disable next-line ConditionalExpression: equivalent, the exports are never empty (ownExports and publicApi); the guard is for the type of the index
-      mainEntry !== undefined &&
-      !tree.paths.includes(`packages/${name}/${mainEntry.slice(2)}`)
-    )
-      failures.push(
-        `packages/${name}/${mainEntry.slice(2)}, the public API that the exports name, does not exist (docs/adr/0026).`,
-      );
+    if (expected !== undefined) {
+      const { exports: exported, says } = expected;
+      if (JSON.stringify(json.exports) !== JSON.stringify(exported))
+        failures.push(
+          `${path} must have the exports ${JSON.stringify(exported)}, ${says ?? "so that another package can import only its src/index.ts (docs/adr/0026)"}.`,
+        );
+      // The first entry is the one the package is named by: src/index.ts, or src/node.ts for db, which has no `.` (docs/adr/0051).
+      const mainEntry = Object.values(exported)[0];
+      if (
+        name !== ui &&
+        // Stryker disable next-line ConditionalExpression: equivalent, the exports are never empty (ownExports and publicApi); the guard is for the type of the index
+        mainEntry !== undefined &&
+        !tree.paths.includes(`packages/${name}/${mainEntry.slice(2)}`)
+      )
+        failures.push(
+          `packages/${name}/${mainEntry.slice(2)}, the public API that the exports name, does not exist (docs/adr/0026).`,
+        );
+    }
     if (record(json.nx).name !== name)
       failures.push(
         `${path} must have the Nx project name "${name}" (nx.name), the name of its directory (docs/adr/0026).`,
