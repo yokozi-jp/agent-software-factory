@@ -18,6 +18,9 @@ const themeLabels: Record<ThemePreference, (t: TFunction) => string> = {
   system: (t) => t("theme.system"),
 };
 
+// スマホ (`md` 未満) で 44px 以上にする (docs/web-frontend/mobile.md)。Tailwind が読めるよう、クラスは完全な文字列で書く。
+const touchTargetClass = "max-md:h-11";
+
 interface UserMenuProps {
   readonly name: string;
   readonly onSignOut: () => Promise<void>;
@@ -44,7 +47,7 @@ export function UserMenu({ name, onSignOut }: UserMenuProps) {
             key={preference}
             type="button"
             size="sm"
-            className="max-md:h-11"
+            className={touchTargetClass}
             variant={theme === preference ? "secondary" : "ghost"}
             aria-pressed={theme === preference}
             onClick={() => {
@@ -59,7 +62,7 @@ export function UserMenu({ name, onSignOut }: UserMenuProps) {
         type="button"
         variant="outline"
         size="sm"
-        className="max-md:h-11"
+        className={touchTargetClass}
         onClick={() => {
           setSignOutFailed(false);
           onSignOut().catch(() => {

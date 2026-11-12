@@ -763,21 +763,11 @@ function mobileMenu(width: MobileWidth): Story {
   });
 }
 
-function mobileNotFound(width: MobileWidth): Story {
+function mobileErrorPage(width: MobileWidth, path: string, title: string): Story {
   return onMobile(width, {
-    args: { path: "/no-such-page", session: member },
+    args: { path, session: member },
     play: async ({ canvas }) => {
-      await expect(await canvas.findByRole("heading", { name: notFoundTitle })).toBeVisible();
-      await expectNoHorizontalScroll(width);
-    },
-  });
-}
-
-function mobileForbidden(width: MobileWidth): Story {
-  return onMobile(width, {
-    args: { path: "/closing", session: member },
-    play: async ({ canvas }) => {
-      await expect(await canvas.findByRole("heading", { name: forbiddenTitle })).toBeVisible();
+      await expect(await canvas.findByRole("heading", { name: title })).toBeVisible();
       await expectNoHorizontalScroll(width);
     },
   });
@@ -787,7 +777,7 @@ export const Mobile320Login: Story = mobileLogin(320);
 export const Mobile390Login: Story = mobileLogin(390);
 export const Mobile320Menu: Story = mobileMenu(320);
 export const Mobile390Menu: Story = mobileMenu(390);
-export const Mobile320NotFound: Story = mobileNotFound(320);
-export const Mobile390NotFound: Story = mobileNotFound(390);
-export const Mobile320Forbidden: Story = mobileForbidden(320);
-export const Mobile390Forbidden: Story = mobileForbidden(390);
+export const Mobile320NotFound: Story = mobileErrorPage(320, "/no-such-page", notFoundTitle);
+export const Mobile390NotFound: Story = mobileErrorPage(390, "/no-such-page", notFoundTitle);
+export const Mobile320Forbidden: Story = mobileErrorPage(320, "/closing", forbiddenTitle);
+export const Mobile390Forbidden: Story = mobileErrorPage(390, "/closing", forbiddenTitle);
