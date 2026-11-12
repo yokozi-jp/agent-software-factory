@@ -123,10 +123,30 @@ describe("problemResponse", () => {
   });
 });
 
+describe("problemResponse の headers", () => {
+  it("渡した header を付け、Content-Type は上書きさせない", async () => {
+    const app = new OpenAPIHono();
+    app.get("/x", (c) =>
+      problemResponse(c, {
+        type: "about:blank",
+        title: "Method Not Allowed",
+        status: 405,
+        headers: { Allow: "GET, HEAD", "Content-Type": "text/plain" },
+      }),
+    );
+
+    const res = await app.request("/x");
+
+    expect(res.headers.get("Allow")).toBe("GET, HEAD");
+    expect(res.headers.get("Content-Type")).toBe("application/problem+json");
+  });
+});
+
 describe("statusTitle", () => {
   it("表にあるステータスはその名前を、表にないものは 5xx なら Server Error、それ以外は Client Error を返す", () => {
-    expect([statusTitle(404), statusTitle(599), statusTitle(418)]).toEqual([
+    expect([statusTitle(404), statusTitle(405), statusTitle(599), statusTitle(418)]).toEqual([
       "Not Found",
+      "Method Not Allowed",
       "Server Error",
       "Client Error",
     ]);

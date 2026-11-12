@@ -110,12 +110,12 @@ afterAll(() => {
 });
 
 describe("issue-tracker", () => {
-  it("passes when no issue names a removed path or a missing edge", () => {
+  it("消えた path も、ない辺も挙げる Issue がないとき通すこと", () => {
     answer(openIssues, [{ number: 1, title: "T", body: "Edit `tools/check.ts`." }]);
     expect(check()).toEqual({ status: 0, stdout: "issue-tracker: no problems\n", stderr: "" });
   });
 
-  it("reports a path that a commit removed, though git recorded the move as a rename", () => {
+  it("git が改名と記録しても、commit が消した path を報告すること", () => {
     answer(openIssues, [{ number: 1, title: "T", body: "Edit `scripts/check.sh`." }]);
     const result = check();
     expect(result.status).toBe(1);
@@ -124,7 +124,7 @@ describe("issue-tracker", () => {
     );
   });
 
-  it("reports a Blocked by: line without a native edge", () => {
+  it("native の辺のない Blocked by: の行を報告すること", () => {
     answer(openIssues, [{ number: 2, title: "U", body: `Blocked by: [A](${url(5)})、#6` }]);
     answer(blockers(2), [6]);
     const result = check();
@@ -134,7 +134,7 @@ describe("issue-tracker", () => {
     );
   });
 
-  it("reports a decision ticket closed without its implementation issue, reading the comments only when its line says nothing", () => {
+  it("実装の Issue なしで閉じた判断のチケットを、行が何も言わないときだけコメントを読んで報告すること", () => {
     answer(openIssues, []);
     answer(maps, [
       {
@@ -182,7 +182,7 @@ describe("issue-tracker", () => {
     answer(maps, []);
   });
 
-  it("asks gh again after a dropped connection, and exits 2 when it never answers", () => {
+  it("接続が切れた後 gh に再度問い合わせ、一度も答えなければ 2 で終了すること", () => {
     answer(openIssues, []);
     forget(repoView);
     expect(check()).toEqual({
@@ -194,7 +194,7 @@ describe("issue-tracker", () => {
     answer(repoView, ["owner/name"]);
   });
 
-  it("exits 2 in a shallow clone, whose history does not show the removed paths", () => {
+  it("消えた path を履歴が示さない浅い clone で、2 で終了すること", () => {
     const clone = join(box.root, "shallow");
     mkdirSync(clone);
     gitIn(clone, ["clone", "-q", "--depth", "1", `file://${repo}`, "."]);
@@ -203,7 +203,7 @@ describe("issue-tracker", () => {
     expect(result.stderr).toContain("the clone is shallow");
   });
 
-  it("exits 2 outside a git repository, after git says why", () => {
+  it("git リポジトリの外では、git が理由を述べた後に 2 で終了すること", () => {
     const outside = join(box.root, "outside");
     mkdirSync(outside);
     const result = checkIn(outside);

@@ -12,31 +12,31 @@ const treeOf = (files: Record<string, string>) => new Tree(repo(files));
 const allowed = roles.map(tagOf).join(", ");
 const guide = "docs/adr/0026, docs/domain-model/add-package.md";
 
-describe("ADR 0026: every package under packages/ has exactly one role", () => {
+describe("ADR 0026: packages/ の下のすべての package が、役割をちょうど 1 つ持つこと", () => {
   const violations = failuresOf(packagesHaveOneRole);
 
-  it("passes the packages of the passing repository, each with the tag of its role", () => {
+  it("通る repository の package を、それぞれの役割の tag で通すこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
-  it.each(roles.map(tagOf))("passes a package with the tag %s", (tag) => {
+  it.each(roles.map(tagOf))("tag %s を持つ package を通すこと", (tag) => {
     expect(violations(repo(withTags("any", [tag])))).toEqual([]);
   });
 
   it.each([
-    ["no nx", packageFiles("any", { nx: undefined })],
-    ["no tags", withTags("any", undefined)],
-    ["no tag of the dimension type:", withTags("any", ["scope:x"])],
-    ["tags that are not a list", withTags("any", "type:module")],
-    ["tags that are not strings", withTags("any", [1, null, { tag: "type:module" }])],
-    ["an empty list", withTags("any", [])],
-  ])("refuses a package with %s", (_, files) => {
+    ["nx がない", packageFiles("any", { nx: undefined })],
+    ["tags がない", withTags("any", undefined)],
+    ["type: の次元の tag がない", withTags("any", ["scope:x"])],
+    ["配列でない tags", withTags("any", "type:module")],
+    ["文字列でない tags", withTags("any", [1, null, { tag: "type:module" }])],
+    ["空の tags", withTags("any", [])],
+  ])("%s の package を拒否すること", (_, files) => {
     expect(violations(repo(files))).toEqual([
       `packages/any/package.json has no tag of the dimension type: in nx.tags. A package names its role with exactly one of ${allowed} (${guide}).`,
     ]);
   });
 
-  it("refuses two tags of the dimension type:, whether or not both name a role", () => {
+  it("type: の次元の tag が 2 つあれば、どちらも役割の値でなくても拒否すること", () => {
     expect(violations(repo(withTags("any", ["type:module", "type:ui"])))).toEqual([
       `packages/any/package.json has the tags type:module, type:ui of the dimension type: in nx.tags. A package has exactly one role, one of ${allowed} (${guide}).`,
     ]);
@@ -46,7 +46,7 @@ describe("ADR 0026: every package under packages/ has exactly one role", () => {
   });
 
   it.each(["type:modul", "type:util", "type:db", "type:"])(
-    "refuses the tag %s, which names no role",
+    "役割の値でない tag %s を拒否すること",
     (tag) => {
       expect(violations(repo(withTags("any", [tag])))).toEqual([
         `packages/any/package.json has the tag ${tag}, which names no role. A package names its role with exactly one of ${allowed} (${guide}).`,
@@ -54,11 +54,11 @@ describe("ADR 0026: every package under packages/ has exactly one role", () => {
     },
   );
 
-  it("does not count the tags of another dimension", () => {
+  it("別の次元の tag を数えないこと", () => {
     expect(violations(repo(withTags("any", ["scope:x", "type:ui", "scope:y"])))).toEqual([]);
   });
 
-  it("names every package that has no role, in the order of the paths", () => {
+  it("役割のない package を、path の順にすべて挙げること", () => {
     expect(
       violations(repo({ ...withTags("b", ["scope:x"]), ...withTags("a", undefined) })),
     ).toEqual([
@@ -67,13 +67,13 @@ describe("ADR 0026: every package under packages/ has exactly one role", () => {
     ]);
   });
 
-  it("does not ask the events packages, which are not under packages/<name>/package.json", () => {
+  it("packages/<name>/package.json の下にない events package には問わないこと", () => {
     expect(violations(repo({ "packages/other/events/package.json": "{}" }))).toEqual([]);
   });
 });
 
-describe("ADR 0026: the role of a package", () => {
-  it("is the one type: tag, whatever the tags of other dimensions are", () => {
+describe("ADR 0026: package の役割", () => {
+  it("別の次元の tag があっても、type: の tag 1 つであること", () => {
     const tree = treeOf({
       ...withTags("a", ["scope:x", "type:driver"]),
       ...withTags("b", ["type:shared-kernel"]),
@@ -82,7 +82,7 @@ describe("ADR 0026: the role of a package", () => {
     expect(roleOf(tree, "b")).toBe("shared-kernel");
   });
 
-  it("is none for no tag, for two tags and for a tag that names no role", () => {
+  it("tag がない、2 つある、役割の値でない、のどれでも役割なしになること", () => {
     const tree = treeOf({
       ...withTags("none", undefined),
       ...withTags("two", ["type:module", "type:module"]),
@@ -94,7 +94,7 @@ describe("ADR 0026: the role of a package", () => {
     ).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 
-  it("gives the names of the packages with one of the roles, in the order of the paths", () => {
+  it("いずれかの役割を持つ package の名前を、path の順に返すこと", () => {
     const tree = treeOf({
       ...withTags("z", ["type:ui"]),
       ...withTags("y", ["type:driver"]),
@@ -108,7 +108,7 @@ describe("ADR 0026: the role of a package", () => {
     expect(namesWithRole(tree)).toEqual([]);
   });
 
-  it("reads only the tags that are strings of the dimension type:", () => {
+  it("type: の次元の文字列の tag だけを読むこと", () => {
     const tree = treeOf(withTags("a", ["type:ui", "scope:x", 3, "typo:ui"]));
     expect(typeTagsOf(tree, "packages/a/package.json")).toEqual(["type:ui"]);
     expect(typeTagsOf(tree, "packages/none/package.json")).toEqual([]);

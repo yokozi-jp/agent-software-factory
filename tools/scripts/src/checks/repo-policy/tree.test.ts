@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { repo } from "./fixtures/repo.ts";
 import { Tree } from "./tree.ts";
 
-describe("configuration files that cannot be parsed", () => {
+describe("parse できない設定ファイル", () => {
   const errorsOf = (path: string, text: string): string[] => {
     const tree = new Tree(repo({ [path]: text }));
     tree.parsed(path);
@@ -15,7 +15,7 @@ describe("configuration files that cannot be parsed", () => {
     ["pnpm-workspace.yaml", "catalog: [\n", "YAML"],
     ["mise.toml", "[tools\n", "TOML"],
     [".betterleaks.toml", "betterleaksMinVersion = \n", "TOML"],
-  ])("names %s and the parser error", (path, text, format) => {
+  ])("%s と parser のエラーを挙げること", (path, text, format) => {
     const errors = errorsOf(path, text);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(
@@ -23,21 +23,21 @@ describe("configuration files that cannot be parsed", () => {
     );
   });
 
-  it("reads a comment line only in a tsconfig.json: in any other JSON file it is an error", () => {
+  it("コメント行は tsconfig.json でだけ読み、ほかの JSON ファイルではエラーとすること", () => {
     expect(errorsOf("apps/api/package.json", '// comment\n{"name": "x"}\n')[0]).toMatch(
       /^apps\/api\/package\.json is not valid JSON \(.+\)$/,
     );
     expect(errorsOf("apps/api/tsconfig.json", '// comment\n{"name": "x"}\n')).toEqual([]);
   });
 
-  it("names a package.json that is not JSON", () => {
+  it("JSON でない package.json を挙げること", () => {
     expect(errorsOf("apps/api/package.json", "{\n")[0]).toMatch(
       /^apps\/api\/package\.json is not valid JSON \(.+\)$/,
     );
   });
 });
 
-describe("configuration files that cannot be parsed: the messages", () => {
+describe("parse できない設定ファイル: メッセージ", () => {
   it.each([
     [
       ".github/workflows/ci.yml",
@@ -50,13 +50,13 @@ describe("configuration files that cannot be parsed: the messages", () => {
       "{\n",
       "JSON (SyntaxError: Expected property name or '}' in JSON at position 2 (line 2 column 1))",
     ],
-  ])("names %s and the first line of the parser error", (path, text, error) => {
+  ])("%s と parser のエラーの最初の行を挙げること", (path, text, error) => {
     const tree = new Tree(repo({ [path]: text }));
     tree.parsed(path);
     expect(tree.parseErrors).toEqual([`${path} is not valid ${error}`]);
   });
 
-  it("reports a file once, however many checks read it", () => {
+  it("いくつの検査が読んでも、ファイルを 1 回だけ報告すること", () => {
     const tree = new Tree(repo({ "package.json": "{\n" }));
     tree.parsed("package.json");
     tree.parsed("package.json");
@@ -66,8 +66,8 @@ describe("configuration files that cannot be parsed: the messages", () => {
   });
 });
 
-describe("a file the tree lacks", () => {
-  it("reads a file that the tree lacks as empty, or as undefined", () => {
+describe("ツリーにないファイル", () => {
+  it("ツリーにないファイルを、空または undefined として読むこと", () => {
     const tree = new Tree(repo());
     expect(tree.read("missing.txt")).toBe("");
     expect(tree.maybe("missing.txt")).toBeUndefined();

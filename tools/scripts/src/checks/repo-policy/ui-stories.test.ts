@@ -4,11 +4,11 @@ import { describe, expect, it } from "vite-plus/test";
 import { failuresOf, repo } from "./fixtures/repo.ts";
 import { uiComponentsHaveStories } from "./ui-stories.ts";
 
-describe("ADR 0033: each part of packages/ui has a story next to it", () => {
+describe("ADR 0033: packages/ui の各部品の隣に story があること", () => {
   const violations = failuresOf(uiComponentsHaveStories);
   const components = "packages/ui/src/components";
 
-  it("passes a part with a story and a story with no part", () => {
+  it("story のある部品と、部品のない story を通すこと", () => {
     expect(
       violations(
         repo({
@@ -20,13 +20,13 @@ describe("ADR 0033: each part of packages/ui has a story next to it", () => {
     ).toEqual([]);
   });
 
-  it("names a part with no story, and the file to add", () => {
+  it("story のない部品と、足すファイルを挙げること", () => {
     expect(violations(repo({ [`${components}/dialog.tsx`]: "export {};" }))).toEqual([
       `${components}/dialog.tsx has no story. Add ${components}/dialog.stories.tsx, whose play functions are the part's component test (docs/adr/0033).`,
     ]);
   });
 
-  it("names every part with no story, at any depth", () => {
+  it("story のないすべての部品を、どの深さでも挙げること", () => {
     expect(
       violations(
         repo({
@@ -39,7 +39,7 @@ describe("ADR 0033: each part of packages/ui has a story next to it", () => {
     ).toEqual([`${components}/dialog.tsx`, `${components}/form/field.tsx`]);
   });
 
-  it("wants the story next to the part, not in another directory", () => {
+  it("story を別のディレクトリではなく、部品の隣に求めること", () => {
     expect(
       violations(
         repo({
@@ -50,7 +50,7 @@ describe("ADR 0033: each part of packages/ui has a story next to it", () => {
     ).toHaveLength(1);
   });
 
-  it("reads only tsx files in packages/ui/src/components", () => {
+  it("packages/ui/src/components の tsx ファイルだけを読むこと", () => {
     expect(
       violations(
         repo({

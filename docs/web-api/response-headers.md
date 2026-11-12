@@ -76,3 +76,5 @@ Server-Timing: cache;desc="Cache Read";dur=23.4, db;dur=50, app;dur=75.3
 ### その他のレスポンスヘッダー
 
 セキュリティ関連で使用すべきレスポンスヘッダーが存在する。[セキュリティ](security.md#セキュリティ) の章を参照。
+
+このリポジトリの API は、全ての応答に `X-Request-Id` を付ける。リクエストの `X-Request-Id` が形に合えばその値を、合わなければ採番した値を返し、ログの `http.request.id` と同じ値になる。問い合わせのときに利用者が伝えるために使う。決め方は [Web API のログ出力](../logging/web-api.md) を参照。

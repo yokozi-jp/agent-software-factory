@@ -45,7 +45,7 @@ afterAll(() => {
   box.remove();
 });
 
-describe("commitlint with scope-enum", () => {
+describe("scope-enum による commitlint", () => {
   it.each([
     "feat(api): add a route",
     "fix(web): fix the layout",
@@ -57,7 +57,7 @@ describe("commitlint with scope-enum", () => {
     "feat: no scope is allowed",
     "feat(api): 日本語の件名も通る",
   ])(
-    "passes %j",
+    "%j を通すこと",
     (message) => {
       expect(lint(message)).toMatchObject({ status: 0 });
     },
@@ -65,7 +65,7 @@ describe("commitlint with scope-enum", () => {
   );
 
   it.each(["feat(unknown): x", "feat(apps/api): x", "feat(API): x"])(
-    "fails %j on scope-enum, naming the allowed scopes",
+    "%j を scope-enum で失敗させ、許される scope を挙げること",
     (message) => {
       const result = lint(message);
       expect(result.status).toBe(1);
@@ -76,7 +76,7 @@ describe("commitlint with scope-enum", () => {
     60_000,
   );
 
-  it("fails a message that is not a Conventional Commit", () => {
+  it("Conventional Commit でないメッセージで失敗すること", () => {
     expect(lint("update things").status).toBe(1);
   }, 60_000);
 });

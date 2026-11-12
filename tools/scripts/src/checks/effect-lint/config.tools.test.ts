@@ -61,7 +61,7 @@ const lint = (source: string) => {
 };
 
 describe("oxlint.effect.json", { timeout: 120_000 }, () => {
-  it("passes an Effect written with the v4 names", () => {
+  it("v4 の名前で書いた Effect を通すこと", () => {
     const result = lint(
       'import { Effect } from "effect";\n\nexport const caught = Effect.catch(Effect.fail(1), () => Effect.succeed(2));\n',
     );
@@ -69,7 +69,7 @@ describe("oxlint.effect.json", { timeout: 120_000 }, () => {
     expect(result.status).toBe(0);
   });
 
-  it("fails on a v3 function name, and names the rule and the v4 name", () => {
+  it("v3 の関数名で失敗し、規則と v4 の名前を挙げること", () => {
     const result = lint(
       'import { Effect } from "effect";\n\nexport const caught = Effect.catchAll(Effect.fail(1), () => Effect.succeed(2));\n',
     );
@@ -79,7 +79,7 @@ describe("oxlint.effect.json", { timeout: 120_000 }, () => {
     expect(result.output).toContain("Renamed to catch");
   });
 
-  it("fails on another v3 function name", () => {
+  it("別の v3 の関数名で失敗すること", () => {
     const result = lint(
       'import { Effect } from "effect";\n\nexport const fiber = Effect.fork(Effect.succeed(1));\n',
     );
@@ -88,7 +88,7 @@ describe("oxlint.effect.json", { timeout: 120_000 }, () => {
     expect(result.output).toContain("Renamed to forkChild");
   });
 
-  it("fails on an Effect that is created and never run", () => {
+  it("作っただけで実行しない Effect で失敗すること", () => {
     const result = lint('import { Effect } from "effect";\n\nEffect.succeed(1);\n');
     expect(result.status).toBe(1);
     expect(result.output).toContain("effecttsgo(floating-effect)");
@@ -97,8 +97,8 @@ describe("oxlint.effect.json", { timeout: 120_000 }, () => {
 
 // `vp check` demands an `oxlint-disable` for each rule of `typedRules` (vite.config.ts). `lint-effect` reports a disable
 // of a rule that it does not enable as unused (reportUnusedDisableDirectives), so it enables the same rules.
-describe("oxlint.effect.json and the typed rules of vite.config.ts", () => {
-  it("enables every typescript/* rule that vite.config.ts enables, with the same options", () => {
+describe("oxlint.effect.json と vite.config.ts の型つきの規則", () => {
+  it("vite.config.ts が有効にするすべての typescript/* の規則を、同じ option で有効にすること", () => {
     const parsed: unknown = JSON.parse(readFileSync(join(root, "oxlint.effect.json"), "utf8"));
     if (!isObject(parsed) || !isObject(parsed.rules))
       throw new Error("oxlint.effect.json has no rules");

@@ -38,12 +38,12 @@ afterAll(() => {
 });
 
 describe("lint-workflows.sh", () => {
-  it("passes without running the linters when no workflow is tracked", () => {
+  it("追跡された workflow がないとき、linter を実行せずに通すこと", () => {
     expect(lint().status).toBe(0);
     expect(readFileSync(record, "utf8")).toBe("");
   });
 
-  describe("with tracked workflows", () => {
+  describe("追跡された workflow があるとき", () => {
     beforeAll(() => {
       for (const path of [
         ".github/workflows/ci.yml",
@@ -61,7 +61,7 @@ describe("lint-workflows.sh", () => {
       write(".github/workflows/scratch.yml");
     });
 
-    it("hands the tracked workflows to jactionlint, and to zizmor with --offline", () => {
+    it("追跡された workflow を jactionlint に、--offline を付けて zizmor に渡すこと", () => {
       const files =
         ".github/workflows/ci.yml .github/workflows/deploy.yaml .github/workflows/my flow.yml";
       expect(lint().status).toBe(0);
@@ -69,16 +69,16 @@ describe("lint-workflows.sh", () => {
       expect(calls()).toEqual([`jactionlint ${files}`, `zizmor --offline ${files}`]);
     });
 
-    it("fails when jactionlint reports a finding, and still runs zizmor", () => {
+    it("jactionlint が指摘を報告したとき失敗し、zizmor は引き続き実行すること", () => {
       expect(lint(1, 0).status).toBe(1);
       expect(calls()).toHaveLength(2);
     });
 
-    it("fails when zizmor reports a finding", () => {
+    it("zizmor が指摘を報告したとき失敗すること", () => {
       expect(lint(0, 1).status).toBe(1);
     });
 
-    it("fails, instead of skipping the check, without mise", () => {
+    it("mise がないとき、検査を飛ばさずに失敗すること", () => {
       const path = onlyCommands(box.root, "no-mise", ["git", "sh", "xargs", "tr"]);
       const result = runIn(repo, "sh", [script], { env: { PATH: path } });
       expect(result.status).toBe(1);

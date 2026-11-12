@@ -4,12 +4,12 @@ import { repo } from "./fixtures/repo.ts";
 import { manifest, packageNames } from "./packages.ts";
 import { Tree } from "./tree.ts";
 
-describe("ADR 0026: the packages under packages/", () => {
-  it("names the package.json of a package by its directory", () => {
+describe("ADR 0026: packages/ の下の package", () => {
+  it("package.json の path を、package のディレクトリの名前で作ること", () => {
     expect(manifest("claim")).toBe("packages/claim/package.json");
   });
 
-  it("takes the names from packages/<name>/package.json only, and by that exact name", () => {
+  it("package の名前を、packages/<name>/package.json だけから、その名前そのままで採ること", () => {
     const stray = {
       "packages/other/events/package.json": "{}",
       "vendor/packages/stray/package.json": "{}",

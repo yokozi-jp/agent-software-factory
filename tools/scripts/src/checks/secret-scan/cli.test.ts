@@ -63,7 +63,7 @@ afterAll(() => {
 });
 
 describe("secret-scan", () => {
-  it("scans the whole history from the repository top, and passes betterleaks' exit code on", () => {
+  it("リポジトリの最上位から履歴全体を検査し、betterleaks の終了コードをそのまま返すこと", () => {
     const result = scan(["all"], { dir: join(repo, "sub"), exit: 1 });
     expect(result).toEqual({
       status: 1,
@@ -73,7 +73,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([`${repo} exec -- betterleaks git ${flags} .`]);
   });
 
-  it("scans the working tree files", () => {
+  it("作業ツリーのファイルを検査すること", () => {
     expect(scan(["worktree"])).toEqual({
       status: 0,
       stdout: "secret-scan: worktree: scanning working tree files\n",
@@ -82,7 +82,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([`${repo} exec -- betterleaks dir ${flags} .`]);
   });
 
-  it("scans a range of commits, and skips an empty one", () => {
+  it("commit の範囲を検査し、空の範囲を読み飛ばすこと", () => {
     expect(scan(["range", base, head])).toEqual({
       status: 0,
       stdout: `secret-scan: range: scanning 1 commit(s) (${base}..${head})\n`,
@@ -100,7 +100,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("scans the staged files, and skips when nothing is staged", () => {
+  it("ステージしたファイルを検査し、何もステージされていないときは読み飛ばすこと", () => {
     expect(scan(["staged"]).stdout).toBe(
       "secret-scan: staged: 0 files, skipped (nothing staged)\n",
     );
@@ -118,7 +118,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([`${repo} exec -- betterleaks git ${flags} --staged .`]);
   });
 
-  it("pre-push scans each pushed ref from stdin, and fails if any scan fails", () => {
+  it("pre-push は stdin の push する ref ごとに検査し、どれかが失敗すれば失敗すること", () => {
     const input = [
       `(delete) ${zero} refs/heads/gone ${base}`,
       `refs/heads/x ${head} refs/heads/x ${zero}`,
@@ -144,7 +144,7 @@ describe("secret-scan", () => {
     ]);
   });
 
-  it("pre-push fails when the remote's commit is not in this clone, and asks for a fetch", () => {
+  it("remote の commit がこの clone にないとき、pre-push は失敗し fetch を求めること", () => {
     const unknown = "1".repeat(40);
     const result = scan(["pre-push"], {
       input: `refs/heads/main ${head} refs/heads/main ${unknown}\n`,
@@ -161,7 +161,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("exits with git's code, not 1 (a finding), when git cannot read the range", () => {
+  it("git が範囲を読めないとき、1 (検出) ではなく git の終了コードで終了すること", () => {
     const result = scan(["range", "nope", head]);
     expect(result.status).toBe(128);
     expect(result.stdout).toBe("");
@@ -169,7 +169,7 @@ describe("secret-scan", () => {
     expect(recorded()).toEqual([]);
   });
 
-  it("exits with git's code, not 1 (a finding), outside a git repository", () => {
+  it("git リポジトリの外では、1 (検出) ではなく git の終了コードで終了すること", () => {
     const outside = join(box.root, "outside");
     mkdirSync(outside, { recursive: true });
     const result = scan(["all"], { dir: outside });
@@ -179,7 +179,7 @@ describe("secret-scan", () => {
   });
 
   it.each([[[]], [["nonsense"]], [["range", "x"]], [["all", "--config", "x.toml"]]])(
-    "prints the usage and exits 2 for %j",
+    "%j のとき、使い方を出力して 2 で終了すること",
     (args) => {
       const result = scan(args);
       expect(result.status).toBe(2);
@@ -190,7 +190,7 @@ describe("secret-scan", () => {
     },
   );
 
-  it("fails without mise, instead of passing unscanned", () => {
+  it("検査せずに通すのではなく、mise がなければ失敗すること", () => {
     const noMise = join(box.root, "no-mise");
     mkdirSync(noMise);
     symlinkSync(join(gitIn(repo, ["--exec-path"]).trim(), "git"), join(noMise, "git"));

@@ -64,8 +64,8 @@ afterAll(async () => {
   box.remove();
 });
 
-describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
-  it("asks the user with exit 0 and the decision as JSON on stdout", () => {
+describe("pre-tool-use: 拒否", { timeout: processTimeout }, () => {
+  it("終了コード 0 で尋ね、判断を stdout に JSON で出力すること", () => {
     const result = hook(event("execute_bash", { command: "git checkout -- a.ts && git status" }));
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
@@ -76,14 +76,14 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
       },
     });
   });
-  it("refuses a force push with exit 2 and the reason on stderr", () => {
+  it("force push を終了コード 2 で拒否し、理由を stderr に出力すること", () => {
     const result = hook(event("execute_bash", { command: "git status && git push --force" }));
     expect(result.status).toBe(2);
     expect(result.stdout).toBe("");
     expect(result.stderr).toMatch(/^block-force-push: refused\. .*docs\/adr\/0004\)\.\n$/);
   });
 
-  it("allows an ordinary shell command with exit 0 and no output", () => {
+  it("通常のシェルコマンドを終了コード 0 で許可し、何も出力しないこと", () => {
     expect(hook(event("execute_bash", { command: "git push -u origin x" }))).toEqual({
       status: 0,
       stdout: "",
@@ -91,12 +91,12 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     });
   });
 
-  it("lets a force push through with KIRO_ALLOW_FORCE_PUSH=1", () => {
+  it("KIRO_ALLOW_FORCE_PUSH=1 のとき force push を通すこと", () => {
     const result = hook(event("shell", { command: "git push -f" }), { KIRO_ALLOW_FORCE_PUSH: "1" });
     expect(result.status).toBe(0);
   });
 
-  it("refuses a forbidden command with exit 2 whatever the variables say", () => {
+  it("変数にかかわらず、禁止のコマンドを終了コード 2 で拒否すること", () => {
     const env = { KIRO_ALLOW_FORCE_PUSH: "1", KIRO_ALLOW_GENERATED_WRITE: "1" };
     const result = hook(event("execute_bash", { command: "gh pr merge 12 --squash" }), env);
     expect(result.status).toBe(2);
@@ -106,7 +106,7 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     );
   });
 
-  it("refuses a write to .kiro/settings whatever the variables say, and allows .kiro/agents", () => {
+  it("変数にかかわらず .kiro/settings への書き込みを拒否し、.kiro/agents を許可すること", () => {
     mkdirSync(join(repo, ".kiro/settings"), { recursive: true });
     const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
     const settings = hook(event("fs_write", { path: ".kiro/settings/cli.json", text: "x" }), env);
@@ -119,7 +119,7 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     );
   });
 
-  it("refuses iwe normalize from the shell and from the MCP tool, unless IWE_ALLOW_NORMALIZE=1", () => {
+  it("IWE_ALLOW_NORMALIZE=1 でない限り、シェルと MCP tool からの iwe normalize を拒否すること", () => {
     expect(
       hook(event("execute_bash", { command: "cd docs && pnpm exec iwe normalize" })).status,
     ).toBe(2);
@@ -127,7 +127,7 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     expect(hook(event("@iwe/iwe_normalize", {}), { IWE_ALLOW_NORMALIZE: "1" }).status).toBe(0);
   });
 
-  it("refuses a write to a generated file, resolving the path against the event's cwd", () => {
+  it("イベントの cwd に対して path を解決し、生成されたファイルへの書き込みを拒否すること", () => {
     const result = hook(
       event("fs_write", { path: "src/routeTree.gen.ts", text: "x" }, join(repo, "apps/web")),
       {},
@@ -139,7 +139,7 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     );
   });
 
-  it("refuses a skill through the .kiro/skills symlink, and an absolute path", () => {
+  it(".kiro/skills の symlink 経由の skill と、絶対 path を拒否すること", () => {
     const viaLink = hook(
       event("str_replace", { path: ".kiro/skills/tdd/SKILL.md", oldStr: "a", newStr: "b" }),
     );
@@ -150,14 +150,14 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     expect(absolute.stderr).toContain("refused delete_file on pnpm-lock.yaml.");
   });
 
-  it("allows a write to another file, a read, and a generated file with KIRO_ALLOW_GENERATED_WRITE=1", () => {
+  it("ほかのファイルへの書き込み、読み取り、KIRO_ALLOW_GENERATED_WRITE=1 の生成されたファイルを許可すること", () => {
     expect(hook(event("fs_write", { path: "README.md", text: "x" })).status).toBe(0);
     expect(hook(event("read_file", { path: "pnpm-lock.yaml" })).status).toBe(0);
     const env = { KIRO_ALLOW_GENERATED_WRITE: "1" };
     expect(hook(event("fs_write", { path: "pnpm-lock.yaml", text: "x" }), env).status).toBe(0);
   });
 
-  it("resolves against its own directory when the event's cwd does not exist", () => {
+  it("イベントの cwd がないとき、自分のディレクトリに対して解決すること", () => {
     const input = JSON.stringify({
       tool_name: "fs_write",
       cwd: "/nonexistent",
@@ -166,23 +166,23 @@ describe("pre-tool-use: refusing", { timeout: processTimeout }, () => {
     expect(hook(input).status).toBe(2);
   });
 
-  it("allows a write outside a git repository", () => {
+  it("git リポジトリの外への書き込みを許可すること", () => {
     const plain = join(box.root, "plain");
     mkdirSync(plain);
     expect(hook(event("fs_write", { path: "pnpm-lock.yaml" }, plain), {}, plain).status).toBe(0);
   });
 
   it.each(["not json", "", "[]", '{"tool_name":"fs_write"}'])(
-    "allows what it cannot read: %j",
+    "読めないものを許可すること: %j",
     (input) => {
       expect(hook(input).status).toBe(0);
     },
   );
 });
 
-describe("pre-tool-use: other sessions in this working tree", { timeout: processTimeout }, () => {
+describe("pre-tool-use: この作業ツリーのほかのセッション", { timeout: processTimeout }, () => {
   // Only SessionStart warns about them; the PreToolUse entry does not ask (#191).
-  it("does not ask before a shell call or a write when another live session works here", () => {
+  it("ほかの生きたセッションがここで作業していても、シェルの呼び出しや書き込みの前に尋ねないこと", () => {
     mkdirSync(join(sessions, "hashA", "sess_me"), { recursive: true });
     writeFileSync(
       join(sessions, "hashA", "sess_me", ".lock"),

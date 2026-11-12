@@ -46,14 +46,14 @@ afterAll(() => {
   box.remove();
 });
 
-describe("osv-scanner.sh with the real OSV-Scanner", () => {
-  it("finds lodash 4.17.20 in a pnpm lockfile, and passes", () => {
+describe("本物の OSV-Scanner による osv-scanner.sh", () => {
+  it("pnpm の lockfile の lodash 4.17.20 を見つけて通すこと", () => {
     const result = runIn(repo, "sh", [script], { env: { ...miseDirs(), GITHUB_ACTIONS: "" } });
     expect(result.status).toBe(0);
     expect(result.stdout + result.stderr).toContain("GHSA-35jh-r3h4-6jhm");
   }, 300_000);
 
-  it("writes the findings as SARIF 2.1.0 when OSV_SARIF_FILE is set", () => {
+  it("OSV_SARIF_FILE があるとき、指摘を SARIF 2.1.0 で書くこと", () => {
     const file = join(box.root, "osv.sarif");
     const result = runIn(repo, "sh", [script], {
       env: { ...miseDirs(), GITHUB_ACTIONS: "", OSV_SARIF_FILE: file },

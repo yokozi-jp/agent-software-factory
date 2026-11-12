@@ -59,12 +59,12 @@ afterAll(() => {
 });
 
 describe("check-adr-number", () => {
-  it("passes and prints the next number when the branch adds no ADR", () => {
+  it("ブランチが ADR を足していないとき、通して次の番号を出力すること", () => {
     prs([]);
     expect(check()).toEqual({ status: 0, stdout: "next free ADR number: 0002\n", stderr: "" });
   });
 
-  it("counts an untracked ADR, and fails when another open PR uses its number", () => {
+  it("追跡されていない ADR を数え、ほかの open な PR が同じ番号を使っていれば失敗すること", () => {
     writeFileSync(join(repo, adr("0002-mine")), "b\n");
     expect(check()).toMatchObject({ status: 0, stdout: "next free ADR number: 0003\n" });
     prs([{ number: 7, headRefName: "docs/other", files: [{ path: adr("0002-other") }] }]);
@@ -73,7 +73,7 @@ describe("check-adr-number", () => {
     expect(result.stderr).toContain("ADR 0002 is also used by PR #7.");
   });
 
-  it("ignores this branch's own PR, and counts a staged rename before it is committed", () => {
+  it("このブランチ自身の PR を無視し、commit 前のステージ済みの改名を数えること", () => {
     git("add", "-A");
     git("commit", "-qm", "mine");
     prs([{ number: 8, headRefName: "docs/mine", files: [{ path: adr("0002-mine") }] }]);
@@ -85,7 +85,7 @@ describe("check-adr-number", () => {
     git("commit", "-qm", "renumber");
   });
 
-  it("fails when origin/main has the number", () => {
+  it("origin/main がその番号を持つとき失敗すること", () => {
     prs([]);
     writeFileSync(join(repo, adr("0001-again")), "c\n");
     const result = check();
@@ -94,13 +94,13 @@ describe("check-adr-number", () => {
     expect(result.stderr).toContain("ADR 0001 is also used by origin/main.");
   });
 
-  it("asks gh again after a dropped connection", () => {
+  it("接続が切れた後、gh に再度問い合わせること", () => {
     prs([]);
     failNext(2);
     expect(check()).toMatchObject({ status: 0, stderr: "" });
   });
 
-  it("exits 2 without checking when gh cannot list the PRs three times", () => {
+  it("gh が PR を 3 回一覧にできないとき、確認せずに 2 で終了すること", () => {
     rmSync(prsFile);
     expect(check()).toEqual({
       status: 2,
@@ -110,7 +110,7 @@ describe("check-adr-number", () => {
     });
   });
 
-  it("carries on without origin/main, with the numbers of the open PRs, after git says why", () => {
+  it("git が理由を述べた後、origin/main なしで open な PR の番号だけで続けること", () => {
     git("update-ref", "-d", "refs/remotes/origin/main");
     prs([]);
     expect(check()).toMatchObject({ status: 0, stdout: "next free ADR number: 0004\n" });

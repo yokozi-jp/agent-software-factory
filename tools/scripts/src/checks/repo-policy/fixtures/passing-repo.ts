@@ -201,6 +201,20 @@ export const coverageScripts = { test: "vp test run --coverage" };
 export const coverageDevDependencies = { "@vitest/coverage-v8": "catalog:" };
 export const coverageConfig =
   'import { recordOnlyConfig } from "../../vitest-coverage.ts";\nexport default recordOnlyConfig();\n';
+// The table of coverage-policy.json (docs/adr/0053, #577) that says which files count: the shape of the real one.
+export const coveragePolicy = {
+  minimum: { lines: 90, branches: 90 },
+  projects: ["apps/*", "packages/*", "packages/*/events"],
+  notMeasured: [
+    "**/*.test.{ts,tsx}",
+    "**/__fixtures__/**",
+    "**/*.gen.ts",
+    "**/*.d.ts",
+    "**/*.stories.tsx",
+  ],
+  entries: {},
+  exceptions: {},
+};
 export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
@@ -299,7 +313,8 @@ export const passingRepo: Readonly<Record<string, string>> = {
     .map((name) => `import "@agent-software-factory/${name}";\n`)
     .join(""),
   "packages/db/migrations/20260101000000_create_x.sql": migration(),
-  "pnpm-workspace.yaml": 'catalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
+  "pnpm-workspace.yaml":
+    'packages:\n  - apps/*\n  - packages/*\n  - packages/*/events\n  - tools/*\n\ncatalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',
   "mise.toml": '[tools]\nbetterleaks = "1.9.0"\nshellcheck = "0.11.0"\n',
   // What `mise lock --platform linux-x64` writes: one platform per tool (docs/adr/0009).
   "mise.lock": [
@@ -334,6 +349,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   // A config that names a file of the tree (codePathReferences reads it).
   "compose.otel-lgtm.yaml": "# apps/api/package.json\n",
   "lint-restrictions.json": JSON.stringify(lintRestrictions, undefined, 2),
+  "coverage-policy.json": JSON.stringify(coveragePolicy, undefined, 2),
   "packages/module-fixtures/src/__fixtures__/outbox.ts": outboxFixture,
   "apps/api/src/__fixtures__/outbox.test.ts": outboxFixture,
   "packages/module-fixtures/src/__fixtures__/connection.ts": connectionStopFixture,

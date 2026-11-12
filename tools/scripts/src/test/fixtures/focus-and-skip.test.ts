@@ -6,11 +6,11 @@
 import { expect, it } from "vite-plus/test";
 
 // oxlint-disable-next-line vitest/no-focused-tests -- fixture: .only runs this test alone
-it.only("is the only test that runs", () => {
+it.only("唯一実行されるテストであること", () => {
   expect(1).toBe(1);
 });
 
 // oxlint-disable-next-line vitest/no-disabled-tests -- fixture: .skip hides a test that may be failing
-it.skip("is hidden", () => {
+it.skip("隠れていること", () => {
   expect(1).toBe(1);
 });

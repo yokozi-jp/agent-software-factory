@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe("skills-lock", () => {
-  it("passes when the skills match the lock", () => {
+  it("skill が lock と一致するとき通すこと", () => {
     expect(run()).toEqual({
       status: 0,
       stdout: "skills-lock: 1 skills match skills-lock.json\n",
@@ -39,7 +39,7 @@ describe("skills-lock", () => {
     });
   });
 
-  it("does not hash .git and node_modules inside a skill", () => {
+  it("skill の中の .git と node_modules を hash しないこと", () => {
     mkdirSync(join(repo, ".agents/skills/demo/node_modules"));
     mkdirSync(join(repo, ".agents/skills/demo/.git"));
     writeFileSync(join(repo, ".agents/skills/demo/node_modules/x.js"), "x");
@@ -47,20 +47,20 @@ describe("skills-lock", () => {
     expect(run().status).toBe(0);
   });
 
-  it("fails when a file of a skill changed", () => {
+  it("skill のファイルが変わったとき失敗すること", () => {
     appendFileSync(join(repo, ".agents/skills/demo/SKILL.md"), "edited\n");
     const result = run();
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(".agents/skills/demo: content differs from skills-lock.json\n");
   });
 
-  it("fails when a file in a subfolder of a skill is added", () => {
+  it("skill のサブフォルダにファイルが足されたとき失敗すること", () => {
     mkdirSync(join(repo, ".agents/skills/demo/refs"));
     writeFileSync(join(repo, ".agents/skills/demo/refs/a.md"), "a\n");
     expect(run().stderr).toContain(".agents/skills/demo: content differs");
   });
 
-  it("fails when the symlink in .kiro/skills is missing or is a copy", () => {
+  it(".kiro/skills の symlink がない、またはコピーであるとき失敗すること", () => {
     rmSync(join(repo, ".kiro/skills/demo"));
     expect(run().stderr).toContain(
       ".kiro/skills/demo: missing (must be a symlink to ../../.agents/skills/demo)",
@@ -73,12 +73,12 @@ describe("skills-lock", () => {
     );
   });
 
-  it("fails when .kiro/skills does not exist", () => {
+  it(".kiro/skills がないとき失敗すること", () => {
     rmSync(join(repo, ".kiro/skills"), { recursive: true });
     expect(run().stderr).toContain(".kiro/skills/demo: missing");
   });
 
-  it("does not count a file in .agents/skills as a skill", () => {
+  it(".agents/skills の中のファイルを skill に数えないこと", () => {
     writeFileSync(join(repo, ".agents/skills/README.md"), "x");
     expect(run().status).toBe(0);
   });
