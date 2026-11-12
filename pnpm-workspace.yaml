@@ -60,7 +60,7 @@ catalog:
   # OpenTelemetry (docs/adr/0048). Only packages/telemetry and the entry files of the apps import the SDK; the rest import
   # @opentelemetry/api. sdk-node is on the experimental 0.3xx line, so a minor update may change its options.
   "@opentelemetry/api": ^1.10.0
-  "@opentelemetry/sdk-node": ^0.300.0
+  "@opentelemetry/sdk-node": ^0.301.0
   "@opentelemetry/sdk-trace": ^3.0.0
   "@opentelemetry/instrumentation-pg": ^0.78.0
   "@opentelemetry/instrumentation-undici": ^0.35.0
