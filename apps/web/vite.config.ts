@@ -2,13 +2,18 @@ import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite-plus";
+import { defineConfig, loadEnv } from "vite-plus";
+import { devServer } from "../../dev-server.ts";
 import { recordCoverage } from "../../vitest-coverage.ts";
 import { playwright } from "vite-plus/test/browser-playwright";
 
 // coverage の全体の値を、切り捨てて書き戻す (docs/tooling/ci.md ("coverage の下限"))。apps/api の vite.config.ts に同じ
 // 形の記述があり、jscpd (pnpm lint:dup) が重複と数えるので、名前を付けて形を変えてある。
 const floorThreshold = (newThreshold: number) => Math.floor(newThreshold);
+
+// WEB_PORT と API_ORIGIN は、環境変数か .env.local から読む。worktree ごとの値は tools/scripts/src/dev-ports が
+// .env.local に書く (docs/tooling/worktrees.md)。Vite は設定を評価する前に .env.local を環境に入れないので、loadEnv で読む。
+const env = loadEnv("development", process.cwd(), "");
 
 export default defineConfig({
   // The router plugin must come before the React plugin.
@@ -24,13 +29,8 @@ export default defineConfig({
   ],
   // `@/*` is resolved from the `paths` of tsconfig.json (docs/adr/0033).
   resolve: { tsconfigPaths: true },
-  server: {
-    port: 5173,
-    // /api を API (apps/api の既定は 3000 番) へ転送し、ブラウザからは同一オリジンに見せる。
-    // 理由は docs/web-api/security.md「CORS」。パスは書き換えない。認証の Issue (#155) が
-    // API を /api/* に置くため。今の API は /health だけで、/api 以下の経路はまだない。
-    proxy: { "/api": "http://localhost:3000" },
-  },
+  // 既定は 5173 と、API の http://localhost:3000。ポートが塞がっていれば、次のポートに逃げずに失敗する (dev-server.ts)。
+  server: devServer(env),
   test: {
     // この test target は、Nx が他の task と同時に流さない (package.json の `nx.targets.test.parallelism: false`)。
     // CI で iframe が用意できない失敗が、api:test や worker:test (testcontainers) の終わりと重なっていた疑いのため

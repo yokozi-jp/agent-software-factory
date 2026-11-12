@@ -1,6 +1,11 @@
 import devServer from "@hono/vite-dev-server";
-import { defineConfig } from "vite-plus";
+import { defineConfig, loadEnv } from "vite-plus";
+import { port } from "../../dev-server.ts";
 import { recordCoverage } from "../../vitest-coverage.ts";
+
+// PORT は、環境変数か .env.local から読む。src/server.ts の PORT と同じ変数で、worktree ごとの値は
+// tools/scripts/src/dev-ports が .env.local に書く (docs/tooling/worktrees.md)。
+const env = loadEnv("development", process.cwd(), "");
 
 // テストの project は 2 つ。integration は src/ のテストで、PostgreSQL のコンテナとテスト用 IdP (test/oidc-provider.ts) を、全テストで共有して
 // 一度だけ起動する。unit (`*.unit.test.ts`) はどちらも起動しない。入力を渡して結果を見るだけのテストは unit にする。
@@ -9,7 +14,7 @@ import { recordCoverage } from "../../vitest-coverage.ts";
 // Oxlint の自作 plugin の規則のテストは tools/lint-plugins にある (docs/adr/0030)。
 export default defineConfig({
   plugins: [devServer({ entry: "./src/index.ts" })],
-  server: { port: 3000 },
+  server: { port: port(env, "PORT", 3000), strictPort: true },
   build: {
     // Node server bundle. Dependencies stay external and are resolved from node_modules at runtime.
     ssr: "src/server.ts",

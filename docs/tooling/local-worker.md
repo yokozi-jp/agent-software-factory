@@ -23,7 +23,7 @@ docker compose -f compose.local.yaml up -d --wait
 | 1025   | Mailpit の SMTP (`SMTP_PORT`)            |
 | 8025   | Mailpit の画面 (<http://127.0.0.1:8025>) |
 
-ポートはすべて `127.0.0.1` にだけ開きます。固定のポートなので、一度に起動できるのは 1 つの worktree です ([並行作業と worktree](worktrees.md)、[Issue #184](https://github.com/yokozi-jp/agent-software-factory/issues/184))。[ローカルでトレースを見る](local-telemetry.md)の `compose.otel-lgtm.yaml` とはポートが重ならないので、同時に起動できます。
+ポートはすべて `127.0.0.1` にだけ開きます。固定のポートなので、一度に起動できるのは 1 つの worktree です ([並行作業と worktree](worktrees.md)、[Issue #723](https://github.com/yokozi-jp/agent-software-factory/issues/723))。web、API、IdP の開発サーバーのポートは worktree ごとに分かれますが、compose のポートと project 名は分かれません。[ローカルでトレースを見る](local-telemetry.md)の `compose.otel-lgtm.yaml` とはポートが重ならないので、同時に起動できます。
 
 止めるのは `docker compose -f compose.local.yaml down` です。データも消して最初からやり直すときは `-v` を付けます。
 

@@ -1,5 +1,5 @@
 // Process tests for sh/worktree.sh in a sandboxed main checkout with a local bare origin.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { gitIn, runIn, sandbox, type Sandbox } from "../test/sandbox.ts";
@@ -68,6 +68,55 @@ describe("worktree.sh add の動作", () => {
     const result = worktree(main, "add", "feat/a", "--no-install");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("already exists");
+  });
+});
+
+// A main checkout with a local bare origin. withApps: apps/web and apps/api exist, where the ports are written.
+function makeMain(name: string, withApps: boolean): string {
+  const origin = join(box.root, `${name}.git`);
+  const dir = join(box.root, name);
+  gitIn(origin, ["init", "-q", "--bare", "-b", "main"]);
+  gitIn(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, "a"), "a\n");
+  if (withApps)
+    for (const app of ["web", "api"]) {
+      mkdirSync(join(dir, "apps", app), { recursive: true });
+      writeFileSync(join(dir, "apps", app, ".gitkeep"), "");
+    }
+  gitIn(dir, ["add", "-A"]);
+  gitIn(dir, ["commit", "-qm", "base"]);
+  gitIn(dir, ["remote", "add", "origin", origin]);
+  gitIn(dir, ["push", "-q", "origin", "main"]);
+  return dir;
+}
+
+describe("worktree.sh add の採番 (Issue #184)", () => {
+  // 上の describe の worktree が slot を使うので、専用の main の checkout で数える。
+  it("worktree に開発サーバーの slot を割り当て、URL を stderr に出し、stdout は path だけにすること", () => {
+    const own = makeMain("ports", true);
+    const result = worktree(own, "add", "feat/slot-a", "--no-install");
+    expect(result).toMatchObject({
+      status: 0,
+      stdout: `${join(box.root, "ports-worktrees")}/feat/slot-a\n`,
+    });
+    expect(result.stderr).toContain("slot 1");
+    expect(
+      readFileSync(join(box.root, "ports-worktrees/feat/slot-a/apps/api/.env.local"), "utf8"),
+    ).toContain("PORT=3010");
+  });
+
+  it("次の worktree には、別の slot を割り当てること", () => {
+    const own = join(box.root, "ports");
+    expect(worktree(own, "add", "feat/slot-b", "--no-install").stderr).toContain("slot 2");
+  });
+
+  // 採番に失敗しても worktree は使える。strictPort が衝突を失敗にする。
+  it("採番に失敗しても、警告を出して worktree を作り、終了コード 0 で終わること", () => {
+    const plain = makeMain("no-apps", false);
+    const result = worktree(plain, "add", "feat/x", "--no-install");
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(`${join(box.root, "no-apps-worktrees")}/feat/x\n`);
+    expect(result.stderr).toContain("warning: dev-ports");
   });
 });
 

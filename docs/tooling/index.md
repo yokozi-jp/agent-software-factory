@@ -10,7 +10,7 @@
 - [Renovate](renovate.md)：Renovate の PR が出たとき、Renovate の設定を変えるとき、GitHub App をインストールするとき
 - [検証環境の流れ](verification-environment.md)：検証環境の workflow や CDK の stack を書く、変えるとき、検証環境が失敗したとき、本番の CD との違いを確かめるとき
 - [外部ドキュメントの読み方](external-docs.md)：外部の道具 (AWS、Hono、Vite+、Nx、mise、pnpm、lefthook、Oxlint、betterleaks、GitHub、Effect、Kiro、Codex) や仕様 (RFC、OpenTelemetry、MDN) の一次情報を調べるとき
-- [並行作業と worktree](worktrees.md)：別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree から PR を出すとき
+- [並行作業と worktree](worktrees.md)：別のセッションが同じ作業ツリーで動いていると警告されたとき、並行して作業を始めるとき、worktree で開発サーバーを動かすとき、開発サーバーがポートの使用中で起動しないとき、worktree から PR を出すとき
 - [ローカルでトレースを見る](local-telemetry.md)：API のトレースをローカルで見るとき、トレースが出ないとき、otel-lgtm の版を上げるとき
 - [人事システムのフェイク](hr-system-fake.md)：人事システムのクライアントを試すとき、フェイクのスタブを足す・変えるとき、WireMock の版を上げるとき、人事システムの OpenAPI を変えて型を作り直すとき
 - [ローカルで通知メールのワーカーを動かす](local-worker.md)：通知メールのワーカーを手元で動かすとき、Mailpit でメールを目で確かめるとき、ElasticMQ や Mailpit の版を上げるとき

@@ -17,7 +17,7 @@ IdP は、結合テストと同じ node-oidc-provider の実装 (`apps/api/test/
 
 ## 起動する
 
-端末を 3 つ使います。
+端末を 3 つ使います。URL は main の checkout (slot 0) の値です。worktree では、`node tools/scripts/src/dev-ports/cli.ts show` が出す、その worktree の URL を使います ([並行作業と worktree](worktrees.md))。
 
 ```sh
 pnpm --filter @agent-software-factory/api dev:idp    # IdP。http://127.0.0.1:9000
@@ -54,11 +54,11 @@ location.href = (await logout.json()).url;
 
 ## 固定した値
 
-| 値                                 | 場所                    | 理由                                                                 |
-| ---------------------------------- | ----------------------- | -------------------------------------------------------------------- |
-| IdP のポート 9000、アプリの origin | `test/dev-idp.ts`       | 手で使うには、決まったポートと、web の開発サーバーの origin が要る。 |
-| client ID `api`、secret            | `test/oidc-provider.ts` | テストと共通。本物の秘密ではない。                                   |
-| `PUBLIC_ORIGIN`                    | `.env`                  | `http://localhost:5173`。API (3000) ではなく web の origin にする。  |
+| 値                                 | 場所                    | 理由                                                                                                                                                      |
+| ---------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IdP のポート 9000、アプリの origin | `test/dev-idp.ts`       | 既定の値。手で使うには、決まったポートと、web の開発サーバーの origin が要る。worktree では `.env.local` の `IDP_PORT` と `IDP_APP_ORIGIN` が上書きする。 |
+| client ID `api`、secret            | `test/oidc-provider.ts` | テストと共通。本物の秘密ではない。                                                                                                                        |
+| `PUBLIC_ORIGIN`                    | `.env`                  | `http://localhost:5173`。API (3000) ではなく web の origin にする。                                                                                       |
 
 `PUBLIC_ORIGIN` を web の origin にする理由: web の開発サーバーは `/api` を API へ転送するので (`apps/web/vite.config.ts`)、ブラウザからは同じ origin に見えます。Cookie の `__Host-` と `SameSite=Strict`、CSRF の `Origin` の検査 ([ADR 0022](../adr/0022-better-auth-cookie-bff.md)) は、この 1 つの origin の上で成り立ちます。API の 3000 番を直接開くと、`PUBLIC_ORIGIN` と違う origin になり、CSRF の検査で 403 になります。
 IdP から戻る callback は `http://localhost:5173/api/auth/callback/oidc` です。IdP の origin (127.0.0.1) とアプリの origin (localhost) は別のサイトなので、callback で送られる `state` の Cookie は `SameSite=Lax` です ([ADR 0022](../adr/0022-better-auth-cookie-bff.md) の Cookie の項)。
@@ -71,7 +71,7 @@ IdP を `127.0.0.1`、web を `localhost` にしているのは、API が IdP �
 ## うまくいかないとき
 
 - 起動直後の `Rate limiting could not determine a client IP` の警告は、Better Auth の rate limit が接続元の IP を取れないときの警告 (出所は Better Auth)。ローカルでは 1 人で使うので無視できる (判断)。
-- ポート 9000 を別のものが使っている: `apps/api/test/dev-idp.ts` の `port` を変え、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
+- ポート 9000 を別のものが使っている: worktree では `worktree.sh add` が `apps/api/` の `.env.local` に `IDP_PORT` と `OIDC_DISCOVERY_URL` を書くので、ポートは重なりません ([並行作業と worktree](worktrees.md))。main の checkout で重なるときは、同じ `.env.local` に `IDP_PORT` を書き、`.env` の `OIDC_DISCOVERY_URL` も合わせる。
 - `__Host-` の Cookie は `Secure` が要る。ブラウザは `http://localhost` を安全な文脈 (potentially trustworthy origin) として扱う ([MDN: Secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts))。この手順の Cookie を実際のブラウザで受け付けるかは、まだ確かめていない ([Issue #532](https://github.com/yokozi-jp/agent-software-factory/issues/532))。
 
 ## この手順で確かめていないもの

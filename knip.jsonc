@@ -35,11 +35,13 @@
     },
     "tools/scripts": {
       // tools/scripts/sh/renovate.sh preview runs the renovate-preview entry with node, and .kiro/hooks/*.json
-      // runs the Kiro hook entries with node. Knip does not read shell scripts or those files. A person runs
+      // runs the Kiro hook entries with node. tools/scripts/sh/worktree.sh add runs the dev-ports entry with node.
+      // Knip does not read shell scripts or those files. A person runs
       // the factory metrics entry and the agent-probe entry by hand (docs/agents/factory-metrics.md,
       // docs/tooling/agent-permissions.md).
       "entry": [
         "src/checks/renovate-preview/cli.ts",
+        "src/dev-ports/cli.ts",
         "src/hooks/*/cli.ts",
         "src/metrics/cli.ts",
         "src/agent-probe/cli.ts",
