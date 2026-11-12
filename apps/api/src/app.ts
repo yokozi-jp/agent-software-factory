@@ -18,7 +18,6 @@ import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
-import { validationHook } from "./http/hook/validation-hook.ts";
 import { csrfProtection } from "./http/middleware/csrf.ts";
 import { accessLog, logUnexpectedError, type ApiVariables } from "./http/middleware/logging.ts";
 import { sessionGuard } from "./http/middleware/session.ts";
@@ -55,9 +54,8 @@ const tracingMiddleware = httpInstrumentationMiddleware({
 });
 
 export function createApp({ auth, logger = noopLogger }: AppDependencies) {
-  // sub-app の route は、それぞれの createRouter が同じ defaultHook を持つ。ここの defaultHook は、あとから app に直に足す
-  // route (テストの fixture) のためにある。
-  const base = new OpenAPIHono<{ Variables: ApiVariables }>({ defaultHook: validationHook });
+  // route はここに直に書かない。sub-app (createRouter) が検証エラーの hook を持つので、base は持たない。
+  const base = new OpenAPIHono<{ Variables: ApiVariables }>();
   // ログの順序 (docs/adr/0049): contextStorage() → @hono/otel → リクエストの文脈 → アクセスログ。logger が今のリクエストと
   // 今の span を読めるようにし、otel の後ろに置いて trace_id を付ける。
   base.use(contextStorage());
