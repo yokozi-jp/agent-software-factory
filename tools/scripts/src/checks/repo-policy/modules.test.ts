@@ -25,6 +25,7 @@ import {
   pathsHint,
 } from "./modules.ts";
 import { packageNames } from "./packages.ts";
+import type { Role } from "./roles.ts";
 import { Tree } from "./tree.ts";
 
 const base = passingRepo;
@@ -91,8 +92,11 @@ describe("ADR 0026: the package.json of every package under packages/", () => {
 describe("ADR 0026: the modules depend one way, by their package.json", () => {
   const violations = failuresOf(packageManifests, modulesDependOneWay, modulesLintEffect);
   const table = "tools/scripts/src/checks/repo-policy/modules.ts";
-  const manifest = (name: string, fields: Record<string, Record<string, string>> = {}) =>
-    packageFiles(name, fields);
+  const manifest = (
+    name: string,
+    fields: Record<string, Record<string, string>> = {},
+    role?: Role,
+  ) => packageFiles(name, fields, role);
   const wrong = (from: string, field: string, to: string) =>
     `packages/${from}/package.json has @agent-software-factory/${to} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${to}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`;
   const workspace = { "@agent-software-factory/claim": "workspace:*" };
@@ -100,7 +104,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
   it("leaves db to dbDependencies: it is no module, and a package that depends on it is not refused here", () => {
     const only = failuresOf(modulesDependOneWay);
     const dbDependsOnClaim = {
-      "packages/db/package.json": packageJson("db", { devDependencies: workspace }),
+      "packages/db/package.json": packageJson("db", { devDependencies: workspace }, "driver"),
     };
     expect(only(repo(dbDependsOnClaim))).toEqual([]);
     const dependsOnDb = { devDependencies: { "@agent-software-factory/db": "workspace:*" } };
@@ -232,7 +236,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
       "./lib/*": "./src/lib/*.ts",
     };
     const ui = (fields: Record<string, unknown>) => ({
-      "packages/ui/package.json": packageJson("ui", { exports: uiExports, ...fields }),
+      "packages/ui/package.json": packageJson("ui", { exports: uiExports, ...fields }, "ui"),
     });
     expect(violations(repo(ui({})))).toEqual([]);
     expect(violations(repo(ui({ exports: { ".": "./src/index.ts" } })))).toEqual([
@@ -255,7 +259,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
 
   it("asks i18n for no place in moduleOrder, no lint-effect script, and refuses a workspace package it depends on", () => {
     const i18n = (fields: Record<string, unknown>) => ({
-      "packages/i18n/package.json": packageJson("i18n", fields),
+      "packages/i18n/package.json": packageJson("i18n", fields, "driver"),
       "packages/i18n/src/index.ts": "",
     });
     expect(violations(repo(i18n({})))).toEqual([]);
@@ -272,7 +276,7 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
       expect(
         failuresOf(modulesDependOneWay)(
           repo({
-            ...manifest(driver),
+            ...manifest(driver, {}, "driver"),
             ...manifest("claim", {
               dependencies: { [`@agent-software-factory/${driver}`]: "workspace:*" },
             }),
@@ -327,9 +331,11 @@ describe("ADR 0026: the modules depend one way, by their package.json", () => {
     expect(
       failuresOf(modulesDependOneWay)(
         repo(
-          manifest("logging", {
-            dependencies: { "@agent-software-factory/telemetry": "workspace:*" },
-          }),
+          manifest(
+            "logging",
+            { dependencies: { "@agent-software-factory/telemetry": "workspace:*" } },
+            "driver",
+          ),
         ),
       ),
     ).toEqual([wrong("logging", "dependencies", "telemetry")]);
@@ -423,11 +429,22 @@ describe("ADR 0026: the events package of each module", () => {
   });
 
   it("leaves the packages of the roles shared-kernel, ui and driver out of the module packages, and takes module-fixtures in", () => {
-    const names = ["shared-kernel", "ui", "i18n", "telemetry", "logging", "db"];
+    const roles: Record<string, Role> = {
+      "shared-kernel": "shared-kernel",
+      ui: "ui",
+      i18n: "driver",
+      telemetry: "driver",
+      logging: "driver",
+      db: "driver",
+    };
+    const names = Object.keys(roles);
     const tree = new Tree(
       repo(
         Object.fromEntries(
-          names.map((name) => [`packages/${name}/package.json`, packageJson(name)]),
+          Object.entries(roles).map(([name, role]) => [
+            `packages/${name}/package.json`,
+            packageJson(name, {}, role),
+          ]),
         ),
       ),
     );
@@ -652,11 +669,11 @@ describe("ADR 0038: db depends on the modules by type only, and only apps/api an
     "./testing": "./src/testing.ts",
   };
   const db = (fields: Record<string, unknown> = {}) => ({
-    "packages/db/package.json": packageJson("db", {
-      exports: dbExports,
-      scripts: { check: "vp check" },
-      ...fields,
-    }),
+    "packages/db/package.json": packageJson(
+      "db",
+      { exports: dbExports, scripts: { check: "vp check" }, ...fields },
+      "driver",
+    ),
     "packages/db/src/node.ts": "export {};\n",
   });
   const claim = { "@agent-software-factory/claim": "workspace:*" };
@@ -811,7 +828,7 @@ describe("ADR 0048: packages/telemetry", () => {
   const violations = failuresOf(packageManifests, modulesDependOneWay);
   const exports = { ".": "./src/index.ts", "./node": "./src/node.ts" };
   const withTelemetry = (fields: Record<string, unknown> = {}) =>
-    repo(packageFiles("telemetry", { exports, ...fields }));
+    repo(packageFiles("telemetry", { exports, ...fields }, "driver"));
 
   it("passes telemetry with its two exports", () => {
     expect(violations(withTelemetry())).toEqual([]);
@@ -833,7 +850,7 @@ describe("ADR 0048: packages/telemetry", () => {
     ["only the entry for any code", { ".": "./src/index.ts" }],
     ["a subpath too", { ...exports, "./x": "./src/x.ts" }],
   ])("refuses telemetry with %s", (_, wrong) => {
-    expect(violations(repo(packageFiles("telemetry", { exports: wrong })))).toEqual([
+    expect(violations(repo(packageFiles("telemetry", { exports: wrong }, "driver")))).toEqual([
       `packages/telemetry/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code and the Node-only entry that starts the SDK, and nothing else (docs/adr/0048).`,
     ]);
   });
@@ -848,14 +865,14 @@ describe("ADR 0049: packages/logging", () => {
   };
 
   it("passes logging with its three exports", () => {
-    const withLogging = repo(packageFiles("logging", { exports }));
+    const withLogging = repo(packageFiles("logging", { exports }, "driver"));
     expect(violations(withLogging)).toEqual([]);
     expect(modulePackageNames(new Tree(withLogging))).not.toContain("logging");
   });
 
   it("refuses logging with an export other than the three entries", () => {
     expect(
-      violations(repo(packageFiles("logging", { exports: { ".": "./src/index.ts" } }))),
+      violations(repo(packageFiles("logging", { exports: { ".": "./src/index.ts" } }, "driver"))),
     ).toEqual([
       `packages/logging/package.json must have the exports ${JSON.stringify(exports)}, the entry for any code, the Node-only entry that creates the pino logger, and the tools of the tests, and nothing else (docs/adr/0049).`,
     ]);
@@ -867,7 +884,7 @@ describe("ADR 0052: packages/hr-system", () => {
   const exports = { ".": "./src/index.ts", "./client": "./src/client.ts" };
 
   it("passes hr-system with its two exports, and it is not a module", () => {
-    const withHrSystem = repo(packageFiles("hr-system", { exports }));
+    const withHrSystem = repo(packageFiles("hr-system", { exports }, "driver"));
     expect(violations(withHrSystem)).toEqual([]);
     expect(modulePackageNames(new Tree(withHrSystem))).not.toContain("hr-system");
   });
@@ -878,7 +895,7 @@ describe("ADR 0052: packages/hr-system", () => {
     ["a path that is empty", { ".": "", "./client": "./src/client.ts" }],
     ["no exports", {}],
   ])("refuses hr-system with %s", (_, wrong) => {
-    expect(violations(repo(packageFiles("hr-system", { exports: wrong })))).toEqual(
+    expect(violations(repo(packageFiles("hr-system", { exports: wrong }, "driver")))).toEqual(
       expect.arrayContaining([
         `packages/hr-system/package.json must have the exports ${JSON.stringify(exports)}, the contract (the types) and the entry of the ky client, and nothing else (docs/adr/0052, 0054).`,
       ]),
@@ -889,10 +906,11 @@ describe("ADR 0052: packages/hr-system", () => {
     expect(
       violations(
         repo(
-          packageFiles("hr-system", {
-            exports,
-            dependencies: { "@agent-software-factory/claim": "workspace:*" },
-          }),
+          packageFiles(
+            "hr-system",
+            { exports, dependencies: { "@agent-software-factory/claim": "workspace:*" } },
+            "driver",
+          ),
         ),
       ),
     ).toEqual([
