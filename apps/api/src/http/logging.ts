@@ -15,11 +15,10 @@ import type { SessionVariables } from "../auth/session.ts";
 // middleware の順序は app.ts にある: contextStorage() → @hono/otel → requestId() → accessLog() の順で、
 // otel の後ろに置かないとログに trace_id が付かない。
 //
-// リクエストの ID は hono/request-id が決める (docs/logging/web-api.md)。`X-Request-Id` が `[\w\-=]` で 255 文字までなら使い、
-// 合わなければ・なければ採番して、`c.set("requestId")` と応答の `X-Request-Id` に入れる。形の検査があるので、改行や空白は通らない。
-// この ID は相関のためだけに使う。クライアントが決められる値なので、認可や冪等性の鍵にしない。
+// リクエストの ID は hono/request-id が決める。形の範囲と理由は docs/logging/web-api.md と ADR 0049。
+// クライアントが決められる値なので、相関のためだけに使い、認可や冪等性の鍵にしない。
 // web と API は同じオリジンなので、ブラウザーの JS は応答の X-Request-Id を読める。別のオリジンから呼ぶ構成にするときは、
-// hono/cors に `exposeHeaders: ["X-Request-Id"]` を足す。
+// hono/cors に `exposeHeaders: ["X-Request-Id"]` を足す (docs/web-api/security.md「CORS」)。
 interface LoggingVariables extends RequestIdVariables {
   /** テナントを決める middleware が入れる (今は入れるものがない)。ログの `tenant_id`。 */
   tenantId?: string;

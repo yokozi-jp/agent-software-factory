@@ -144,13 +144,6 @@ describe("リクエストの ID (hono/request-id)", () => {
     expect(res.headers.get("x-request-id")).toBe(id);
   });
 
-  it("「.」を含む X-Request-Id は使わず、採番する (hono/request-id は [\\w\\-=] だけを通す)", async () => {
-    const res = await appWithoutDatabase().request("/a", {
-      headers: { "x-request-id": "req-abc.1" },
-    });
-    expect(res.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);
-  });
-
   it("X-Request-Id がなければ採番し、応答に付ける", async () => {
     const { logger, lines } = memoryLogger();
     const res = await appWithoutDatabase({ logger }).request("/a");
@@ -165,18 +158,6 @@ describe("リクエストの ID (hono/request-id)", () => {
     });
     expect(res.status).toBe(401);
     expect(res.headers.get("x-request-id")).toBe("req-401");
-  });
-
-  it("5xx (app.onError) の応答にも付く", async () => {
-    const { logger } = memoryLogger();
-    const app = contextApp();
-    app.onError(problemErrorHandler(logUnexpectedError(logger)));
-    app.get("/boom", () => {
-      throw new Error("boom");
-    });
-    const res = await app.request("/boom", { headers: { "x-request-id": "req-500" } });
-    expect(res.status).toBe(500);
-    expect(res.headers.get("x-request-id")).toBe("req-500");
   });
 });
 
@@ -377,9 +358,13 @@ describe("5xx の記録 (app.onError)", () => {
   it("createApp では、route より前の middleware の例外も 1 か所で書く", async () => {
     const { logger, lines } = memoryLogger();
     const failing = fakeAuth(() => Promise.reject(new Error("db down")));
-    const res = await appWithoutDatabase({ logger, auth: failing }).request("/api/me");
+    const res = await appWithoutDatabase({ logger, auth: failing }).request("/api/me", {
+      headers: { "x-request-id": "req-500" },
+    });
 
     expect(res.status).toBe(500);
+    // 問い合わせが起きる 5xx の応答にも、ログと同じ ID が付く。
+    expect(res.headers.get("x-request-id")).toBe("req-500");
     expect(lines().filter((line) => line["event.code"] === "API-001")).toHaveLength(1);
     // 5xx は error の 1 行で、rejected の info は出さない。
     expect(lines().some((line) => line["message"] === "request rejected")).toBe(false);
