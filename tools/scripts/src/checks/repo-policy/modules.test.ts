@@ -24,7 +24,7 @@ import {
   packageManifests,
   pathsHint,
 } from "./modules.ts";
-import { packageNames } from "./roles.ts";
+import { packageNames } from "./packages.ts";
 import { Tree } from "./tree.ts";
 
 const base = passingRepo;
@@ -420,7 +420,6 @@ describe("ADR 0026: the events package of each module", () => {
       "packages/stray/package.json.bak": "{}",
     };
     expect(eventsPackages(new Tree(repo(stray)))).toEqual(eventsPackages(new Tree(repo())));
-    expect(packageNames(new Tree(repo(stray)))).toEqual(packageNames(new Tree(repo())));
   });
 
   it("leaves the packages of the roles shared-kernel, ui and driver out of the module packages, and takes module-fixtures in", () => {

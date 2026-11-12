@@ -2,7 +2,8 @@
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
 // Effect lint of each module. The role of a package is its `type:` tag (roles.ts), not a name in a list here.
 import { childOf } from "./drivers.ts";
-import { manifest, namesWithRole, packageNames, roleOf, tagOf, typeTagsOf } from "./roles.ts";
+import { manifest, packageNames } from "./packages.ts";
+import { namesWithRole, roleOf, tagOf, typeTagsOf } from "./roles.ts";
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
@@ -306,7 +307,7 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
   return failures;
 }
 
-// The mark of a module in package.json: nx.tags has "type:module" (roles.ts). The type generation of packages/db reads it
+// The tag of a module in package.json: nx.tags has "type:module" (roles.ts). The type generation of packages/db reads it
 // too (moduleSchemas in packages/db/src/testing/types.ts, which cannot import this file: keep the two values the same), so
 // the tag is the second list of the modules besides moduleOrder.
 const moduleTag = tagOf("module");

@@ -14,7 +14,7 @@ import { prepareDatabase } from "./prepare-database.ts";
 
 const repositoryRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 
-/** モジュールの印。各モジュールの `package.json` の `nx.tags` に書く (docs/domain-model/add-module.md)。 */
+/** モジュールの tag。各モジュールの `package.json` の `nx.tags` に書く (docs/domain-model/add-module.md)。 */
 export const moduleTag = "type:module";
 
 /**

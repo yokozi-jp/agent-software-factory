@@ -3,6 +3,7 @@
 // is giving it a tag and not writing its name in a list. Nx writes the tags in the form `dimension:value`
 // (https://nx.dev/docs/features/enforce-module-boundaries), so tags of another dimension (`scope:`) can be added later
 // without a change here; only `type:` tags are counted.
+import { manifest, packageNames } from "./packages.ts";
 import { Tree, list, record } from "./tree.ts";
 
 // The roles of a package. The tag that names a role is `type:` and the role (tagOf):
@@ -18,12 +19,6 @@ const dimension = "type:";
 const addPackageGuide = "docs/domain-model/add-package.md";
 
 export const tagOf = (role: Role): string => `${dimension}${role}`;
-
-export const manifest = (name: string): string => `packages/${name}/package.json`;
-
-// The names of the packages under packages/, from their package.json.
-export const packageNames = (tree: Tree): string[] =>
-  tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
 
 // The tags of the dimension `type:` in the package.json at `path`. A tag that is not a string, and tags that are not a
 // list, are not tags.

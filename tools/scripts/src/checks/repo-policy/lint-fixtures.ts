@@ -2,7 +2,7 @@
 // The restrictions of the table (lint-restrictions.json) are checked in lint-restrictions.ts.
 import { isRestrictionFixture } from "./lint-restrictions.ts";
 import { modulePackageNames } from "./modules.ts";
-import { packageNames } from "./roles.ts";
+import { packageNames } from "./packages.ts";
 import { Tree, record } from "./tree.ts";
 
 // The fixtures that show a lint rule or a tsconfig flag is on (#43, #230): a file under a `__fixtures__/` or

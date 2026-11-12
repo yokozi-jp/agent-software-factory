@@ -3,15 +3,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { packageFiles } from "./fixtures/passing-repo.ts";
 import { failuresOf, repo } from "./fixtures/repo.ts";
-import {
-  namesWithRole,
-  packageNames,
-  packagesHaveOneRole,
-  roleOf,
-  roles,
-  tagOf,
-  typeTagsOf,
-} from "./roles.ts";
+import { namesWithRole, packagesHaveOneRole, roleOf, roles, tagOf, typeTagsOf } from "./roles.ts";
 import { Tree } from "./tree.ts";
 
 const withTags = (name: string, tags: unknown) =>
@@ -76,10 +68,7 @@ describe("ADR 0026: every package under packages/ has exactly one role", () => {
   });
 
   it("does not ask the events packages, which are not under packages/<name>/package.json", () => {
-    expect(violations(repo())).toEqual([]);
-    expect(packageNames(treeOf({ "packages/other/events/package.json": "{}" }))).toEqual(
-      packageNames(treeOf({})),
-    );
+    expect(violations(repo({ "packages/other/events/package.json": "{}" }))).toEqual([]);
   });
 });
 

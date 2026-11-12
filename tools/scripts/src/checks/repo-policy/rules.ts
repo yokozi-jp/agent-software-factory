@@ -8,6 +8,7 @@
 //   assurance-catalog.ts the assurance catalog and the configs
 //   agent-permissions.ts the permission rules of the agents
 //   docs-references.ts   references to docs/ from outside docs/, and to the code from docs/ and from the configs and scripts
+//   packages.ts          the packages under packages/ and their package.json
 //   roles.ts             the role of each package under packages/, from its `type:` tag in nx.tags
 //   modules.ts           the dependencies between the modules, and how each resolves and lints them
 //   drivers.ts           the layout of the drivers and of the modules: what src/ holds, what an entry file contains
