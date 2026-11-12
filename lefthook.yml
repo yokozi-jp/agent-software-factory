@@ -43,6 +43,8 @@ pre-commit:
               - ".vite-hooks/**"
               - ".betterleaks.toml"
               - "mise.toml"
+              # mise.lock records linux-x64 only (docs/adr/0009).
+              - "mise.lock"
               - ".kiro/steering/**"
               # The permissions of the agents (docs/tooling/agent-permissions.md).
               - ".kiro/agents/**"

@@ -39,7 +39,8 @@ function parser(path: string): [string, (text: string) => unknown] {
         return value;
       },
     ];
-  if (path.endsWith(".toml")) return ["TOML", (text) => parseToml(text)];
+  // mise.lock is TOML too.
+  if (path.endsWith(".toml") || path === "mise.lock") return ["TOML", (text) => parseToml(text)];
   return [
     "YAML",
     (text) => {

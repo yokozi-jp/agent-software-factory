@@ -1,6 +1,6 @@
 // Checks of the tool settings and repository files: Nx, lefthook, betterleaks, Node.js, steering, shell scripts, ADR numbers, migrations, the pnpm catalog.
 import { isSeq, parseDocument } from "yaml";
-import { Tree, hasKey, record } from "./tree.ts";
+import { Tree, hasKey, list, record } from "./tree.ts";
 
 // ADR 0002: Nx runs tasks; Vite+ is toolchain only.
 // @nx/vite anywhere in a package.json counts: the dependencies, and also overrides, resolutions and
@@ -41,6 +41,21 @@ export function oneBetterleaks(tree: Tree): string[] {
     : [
         `.betterleaks.toml betterleaksMinVersion must equal the betterleaks version in mise.toml (${version}).`,
       ];
+}
+
+// ADR 0009: mise.lock records linux-x64 only. A tool update that adds a platform changes what CI downloads, so it
+// stops here. Renovate may merge the update of a tool by itself (docs/tooling/renovate.md), so a person no longer
+// sees the diff of mise.lock first.
+export function miseLockHasOnlyLinuxX64(tree: Tree): string[] {
+  const failures: string[] = [];
+  for (const [tool, entries] of Object.entries(record(record(tree.parsed("mise.lock")).tools)))
+    for (const entry of list(entries))
+      for (const key of Object.keys(record(entry)))
+        if (key.startsWith("platforms.") && key !== "platforms.linux-x64")
+          failures.push(
+            `mise.lock records ${key} of ${tool}. Record linux-x64 only: run \`mise lock --platform linux-x64\` (docs/adr/0009).`,
+          );
+  return failures;
 }
 
 const inclusions: ReadonlySet<unknown> = new Set(["always", "fileMatch", "manual", "auto"]);
