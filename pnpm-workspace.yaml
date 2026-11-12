@@ -47,7 +47,7 @@ catalog:
   oidc-provider: ^9.13.3
   "@types/oidc-provider": ^9.13.1
   pg: ^8.23.1
-  dbmate: 2.38.0
+  dbmate: 2.38.1
   # Inside the peer range of Better Auth (^0.28.17 || ^0.29.0), so it and the code share one copy of kysely.
   kysely: ^0.29.7
   # The seed of packages/db generates the rows that grow in number (docs/adr/0036). A devDependency: production does not import it.
