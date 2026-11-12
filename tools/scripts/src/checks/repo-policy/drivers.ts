@@ -210,9 +210,12 @@ function declaration(source: string, name: string): string {
   return stop === -1 ? rest : rest.slice(0, stop);
 }
 
+// Which drivers a restriction is asked of: `node` for those that run on Node.js, `all` for every driver.
+export type DriverKind = "node" | "all";
+
 // The drivers of the repository, those of driverShapes that have a package. With "node", only those that nodeDrivers of
 // vite.config.ts names: they run on Node.js, and their infrastructure/ imports their own libraries.
-export function driversOf(tree: Tree, kind: "node" | "all"): string[] {
+export function driversOf(tree: Tree, kind: DriverKind): string[] {
   const nodeDrivers = declaration(tree.read("vite.config.ts"), "nodeDrivers");
   return driverNames.filter(
     (name) =>

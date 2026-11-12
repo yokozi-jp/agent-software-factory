@@ -300,8 +300,34 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       expect(failures({ [tablePath]: stale })).toEqual([staleExcuse("removed")]);
     });
 
-    it("layers が読めないとき、層の行も理由も求めないこと", () => {
-      expect(failures({ "vite.config.ts": "export default {};\n" })).toEqual([]);
+    it("layers が読めないとき、検査を止めずに、読めないことを拒否すること", () => {
+      expect(failures({ "vite.config.ts": "export default {};\n" })).toEqual([
+        `vite.config.ts の layers を読めない。${tablePath} の outbox は perLayer で、\`const layers = { 層: […] }\` の層のそれぞれに行を求める (${howTo})。`,
+      ]);
+    });
+
+    it("perLayer の欄が複数あるとき、読めないことを 1 回だけ拒否すること", () => {
+      const two = table((copy) => {
+        Object.assign(copy.connection, { perLayer: true });
+      });
+      expect(failures({ "vite.config.ts": "export default {};\n", [tablePath]: two })).toEqual([
+        `vite.config.ts の layers を読めない。${tablePath} の outbox、connection は perLayer で、\`const layers = { 層: […] }\` の層のそれぞれに行を求める (${howTo})。`,
+      ]);
+    });
+
+    it("perLayer の欄がないとき、layers が読めなくても拒否しないこと", () => {
+      const none = table((copy) => {
+        copy.outbox.perLayer = false;
+        copy.outbox.withoutLayers = {};
+        copy.outbox.rows[0]?.files.splice(1, 1);
+      });
+      expect(
+        failures({
+          "vite.config.ts": "export default {};\n",
+          [tablePath]: none,
+          [http]: undefined,
+        }),
+      ).toEqual([]);
     });
 
     it("行も理由もある層を拒否すること", () => {
@@ -322,10 +348,10 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
     });
   });
 
-  describe("driver ごとの行 (perDriver)", () => {
+  describe("ドライバごとの行 (perDriver)", () => {
     const vite = passingRepo["vite.config.ts"] ?? "";
     const loggingFile = "packages/logging/src/infrastructure/__fixtures__/outbox.ts";
-    // logging is a driver that runs on Node.js: it has a package, and nodeDrivers of vite.config.ts names it.
+    // logging is a driver (ドライバ) that runs on Node.js: it has a package, and nodeDrivers of vite.config.ts names it.
     const logging = {
       "packages/logging/package.json": "{}",
       "vite.config.ts": `${vite}\nconst nodeDrivers = {\n  logging: {\n    nodeFiles: [],\n  },\n};\nconst webDrivers = ["i18n"];\n`,
@@ -341,15 +367,15 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
         change(copy);
       });
     const noDriverRow = (name: string) =>
-      `driver \`${name}\` があるが、${tablePath} の outbox に \`packages/${name}/src/\` の下の fixture の行がなく、withoutDrivers にもない。止める行か通す行を足す。置かないなら、withoutDrivers に、driver の名前と置かない理由を書く (${howTo})。`;
+      `ドライバ \`${name}\` があるが、${tablePath} の outbox に \`packages/${name}/src/\` の下の fixture の行がなく、withoutDrivers にもない。止める行か通す行を足す。置かないなら、withoutDrivers に、ドライバの名前と置かない理由を書く (${howTo})。`;
 
-    it("Node.js で動く driver の行も理由もないとき、driver と禁止の名前を挙げて拒否すること", () => {
+    it("Node.js で動くドライバの行も理由もないとき、ドライバと禁止の名前を挙げて拒否すること", () => {
       expect(failures({ ...logging, [tablePath]: perDriver("node") })).toEqual([
         noDriverRow("logging"),
       ]);
     });
 
-    it("driver の fixture の行があるとき通すこと", () => {
+    it("ドライバの fixture の行があるとき通すこと", () => {
       const added = perDriver("node", {}, (copy) => {
         copy.outbox.rows[0]?.files.push(loggingFile);
       });
@@ -358,13 +384,13 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       );
     });
 
-    it("driver を withoutDrivers に挙げたとき通すこと", () => {
+    it("ドライバを withoutDrivers に挙げたとき通すこと", () => {
       expect(
         failures({ ...logging, [tablePath]: perDriver("node", { logging: "送らない" }) }),
       ).toEqual([]);
     });
 
-    it("node のとき、nodeDrivers にない driver を数えず、all のとき数えること", () => {
+    it("node のとき、nodeDrivers にないドライバを数えず、all のとき数えること", () => {
       const web = {
         ...logging,
         "vite.config.ts": logging["vite.config.ts"].replace("logging: {", "other: {"),
@@ -373,7 +399,7 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       expect(failures({ ...web, [tablePath]: perDriver("all") })).toEqual([noDriverRow("logging")]);
     });
 
-    it("package のない driver を数えないこと", () => {
+    it("package のないドライバを数えないこと", () => {
       expect(
         failures({
           ...logging,
@@ -383,11 +409,11 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       ).toEqual([]);
     });
 
-    it("driver がない repository では、withoutDrivers の名前を古いと数えないこと", () => {
+    it("ドライバがない repository では、withoutDrivers の名前を古いと数えないこと", () => {
       expect(failures({ [tablePath]: perDriver("node", { logging: "x" }) })).toEqual([]);
     });
 
-    it("行も理由もある driver を拒否すること", () => {
+    it("行も理由もあるドライバを拒否すること", () => {
       const both = perDriver("node", { logging: "x" }, (copy) => {
         copy.outbox.rows[0]?.files.push(loggingFile);
       });
@@ -396,11 +422,11 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
       ]);
     });
 
-    it("driver でない名前を withoutDrivers に挙げたとき拒否すること", () => {
+    it("ドライバでない名前を withoutDrivers に挙げたとき拒否すること", () => {
       expect(
         failures({ ...logging, [tablePath]: perDriver("node", { logging: "x", gone: "x" }) }),
       ).toEqual([
-        `${tablePath} の outbox は withoutDrivers に \`gone\` を挙げるが、perDriver が数える driver にその名前がない。消す (${howTo})。`,
+        `${tablePath} の outbox は withoutDrivers に \`gone\` を挙げるが、perDriver が数えるドライバにその名前がない。消す (${howTo})。`,
       ]);
     });
 
@@ -409,7 +435,7 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
         Object.assign(copy.outbox, { withoutDrivers: { logging: "x" } });
       });
       expect(failures({ ...logging, [tablePath]: flagless })).toEqual([
-        `${tablePath} の outbox は withoutDrivers を持つが、perDriver がない。driver ごとに求めるなら perDriver を "node" か "all" にする (${howTo})。`,
+        `${tablePath} の outbox は withoutDrivers を持つが、perDriver がない。ドライバごとに求めるなら perDriver を "node" か "all" にする (${howTo})。`,
       ]);
     });
   });
@@ -481,7 +507,7 @@ describe("ADR 0050: lint の禁止の表とその fixture が一致すること"
         "a withoutDrivers with a reason that is not text",
         { outbox: { ...lintRestrictions.outbox, withoutDrivers: { logging: 1 } } },
         "outbox.withoutDrivers",
-        "driver の名前と理由の文字列のオブジェクト",
+        "ドライバの名前と理由の文字列のオブジェクト",
       ],
       [
         "a withoutLayers with a reason that is not text",

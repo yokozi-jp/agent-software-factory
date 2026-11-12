@@ -15,7 +15,7 @@
     "perDriver": "node",
     "perLayer": true,
     "withoutLayers": {
-      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+      "domain": "domain は AWS の SDK を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
     },
     "rows": [
       {
@@ -146,7 +146,7 @@
     "mentions": ["inTenantTransaction"],
     "perLayer": true,
     "withoutLayers": {
-      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+      "domain": "domain は pg を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
     },
     "rows": [
       {
@@ -188,7 +188,7 @@
     "mentions": ["public API function"],
     "perLayer": true,
     "withoutLayers": {
-      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+      "domain": "domain は Kysely を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
     },
     "rows": [
       {
@@ -490,7 +490,7 @@
     "mentions": ["infrastructure", "Port"],
     "perLayer": true,
     "withoutLayers": {
-      "domain": "domain は import するライブラリをすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
+      "domain": "domain は ドライバの package を含む外部ライブラリの import をすべて止める (docs/adr/0026)。この禁止の値の検出力は、ほかの層の fixture が示す"
     },
     "rows": [
       {
