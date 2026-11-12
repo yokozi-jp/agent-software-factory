@@ -39,8 +39,15 @@ describe("renovate-preview", () => {
     writeFileSync(join(box.root, "renovate.log"), `${JSON.stringify(entry)}\n`);
     expect(run("renovate.log")).toEqual({
       status: 0,
-      stdout: "renovate/x\n  chore(deps): update x to v2\n\n1 branch(es)\n",
+      stdout: "renovate/x\n  chore(deps): update x to v2\n  automerge: no\n\n1 branch(es)\n",
       stderr: "",
     });
+  });
+
+  it("reads a log with a very large line that is not the branch list", () => {
+    const big = JSON.stringify({ msg: "other", data: "x".repeat(10_000_000) });
+    const entry = { msg: "branches", branches: [{ branchName: "b", prTitle: "t" }] };
+    writeFileSync(join(box.root, "big.log"), `${big}\n${JSON.stringify(entry)}\n${big}\n`);
+    expect(run("big.log").stdout).toBe("b\n  t\n  automerge: no\n\n1 branch(es)\n");
   });
 });
