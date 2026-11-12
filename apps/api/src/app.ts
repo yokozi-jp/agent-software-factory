@@ -1,8 +1,7 @@
 // サンプル機能のモジュール (docs/adr/0026)。app.ts は middleware を並べ、route の sub-app (http/route/) と
-// 各モジュールの公開 API (index.ts) の route を付けるだけにする。モジュールはまだ route を持たないので、今は import だけ。
-import "@agent-software-factory/approval";
-import "@agent-software-factory/claim";
-import "@agent-software-factory/closing";
+// 各モジュールの公開 API (index.ts) の route を付けるだけにする。route を持つモジュールだけを import し、`.route()` で付ける。
+// route を持たないモジュール (承認、締め) は、ここに書かない。
+import { claimRouter } from "@agent-software-factory/claim";
 import {
   problemErrorHandler,
   problemMethodNotAllowedHandler,
@@ -20,6 +19,7 @@ import { secureHeaders } from "hono/secure-headers";
 import type { Auth } from "./auth/auth.ts";
 import { csrfProtection } from "./http/middleware/csrf.ts";
 import { accessLog, logUnexpectedError, type ApiVariables } from "./http/middleware/logging.ts";
+import { requestContextFromSession } from "./http/middleware/request-context.ts";
 import { sessionGuard } from "./http/middleware/session.ts";
 import { healthRouter } from "./http/route/health.ts";
 import { meRouter } from "./http/route/me.ts";
@@ -39,7 +39,8 @@ export interface AppDependencies {
    * Effect の実行の環境 (docs/adr/0028)。入口が `createApiRuntime` で 1 つ作って渡す。モジュールの DB は、この runtime の
    * `Database` と各モジュールの `Tx` から得る (docs/adr/0029)。必ず渡す: 渡し忘れを型の検査で止める。spec の生成と DB を使わない
    * テストは `runtimeWithoutDatabase()` を渡す。route は runtime によって変えない (spec と AppType は変わらない)。
-   * モジュールはまだ route を持たないので、今は受け取るだけ。
+   * モジュールの route (`claimRouter` など) に渡す共有の依存は、この runtime だけ。テナント、操作する人、冪等キー、現在時刻は
+   * リクエストごとの値で、モジュールの route が読む (docs/adr/0026)。
    */
   readonly runtime: ApiRuntime;
   /** ロガー (docs/adr/0049)。入口が作って渡す。渡さないと何も出さない。 */
@@ -53,7 +54,7 @@ const tracingMiddleware = httpInstrumentationMiddleware({
   getUrlFull: (c) => urlWithoutQuery(c.req.url),
 });
 
-export function createApp({ auth, logger = noopLogger }: AppDependencies) {
+export function createApp({ auth, logger = noopLogger, runtime }: AppDependencies) {
   // route はここに直に書かない。sub-app (createRouter) が検証エラーの hook を持つので、base は持たない。
   const base = new OpenAPIHono<{ Variables: ApiVariables }>();
   // ログの順序 (docs/adr/0049): contextStorage() → @hono/otel → リクエストの文脈 → アクセスログ。logger が今のリクエストと
@@ -81,6 +82,8 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
   if (auth !== undefined) {
     base.use("/api/*", csrfProtection(auth.origin));
     base.use("/api/*", sessionGuard(auth));
+    // セッションからテナントと操作する人を読み、テナントを使う route (`requireRequestContext`) に渡す。ここでは断らない。
+    base.use("/api/*", requestContextFromSession());
     // ログアウトのあと、ブラウザに HTTP cache と Cookie を捨てさせる (OWASP Session Management)。
     base.use("/api/auth/sign-out", async (c, next) => {
       await next();
@@ -91,7 +94,12 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
 
   // route は種類ごとの sub-app で、完全な path を持つ (http/route/)。`route()` は sub-app の OpenAPI の定義を写すので、
   // spec (apps/api/openapi.json) と AppType は、ここに route を並べたときと変わらない (docs/adr/0047)。
-  const app = base.route("/", healthRouter()).route("/", meRouter(auth));
+  // モジュールの route は、モジュールごとに 1 行ずつ付ける。`.route()` を連鎖させるのは、`AppType` を連鎖した型からしか作れないため
+  // (Hono の RPC のガイド)。モジュールの DB は渡さない: モジュールの use case が runtime の `Database` と自分の `Tx` から得る。
+  const app = base
+    .route("/", healthRouter())
+    .route("/", meRouter(auth))
+    .route("/", claimRouter({ runtime }));
 
   return app;
 }

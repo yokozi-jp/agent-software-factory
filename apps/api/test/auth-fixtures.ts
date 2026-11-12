@@ -7,8 +7,9 @@ import { TestBrowser } from "./browser.ts";
 import { createTestDatabase, type TestDatabase } from "@agent-software-factory/db/testing";
 import { clientId, clientSecret } from "./oidc-provider.ts";
 import { startServerProcess, type ServerProcess } from "./server-process.ts";
-import type { createApp } from "../src/app.ts";
-import { appWithoutDatabase } from "./app-without-database.ts";
+import { createApp } from "../src/app.ts";
+import { createApiRuntime } from "../src/runtime.ts";
+import { createDatabase } from "@agent-software-factory/db/node";
 
 export const appOrigin = "https://app.example.test";
 
@@ -26,11 +27,13 @@ export interface AuthFixture {
    * 業務のテストは、認証が目的ではないので、これを使う (docs/adr/0022)。
    * ログイン、Cookie、ログアウトを確かめるテストだけが `newBrowser().login()` を使う。
    * `roles` を渡すと、新しいテナントのメンバーとして、その役割 (経理は "accounting") を持たせる。
+   * `tenant: true` は、役割なしで新しいテナントのメンバーにする (テナントを使う route を叩く社員)。
    */
   signedIn(user?: {
     email?: string;
     name?: string;
     roles?: readonly string[];
+    tenant?: boolean;
   }): Promise<TestBrowser>;
   close(): Promise<void>;
 }
@@ -62,7 +65,10 @@ export async function createAuthFixture({
     session,
     rateLimit: { enabled: rateLimit },
   };
-  const app = appWithoutDatabase({ auth: createAuth(config) });
+  // 業務の処理は app_user で接続する (本番の入口 src/server.ts と同じ)。pool は最初のクエリまで接続しない。
+  const kysely = createDatabase({ connectionString: db.url("app_user") });
+  const runtime = createApiRuntime(kysely);
+  const app = createApp({ auth: createAuth(config), runtime });
 
   // 同じ設定、同じ DB、同じ secret に testUtils だけを足した認証。session の行と Cookie の署名が同じなので、
   // ここで作った session を、アプリはそのまま受け取る (Better Auth の testUtils は、テスト用の別の認証を勧める)。
@@ -90,10 +96,10 @@ export async function createAuthFixture({
       return instance;
     },
     newBrowser: () => new TestBrowser(app, appOrigin),
-    async signedIn({ roles = [], ...user } = {}) {
+    async signedIn({ roles = [], tenant = false, ...user } = {}) {
       const saved = await test.saveUser(test.createUser(user));
       let session: Record<string, unknown> = {};
-      if (roles.length > 0) {
+      if (roles.length > 0 || tenant) {
         // 役割は member の行にあり、セッションの active organization で引く (ADR 0022)。
         const organization = await test.saveOrganization?.(test.createOrganization?.() ?? {});
         const organizationId = organization?.id;
@@ -109,6 +115,8 @@ export async function createAuthFixture({
     async close() {
       // DB を消す前に、その DB につないだプロセスを止める。
       await Promise.all(instances.map((instance) => instance.stop()));
+      await runtime.dispose();
+      await kysely.destroy();
       await db.close();
     },
   };

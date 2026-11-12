@@ -398,10 +398,10 @@ export const passingRepo: Readonly<Record<string, string>> = {
   // The build target is read by oneNodeMajor (docs/adr/0013); recordCoverage() by projectsWriteCoverage (docs/adr/0053).
   "apps/api/vite.config.ts":
     'import { recordCoverage } from "../../vitest-coverage.ts";\nexport default { build: { target: "node24" }, test: { coverage: recordCoverage() } };\n',
-  // apps/api imports each module in the file that assembles them.
-  "apps/api/src/app.ts": modules
-    .map((name) => `import "@agent-software-factory/${name}";\n`)
-    .join(""),
+  // claim has a route (docs/adr/0026), so apps/api mounts it in the file that assembles the app; approval and closing have none.
+  "packages/claim/src/http/route/claims.ts": "export {};\n",
+  "apps/api/src/app.ts":
+    'import { claimRouter } from "@agent-software-factory/claim";\nconst app = base.route("/", claimRouter({ runtime }));\n',
   "packages/db/migrations/20260101000000_create_x.sql": migration(),
   "pnpm-workspace.yaml":
     'packages:\n  - apps/*\n  - packages/*\n  - packages/*/events\n  - tools/*\n\ncatalog:\n  "@types/node": ^24\n  nx: 24.0.0\n',

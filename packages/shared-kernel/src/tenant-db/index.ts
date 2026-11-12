@@ -2,6 +2,7 @@
 export {
   beginTenantTransaction,
   Database,
+  type DatabaseRuntime,
   inTenantTransaction,
   type ModuleName,
   type ModuleTx,

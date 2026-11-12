@@ -22,6 +22,9 @@ const tables: TableSeeds<ClaimTables, SeedTables> = {
     const faker = createFaker(fakerSeed);
     const common = {
       tenant_id: tenantId,
+      // 下書き (区分値 00、packages/claim の statusCodes)。申請者は、seed の申請者本人。
+      applicant_id: applicantId,
+      status_typ: "00",
       created_at: seededAt,
       created_by: applicantId,
       created_pgm_cd: seedProgram,
@@ -44,6 +47,31 @@ const tables: TableSeeds<ClaimTables, SeedTables> = {
           patched_id: `#${faker.number.int({ min: 100, max: 999 })}`,
         })),
       ])
+      .execute();
+  },
+  // One answer that POST /api/claims kept for its Idempotency-Key (docs/adr/0040): a draft that the system created. The key is a
+  // UUID like any other, and the row is past `expires_at` (24 hours after `seededAt`), so the purge job can delete it.
+  "claim.idempotency_key": async (db, { tenantId, applicantId }) => {
+    const faker = createFaker(fakerSeed);
+    await db
+      .insertInto("claim.idempotency_key")
+      .values({
+        tenant_id: tenantId,
+        user_id: applicantId,
+        idempotency_key: faker.string.uuid(),
+        request_hash: faker.string.hexadecimal({ length: 64, prefix: "", casing: "lower" }),
+        status_code: 201,
+        response_body: JSON.stringify({ id: "1", status: "draft" }),
+        expires_at: "2026-01-06T09:00:00Z",
+        created_at: seededAt,
+        created_by: applicantId,
+        created_pgm_cd: seedProgram,
+        created_tx_id: seedProgram,
+        updated_at: seededAt,
+        updated_by: applicantId,
+        updated_pgm_cd: seedProgram,
+        updated_tx_id: seedProgram,
+      })
       .execute();
   },
 };

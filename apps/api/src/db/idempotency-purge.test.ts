@@ -71,7 +71,9 @@ describe("期限切れの冪等キーの掃除 purgeExpiredIdempotencyKeys", () 
     expect(result.deleted).toBe(3);
     expect(await countOf(tenantA)).toBe(2);
     const left = await ctx.db.superuser.query<{ expired: boolean }>(
-      "SELECT expires_at <= now() AS expired FROM claim.idempotency_key",
+      // テンプレートの DB には seed の行がある (docs/adr/0036)。このテナントの行だけを見る。
+      "SELECT expires_at <= now() AS expired FROM claim.idempotency_key WHERE tenant_id = $1",
+      [tenantA],
     );
     expect(left.rows.every((row) => !row.expired)).toBe(true);
   });

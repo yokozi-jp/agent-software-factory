@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@agent-software-factory/approval": "workspace:*",
+    "@agent-software-factory/claim": "workspace:*",
     "@agent-software-factory/db": "workspace:*",
     "@agent-software-factory/shared-kernel": "workspace:*",
     "@aws-sdk/client-sesv2": "catalog:",
@@ -24,7 +25,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@agent-software-factory/claim": "workspace:*",
     "@types/aws-lambda": "catalog:",
     "@types/node": "catalog:",
     "@types/nodemailer": "catalog:",

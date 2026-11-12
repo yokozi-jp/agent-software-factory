@@ -1,7 +1,11 @@
 import { z } from "@hono/zod-openapi";
 import type { Context, MiddlewareHandler } from "hono";
 
-import type { IdempotencyInProgress } from "../idempotency-db/idempotency.ts";
+import type {
+  IdempotencyInProgress,
+  IdempotencyPayloadMismatch,
+  IdempotencyRequest,
+} from "../idempotency-db/idempotency.ts";
 import { commonProblemTypes, problemResponse, statusTitle } from "../problem/problem.ts";
 
 // The HTTP side of Idempotency-Key (docs/adr/0040): the header is checked in the Hono layer, before anything runs.
@@ -91,4 +95,28 @@ export function idempotencyInProgressResponse(c: Context, failure: IdempotencyIn
     status: 409,
     detail: "A request with the same Idempotency-Key is still being processed.",
   });
+}
+
+/**
+ * The request as the hash of the key covers it (docs/adr/0040): method, path, query string and the body exactly as they came.
+ * The body is read as text, so a validator that reads it afterwards still can.
+ */
+export async function idempotencyRequestOf(c: Context): Promise<IdempotencyRequest> {
+  const url = new URL(c.req.url);
+  return {
+    method: c.req.method,
+    path: url.pathname,
+    query: url.search.slice(1),
+    body: await c.req.text(),
+  };
+}
+
+/** The answer for a failure of `withIdempotencyKey` that a route shows to the client: 400 for another request, 409 while the first runs. */
+export function idempotencyFailureResponse(
+  c: Context,
+  failure: IdempotencyPayloadMismatch | IdempotencyInProgress,
+) {
+  return failure._tag === "IdempotencyInProgress"
+    ? idempotencyInProgressResponse(c, failure)
+    : idempotencyPayloadMismatchResponse(c);
 }

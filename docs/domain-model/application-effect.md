@@ -67,7 +67,7 @@ const submitClaim = Effect.fn("submitClaim")(function* (args: {
 
 - Effect の実行の関数 (`Effect.runPromise` など) は、`http`、入口、テストだけで呼びます。`application` と `infrastructure` で呼ぶと、失敗と依存の型が消えるので、`no-restricted-properties` で止めます。
 - `ManagedRuntime` は入口ごとに起動時に 1 つ作り、`app.ts` とワーカーの handler に渡します。リクエストごとに `Effect.provide` すると `Layer` を毎回作ります。停止の合図で `dispose` します。
-- api の `ManagedRuntime` は `apps/api/src/runtime.ts` の `createApiRuntime` で作り、入口の `server.ts` が `createApp` に渡します。DB を使わない spec の生成とテストは、DB を使うと defect で落ちる `runtimeWithoutDatabase` を渡します ([Issue #566](https://github.com/yokozi-jp/agent-software-factory/issues/566))。保存先の実装は、サンプル機能の仕様で決めます。
+- api の `ManagedRuntime` は `apps/api/src/runtime.ts` の `createApiRuntime` で作り、入口の `server.ts` が `createApp` に渡します。DB を使わない spec の生成とテストは、DB を使うと defect で落ちる `runtimeWithoutDatabase` を渡します ([Issue #566](https://github.com/yokozi-jp/agent-software-factory/issues/566))。モジュールの route には、この runtime だけを渡します。保存先の実装は、モジュールの `index.ts` が値で route に渡し、`Effect.provideService` で与えます (リクエストごとに `Layer` を作りません。[ADR 0026](../adr/0026-modules-as-packages-with-oxlint-boundaries.md) の「モジュールの route」)。
 
 ## 検査
 

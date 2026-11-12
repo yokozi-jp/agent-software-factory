@@ -1,8 +1,8 @@
-import { validationProblemSchema } from "@agent-software-factory/shared-kernel/problem";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { describe, expect, it } from "vite-plus/test";
 
-import { validationHook } from "./validation-hook.ts";
+import { validationProblemSchema } from "./problem.ts";
+import { createRouter, validationHook } from "./validation-hook.ts";
 
 const route = createRoute({
   method: "get",
@@ -42,5 +42,27 @@ describe("検証エラーの応答 (defaultHook)", () => {
     const res = await app.request("/items/a?limit=1");
 
     expect(res.status).toBe(200);
+  });
+});
+
+describe("sub-app を作る関数 (createRouter)", () => {
+  it("作った sub-app が、検証エラーを Problem Details の 400 にすること", async () => {
+    const router = createRouter().openapi(route, (c) => c.json({}, 200));
+
+    const res = await router.request("/items/a?limit=0");
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Content-Type")).toBe("application/problem+json");
+  });
+
+  it("親の app に付けても、sub-app の hook が使われること", async () => {
+    const parent = new OpenAPIHono().route(
+      "/",
+      createRouter().openapi(route, (c) => c.json({}, 200)),
+    );
+
+    const res = await parent.request("/items/a?limit=0");
+
+    expect(res.status).toBe(400);
   });
 });

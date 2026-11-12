@@ -4,6 +4,7 @@ import { describe, expect, expectTypeOf, it } from "vite-plus/test";
 
 import {
   commonProblemResponses,
+  idempotencyProblemResponses,
   problemErrorHandler,
   problemNotFoundHandler,
   problemResponse,
@@ -93,6 +94,47 @@ describe("commonProblemResponses", () => {
         errors: [{ pointer: "/a", code: "invalid_type" }],
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("idempotencyProblemResponses", () => {
+  it("400 と 409 を application/problem+json で宣言する", () => {
+    expect(Object.keys(idempotencyProblemResponses)).toEqual(["400", "409"]);
+    for (const response of Object.values(idempotencyProblemResponses)) {
+      expect(Object.keys(response.content)).toEqual(["application/problem+json"]);
+    }
+  });
+
+  it("400 の type は検証と、キーの 3 つの失敗のどれかで、検証の errors を持てる", () => {
+    const schema = idempotencyProblemResponses[400].content["application/problem+json"].schema;
+    const base = { title: "t", status: 400 };
+
+    for (const type of [
+      "/problems/validation",
+      "/problems/idempotency-key-missing",
+      "/problems/idempotency-key-malformed",
+      "/problems/idempotency-payload-mismatch",
+    ]) {
+      expect(schema.safeParse({ ...base, type }).success).toBe(true);
+    }
+    expect(schema.safeParse({ ...base, type: "/problems/other" }).success).toBe(false);
+    expect(
+      schema.safeParse({
+        ...base,
+        type: "/problems/validation",
+        errors: [{ pointer: "/a", code: "invalid_type" }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("409 の type は idempotency-in-progress だけ", () => {
+    const schema = idempotencyProblemResponses[409].content["application/problem+json"].schema;
+    const base = { title: "t", status: 409 };
+
+    expect(schema.safeParse({ ...base, type: "/problems/idempotency-in-progress" }).success).toBe(
+      true,
+    );
+    expect(schema.safeParse({ ...base, type: "/problems/other" }).success).toBe(false);
   });
 });
 

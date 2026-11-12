@@ -596,7 +596,7 @@ describe("ADR 0026: tag type:module のモジュールがすべての場所に�
   const order = "tools/scripts/src/checks/repo-policy/modules.ts";
   const guide = "Follow docs/domain-model/add-module.md.";
 
-  it("通るリポジトリのモジュールを、moduleOrder、apps/api の依存、app.ts のそれぞれで通すこと", () => {
+  it("通るリポジトリのモジュールを、moduleOrder、apps/api の依存、route を持つモジュールの app.ts の import のそれぞれで通すこと", () => {
     expect(violations(repo())).toEqual([]);
   });
 
@@ -608,8 +608,20 @@ describe("ADR 0026: tag type:module のモジュールがすべての場所に�
       `packages/extra has the tag type:module but is not in moduleOrder in ${order}. ${guide}`,
       'apps/api/package.json must have @agent-software-factory/extra: "workspace:*" in dependencies, since packages/extra has the tag type:module. ' +
         guide,
-      `apps/api/src/app.ts must import @agent-software-factory/extra, since packages/extra has the tag type:module. ${guide}`,
     ]);
+  });
+
+  it("route を持つ tag つきの package が app.ts に import されていなければ拒否すること", () => {
+    expect(
+      violations(
+        repo({
+          ...packageFiles("extra", { nx: { name: "extra", tags: ["type:module"] } }),
+          "packages/extra/src/http/route/items.ts": "export {};\n",
+        }),
+      ),
+    ).toContain(
+      `apps/api/src/app.ts must mount the routes of @agent-software-factory/extra with .route("/", extraRouter({ runtime })), since packages/extra has routes under src/http/route/. ${guide}`,
+    );
   });
 
   it.each([
@@ -645,22 +657,38 @@ describe("ADR 0026: tag type:module のモジュールがすべての場所に�
     ).toEqual([message]);
   });
 
-  it("モジュールを import しない apps/api/src/app.ts を拒否すること", () => {
+  it("route を持つモジュールの routes を付けない apps/api/src/app.ts を拒否すること", () => {
     const path = "apps/api/src/app.ts";
+    const message = `${path} must mount the routes of @agent-software-factory/claim with .route("/", claimRouter({ runtime })), since packages/claim has routes under src/http/route/. ${guide}`;
     expect(violations(repo({ [path]: 'import "@agent-software-factory/approval";\n' }))).toEqual([
-      expect.stringContaining(`${path} must import @agent-software-factory/claim,`),
-      expect.stringContaining(`${path} must import @agent-software-factory/closing,`),
+      message,
     ]);
-    expect(violations(repo({ [path]: undefined }))).toHaveLength(3);
+    expect(violations(repo({ [path]: undefined }))).toEqual([message]);
   });
 
-  it("type の import、副作用の import、複数行の import を採ること", () => {
-    const imports = [
-      'import type { X } from "@agent-software-factory/claim";',
-      'import "@agent-software-factory/approval";',
-      'import {\n  Y,\n} from "@agent-software-factory/closing";',
-    ].join("\n");
-    expect(violations(repo({ "apps/api/src/app.ts": imports }))).toEqual([]);
+  it("import だけして .route() で付けない apps/api/src/app.ts を拒否すること", () => {
+    const path = "apps/api/src/app.ts";
+    const imported = 'import { claimRouter } from "@agent-software-factory/claim";\n';
+
+    expect(violations(repo({ [path]: imported }))).toHaveLength(1);
+    expect(
+      violations(repo({ [path]: `${imported}const x = claimRouter({ runtime });\n` })),
+    ).toHaveLength(1);
+  });
+
+  it("route を持たないモジュール (approval、closing) を app.ts が書かなくても通すこと", () => {
+    expect(violations(repo())).toEqual([]);
+  });
+
+  it("改行や別の path で .route() していても採ること", () => {
+    const app = (call: string) => ({
+      "apps/api/src/app.ts": `import { claimRouter } from "@agent-software-factory/claim";\n${call}\n`,
+    });
+
+    expect(
+      violations(repo(app('base\n  .route(\n    "/",\n    claimRouter({ runtime }),\n  );'))),
+    ).toEqual([]);
+    expect(violations(repo(app("base.route('/v1', claimRouter({ runtime }));")))).toEqual([]);
   });
 });
 

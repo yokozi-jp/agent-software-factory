@@ -63,7 +63,7 @@ describe("モジュールの型の生成 (src/testing/types.ts)", () => {
 
     const types = await generateTypes(db.url());
 
-    expect(tableNames(typesOf(types, "claim"))).toEqual(["claim.t_claim"]);
+    expect(tableNames(typesOf(types, "claim"))).toEqual(["claim.idempotency_key", "claim.t_claim"]);
     expect(tableNames(typesOf(types, "approval"))).toEqual([
       "approval.processed_message",
       "approval.t_example",

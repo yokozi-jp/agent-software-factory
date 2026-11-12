@@ -20,6 +20,10 @@
       "description": "The signed-in user and the session."
     },
     {
+      "name": "claims",
+      "description": "Expense claims of the signed-in user."
+    },
+    {
       "name": "health",
       "description": "Whether the API process is running."
     }
@@ -118,6 +122,294 @@
                       "x-extensible-enum": [
                         "/problems/unauthenticated",
                         "/problems/session-expired"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/claims": {
+      "post": {
+        "operationId": "createClaim",
+        "summary": "Create a draft claim",
+        "description": "Creates a claim in the state draft for the signed-in user, in the active tenant. The tenant and the applicant come from the session. Lines are added to the draft by other operations. The same Idempotency-Key returns the answer of the first request.",
+        "tags": [
+          "claims"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "A UUID in double quotes, new for each user operation: `\"<UUID>\"`.",
+              "example": "\"9f1c1f6e-2f0e-4c3a-9c53-2a5c3e0d6b11\""
+            },
+            "required": true,
+            "description": "A UUID in double quotes, new for each user operation: `\"<UUID>\"`.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The draft was created (or it is the answer kept for the same Idempotency-Key).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]*$",
+                      "description": "The id of the claim, a positive integer in decimal digits."
+                    },
+                    "status": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "draft"
+                      ],
+                      "description": "The state of the claim. A new claim is a draft."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is invalid, or the Idempotency-Key is missing, malformed, or was used with another request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/validation",
+                        "/problems/idempotency-key-missing",
+                        "/problems/idempotency-key-malformed",
+                        "/problems/idempotency-payload-mismatch"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pointer": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "pointer",
+                          "code"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "There is no valid session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/unauthenticated",
+                        "/problems/session-expired"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The request is refused: by the CSRF protection, or the user has no active tenant.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/forbidden-origin",
+                        "/problems/forbidden-cross-site-request",
+                        "/problems/no-tenant"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A request with the same Idempotency-Key is still being processed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "x-extensible-enum": [
+                        "/problems/idempotency-in-progress"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The Content-Type is not application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "about:blank"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "trace_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected error happened.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "about:blank"
                       ]
                     },
                     "title": {
