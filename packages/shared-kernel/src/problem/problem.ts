@@ -185,6 +185,7 @@ const statusTitles: Readonly<Record<number, string>> = {
   401: "Unauthorized",
   403: "Forbidden",
   404: "Not Found",
+  405: "Method Not Allowed",
   409: "Conflict",
   413: "Content Too Large",
   415: "Unsupported Media Type",
@@ -219,3 +220,13 @@ export function problemErrorHandler(
 /** For `app.notFound`. */
 export const problemNotFoundHandler: NotFoundHandler = (c) =>
   problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(404), status: 404 });
+
+/**
+ * For `methodNotAllowed({ app, onMethodNotAllowed })` of `hono/method-not-allowed`. The `Allow` header is required in a 405
+ * (RFC 9110 15.5.6), so it is set here from the methods the middleware collected.
+ */
+export function problemMethodNotAllowedHandler(c: Context, allowedMethods: readonly string[]) {
+  const res = problemResponse(c, { type: ABOUT_BLANK, title: statusTitle(405), status: 405 });
+  res.headers.set("Allow", allowedMethods.join(", "));
+  return res;
+}

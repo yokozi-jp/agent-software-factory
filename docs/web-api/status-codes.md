@@ -45,7 +45,7 @@ sources:
 | 503 Service Unavailable   | メンテナンスウィンドウである場合、Web APIサーバーの前段のLoad Balancerなどで503を返すことはありえる。DBへの接続失敗など、一時的にアクセスが集中したことに起因する場合は、500ではなく503を使う場合もある     | ✅️       | ✅️   | ✅️  | ✅️    | ✅️     |
 
 > [!NOTE]
-> このリポジトリでは 405 を返さない。Hono に組み込みの 405 がなく、メソッドごとに route を網羅する処理を持つことになるためである。存在しないメソッドは Hono の既定の 404 (`about:blank` の Problem Details) になる。web は `hc` の型でメソッドの誤りを止める ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
+> このリポジトリでは、route にある path へ route にない method で来たら、`Allow` を付けた 405 を `about:blank` の Problem Details で返す (RFC 9110 15.5.6)。Hono の `hono/method-not-allowed` が、登録した route から method を集める。route にない path は 404 のまま。`openapi.json` には 405 を書かない ([ADR 0035](../adr/0035-problem-details-for-api-errors.md))。
 
 ### なぜ細かくHTTPステータスコードを使い分けるのか
 

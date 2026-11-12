@@ -7,6 +7,7 @@ import {
   commonProblemResponses,
   commonProblemTypes,
   problemErrorHandler,
+  problemMethodNotAllowedHandler,
   problemNotFoundHandler,
   problemResponse,
 } from "@agent-software-factory/shared-kernel/problem";
@@ -15,6 +16,7 @@ import { urlWithoutQuery } from "@agent-software-factory/telemetry";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { contextStorage } from "hono/context-storage";
+import { methodNotAllowed } from "hono/method-not-allowed";
 import { secureHeaders } from "hono/secure-headers";
 
 import type { Auth } from "./auth/auth.ts";
@@ -138,6 +140,11 @@ export function createApp({ auth, logger = noopLogger }: AppDependencies) {
       xFrameOptions: false,
     }),
   );
+  // route にある path へ route にない method で来たら、404 を `Allow` 付きの 405 (about:blank) に替える (RFC 9110 15.5.6)。
+  // `app.routes` は最初の要求で読むので、route や sub-app (`.route()`) の登録より前に置いてよい。csrfProtection と
+  // sessionGuard の外側に置くので、csrfProtection の 403 と 415 が先に返る。sessionGuard は 401 を返さない (route の
+  // requireSession が返す) ので、未認証でも 405 になる。path と method は公開の openapi.json にあり、隠すものではない。
+  base.use(methodNotAllowed({ app: base, onMethodNotAllowed: problemMethodNotAllowedHandler }));
   // エラー応答の変換 4 か所のうちの 2 つ (docs/adr/0035)。残りは defaultHook と route の _tag の switch。
   // 5xx のログはここで書く (docs/adr/0049)。401、403、400 の検証失敗の記録は accessLog にある。
   base.onError(problemErrorHandler(logUnexpectedError(logger)));

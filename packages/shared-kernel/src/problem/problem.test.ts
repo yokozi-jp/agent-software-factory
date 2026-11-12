@@ -125,8 +125,9 @@ describe("problemResponse", () => {
 
 describe("statusTitle", () => {
   it("表にあるステータスはその名前を、表にないものは 5xx なら Server Error、それ以外は Client Error を返す", () => {
-    expect([statusTitle(404), statusTitle(599), statusTitle(418)]).toEqual([
+    expect([statusTitle(404), statusTitle(405), statusTitle(599), statusTitle(418)]).toEqual([
       "Not Found",
+      "Method Not Allowed",
       "Server Error",
       "Client Error",
     ]);

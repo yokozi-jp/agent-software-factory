@@ -67,6 +67,26 @@ describe("エラー応答 (docs/adr/0035)", () => {
     await expectBlankProblem(res, 404, "Not Found");
   });
 
+  it("route にある path へ route にない method で来たら、Allow 付きの about:blank の 405 にすること", async () => {
+    const res = await app.request("/health", { method: "PUT" });
+
+    await expectBlankProblem(res, 405, "Method Not Allowed");
+    expect(res.headers.get("Allow")).toBe("GET, HEAD");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("route にある method の 404 は 405 にしないこと", async () => {
+    const notFound = appWithoutDatabase();
+    notFound.get("/things/:id", (c) =>
+      c.json({ type: "about:blank", title: "Not Found", status: 404 }, 404),
+    );
+
+    const res = await notFound.request("/things/1");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.has("Allow")).toBe(false);
+  });
+
   it("予期しない例外は、メッセージを出さない about:blank の 500 にすること", async () => {
     const { logger, lines } = memoryLogger();
     const failing = appWithoutDatabase({ logger });
