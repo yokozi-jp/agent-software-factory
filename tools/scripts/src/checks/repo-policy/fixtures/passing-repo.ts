@@ -30,16 +30,23 @@ export const consoleFixture = [
   "export const b: unknown = globalThis.console;",
   "",
 ].join("\n");
+// outbox is asked of every layer of vite.config.ts below (`perLayer`): http stops it, and domain has no fixture of it.
+const withoutLayers: Record<string, string> = {
+  domain: "domain は import するライブラリをすべて止める",
+};
 export const lintRestrictions = {
   outbox: {
     adr: "docs/adr/0029",
     values: ["@x/sqs"],
     message: "Put the event in the Outbox with enqueueOutbox (docs/adr/0029).",
     mentions: ["enqueueOutbox"],
+    perLayer: true,
+    withoutLayers,
     rows: [
       {
         files: [
           "packages/module-fixtures/src/__fixtures__/outbox.ts",
+          "packages/module-fixtures/src/http/__fixtures__/outbox.ts",
           "apps/api/src/__fixtures__/outbox.test.ts",
         ],
         rule: "no-restricted-imports",
@@ -341,6 +348,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   "lint-restrictions.json": JSON.stringify(lintRestrictions, undefined, 2),
   "coverage-policy.json": JSON.stringify(coveragePolicy, undefined, 2),
   "packages/module-fixtures/src/__fixtures__/outbox.ts": outboxFixture,
+  "packages/module-fixtures/src/http/__fixtures__/outbox.ts": outboxFixture,
   "apps/api/src/__fixtures__/outbox.test.ts": outboxFixture,
   "packages/module-fixtures/src/__fixtures__/connection.ts": connectionStopFixture,
   "apps/api/src/__fixtures__/connection.test.ts": connectionPassFixture,
