@@ -184,6 +184,7 @@ export function packageManifests(tree: Tree): string[] {
     const mainEntry = Object.values(exported)[0];
     if (
       name !== ui &&
+      // Stryker disable next-line ConditionalExpression: equivalent, the exports are never empty (ownExports and publicApi); the guard is for the type of the index
       mainEntry !== undefined &&
       !tree.paths.includes(`packages/${name}/${mainEntry.slice(2)}`)
     )

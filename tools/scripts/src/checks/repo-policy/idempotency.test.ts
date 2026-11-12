@@ -53,6 +53,27 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
     ).toEqual([]);
   });
 
+  it.each([
+    ["an indented line", `  // idempotency-exempt: a consumer\n`],
+    ["a tab and spaces after the slashes", `//\t  idempotency-exempt: a consumer\n`],
+    ["spaces before the reason", `// idempotency-exempt:    a consumer\n`],
+    ["a reason right after the colon", `// idempotency-exempt:a consumer\n`],
+    ["a line after other lines", `// a writer\n\n// idempotency-exempt: a consumer\n`],
+  ])("passes an exemption written as %s", (_, line) => {
+    expect(violations(repo({ [store]: `${line}${importing("inTenantTransaction")}` }))).toEqual([]);
+  });
+
+  it("does not take an exemption that ends a line of code, or is no comment", () => {
+    for (const line of [
+      "const x = 1; // idempotency-exempt: a consumer\n",
+      "x // idempotency-exempt: a consumer\n",
+      "/ idempotency-exempt: a consumer\n",
+    ])
+      expect(violations(repo({ [store]: `${line}${importing("inTenantTransaction")}` }))).toEqual([
+        failure(store),
+      ]);
+  });
+
   it("does not take an exemption without a reason", () => {
     expect(
       violations(repo({ [store]: `// idempotency-exempt:\n${importing("inTenantTransaction")}` })),
@@ -73,6 +94,9 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
           "packages/claim/src/application/__fixtures__/bypass.ts": text,
           "packages/shared-kernel/src/messaging/consumer.ts": text,
           "apps/api/src/db/idempotency.ts": text,
+          "vendor/packages/claim/src/application/submit-claim.ts": text,
+          "packages/claim/src/application/submit-claim.tsx": text,
+          "packages/claim/src/application/submit-claim.ts.md": text,
         }),
       ),
     ).toEqual([]);
@@ -95,6 +119,25 @@ describe("ADR 0040: a writer of a module goes through withIdempotencyKey", () =>
       expect(
         violations(repo({ [api]: declare("Idempotency-Key"), [web]: declare("X-Key") })),
       ).toEqual([mismatch("X-Key", "Idempotency-Key")]);
+    });
+
+    it.each([
+      ["no space", 'export const IDEMPOTENCY_KEY_HEADER="Idempotency-Key";\n'],
+      ["many spaces", 'export const IDEMPOTENCY_KEY_HEADER   =   "Idempotency-Key";\n'],
+    ])("reads a declaration with %s around the equal sign", (_, text) => {
+      expect(violations(repo({ [api]: text, [web]: text }))).toEqual([]);
+      expect(violations(repo({ [api]: declare("Idempotency-Key"), [web]: text }))).toEqual([]);
+    });
+
+    it("names an api whose declaration is gone, and both when neither has one", () => {
+      expect(
+        violations(repo({ [api]: "export {};\n", [web]: declare("Idempotency-Key") })),
+      ).toEqual([
+        `${web} has IDEMPOTENCY_KEY_HEADER "Idempotency-Key", but ${api} has undefined. apps/web does not import shared-kernel, so keep the two the same (docs/adr/0040).`,
+      ]);
+      expect(violations(repo({ [api]: "export {};\n", [web]: "export {};\n" }))).toEqual([
+        `${web} has IDEMPOTENCY_KEY_HEADER undefined, but ${api} has undefined. apps/web does not import shared-kernel, so keep the two the same (docs/adr/0040).`,
+      ]);
     });
 
     it("names a web whose declaration is gone", () => {

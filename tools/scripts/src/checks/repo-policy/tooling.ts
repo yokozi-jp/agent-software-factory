@@ -273,6 +273,7 @@ export function shellScriptsHaveTests(tree: Tree): string[] {
   return shellScripts(tree)
     .map((path) => ({
       path,
+      // Stryker disable next-line Regex: equivalent, shellScripts() matched the whole path with the same anchors
       test: path.replace(/^tools\/scripts\/sh\/(.+)\.sh$/, "tools/scripts/src/sh/$1.test.ts"),
     }))
     .filter(({ test }) => !tree.paths.includes(test))
