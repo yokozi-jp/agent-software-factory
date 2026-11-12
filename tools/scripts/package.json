@@ -8,7 +8,8 @@
     "test": "vp test run --project unit --coverage",
     "test-isolation": "vp test run --project isolation",
     "test-tools": "vp test run --project tools",
-    "mutation": "stryker run"
+    "mutation": "stryker run",
+    "mutation-dry-run": "stryker run --dryRunOnly"
   },
   "dependencies": {
     "smol-toml": "catalog:",
@@ -68,6 +69,14 @@
           "{workspaceRoot}/package.json",
           "{workspaceRoot}/pnpm-lock.yaml",
           "{workspaceRoot}/renovate.jsonc"
+        ]
+      },
+      "mutation-dry-run": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/.kiro/hooks/*.json"
         ]
       },
       "mutation": {

@@ -236,6 +236,12 @@ jobs:
       - name: Test isolation of the scripts tests
         run: pnpm exec nx affected -t test-isolation
 
+      # The dry run of Stryker on tools/scripts: the unit tests must pass in the copy of the project that Stryker runs
+      # them in, or the daily mutation.yml fails before it mutates anything, and nobody sees the surviving mutants
+      # (#570, docs/adr/0031). About 30 s. The mutation itself is not here. The pre-push hook runs the same command.
+      - name: Mutation dry run of the scripts tests (nx affected)
+        run: pnpm exec nx affected -t mutation-dry-run
+
       # The Kysely types of the module schemas (packages/*/src/infrastructure/db.gen.ts) are generated from the
       # migrations and committed. Runs the migrations on a fresh PostgreSQL, generates the types again and fails if
       # they differ from the committed ones (packages/db/src/testing/types.ts, docs/adr/0025, docs/adr/0038).

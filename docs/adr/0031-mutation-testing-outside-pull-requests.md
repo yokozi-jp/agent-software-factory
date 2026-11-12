@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: "ADR 0031: mutation test は PR の CI から外し、1日1回の workflow で実行する"
-description: tools/scripts の Stryker (mutation target) を、PR の nx の job の nx affected から外し、mutation.yml の1日1回の schedule と手動の実行にする決定。break の 100 は変えず、保証には数えない。比べた案は PR のゲートのまま cache を足す案、変更したファイルだけを PR で変異させる案、main への push ごとに実行する案。mutation の実行時間が重いとき、Stryker の設定や target を変えるとき、mutation を merge のゲートに戻したくなったときに読む。
+description: tools/scripts の Stryker (mutation target) を、PR の nx の job の nx affected から外し、mutation.yml の1日1回の schedule と手動の実行にする決定。break の 100 は変えず、保証には数えない。PR の CI は dry run だけを流し、テストが Stryker の sandbox の中で通ることを確かめる。比べた案は PR のゲートのまま cache を足す案、変更したファイルだけを PR で変異させる案、main への push ごとに実行する案。mutation の実行時間が重いとき、Stryker の設定や target を変えるとき、mutation を merge のゲートに戻したくなったときに読む。
 tags: [adr, ci, testing, mutation, stryker]
 ---
 
@@ -18,6 +18,7 @@ tags: [adr, ci, testing, mutation, stryker]
 ## ルール
 
 - **実行**: `mutation.yml` が毎日 03:00 UTC と `workflow_dispatch` で `pnpm exec nx mutation scripts` を実行します。必須チェックにせず、`ci.yml` の `main` の `needs` にも入れません。
+- **dry run**: `ci.yml` の `nx` の job と pre-push が `nx affected -t mutation-dry-run` (`stryker run --dryRunOnly`) を流します。mutant は動かさないので、Nx の起動を入れて約 30 秒です (2026-11-12、他のセッションが動いている手元で測った)。unit のテストが project の外のファイルを読むと、日次の実行は dry run で落ち、生き残った mutant が見えなくなります。2026-10-28 から 15 日間そうなっていました ([#570](https://github.com/yokozi-jp/agent-software-factory/issues/570))。保証には数えません。
 - **手元**: `rules.ts` を変えた人 (エージェント) は、push の前にそのファイルだけを変異させます ([CI](../tooling/ci.md))。手順は変えません。
 - **保証**: merge のゲートでなくなるので、[保証カタログ](../tooling/assurance-catalog.md) の保証には数えません。1日1回の実行が失敗したら、生き残った mutant を殺すテストを足す Issue にします。
 
