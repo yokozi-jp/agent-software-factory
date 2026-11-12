@@ -163,8 +163,18 @@ export const lintEffect =
 
 // The package.json of a package under packages/ that passes every check (docs/adr/0026), with `fields` added, and
 // its src/index.ts. A module also runs the Effect lint.
-// The modules of the passing repository carry the tag that marks a module (docs/domain-model/add-module.md).
 const modules: readonly string[] = ["claim", "approval", "closing"];
+// The role tag of each package the checks know by name (docs/adr/0026): every package under packages/ has exactly one. A
+// name that is not here (a test's "extra", "billing") gets no tag, and is refused for it.
+const roleOfName: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(modules.map((name) => [name, "module"])),
+  "module-fixtures": "fixtures",
+  "shared-kernel": "shared-kernel",
+  ui: "ui",
+  ...Object.fromEntries(
+    ["db", "hr-system", "i18n", "logging", "telemetry"].map((name) => [name, "driver"]),
+  ),
+};
 // What apps/api depends on in the passing repository: hono, and every module (docs/adr/0026).
 export const apiDependencies: Record<string, string> = {
   hono: "catalog:",
@@ -201,7 +211,7 @@ export const packageJson = (name: string, fields: Record<string, unknown> = {}):
       check: "vp check",
       ...(name === "shared-kernel" ? {} : { "lint-effect": lintEffect }),
     },
-    nx: { name, ...(modules.includes(name) ? { tags: ["type:module"] } : {}) },
+    nx: { name, ...(name in roleOfName ? { tags: [`type:${roleOfName[name]}`] } : {}) },
     ...fields,
   });
 export const packageFiles = (

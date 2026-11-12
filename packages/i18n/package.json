@@ -22,6 +22,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "i18n"
+    "name": "i18n",
+    "tags": [
+      "type:driver"
+    ]
   }
 }

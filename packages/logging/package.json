@@ -25,6 +25,9 @@
     "vite-plus": "catalog:"
   },
   "nx": {
-    "name": "logging"
+    "name": "logging",
+    "tags": [
+      "type:driver"
+    ]
   }
 }

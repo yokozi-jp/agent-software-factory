@@ -8,6 +8,7 @@
 //   assurance-catalog.ts the assurance catalog and the configs
 //   agent-permissions.ts the permission rules of the agents
 //   docs-references.ts   references to docs/ from outside docs/, and to the code from docs/ and from the configs and scripts
+//   roles.ts             the role of each package under packages/, from its `type:` tag in nx.tags
 //   modules.ts           the dependencies between the modules, and how each resolves and lints them
 //   drivers.ts           the layout of the drivers and of the modules: what src/ holds, what an entry file contains
 //   ui-stories.ts        a story next to each part of packages/ui
@@ -25,6 +26,7 @@ import { projectsWriteCoverage } from "./coverage.ts";
 import { codePathReferences, docsReferences } from "./docs-references.ts";
 import {
   driverEntriesOnlyReexport,
+  driversAreTagged,
   driversDoNotUseEffect,
   driversAreInLint,
   driversHaveTheirLayout,
@@ -64,6 +66,7 @@ import {
   steeringFrontmatter,
   uniqueAdrNumbers,
 } from "./tooling.ts";
+import { packagesHaveOneRole } from "./roles.ts";
 import { Tree, type Repo } from "./tree.ts";
 import { uiComponentsHaveStories } from "./ui-stories.ts";
 
@@ -83,6 +86,7 @@ function run(tree: Tree): string[] {
     ...domainPurity(tree),
     ...effectBoundaries(tree),
     ...lintRestrictionsAgree(tree),
+    ...packagesHaveOneRole(tree),
     ...packageManifests(tree),
     ...modulesDependOneWay(tree),
     ...eventsPackages(tree),
@@ -91,6 +95,7 @@ function run(tree: Tree): string[] {
     ...noResolutionBypass(tree),
     ...modulesLintEffect(tree),
     ...modulesHaveLayers(tree),
+    ...driversAreTagged(tree),
     ...driversHaveTheirLayout(tree),
     ...driverEntriesOnlyReexport(tree),
     ...driversDoNotUseEffect(tree),

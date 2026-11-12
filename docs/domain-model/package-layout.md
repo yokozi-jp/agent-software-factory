@@ -9,9 +9,9 @@ tags: [domain-model, convention, packages, drivers, clean-architecture, repo-pol
 
 `packages/` の package は、**モジュール**か**ドライバ**のどちらかの型に揃えます。型から外れた置き方は、repo-policy か lint が止めます。決定と理由は [ADR 0054](../adr/0054-drivers-with-domain-and-infrastructure-layers.md) にあります。この文書は、レビュアーとエージェントが参照する正本です。
 
-- **モジュール**: 業務の機能を持つ package (claim、approval、closing)。`type:module` の印を持つ。
-- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package (db、hr-system、i18n、logging、telemetry)。クリーンアーキテクチャの Frameworks & Drivers の輪にあたる。
-- どちらでもない package は shared-kernel (モジュールが共有する業務のコード)、ui (shadcn が配置を決める)、module-fixtures (lint の fixture) で、この規約の対象外です。
+- **モジュール**: 業務の機能を持つ package (claim、approval、closing)。`type:module` の tag を持つ。
+- **ドライバ**: 外部のシステムや道具を直接触り、業務の規則を持たない共有の package (db、hr-system、i18n、logging、telemetry)。クリーンアーキテクチャの Frameworks & Drivers の輪にあたる。`type:driver` の tag を持ち、`drivers.ts` の `driverShapes` にも名前が要る (片方だけだと repo-policy が止める)。
+- どちらでもない package は shared-kernel (`type:shared-kernel`。モジュールが共有する業務のコード)、ui (`type:ui`。shadcn が配置を決める)、module-fixtures (`type:fixtures`。lint の fixture) で、この規約の対象外です。役割の tag は [module ではない package を足す手順](add-package.md) にあります。
 
 ## 依存の向き
 

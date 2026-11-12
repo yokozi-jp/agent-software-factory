@@ -1,7 +1,8 @@
 // Checks of the modules of the sample feature (docs/adr/0026): the package.json of each package under packages/,
 // which module each depends on, the settings that would let a package resolve one it does not depend on, and the
-// Effect lint of each module.
-import { childOf, driversOfModules } from "./drivers.ts";
+// Effect lint of each module. The role of a package is its `type:` tag (roles.ts), not a name in a list here.
+import { childOf } from "./drivers.ts";
+import { manifest, namesWithRole, packageNames, roleOf, tagOf, typeTagsOf } from "./roles.ts";
 import { Tree, list, record } from "./tree.ts";
 
 // The modules, in the one direction they depend: closing (締め) → approval (承認) → claim (申請). A module may
@@ -21,45 +22,21 @@ const dependencyFields = [
   "optionalDependencies",
 ] as const;
 
-const manifest = (name: string): string => `packages/${name}/package.json`;
-
-// The names of the packages under packages/, from their package.json.
-export const packageNames = (tree: Tree): string[] =>
-  tree.paths.flatMap((path) => /^packages\/([^/]+)\/package\.json$/.exec(path)?.[1] ?? []);
-
-// The packages under packages/ that are not modules of the sample feature (GLOSSARY.md, docs/adr/0026, 0034).
-// shared-kernel is the code the modules share. module-fixtures has the layers of a module and holds the detection-power
-// fixtures of the overrides that reach every module; it stays when the sample feature is removed. ui holds the
-// shadcn/ui parts that the apps share; it has no layers, and no module depends on it. None depends on a package
-// of the workspace.
-// i18n holds the texts of the screens (the resources of ja and en, the setup of i18next) that web shares with the
-// packages; it has no layers, and no module depends on it (docs/adr/0044).
+// The packages with a name of their own in this file: the ones whose exports differ (ownExports) and the ones several checks
+// name. Their role is the tag of their package.json (roles.ts).
+// shared-kernel is the code the modules share. ui holds the shadcn/ui parts that the apps share; it has no layers, and no
+// module depends on it. telemetry, logging and hr-system are drivers (docs/adr/0054): telemetry starts the OpenTelemetry
+// SDK in a Node-only entry (docs/adr/0048), logging holds the Logger interface and the pino implementation in a Node-only
+// entry (docs/adr/0049), hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0052).
 const sharedKernel = "shared-kernel";
-const moduleFixtures = "module-fixtures";
 const ui = "ui";
-const i18n = "i18n";
-// telemetry starts the OpenTelemetry SDK in a Node-only entry, and holds the helper that drops the query string from
-// a URL before it becomes an attribute (docs/adr/0048). It has no layers, and no module depends on it: the entry files of apps/api do.
 const telemetry = "telemetry";
-// logging holds the Logger interface that the app depends on, and the pino implementation in a Node-only entry
-// (docs/adr/0049). It has no layers, and no module depends on it: the entry files and the middleware of apps/api do.
 const logging = "logging";
-// hr-system holds the OpenAPI of the HR system, the ky client and the WireMock fake (docs/adr/0052). It has no layers, and no module depends on it:
-// the callers are out of scope of Issue #171 and come with Issue #156 (login) and the approval module.
 const hrSystem = "hr-system";
-const dependOnNone: readonly string[] = [
-  sharedKernel,
-  moduleFixtures,
-  ui,
-  i18n,
-  telemetry,
-  logging,
-  hrSystem,
-];
-// db holds the tools of the database (migrations, the type generation, the tools of the tests). It is not a module and
-// has no layers. It depends on the modules by `import type`, in devDependencies, and only apps/api and apps/worker
-// (the pool and the tools of the tests) depend on it
-// (docs/adr/0038). It is in neither moduleOrder nor dependOnNone: dbDependencies checks it.
+// db holds the tools of the database (migrations, the type generation, the tools of the tests). It is a driver, but it
+// has no layers of a module and, unlike the other drivers, depends on the modules by `import type`, in devDependencies, and
+// only apps/api and apps/worker (the pool and the tools of the tests) depend on it (docs/adr/0038). It is not in
+// moduleOrder, and modulesDependOneWay leaves it to dbDependencies.
 const db = "db";
 const dbApps = ["apps/api", "apps/worker"];
 
@@ -70,11 +47,10 @@ const eventsModuleNames = (tree: Tree): string[] =>
 
 const eventsSuffix = "-events";
 
-// The names of the packages in the shape of a module, which have the layers and run the Effect lint: the modules,
-// and module-fixtures. Every package under packages/ but the ones in `notModules`.
-const notModules: readonly string[] = [sharedKernel, ui, i18n, telemetry, logging, hrSystem, db];
+// The names of the packages in the shape of a module, which have the layers and run the Effect lint: the packages with
+// the role module, and module-fixtures (the role fixtures).
 export const modulePackageNames = (tree: Tree): string[] =>
-  packageNames(tree).filter((name) => !notModules.includes(name));
+  namesWithRole(tree, "module", "fixtures");
 
 // The package.json of every package under packages/ (docs/adr/0026): its name is the scope and its directory, it
 // exports its src/index.ts and nothing else, so another package can import only that file, its Nx project has
@@ -207,13 +183,16 @@ const isEventsPackage = (tree: Tree, name: string): boolean =>
   name.endsWith(eventsSuffix) &&
   eventsModuleNames(tree).includes(name.slice(0, -eventsSuffix.length));
 
-// Every package under packages/ but shared-kernel, module-fixtures, ui and the drivers is a module of moduleOrder, and depends on no
-// package of the workspace but shared-kernel, the modules after it and the drivers (not db). shared-kernel, module-fixtures, ui and the drivers depend on none.
+// A package with the role module is in moduleOrder, and depends on no package of the workspace but shared-kernel, the
+// modules after it, their events packages and the drivers (not db). A package of any other role (shared-kernel,
+// module-fixtures, ui and the drivers) depends on none. A package with no role is refused by packagesHaveOneRole.
 export function modulesDependOneWay(tree: Tree): string[] {
   const failures: string[] = [];
+  const drivers = namesWithRole(tree, "driver");
   for (const name of packageNames(tree)) {
-    if (name === db) continue;
-    const dependsOnNone = dependOnNone.includes(name);
+    const role = roleOf(tree, name);
+    if (name === db || role === undefined) continue;
+    const dependsOnNone = role !== "module";
     const position = moduleOrder.indexOf(name);
     if (!dependsOnNone && position === -1) {
       failures.push(
@@ -234,10 +213,10 @@ export function modulesDependOneWay(tree: Tree): string[] {
         // depending on each other's body.
         if (!dependsOnNone && isEventsPackage(tree, target)) continue;
         // A module depends on the drivers that its infrastructure wraps: the HTTP client of a system, the Logger, the
-        // telemetry helper (docs/adr/0054). db is not one of them (dbDependencies).
-        if (!dependsOnNone && driversOfModules.includes(target)) continue;
+        // telemetry helper (docs/adr/0054). db is one by its tag, but a dependency on it is dbDependencies' (above).
+        if (!dependsOnNone && drivers.includes(target)) continue;
         failures.push(
-          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers other than db (hr-system, i18n, logging, telemetry), and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
+          `${manifest(name)} has ${dependency} in ${field}. A module depends only on shared-kernel, the modules after it in closing → approval → claim, and the drivers (type:driver) other than db, and shared-kernel, module-fixtures, ui and the drivers on none: move the code that needs ${target}, or move what both need into shared-kernel (docs/adr/0026, docs/adr/0054).`,
         );
       }
   }
@@ -246,7 +225,8 @@ export function modulesDependOneWay(tree: Tree): string[] {
 
 // The events package of each module (packages/<module>/events): it holds the schemas of the events the module
 // sends, and depends on zod and shared-kernel only, so that a module which receives the events does not depend on the
-// body of the one that sends them. It is not a module: it has no place in moduleOrder and no type:module tag.
+// body of the one that sends them. It is not a module: it has no place in moduleOrder, and no role: it is found by its
+// path, and has no tag of the dimension type: (roles.ts).
 // `order` is moduleOrder; a test passes another to show what a name of the events packages in it does.
 export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrder): string[] {
   const failures: string[] = [];
@@ -304,9 +284,10 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
       failures.push(
         `${path} must have the check script "vp check", so that Nx lints and type-checks the package (docs/adr/0026).`,
       );
-    if (list(nx.tags).includes(moduleTag))
+    const typeTags = typeTagsOf(tree, path);
+    if (typeTags.length > 0)
       failures.push(
-        `${path} has the tag ${moduleTag}. An events package is not a module: a module is a name of moduleOrder, and the tag would ask for a place there (docs/adr/0026).`,
+        `${path} has the tag ${typeTags.join(", ")}. An events package has no role: it is found by its path packages/<module>/events, and a tag of the dimension type: would make it a package of that role (docs/adr/0026).`,
       );
     for (const field of dependencyFields)
       for (const dependency of Object.keys(record(json[field]))) {
@@ -325,10 +306,10 @@ export function eventsPackages(tree: Tree, order: readonly string[] = moduleOrde
   return failures;
 }
 
-// The mark of a module in package.json: nx.tags has "type:module". The type generation of packages/db reads it too
-// (moduleSchemas in packages/db/src/testing/types.ts, which cannot import this file: keep the two values the same), so the
-// tag is the second list of the modules besides moduleOrder.
-const moduleTag = "type:module";
+// The mark of a module in package.json: nx.tags has "type:module" (roles.ts). The type generation of packages/db reads it
+// too (moduleSchemas in packages/db/src/testing/types.ts, which cannot import this file: keep the two values the same), so
+// the tag is the second list of the modules besides moduleOrder.
+const moduleTag = tagOf("module");
 const addModuleGuide = "docs/domain-model/add-module.md";
 const apiManifest = "apps/api/package.json";
 const apiApp = "apps/api/src/app.ts";
@@ -340,10 +321,7 @@ const apiApp = "apps/api/src/app.ts";
 export function modulesAreRegistered(tree: Tree): string[] {
   const failures: string[] = [];
   const guide = `Follow ${addModuleGuide}.`;
-  const names = packageNames(tree);
-  const tagged = names.filter((name) =>
-    list(record(record(tree.parsed(manifest(name))).nx).tags).includes(moduleTag),
-  );
+  const tagged = namesWithRole(tree, "module");
   for (const name of tagged)
     if (!moduleOrder.includes(name))
       failures.push(
