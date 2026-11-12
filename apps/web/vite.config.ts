@@ -19,7 +19,9 @@ export default defineConfig({
       // route の HMR の footer は、テストでは動かず、route のファイルの最後の行が未通過と数えられる。テストでは外す。
       codeSplittingOptions: { addHmr: process.env["VITEST"] === undefined },
     }),
-    react(),
+    // React Compiler (Rust 版)。テストでは外す。コンパイラが各部品に足すキャッシュ判定の分岐 (`if ($[0] !== dep)`) は、
+    // テストの片側しか通らず、v8 の coverage の branches を下げるため (docs/adr/0056)。
+    react({ compiler: process.env["VITEST"] === undefined ? { logDiagnostics: true } : false }),
     tailwindcss(),
   ],
   // `@/*` is resolved from the `paths` of tsconfig.json (docs/adr/0033).
