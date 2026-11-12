@@ -57,7 +57,8 @@ const webFile = (dir: string) => join(dir, "apps/web/.env.local");
 const slotIn = (text: string): number => Number(/^slot (\d+)/m.exec(text)?.[1]);
 
 // post-checkout の hook (lefthook.yml) が呼ぶ入口。git worktree add が null ref を渡す (https://git-scm.com/docs/githooks)。
-// 失敗しても終了コードは 0: git は、失敗した post-checkout を worktree add の失敗にする (worktree は作られる)。
+// 失敗しても終了コードは 0: git 2.53.0 は、失敗した post-checkout を worktree add の失敗にする (worktree は作られる。
+// 実験で確かめた、2026-11-12。githooks には書かれていない)。
 describe("dev-ports の hook", () => {
   const nullRef = "0".repeat(40);
 
