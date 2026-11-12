@@ -22,7 +22,7 @@ import { Kysely, PostgresDialect } from "kysely";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { z } from "zod";
 
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // defineConsumer と processed_message (Issue #269、docs/adr/0029): 同じメッセージを 2 回渡しても業務の処理は 1 回で、
 // 失敗した処理は processed_message の行も残さない。受信の処理の全件テストは consumers.test.ts にある。
@@ -113,19 +113,19 @@ describe("defineConsumer と processed_message", () => {
     ).rows;
 
   it("初めてのメッセージは業務の処理を呼び、その結果を Processed で返し、processed_message に行を入れること", async () => {
-    const result = await run(countingConsumer.consume(message(tenantA), writer));
+    const result = await run(countingConsumer.consume(message(tenantA), writeContext));
 
     expect(result).toEqual({ _tag: "Processed", value: "handled c-1" });
     expect(calls).toBe(1);
     expect(await processed()).toEqual([
-      { tenant_id: tenantA, message_id: messageId, created_by: writer.actor },
+      { tenant_id: tenantA, message_id: messageId, created_by: writeContext.actor },
     ]);
   });
 
   it("同じメッセージの 2 回目は、業務の処理を呼ばずに Duplicate を返すこと", async () => {
-    await run(countingConsumer.consume(message(tenantA), writer));
+    await run(countingConsumer.consume(message(tenantA), writeContext));
 
-    const result = await run(countingConsumer.consume(message(tenantA), writer));
+    const result = await run(countingConsumer.consume(message(tenantA), writeContext));
 
     expect(result).toEqual({ _tag: "Duplicate" });
     expect(calls).toBe(1);
@@ -133,9 +133,9 @@ describe("defineConsumer と processed_message", () => {
   });
 
   it("同じ id でもテナントが違えば、別のメッセージとして処理すること", async () => {
-    await run(countingConsumer.consume(message(tenantA), writer));
+    await run(countingConsumer.consume(message(tenantA), writeContext));
 
-    const result = await run(countingConsumer.consume(message(tenantB), writer));
+    const result = await run(countingConsumer.consume(message(tenantB), writeContext));
 
     expect(result._tag).toBe("Processed");
     expect(calls).toBe(2);
@@ -143,12 +143,12 @@ describe("defineConsumer と processed_message", () => {
   });
 
   it("業務の処理が失敗したら processed_message の行も残らず、次の配信でもう一度処理すること", async () => {
-    const failed = await runExit(failingConsumer.consume(message(tenantA), writer));
+    const failed = await runExit(failingConsumer.consume(message(tenantA), writeContext));
 
     expect(Exit.hasFails(failed)).toBe(true);
     expect(await processed()).toEqual([]);
 
-    const retried = await runExit(failingConsumer.consume(message(tenantA), writer));
+    const retried = await runExit(failingConsumer.consume(message(tenantA), writeContext));
     expect(Exit.hasFails(retried)).toBe(true);
     expect(calls).toBe(2);
   });
@@ -156,7 +156,7 @@ describe("defineConsumer と processed_message", () => {
   it("原子性: 業務の表と Outbox に書いた後で失敗すると、業務の表、messaging.outbox、processed_message のどこにも行が残らないこと", async () => {
     const before = await snapshotRowCounts(ctx.db.superuser);
 
-    const exit = await runExit(failingConsumer.consume(message(tenantA), writer));
+    const exit = await runExit(failingConsumer.consume(message(tenantA), writeContext));
 
     expect(Exit.hasFails(exit)).toBe(true);
     expect(calls).toBe(1);
@@ -166,7 +166,7 @@ describe("defineConsumer と processed_message", () => {
   it("対照: 失敗しなければ、3 つの表に 1 行ずつ残ること (上の差がないことが、表を数えているから成り立つ)", async () => {
     const before = await snapshotRowCounts(ctx.db.superuser);
 
-    await run(writingConsumer.consume(message(tenantA), writer));
+    await run(writingConsumer.consume(message(tenantA), writeContext));
 
     expect(diffRowCounts(before, await snapshotRowCounts(ctx.db.superuser))).toEqual({
       "claim.t_claim": 1,
@@ -177,7 +177,7 @@ describe("defineConsumer と processed_message", () => {
 
   it("形の合わないメッセージは defect で、業務の処理を呼ばず、行も残さないこと", async () => {
     const exit = await runExit(
-      countingConsumer.consume({ ...message(tenantA), id: "not-a-uuid" }, writer),
+      countingConsumer.consume({ ...message(tenantA), id: "not-a-uuid" }, writeContext),
     );
 
     expect(Exit.hasDies(exit)).toBe(true);
@@ -207,9 +207,9 @@ describe("defineConsumer と processed_message", () => {
       const results = await Effect.runPromise(
         provide(
           Effect.gen(function* () {
-            const first = yield* Effect.forkChild(slow.consume(message(tenantA), writer));
+            const first = yield* Effect.forkChild(slow.consume(message(tenantA), writeContext));
             yield* Effect.sleep("150 millis");
-            const second = yield* Effect.forkChild(slow.consume(message(tenantA), writer));
+            const second = yield* Effect.forkChild(slow.consume(message(tenantA), writeContext));
             return [yield* Fiber.join(first), yield* Fiber.join(second)];
           }),
         ),

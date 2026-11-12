@@ -9,7 +9,7 @@ import {
 
 // 共通カラムの値の入れ方 (docs/db/postgresql-keys.md)。時刻は呼び出し側が取った 1 つの値で、関数は時計を読まない。
 const ctx: WriteContext = {
-  at: Temporal.Instant.from("2026-10-29T09:30:00Z"),
+  now: Temporal.Instant.from("2026-10-29T09:30:00Z"),
   actor: "user-1",
   pgmCd: "claim.create",
   txId: "tx-1",

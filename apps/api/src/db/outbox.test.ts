@@ -12,7 +12,7 @@ import { sql } from "kysely";
 import { describe, expect, it } from "vite-plus/test";
 import { z } from "zod";
 
-import { useDatabase, writer } from "../../test/use-database.ts";
+import { useDatabase, writeContext } from "../../test/use-database.ts";
 
 // Outbox の表 messaging.outbox と enqueueOutbox (Issue #269、docs/adr/0029)。モジュールのロールは INSERT だけ、
 // outbox_relay は全テナントの行を読める。DB は本物の PostgreSQL で、SQS は使わない。
@@ -59,7 +59,7 @@ describe("enqueueOutbox と messaging.outbox", () => {
   const { run, runExit } = ctx;
 
   const inClaim = <A, E>(tenantId: string, work: Effect.Effect<A, E, ClaimTx | CurrentWrite>) =>
-    inTenantTransaction(ClaimTx, { tenantId, ...writer }, work);
+    inTenantTransaction(ClaimTx, { tenantId, ...writeContext }, work);
 
   const rows = async (): Promise<OutboxRow[]> =>
     (
@@ -89,9 +89,9 @@ describe("enqueueOutbox と messaging.outbox", () => {
         status: "PUBLISHED",
         completion_attempts: 0,
         last_resubmission_date: null,
-        created_by: writer.actor,
-        created_pgm_cd: writer.pgmCd,
-        created_tx_id: writer.txId,
+        created_by: writeContext.actor,
+        created_pgm_cd: writeContext.pgmCd,
+        created_tx_id: writeContext.txId,
         lock_no: 1,
       }),
     ]);
@@ -104,7 +104,7 @@ describe("enqueueOutbox と messaging.outbox", () => {
     await run(
       inTenantTransaction(
         ApprovalTx,
-        { tenantId: tenantA, ...writer },
+        { tenantId: tenantA, ...writeContext },
         enqueueOutbox(ApprovalTx, submitted(tenantA, "22222222-2222-4222-8222-222222222222")),
       ),
     );
