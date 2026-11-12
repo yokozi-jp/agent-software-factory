@@ -17,7 +17,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { useDatabase } from "../../test/use-database.ts";
 
 // 共通カラムの値の入れ方と楽観排他 (docs/db/postgresql-keys.md、docs/db/postgresql-concurrency.md)。
-// 時刻はトランザクションの開始時に 1 回取る。テストは TestClock で時刻を決め、バインドした値になることを確かめる。
+// 時刻は入口が 1 回読んで scope の now で渡す (docs/adr/0043)。inTenantTransaction は時計を読まない。テストは now を値で渡し、バインドした値になることを確かめる。
 const tenantA = "00000000-0000-4000-8000-00000000000a";
 const tenantB = "00000000-0000-4000-8000-00000000000b";
 
@@ -48,81 +48,65 @@ describe("共通カラムの値と楽観排他", () => {
   const ctx = useDatabase();
   const { run } = ctx;
 
-  /** TestClock を `instant` に合わせて流す。トランザクションの開始時に読む時刻が、この値になる。 */
-  const at = <A, E, R>(instant: Temporal.Instant, effect: Effect.Effect<A, E, R>) =>
-    TestClock.setTime(instant.epochMilliseconds).pipe(
-      Effect.andThen(effect),
-      Effect.provide(TestClock.layer()),
-    );
-
   const insertClaim = (tenantId: string) =>
-    at(
-      createdAt,
-      inTenantTransaction(
-        ClaimTx,
-        { tenantId, ...creator },
-        Effect.gen(function* () {
-          const write = yield* CurrentWrite;
-          return yield* dbCall(ClaimTx, (trx) =>
-            trx
-              .insertInto("claim.t_claim")
-              .values({ tenant_id: tenantId, ...createdColumns(write) })
-              .returning("claim_id")
-              .executeTakeFirstOrThrow(),
-          );
-        }),
-      ),
+    inTenantTransaction(
+      ClaimTx,
+      { tenantId, now: createdAt, ...creator },
+      Effect.gen(function* () {
+        const write = yield* CurrentWrite;
+        return yield* dbCall(ClaimTx, (trx) =>
+          trx
+            .insertInto("claim.t_claim")
+            .values({ tenant_id: tenantId, ...createdColumns(write) })
+            .returning("claim_id")
+            .executeTakeFirstOrThrow(),
+        );
+      }),
     );
 
   /** `lock_no` を条件にして更新する。0 行なら、行があるかで 409 と 404 を分ける。 */
   const updateClaim = (tenantId: string, claimId: string, lockNo: number) =>
-    at(
-      updatedAt,
-      inTenantTransaction(
-        ClaimTx,
-        { tenantId, ...updater },
-        Effect.gen(function* () {
-          const write = yield* CurrentWrite;
-          return yield* updateWithLock(ClaimTx, {
-            update: (trx) =>
-              trx
-                .updateTable("claim.t_claim")
-                .set(updatedColumns(write))
-                .where("tenant_id", "=", tenantId)
-                .where("claim_id", "=", claimId)
-                .where("lock_no", "=", lockNo)
-                .returning("lock_no")
-                .executeTakeFirst(),
-            exists: async (trx) =>
-              (await trx
-                .selectFrom("claim.t_claim")
-                .select("claim_id")
-                .where("tenant_id", "=", tenantId)
-                .where("claim_id", "=", claimId)
-                .executeTakeFirst()) !== undefined,
-          });
-        }),
-      ),
+    inTenantTransaction(
+      ClaimTx,
+      { tenantId, now: updatedAt, ...updater },
+      Effect.gen(function* () {
+        const write = yield* CurrentWrite;
+        return yield* updateWithLock(ClaimTx, {
+          update: (trx) =>
+            trx
+              .updateTable("claim.t_claim")
+              .set(updatedColumns(write))
+              .where("tenant_id", "=", tenantId)
+              .where("claim_id", "=", claimId)
+              .where("lock_no", "=", lockNo)
+              .returning("lock_no")
+              .executeTakeFirst(),
+          exists: async (trx) =>
+            (await trx
+              .selectFrom("claim.t_claim")
+              .select("claim_id")
+              .where("tenant_id", "=", tenantId)
+              .where("claim_id", "=", claimId)
+              .executeTakeFirst()) !== undefined,
+        });
+      }),
     );
 
   const patchClaim = (tenantId: string, claimId: string) =>
-    at(
-      patchedAt,
-      inTenantTransaction(
-        ClaimTx,
-        { tenantId, ...patcher },
-        Effect.gen(function* () {
-          const write = yield* CurrentWrite;
-          return yield* dbCall(ClaimTx, (trx) =>
-            trx
-              .updateTable("claim.t_claim")
-              .set(patchedColumns(write, "TICKET-42"))
-              .where("tenant_id", "=", tenantId)
-              .where("claim_id", "=", claimId)
-              .execute(),
-          );
-        }),
-      ),
+    inTenantTransaction(
+      ClaimTx,
+      { tenantId, now: patchedAt, ...patcher },
+      Effect.gen(function* () {
+        const write = yield* CurrentWrite;
+        return yield* dbCall(ClaimTx, (trx) =>
+          trx
+            .updateTable("claim.t_claim")
+            .set(patchedColumns(write, "TICKET-42"))
+            .where("tenant_id", "=", tenantId)
+            .where("claim_id", "=", claimId)
+            .execute(),
+        );
+      }),
     );
 
   /** 行をそのまま読む (superuser。RLS を通さない)。 */
@@ -158,25 +142,27 @@ describe("共通カラムの値と楽観排他", () => {
     });
   });
 
-  it("時刻はトランザクションの開始時に 1 回だけ取り、途中で時計が進んでも INSERT の値は変わらないこと", async () => {
+  it("時計が別の時刻でも、scope の now がそのまま共通カラムになること (inTenantTransaction は時計を読まない)", async () => {
     const { claim_id } = await run(
-      at(
-        createdAt,
-        inTenantTransaction(
-          ClaimTx,
-          { tenantId: tenantA, ...creator },
-          Effect.gen(function* () {
-            yield* TestClock.adjust("1 hour");
-            const write = yield* CurrentWrite;
-            return yield* dbCall(ClaimTx, (trx) =>
-              trx
-                .insertInto("claim.t_claim")
-                .values({ tenant_id: tenantA, ...createdColumns(write) })
-                .returning("claim_id")
-                .executeTakeFirstOrThrow(),
-            );
-          }),
+      TestClock.setTime(Temporal.Instant.from("2030-01-01T00:00:00Z").epochMilliseconds).pipe(
+        Effect.andThen(
+          inTenantTransaction(
+            ClaimTx,
+            { tenantId: tenantA, now: createdAt, ...creator },
+            Effect.gen(function* () {
+              yield* TestClock.adjust("1 hour");
+              const write = yield* CurrentWrite;
+              return yield* dbCall(ClaimTx, (trx) =>
+                trx
+                  .insertInto("claim.t_claim")
+                  .values({ tenant_id: tenantA, ...createdColumns(write) })
+                  .returning("claim_id")
+                  .executeTakeFirstOrThrow(),
+              );
+            }),
+          ),
         ),
+        Effect.provide(TestClock.layer()),
       ),
     );
 
@@ -184,6 +170,18 @@ describe("共通カラムの値と楽観排他", () => {
       created_at: new Date("2026-10-29T01:00:00Z"),
       updated_at: new Date("2026-10-29T01:00:00Z"),
     });
+  });
+
+  it("同じ now で開く複数のトランザクションは、同じ時刻を共通カラムに入れること", async () => {
+    const first = await run(insertClaim(tenantA));
+    const second = await run(insertClaim(tenantA));
+
+    const rows = await Promise.all([readRow(first.claim_id), readRow(second.claim_id)]);
+
+    expect(rows.map((row) => row?.created_at)).toEqual([
+      new Date("2026-10-29T01:00:00Z"),
+      new Date("2026-10-29T01:00:00Z"),
+    ]);
   });
 
   it("UPDATE で、updated_* が更新の時刻と実行者になり、lock_no が 1 上がり、created_* は変わらないこと", async () => {

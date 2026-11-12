@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import type { z } from "zod";
 
-import { CurrentWrite, type WriteActor } from "../tenant-db/common-columns.ts";
+import { CurrentWrite, type WriteContext } from "../tenant-db/common-columns.ts";
 import { recordProcessedMessage, type ConsumedMessage } from "./processed-message.ts";
 import {
   inTenantTransaction,
@@ -25,7 +25,7 @@ export interface RegisteredConsumer {
   readonly module: ModuleName;
   readonly consume: (
     message: unknown,
-    write: WriteActor,
+    write: WriteContext,
   ) => Effect.Effect<ConsumeResult<unknown>, unknown, Database>;
 }
 
@@ -53,8 +53,8 @@ export const registeredConsumers = (): readonly RegisteredConsumer[] => [...regi
  * is processed again. Two deliveries at the same time wait for each other on the row: the one that comes second sees
  * the commit and returns `Duplicate`, or the rollback and processes the message.
  *
- * `write` gives the actor, the program code and the id of the call for the common columns; the entry file of the
- * consumer decides them. `name` must be unique: registering a name twice throws.
+ * `write` gives the moment, the actor, the program code and the id of the call for the common columns; the entry file
+ * of the consumer decides them, and reads the moment once per message (`currentInstant`, docs/adr/0043). `name` must be unique: registering a name twice throws.
  */
 export function defineConsumer<
   K extends ModuleTx,
@@ -72,7 +72,7 @@ export function defineConsumer<
 
   const consume = (
     message: unknown,
-    write: WriteActor,
+    write: WriteContext,
   ): Effect.Effect<ConsumeResult<A>, E, Database> =>
     Effect.gen(function* () {
       const parsed = yield* Effect.sync(() => schema.parse(message));

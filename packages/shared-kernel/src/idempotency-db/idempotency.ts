@@ -122,7 +122,9 @@ export const withIdempotencyKey = <K extends ModuleTx, E, R>(
     // A row past `expires_at` that nobody has swept yet (Issue #325) is not a record any more: the key is new again.
     yield* dbCall(tx, (t) =>
       sql`DELETE FROM ${table} WHERE tenant_id = ${scope.tenantId} AND user_id = ${scope.userId}
-          AND idempotency_key = ${scope.key} AND expires_at <= ${current.at.toString()}`.execute(t),
+          AND idempotency_key = ${scope.key} AND expires_at <= ${current.now.toString()}`.execute(
+        t,
+      ),
     );
     yield* dbCall(tx, (t) =>
       sql`SET LOCAL lock_timeout = ${sql.lit(`${LOCK_WAIT_SECONDS}s`)}`.execute(t),
@@ -138,7 +140,7 @@ export const withIdempotencyKey = <K extends ModuleTx, E, R>(
             user_id: scope.userId,
             idempotency_key: scope.key,
             request_hash: hash,
-            expires_at: current.at.add({ hours: RETENTION_HOURS }).toString(),
+            expires_at: current.now.add({ hours: RETENTION_HOURS }).toString(),
             ...createdColumns(current),
           },
           sql`ON CONFLICT (tenant_id, user_id, idempotency_key) DO NOTHING RETURNING idempotency_key`,
@@ -183,7 +185,7 @@ export const withIdempotencyKey = <K extends ModuleTx, E, R>(
     yield* dbCall(tx, (t) =>
       sql`UPDATE ${table}
           SET status_code = ${response.status}, response_body = ${body}::jsonb,
-              updated_at = ${current.at.toString()}, updated_by = ${current.actor},
+              updated_at = ${current.now.toString()}, updated_by = ${current.actor},
               updated_pgm_cd = ${current.pgmCd}, updated_tx_id = ${current.txId}, lock_no = lock_no + 1
           WHERE tenant_id = ${scope.tenantId} AND user_id = ${scope.userId}
             AND idempotency_key = ${scope.key}`.execute(t),

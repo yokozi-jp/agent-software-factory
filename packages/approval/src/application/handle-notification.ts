@@ -8,8 +8,8 @@ import { renderNotificationMail } from "./notification-mail.ts";
 
 /**
  * What the entry file gives with each message. `now` is read once per message from the `Clock` (`currentInstant`), so
- * the mail and the test see one moment (docs/adr/0043). `write` is who writes and with which program, for the common
- * columns of `processed_message`.
+ * the mail and the common columns of `processed_message` see one moment (docs/adr/0043). `write` is who writes and
+ * with which program, for those columns.
  */
 export interface NotificationContext {
   readonly now: Temporal.Instant;
@@ -33,8 +33,9 @@ export type NotificationResult = { readonly _tag: "Sent" } | { readonly _tag: "D
  * row, so the next delivery sends again. A message that does not parse, or lacks an item of its template, is a defect:
  * it can never succeed, so it goes on to the DLQ after `maxReceiveCount` deliveries.
  *
- * `now` is the one moment of this message; `inTenantTransaction` reads the clock again for the common columns of each of
- * its transactions (Issue #506). How this receiver relates to the registry of `defineConsumer` is Issue #505.
+ * `now` is the one moment of this message: the mail and the common columns of both transactions take it
+ * (`inTenantTransaction` does not read the clock). How this receiver relates to the registry of `defineConsumer` is
+ * Issue #505.
  *
  * It does not use `defineConsumer`: that function writes the row first and calls its handler in the same transaction,
  * which holds a transaction open for the whole send.
@@ -46,7 +47,9 @@ export const handleNotification = Effect.fn("handleNotification")(function* (
   const parsed = yield* Effect.sync(() => notificationRequested.schema.parse(message));
   const store = yield* NotificationStore;
 
-  if (yield* store.isProcessed(parsed, context.write)) {
+  const write = { ...context.write, now: context.now };
+
+  if (yield* store.isProcessed(parsed, write)) {
     return { _tag: "Duplicate" } as const satisfies NotificationResult;
   }
 
@@ -54,6 +57,6 @@ export const handleNotification = Effect.fn("handleNotification")(function* (
   const sender = yield* MailSender;
   yield* sender.send(mail);
 
-  yield* store.markProcessed(parsed, context.write);
+  yield* store.markProcessed(parsed, write);
   return { _tag: "Sent" } as const satisfies NotificationResult;
 });

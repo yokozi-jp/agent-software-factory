@@ -36,6 +36,20 @@ describe("通知メールの処理 handleNotification", () => {
     expect(await ctx.processedCount()).toBe(1);
   });
 
+  it("記録の行の共通カラムの時刻は、メッセージの now になること (トランザクションごとに時計を読み直さない)", async () => {
+    const { runtime } = ctx.worker();
+    const to = newRecipient();
+
+    await handle(runtime, notificationMessage({ to }));
+
+    const { rows } = await ctx.db.superuser.query<{ created_at: Date; updated_at: Date }>(
+      "SELECT created_at, updated_at FROM approval.processed_message",
+    );
+    expect(rows).toEqual([
+      { created_at: new Date(fixedNow.toString()), updated_at: new Date(fixedNow.toString()) },
+    ]);
+  });
+
   it("1 回目の送信が失敗すると行が残らず、再配送の 2 回目で 1 通届くこと", async () => {
     const { runtime } = ctx.worker(failFirst(1, mailpitLayer()));
     const to = newRecipient();

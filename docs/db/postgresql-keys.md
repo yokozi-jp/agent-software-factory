@@ -173,12 +173,12 @@ sources:
 
 - **付ける表**: 業務の表は上の 14 個のすべてを付ける。Outbox と冪等キーの表のような仕組みの表にも、原則として付ける ([ADR 0029](../adr/0029-module-data-ownership-and-shared-outbox.md)、[ADR 0040](../adr/0040-idempotency-key-in-module-schema.md))。例外は `auth` と `migrations` のスキーマだけ。
 - **値を入れる人**: アプリがバインドする。`CURRENT_TIMESTAMP` とトリガーは使わない。DB の既定値は `lock_no` の 1 だけで、INSERT でも `updated_*` を入れる。
-- **時刻**: トランザクションの開始時にアプリが 1 回取り (`currentInstant`)、そのトランザクションの INSERT と UPDATE のすべてで同じ値を使う。
-- **`packages/shared-kernel` の関数**: `inTenantTransaction(XTx, { tenantId, actor, pgmCd, txId }, work)` が、開始時の時刻と `actor`、`pgmCd`、`txId` を `CurrentWrite` として `work` に渡す。`work` の中で `yield* CurrentWrite` して、次の関数に渡す。この共通化の形は設計の判断で、出典はない。
+- **時刻**: 入口 (API の route、ワーカーの 1 件、バッチの 1 回の実行) が `currentInstant` で 1 回読み、`now` として scope で渡す ([ADR 0043](../adr/0043-instants-in-utc-business-calendar-in-tokyo-with-temporal.md))。そのトランザクションの INSERT と UPDATE のすべてが同じ値を使う。1 つの処理が複数のトランザクションを開くとき (通知メールの確認と記録、バッチの複数のバッチ) も、同じ `now` を使う。`inTenantTransaction` は時計を読まない。PostgreSQL の `now()` も、トランザクションの開始時刻を返し、1 つのトランザクションの中の時刻をそろえるためのものである ([Current Date/Time](https://www.postgresql.org/docs/17/functions-datetime.html))。共通カラムの時刻は「その処理を受けた時刻」で、書き込みの直前の時刻ではない (処理が長いほど差が出るが、共通カラムは運用調査用で、業務のロジックには使わない)。
+- **`packages/shared-kernel` の関数**: `inTenantTransaction(XTx, { tenantId, now, actor, pgmCd, txId }, work)` が、scope の `now`、`actor`、`pgmCd`、`txId` を `CurrentWrite` として `work` に渡す。`work` の中で `yield* CurrentWrite` して、次の関数に渡す。この共通化の形は設計の判断で、出典はない。
   - `createdColumns(ctx)`: INSERT 用。`created_*` と `updated_*` の両方を返す。`lock_no` は DB の既定値に任せる。
   - `updatedColumns(ctx)`: UPDATE 用。`updated_*` と `lock_no = lock_no + 1` を返す。
   - `patchedColumns(ctx, patchId)`: データパッチ用。`patched_*` だけを返し、`updated_*` と `lock_no` は触らない。
-- **`pgmCd` と `txId` を決める人**: 入口 (API の route、ワーカー、バッチ) が決めて scope で渡す。`shared-kernel` は決めない。決め方は入口の雛形の Issue で決める。
+- **`now`、`pgmCd`、`txId` を決める人**: 入口 (API の route、ワーカー、バッチ) が決めて scope で渡す。`shared-kernel` は決めない。決め方は入口の雛形の Issue で決める。
 
 ### 楽観排他の書き方
 
