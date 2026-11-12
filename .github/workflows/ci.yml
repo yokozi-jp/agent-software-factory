@@ -215,10 +215,11 @@ jobs:
       # DEBUG=vite:deps makes Vite log its dependency optimizer (about 100 lines for the web tests). The web tests fail
       # now and then with `iframe ... did not become ready` or `Failed to fetch dynamically imported module` (#523), and
       # Vite's logs do not say whether a re-optimization in the middle of the run caused it. Nx prints the output of a
-      # failed task only, so a passing run stays quiet.
+      # failed task only, so a passing run stays quiet. DEBUG=vitest:browser:* also logs the browser provider of Vitest
+      # (page loads and failed requests), because the dependency optimizer did not explain the failure of run 43212150110.
       - name: Check, test and build (nx affected)
         env:
-          DEBUG: vite:deps
+          DEBUG: vite:deps,vitest:browser:*
         run: |
           pnpm --filter @agent-software-factory/web exec playwright install --with-deps chromium
           pnpm exec nx affected -t check test build
