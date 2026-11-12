@@ -67,9 +67,6 @@
           "{workspaceRoot}/packages/db/src/infrastructure/seed/index.ts",
           "{workspaceRoot}/packages/db/src/testing/prepare-database.ts",
           "{workspaceRoot}/package.json",
-          "{workspaceRoot}/packages/db/migrations/*",
-          "{workspaceRoot}/packages/db/src/infrastructure/seed/index.ts",
-          "{workspaceRoot}/packages/db/src/testing/prepare-database.ts",
           "{workspaceRoot}/pnpm-lock.yaml",
           "{workspaceRoot}/renovate.jsonc"
         ]

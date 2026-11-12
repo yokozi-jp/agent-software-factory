@@ -28,6 +28,7 @@ export function unfinishedWork(git: Git): UnfinishedWork | undefined {
       : Number(git(["rev-list", "--count", "HEAD", "--not", "--remotes"]));
   if (changes.length === 0 && !(unpushed > 0)) return undefined;
   const head = git(["rev-parse", "--verify", "--quiet", "HEAD"]).trim();
+  // Stryker disable next-line EqualityOperator: equivalent, unpushed is 0 when it is not above 0, so >= 0 gives 0 too.
   return { changes, unpushed: unpushed > 0 ? unpushed : 0, key: [head, ...changes].join("\n") };
 }
 

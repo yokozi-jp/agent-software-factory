@@ -147,6 +147,7 @@ export function summarize(file: FileCoverage): Summary {
 
 // Whether covered/total reaches the percentage. Nothing to count is 100%, as in Vitest. Integers only: no rounding.
 const reaches = ({ covered, total }: Ratio, percent: number): boolean =>
+  // Stryker disable next-line ConditionalExpression: equivalent, covered is 0 when total is 0, and 0 >= 0 holds for any percent.
   total === 0 || covered * 100 >= percent * total;
 
 const meetsMinimum = (summary: Summary, minimum: Policy["minimum"]): boolean =>

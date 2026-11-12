@@ -60,6 +60,9 @@ describe("isMeasured", () => {
     ["apps/web/src/screens/home.tsx", true],
     ["packages/db/src/infrastructure/migrate.ts", true],
     ["packages/approval/events/src/index.ts", true],
+    ["vendor/apps/api/src/app.ts", false],
+    ["apps/api/src/app.ts.bak", false],
+    ["apps/web/src/app.d.tsx", true],
     ["apps/api/src/app.test.ts", false],
     ["apps/web/src/screens/home.test.tsx", false],
     ["apps/api/src/__fixtures__/typed-rules.ts", false],
@@ -162,7 +165,29 @@ describe("parseFileCoverage", () => {
   it.each([
     ["not an object", 1],
     ["no maps", {}],
+    ["null", null],
     ["a statement without a count", { statementMap: { "0": {} }, s: {}, branchMap: {}, b: {} }],
+    [
+      "a statement with a count and no line",
+      { statementMap: { "0": {} }, s: { "0": 1 }, branchMap: {}, b: {} },
+    ],
+    [
+      "a statement with a line and a count that is not a number",
+      { statementMap: { "0": { start: { line: 1 } } }, s: { "0": "1" }, branchMap: {}, b: {} },
+    ],
+    [
+      "a branch with a count that is not a number, after one that is",
+      {
+        statementMap: {},
+        s: {},
+        branchMap: { "0": { type: "if", loc: {} } },
+        b: { "0": [1, "0"] },
+      },
+    ],
+    [
+      "a branch with no count that is a number",
+      { statementMap: {}, s: {}, branchMap: { "0": { type: "if", loc: {} } }, b: { "0": ["0"] } },
+    ],
     [
       "a branch without counts",
       { statementMap: {}, s: {}, branchMap: { "0": { type: "if", loc: {} } }, b: {} },
@@ -170,6 +195,15 @@ describe("parseFileCoverage", () => {
   ])("refuses %s", (_name, value) => {
     expect(parseFileCoverage(value)).toBeUndefined();
   });
+
+  it.each(["statementMap", "s", "branchMap", "b"])(
+    "refuses a record whose %s is not an object",
+    (key) => {
+      expect(
+        parseFileCoverage(Object.assign({}, istanbul([1], [[1, 0]]), { [key]: 1 })),
+      ).toBeUndefined();
+    },
+  );
 });
 
 describe("parsePolicy", () => {
@@ -187,7 +221,17 @@ describe("parsePolicy", () => {
       { minimum: { lines: "90", branches: 90 }, exceptions: {} },
       /minimum/,
     ],
+    [
+      "a minimum of branches that is not a number",
+      { minimum: { lines: 90, branches: "90" }, exceptions: {} },
+      /minimum/,
+    ],
     ["no exceptions", { minimum: { lines: 90, branches: 90 } }, /exceptions/],
+    [
+      "an exception whose reason is not a text",
+      { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": 1 } },
+      /a\.ts has no reason/,
+    ],
     [
       "an exception without a reason",
       { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": " " } },

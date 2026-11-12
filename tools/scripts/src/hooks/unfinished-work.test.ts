@@ -71,6 +71,65 @@ describe("unfinishedWork", () => {
     expect(unfinishedWork(fake("origin\n"))).toMatchObject({ unpushed: 0 });
   });
 
+  describe("with answers of git that a clone does not give", () => {
+    // `answers` is what git prints for the arguments joined by a space; any other call prints nothing.
+    const fakeOf =
+      (answers: Record<string, string>) =>
+      (args: readonly string[]): string =>
+        answers[args.join(" ")] ?? "";
+    const inside = {
+      "rev-parse --is-inside-work-tree": "true\n",
+      "status --porcelain": "?? a.txt\n",
+    };
+
+    it("finds nothing when git does not say that this is a working tree, whatever else it prints", () => {
+      expect(
+        unfinishedWork(
+          fakeOf({
+            "status --porcelain": "?? a.txt\n",
+            "rev-parse --is-inside-work-tree": "false\n",
+          }),
+        ),
+      ).toBeUndefined();
+      expect(unfinishedWork(fakeOf({ "status --porcelain": "?? a.txt\n" }))).toBeUndefined();
+    });
+
+    it("counts no unpushed commit without a remote, though git would count some", () => {
+      const count = { "rev-list --count HEAD --not --remotes": "2\n" };
+      expect(unfinishedWork(fakeOf({ ...inside, ...count, remote: "" }))).toMatchObject({
+        unpushed: 0,
+      });
+      expect(unfinishedWork(fakeOf({ ...inside, ...count, remote: "\n" }))).toMatchObject({
+        unpushed: 0,
+      });
+      expect(unfinishedWork(fakeOf({ ...inside, ...count, remote: "origin\n" }))).toMatchObject({
+        unpushed: 2,
+      });
+    });
+
+    it("counts 0 when git prints something that is not a number", () => {
+      const work = unfinishedWork(
+        fakeOf({
+          ...inside,
+          remote: "origin\n",
+          "rev-list --count HEAD --not --remotes": "fatal\n",
+        }),
+      );
+      expect(work?.unpushed).toBe(0);
+    });
+
+    it("keys the state by the commit and the changes, one to a line", () => {
+      const work = unfinishedWork(
+        fakeOf({
+          ...inside,
+          "status --porcelain": "?? a.txt\n M b.txt\n",
+          "rev-parse --verify --quiet HEAD": "abc123\n",
+        }),
+      );
+      expect(work?.key).toBe("abc123\n?? a.txt\n M b.txt");
+    });
+  });
+
   it("gives another key when the state changes", () => {
     writeFileSync(join(clone, "a.txt"), "a\n");
     const first = unfinishedWork(git)?.key;
@@ -90,11 +149,26 @@ describe("unfinishedWorkWarning", () => {
     expect(text).toContain("Not pushed: 3 commit(s)");
   });
 
-  it("leaves out the part that does not apply", () => {
-    const text = unfinishedWorkWarning({ changes: [], unpushed: 1, key: "k" }, "/tree");
-    expect(text).not.toContain("Not committed");
-    expect(
-      unfinishedWorkWarning({ changes: ["?? a"], unpushed: 0, key: "k" }, "/tree"),
-    ).not.toContain("Not pushed");
+  it("leaves out the part that does not apply, and ends with the instruction and a newline", () => {
+    const instruction = [
+      "Before you report the work as done: check the result of the last git command (a commit that a hook refused leaves its files staged),",
+      "then commit or push, or say in your report what is left and why. Do not report a commit or a push you have not seen succeed.",
+      "",
+    ];
+    expect(unfinishedWorkWarning({ changes: [], unpushed: 1, key: "k" }, "/tree")).toBe(
+      [
+        "WARNING: this working tree (/tree) has unfinished work.",
+        "Not pushed: 1 commit(s) that no remote branch has.",
+        ...instruction,
+      ].join("\n"),
+    );
+    expect(unfinishedWorkWarning({ changes: ["?? a"], unpushed: 0, key: "k" }, "/tree")).toBe(
+      [
+        "WARNING: this working tree (/tree) has unfinished work.",
+        "Not committed (1, first 10):",
+        "?? a",
+        ...instruction,
+      ].join("\n"),
+    );
   });
 });
