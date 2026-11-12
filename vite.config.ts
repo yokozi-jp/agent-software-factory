@@ -679,7 +679,7 @@ export default defineConfig({
       // tools/scripts/src/test/fixtures/expect.test.ts fails `vp check` if one is turned off.
       // See docs/code-review/agent-pull-requests.md.
       {
-        files: ["**/*.test.ts", "**/*.test.tsx"],
+        files: ["**/*.test.ts", "**/*.test.tsx", "**/*.test-d.ts"],
         plugins: ["vitest"],
         rules: {
           "vitest/no-focused-tests": "error",
@@ -872,7 +872,7 @@ export default defineConfig({
       // apps/api/src/__fixtures__/test-title.test.ts, apps/web/src/__fixtures__/tests.test.tsx and
       // tools/scripts/src/test/fixtures/test-title.test.ts.
       {
-        files: ["**/*.test.ts", "**/*.test.tsx"],
+        files: ["**/*.test.ts", "**/*.test.tsx", "**/*.test-d.ts"],
         jsPlugins: [
           { name: "test-title", specifier: "./tools/lint-plugins/src/test-title-plugin.ts" },
         ],
