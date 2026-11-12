@@ -6,6 +6,7 @@ import { failuresOf, json, repo } from "./fixtures/repo.ts";
 import {
   coverageConfig,
   coverageDevDependencies,
+  coveragePolicy,
   coverageScripts,
   packageJson,
 } from "./fixtures/passing-repo.ts";
@@ -144,6 +145,57 @@ describe("ADR 0053: each project with code writes a coverage record", () => {
     ])("names a vite.config.ts of %j", (source) => {
       expect(violations(repo(withConfig(source)))).toEqual([
         configMessage("packages/claim/vite.config.ts", "packages/claim"),
+      ]);
+    });
+  });
+
+  describe("the table of coverage-policy.json", () => {
+    const bare = { "packages/bare/package.json": json({ name: "bare" }) };
+
+    it("takes the files that the table does not exempt to be code, whichever it exempts", () => {
+      const policy = (fields: object) => ({
+        "coverage-policy.json": json({ ...coveragePolicy, ...fields }),
+        ...bare,
+        "packages/bare/src/server.ts": "export {};\n",
+      });
+      expect(violations(repo(policy({})))).toEqual([
+        testScriptMessage("packages/bare/package.json", "packages/bare"),
+        providerMessage("packages/bare/package.json"),
+        configMessage("packages/bare/vite.config.ts", "packages/bare"),
+      ]);
+      expect(
+        violations(repo(policy({ entries: { "packages/bare/src/server.ts": "entry" } }))),
+      ).toEqual([]);
+      expect(violations(repo(policy({ notMeasured: ["**/server.ts"] })))).toEqual([]);
+    });
+
+    it("takes the directories of `projects` to be where a record is written", () => {
+      expect(
+        violations(
+          repo({
+            "coverage-policy.json": json({ ...coveragePolicy, projects: ["apps/*"] }),
+            ...bare,
+            "packages/bare/src/index.ts": "export {};\n",
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("names a repository without the table", () => {
+      expect(violations(repo({ "coverage-policy.json": undefined }))).toEqual([
+        "coverage-policy.json is missing (docs/adr/0053).",
+      ]);
+    });
+
+    it("reports a table that does not parse once, as the tree does", () => {
+      expect(violations(repo({ "coverage-policy.json": "{" }))).toEqual([
+        expect.stringContaining("coverage-policy.json is not valid JSON"),
+      ]);
+    });
+
+    it("names a table that has not the shape", () => {
+      expect(violations(repo({ "coverage-policy.json": json({ minimum: {} }) }))).toEqual([
+        "coverage-policy.json: minimum needs numbers for lines and branches",
       ]);
     });
   });

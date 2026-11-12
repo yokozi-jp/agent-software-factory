@@ -191,6 +191,20 @@ export const coverageScripts = { test: "vp test run --coverage" };
 export const coverageDevDependencies = { "@vitest/coverage-v8": "catalog:" };
 export const coverageConfig =
   'import { recordOnlyConfig } from "../../vitest-coverage.ts";\nexport default recordOnlyConfig();\n';
+// The table of coverage-policy.json (docs/adr/0053, #577) that says which files count: the shape of the real one.
+export const coveragePolicy = {
+  minimum: { lines: 90, branches: 90 },
+  projects: ["apps/*", "packages/*", "packages/*/events"],
+  notMeasured: [
+    "**/*.test.{ts,tsx}",
+    "**/__fixtures__/**",
+    "**/*.gen.ts",
+    "**/*.d.ts",
+    "**/*.stories.tsx",
+  ],
+  entries: {},
+  exceptions: {},
+};
 export const packageJson = (name: string, fields: Record<string, unknown> = {}): string =>
   JSON.stringify({
     name: `@agent-software-factory/${name}`,
@@ -324,6 +338,7 @@ export const passingRepo: Readonly<Record<string, string>> = {
   // A config that names a file of the tree (codePathReferences reads it).
   "compose.otel-lgtm.yaml": "# apps/api/package.json\n",
   "lint-restrictions.json": JSON.stringify(lintRestrictions, undefined, 2),
+  "coverage-policy.json": JSON.stringify(coveragePolicy, undefined, 2),
   "packages/module-fixtures/src/__fixtures__/outbox.ts": outboxFixture,
   "apps/api/src/__fixtures__/outbox.test.ts": outboxFixture,
   "packages/module-fixtures/src/__fixtures__/connection.ts": connectionStopFixture,

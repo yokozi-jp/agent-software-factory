@@ -2,11 +2,25 @@
 // coverage/coverage-final.json (Istanbul's format) and count the files they load, whichever project owns them. This
 // check adds the records up: a file is covered by what every project's tests ran, and each measured file must reach the
 // minimum of coverage-policy.json. Pure functions; cli.ts reads the files and prints.
+import { matchesGlob } from "node:path";
 import { isObject } from "../json.ts";
 
-export interface Policy {
+// What coverage counts, in coverage-policy.json. vitest-coverage.ts reads the same table to make the `include` and
+// `exclude` of every project's record, so the files that a project writes and the files that this check counts cannot
+// differ (#577). Paths and globs are from the repository root.
+export interface Scope {
+  // The directories of the Nx projects that write a record (globs); their `src` is what counts.
+  readonly projects: readonly string[];
+  // Kinds of files that are never counted: tests, fixtures that break the lint on purpose, generated files, stories.
+  readonly notMeasured: readonly string[];
+  // Files (or globs) that are never counted by design, with the reason: the entry files that only start the program.
+  readonly entries: ReadonlyMap<string, string>;
+}
+
+export interface Policy extends Scope {
   readonly minimum: { readonly lines: number; readonly branches: number };
-  // Measured files that are left out: path from the repository root to the reason.
+  // Measured files that are left out, for now: path from the repository root to the reason. A row is removed when the
+  // tests reach the minimum, unlike an entry, which stays.
   readonly exceptions: ReadonlyMap<string, string>;
 }
 
@@ -28,13 +42,18 @@ export interface Summary {
   readonly branches: Ratio;
 }
 
-// The files that count: the code of apps and packages (and the events packages in them), not the tests, the fixtures
-// that break the lint on purpose, the generated files and the stories. The exclude lists in the vite.config.ts of the
-// projects say the same, for the coverage they write.
-const measured = /^(apps|packages)\/[^/]+\/(events\/)?src\/.+\.tsx?$/u;
-const notMeasured = /(\.test\.tsx?|\.d\.ts|\.gen\.ts|\.stories\.tsx)$|\/__fixtures__\//u;
+// The `src` of each project (`.ts` and `.tsx`) is where the files that count are. vitest-coverage.ts makes the same globs,
+// one for each project: a single name in braces would not be expanded.
+const sourcesOf = (project: string): string => `${project}/src/**/*.{ts,tsx}`;
 
-export const isMeasured = (path: string): boolean => measured.test(path) && !notMeasured.test(path);
+const inSources = (path: string, { projects }: Scope): boolean =>
+  projects.some((project) => matchesGlob(path, sourcesOf(project)));
+
+const leftOut = (scope: Scope): string[] => [...scope.notMeasured, ...scope.entries.keys()];
+
+// The files that count: the code of the projects, except what the table says is not measured.
+export const isMeasured = (path: string, scope: Scope): boolean =>
+  inSources(path, scope) && !leftOut(scope).some((glob) => matchesGlob(path, glob));
 
 // The Nx projects that write a record: apps/<x>, packages/<x> and packages/<x>/events. A file belongs to the project
 // whose directory it is under, and a project is in scope when its record exists (the affected projects ran `test`).
@@ -55,9 +74,28 @@ export function scopeOf(
   };
 }
 
+// A table of reasons (`exceptions`, `entries`): a path or a glob to why. A row without a reason is a row nobody can judge.
+function reasons(value: unknown, table: string, kind: string): Map<string, string> | string {
+  if (!isObject(value)) return `coverage-policy.json: ${table} is not an object`;
+  const entries: [string, string][] = [];
+  for (const [path, reason] of Object.entries(value)) {
+    if (typeof reason !== "string" || reason.trim() === "") {
+      return `coverage-policy.json: the ${kind} for ${path} has no reason`;
+    }
+    entries.push([path, reason]);
+  }
+  return new Map(entries);
+}
+
+// A list of globs, none empty.
+const globs = (value: unknown, name: string): string[] | string =>
+  Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim() !== "")
+    ? value.map(String)
+    : `coverage-policy.json: ${name} needs a list of globs`;
+
 export function parsePolicy(value: unknown): Policy | string {
   if (!isObject(value)) return "coverage-policy.json is not an object";
-  const { minimum, exceptions } = value;
+  const { minimum } = value;
   if (
     !isObject(minimum) ||
     typeof minimum.lines !== "number" ||
@@ -65,17 +103,21 @@ export function parsePolicy(value: unknown): Policy | string {
   ) {
     return "coverage-policy.json: minimum needs numbers for lines and branches";
   }
-  if (!isObject(exceptions)) return "coverage-policy.json: exceptions is not an object";
-  const entries: [string, string][] = [];
-  for (const [path, reason] of Object.entries(exceptions)) {
-    if (typeof reason !== "string" || reason.trim() === "") {
-      return `coverage-policy.json: the exception for ${path} has no reason`;
-    }
-    entries.push([path, reason]);
-  }
+  const projects = globs(value.projects, "projects");
+  if (typeof projects === "string") return projects;
+  if (projects.length === 0) return "coverage-policy.json: projects needs a list of globs";
+  const notMeasured = globs(value.notMeasured, "notMeasured");
+  if (typeof notMeasured === "string") return notMeasured;
+  const entries = reasons(value.entries, "entries", "entry");
+  if (typeof entries === "string") return entries;
+  const exceptions = reasons(value.exceptions, "exceptions", "exception");
+  if (typeof exceptions === "string") return exceptions;
   return {
     minimum: { lines: minimum.lines, branches: minimum.branches },
-    exceptions: new Map(entries),
+    projects,
+    notMeasured,
+    entries,
+    exceptions,
   };
 }
 
@@ -179,17 +221,24 @@ export interface Input {
 export function violations({ policy, tracked, projects, coverage }: Input): string[] {
   const failures: string[] = [];
   const known = new Set(tracked);
+  // An entry is never counted, so a row that no file of a project's `src` matches (the entry was renamed or deleted)
+  // is a row to remove, as for an exception.
+  for (const glob of policy.entries.keys()) {
+    if (!tracked.some((path) => inSources(path, policy) && matchesGlob(path, glob))) {
+      failures.push(`${glob}: the entry matches no file. Remove its row.`);
+    }
+  }
   for (const path of policy.exceptions.keys()) {
     if (!known.has(path)) {
       failures.push(`${path}: the exception names a file that does not exist. Remove its row.`);
-    } else if (!isMeasured(path)) {
+    } else if (!isMeasured(path, policy)) {
       failures.push(
         `${path}: the exception names a file that is not measured anyway. Remove its row.`,
       );
     }
   }
   const { lines, branches } = policy.minimum;
-  for (const path of tracked.filter(isMeasured).toSorted()) {
+  for (const path of tracked.filter((path) => isMeasured(path, policy)).toSorted()) {
     if (projectOf(path, projects) === undefined) continue;
     const file = coverage.get(path);
     if (policy.exceptions.has(path)) {

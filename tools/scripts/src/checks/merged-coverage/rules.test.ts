@@ -11,6 +11,7 @@ import {
   violations,
   type FileCoverage,
   type Policy,
+  type Scope,
 } from "./rules.ts";
 
 // A file of coverage-final.json: one statement per line, `hits[n]` for line n + 1, and one branch (an `if`) per entry
@@ -36,7 +37,20 @@ function file(hits: number[], branches: number[][] = []): FileCoverage {
   return parsed;
 }
 
+// The table as coverage-policy.json has it, except that its exceptions are the one file that most tests use.
+const scope: Scope = {
+  projects: ["apps/*", "packages/*", "packages/*/events"],
+  notMeasured: [
+    "**/*.test.{ts,tsx}",
+    "**/__fixtures__/**",
+    "**/*.gen.ts",
+    "**/*.d.ts",
+    "**/*.stories.tsx",
+  ],
+  entries: new Map(),
+};
 const policy: Policy = {
+  ...scope,
   minimum: { lines: 90, branches: 90 },
   exceptions: new Map([["apps/api/src/server.ts", "entry"]]),
 };
@@ -74,7 +88,37 @@ describe("isMeasured", () => {
     ["apps/api/src/app.ts.md", false],
     ["apps/api/src/app.test.tsx/index.ts", true],
   ])("%s → %s", (path, expected) => {
-    expect(isMeasured(path)).toBe(expected);
+    expect(isMeasured(path, scope)).toBe(expected);
+  });
+
+  it("does not count an entry, by its path or by a glob, and counts the files next to it", () => {
+    const withEntries: Scope = {
+      ...scope,
+      entries: new Map([
+        ["apps/api/src/server.ts", "x"],
+        ["apps/worker/src/local/**", "x"],
+      ]),
+    };
+    expect(isMeasured("apps/api/src/server.ts", withEntries)).toBe(false);
+    expect(isMeasured("apps/worker/src/local/setup/queues.ts", withEntries)).toBe(false);
+    expect(isMeasured("apps/api/src/app.ts", withEntries)).toBe(true);
+    expect(isMeasured("apps/worker/src/local.ts", withEntries)).toBe(true);
+    expect(isMeasured("apps/web/src/server.ts", withEntries)).toBe(true);
+  });
+
+  it("does not count the kinds of files that the table says are not measured", () => {
+    const only: Scope = { ...scope, notMeasured: ["**/*.mock.ts"] };
+    expect(isMeasured("apps/api/src/db.mock.ts", only)).toBe(false);
+    expect(isMeasured("apps/api/src/app.test.ts", only)).toBe(true);
+  });
+
+  it("counts the `src` of the directories of `projects`, and no others", () => {
+    const apps: Scope = { ...scope, projects: ["apps/*"] };
+    expect(isMeasured("apps/api/src/app.ts", apps)).toBe(true);
+    expect(isMeasured("packages/db/src/a.ts", apps)).toBe(false);
+    const two: Scope = { ...scope, projects: ["apps/*", "libs/*"] };
+    expect(isMeasured("libs/a/src/a.ts", two)).toBe(true);
+    expect(isMeasured("apps/api/src/app.ts", two)).toBe(true);
   });
 });
 
@@ -190,38 +234,69 @@ describe("parseFileCoverage", () => {
 });
 
 describe("parsePolicy", () => {
-  it("reads the minimum and the exceptions", () => {
-    expect(
-      parsePolicy({ minimum: { lines: 90, branches: 80 }, exceptions: { "a.ts": "why" } }),
-    ).toEqual({ minimum: { lines: 90, branches: 80 }, exceptions: new Map([["a.ts", "why"]]) });
+  const table = {
+    minimum: { lines: 90, branches: 90 },
+    projects: ["apps/*"],
+    notMeasured: ["**/*.test.ts"],
+    entries: { "a/server.ts": "starts it" },
+    exceptions: { "a.ts": "why" },
+  };
+
+  it("reads the minimum, the scope and the exceptions", () => {
+    expect(parsePolicy({ ...table, minimum: { lines: 90, branches: 80 } })).toEqual({
+      minimum: { lines: 90, branches: 80 },
+      projects: ["apps/*"],
+      notMeasured: ["**/*.test.ts"],
+      entries: new Map([["a/server.ts", "starts it"]]),
+      exceptions: new Map([["a.ts", "why"]]),
+    });
   });
 
   it.each([
     ["not an object", [], /not an object/],
-    ["no minimum", { exceptions: {} }, /minimum/],
+    ["no minimum", { ...table, minimum: undefined }, /minimum/],
     [
       "a minimum that is not a number",
-      { minimum: { lines: "90", branches: 90 }, exceptions: {} },
+      { ...table, minimum: { lines: "90", branches: 90 } },
       /minimum/,
     ],
     [
       "a minimum of branches that is not a number",
-      { minimum: { lines: 90, branches: "90" }, exceptions: {} },
+      { ...table, minimum: { lines: 90, branches: "90" } },
       /minimum/,
     ],
-    ["no exceptions", { minimum: { lines: 90, branches: 90 } }, /exceptions/],
+    ["no projects", { ...table, projects: undefined }, /projects needs a list of globs/],
+    ["no project", { ...table, projects: [] }, /projects needs a list of globs/],
+    ["a project that is not text", { ...table, projects: [5] }, /projects needs a list of globs/],
+    ["a project that is empty", { ...table, projects: [" "] }, /projects needs a list of globs/],
+    ["no notMeasured", { ...table, notMeasured: undefined }, /notMeasured needs a list of globs/],
+    ["a notMeasured that is not text", { ...table, notMeasured: [5] }, /notMeasured needs a list/],
+    ["no entries", { ...table, entries: undefined }, /entries is not an object/],
+    [
+      "an entry without a reason",
+      { ...table, entries: { "a.ts": " " } },
+      /the entry for a\.ts has no reason/,
+    ],
+    ["no exceptions", { ...table, exceptions: undefined }, /exceptions is not an object/],
     [
       "a reason that is not text",
-      { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": 5 } },
-      /a\.ts has no reason/,
+      { ...table, exceptions: { "a.ts": 5 } },
+      /the exception for a\.ts has no reason/,
     ],
     [
       "an exception without a reason",
-      { minimum: { lines: 90, branches: 90 }, exceptions: { "a.ts": " " } },
-      /a\.ts has no reason/,
+      { ...table, exceptions: { "a.ts": " " } },
+      /the exception for a\.ts has no reason/,
     ],
   ])("refuses %s", (_name, value, message) => {
     expect(parsePolicy(value)).toMatch(message);
+  });
+
+  it("accepts a table with nothing that is not measured", () => {
+    expect(parsePolicy({ ...table, notMeasured: [], entries: {} })).toMatchObject({
+      notMeasured: [],
+      entries: new Map(),
+    });
   });
 });
 
@@ -290,7 +365,7 @@ describe("violations", () => {
 
   it("stops an exception for a file that does not exist, or that is not measured anyway", () => {
     const stale: Policy = {
-      minimum: policy.minimum,
+      ...policy,
       exceptions: new Map([
         ["apps/api/src/gone.ts", "x"],
         ["apps/api/src/app.test.ts", "x"],
@@ -299,6 +374,51 @@ describe("violations", () => {
     expect(check({}, ["apps/api/src/app.test.ts"], { policy: stale })).toEqual([
       "apps/api/src/gone.ts: the exception names a file that does not exist. Remove its row.",
       "apps/api/src/app.test.ts: the exception names a file that is not measured anyway. Remove its row.",
+    ]);
+  });
+});
+
+describe("violations of the entries", () => {
+  const entries = new Map([
+    ["apps/api/src/server.ts", "starts it"],
+    ["apps/worker/src/local/**", "run by hand"],
+  ]);
+  const withEntries: Policy = { ...policy, exceptions: new Map(), entries };
+  const run = (tracked: string[], overrides: Partial<Policy> = {}, projects = ["apps/api"]) =>
+    violations({
+      policy: { ...withEntries, ...overrides },
+      projects,
+      tracked,
+      coverage: new Map(),
+    });
+
+  it("does not ask for a record of an entry, whether it is a path or a glob", () => {
+    expect(
+      run(["apps/api/src/server.ts", "apps/worker/src/local/send.ts"], {}, [
+        "apps/api",
+        "apps/worker",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("stops a row that no file of a project's `src` matches", () => {
+    expect(run(["apps/api/src/server.ts"])).toEqual([
+      "apps/worker/src/local/**: the entry matches no file. Remove its row.",
+    ]);
+  });
+
+  it("does not take a file outside the `src` of the projects for the file of an entry", () => {
+    expect(run(["apps/api/src/server.ts", "docs/apps/worker/src/local/a.ts"])).toEqual([
+      "apps/worker/src/local/**: the entry matches no file. Remove its row.",
+    ]);
+  });
+
+  it("stops an exception for a file that is an entry, because it is not measured", () => {
+    const failures = run(["apps/api/src/server.ts", "apps/worker/src/local/a.ts"], {
+      exceptions: new Map([["apps/api/src/server.ts", "x"]]),
+    });
+    expect(failures).toEqual([
+      "apps/api/src/server.ts: the exception names a file that is not measured anyway. Remove its row.",
     ]);
   });
 });

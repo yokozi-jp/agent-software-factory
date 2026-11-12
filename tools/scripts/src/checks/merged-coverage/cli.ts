@@ -7,9 +7,9 @@
 // an exception is wrong, 2 the check could not run (no record although tests were affected, nx cannot say which projects
 // are affected, bad policy).
 // The rules are in rules.ts; this file reads the files and prints.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join, relative } from "node:path";
+import { join, matchesGlob, relative } from "node:path";
 import { tryGit } from "../git.ts";
 import { isObject } from "../json.ts";
 import {
@@ -30,20 +30,6 @@ function readJson(path: string): unknown {
   } catch {
     throw new CannotRun(`${path}: not valid JSON.`);
   }
-}
-
-// The directories that can be an Nx project with a record: apps/<x>, packages/<x> and packages/<x>/events.
-function candidates(top: string): string[] {
-  const subdirectories = (dir: string): string[] =>
-    existsSync(join(top, dir))
-      ? readdirSync(join(top, dir), { withFileTypes: true })
-          .filter((entry) => entry.isDirectory() && entry.name !== "node_modules")
-          .map((entry) => `${dir}/${entry.name}`)
-      : [];
-  return [
-    ...subdirectories("apps"),
-    ...subdirectories("packages").flatMap((dir) => [dir, `${dir}/events`]),
-  ];
 }
 
 // The output of `pnpm exec nx <args>`, or undefined when nx cannot say (a non-zero exit).
@@ -79,18 +65,21 @@ function nxRoots(top: string): ReadonlyMap<string, string> | undefined {
   }
 }
 
-// The directories of the projects that nx would run `test` for in this change and that can write a record (the
-// directories of candidates()), or undefined when nx cannot say. A change that touches none of them (docs only, a version
-// bump of a tool, or tools/scripts alone, whose coverage is not a record of this check) has none: `nx affected -t test`
-// then writes no record, and that is not a failure.
+// The directories of the projects that can write a record (the `projects` globs of the policy) and, of those, the ones
+// that nx would run `test` for in this change; undefined when nx cannot say. A change that touches none of them (docs
+// only, a version bump of a tool, or tools/scripts alone, whose coverage is not a record of this check) has none:
+// `nx affected -t test` then writes no record, and that is not a failure.
 // `--projects` makes `nx show projects` ignore `--affected` (it prints every matching project), so the directories are
 // asked separately and the two answers are intersected.
-function affectedRecordRoots(top: string): string[] | undefined {
+function recordRoots(
+  top: string,
+  projects: readonly string[],
+): { readonly candidates: string[]; readonly affected: string[] } | undefined {
   const affected = nxProjects(top, ["--affected", "--with-target", "test"]);
   const withRecord = nxProjects(top, [
     "--with-target",
     "test",
-    ...["apps/*", "packages/*", "packages/*/events"].flatMap((glob) => ["--projects", glob]),
+    ...projects.flatMap((glob) => ["--projects", glob]),
   ]);
   const roots = nxRoots(top);
   if (affected === undefined || withRecord === undefined || roots === undefined) return undefined;
@@ -100,7 +89,12 @@ function affectedRecordRoots(top: string): string[] | undefined {
     if (root === undefined) return undefined;
     directories.push(root);
   }
-  return directories;
+  return {
+    candidates: [...roots.values()].filter((root) =>
+      projects.some((glob) => matchesGlob(root, glob)),
+    ),
+    affected: directories,
+  };
 }
 
 function main(): string[] {
@@ -111,13 +105,14 @@ function main(): string[] {
 
   const recordOf = (project: string): string =>
     join(top, project, "coverage", "coverage-final.json");
-  const affectedRoots = affectedRecordRoots(top);
-  if (affectedRoots === undefined) {
+  const found = recordRoots(top, policy.projects);
+  if (found === undefined) {
     throw new CannotRun(
       "nx could not say which projects are affected, so the records cannot be told from stale ones. Run `pnpm exec nx show projects --affected --with-target test` to see why.",
     );
   }
-  const recorded = candidates(top).filter((project) => existsSync(recordOf(project)));
+  const { affected: affectedRoots } = found;
+  const recorded = found.candidates.filter((project) => existsSync(recordOf(project)));
   const { projects, stale } = scopeOf(recorded, affectedRoots);
   if (stale.length > 0) {
     process.stdout.write(
@@ -142,7 +137,7 @@ function main(): string[] {
     if (!isObject(record)) throw new CannotRun(`${project}: the record is not an object.`);
     for (const [absolute, value] of Object.entries(record)) {
       const path = relative(top, absolute).replaceAll("\\", "/");
-      if (!isMeasured(path)) continue;
+      if (!isMeasured(path, policy)) continue;
       const file = parseFileCoverage(value);
       if (file === undefined) {
         throw new CannotRun(`${project}: the record of ${path} is not in Istanbul's format.`);

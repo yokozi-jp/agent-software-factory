@@ -46,17 +46,8 @@ export default defineConfig({
     ],
     // テストの強さの基準 (#30、docs/tooling/ci.md ("coverage の下限"))。下限を割ったら、そのファイルのテストを足す。
     coverage: {
-      ...recordCoverage({
-        exclude: [
-          // 実行環境ごとの入口。環境変数を読んで起動するだけで、テストは src/app.ts の createApp を通す。
-          "src/server.ts",
-          // トレースを始める入口 (server.ts が最初に import する)。環境変数を読んで startTelemetry を呼ぶだけで、
-          // 計装の試験は src/tracing.unit.test.ts と packages/telemetry にある。
-          "src/telemetry.ts",
-          // vp dev (@hono/vite-dev-server) の入口。src/app.ts の app を export するだけ。
-          "src/index.ts",
-        ],
-      }),
+      // 測らない入口のファイルは coverage-policy.json の entries に書く (vitest-coverage.ts が読む)。
+      ...recordCoverage(),
       thresholds: {
         autoUpdate: (newThreshold: number) => Math.floor(newThreshold),
         // この project の src だけに下限を掛ける。他の project のファイルは CI の合わせた検査が見る。
