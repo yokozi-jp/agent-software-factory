@@ -159,7 +159,7 @@ export function codePathReferences(tree: Tree): string[] {
         : tracked.has(path);
       if (exists) continue;
       seen.add(written);
-      failures.push(`${source} names ${written}, which does not exist. ${moved}`);
+      failures.push(`${source} names ${written}, which does not exist. ${moved} ${stagingHint}`);
     }
   }
   return failures;

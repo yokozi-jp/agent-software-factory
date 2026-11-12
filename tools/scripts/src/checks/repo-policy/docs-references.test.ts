@@ -130,7 +130,7 @@ describe("docs/ からコードのファイルへの参照", () => {
     [path]: `# A doc\n\n${line}\n`,
   });
   const missing = (path: string, source = "docs/tooling/ci.md") =>
-    `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`;
+    `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.${stagingHint}`;
 
   it.each([
     ["a path", "`tools/a.ts`", ["tools/a.ts"]],
@@ -272,7 +272,7 @@ describe("設定とスクリプトからコードのファイルへの参照", (
   const violations = failuresOf(codePathReferences);
   const cite = (line: string, path = "lefthook.yml") => ({ [path]: `${line}\n` });
   const missing = (path: string, source = "lefthook.yml") =>
-    `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.`;
+    `${source} names ${path}, which does not exist. The file was moved or removed: write its path now, or the directory it is in.${stagingHint}`;
 
   it.each([
     ["a path", '- "packages/a/b.ts"', ["packages/a/b.ts"]],
