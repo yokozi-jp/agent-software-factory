@@ -102,12 +102,14 @@ export type Worktree = {
 const slotOfWorktree = (worktree: Worktree): number | undefined =>
   slotOf(worktree.api ?? "") ?? slotOf(worktree.web ?? "");
 
+// 新しく割り当てるときは書くファイルを持ち (kind: "new")、すでに割り当て済みなら何も書かない (kind: "existing")。
 export type AssignPlan =
-  | { readonly ok: true; readonly slot: number; readonly files: EnvFiles | undefined }
+  | { readonly ok: true; readonly kind: "new"; readonly slot: number; readonly files: EnvFiles }
+  | { readonly ok: true; readonly kind: "existing"; readonly slot: number }
   | { readonly ok: false; readonly status: 1 | 2; readonly message: string };
 
 // worktrees の先頭は main の checkout。target に割り当てる slot とファイルを決める。
-// すでに slot の印がある target には、何も書かせず (files は undefined)、その slot を返す。post-checkout の hook が
+// すでに slot の印がある target には、何も書かせず、その slot を返す。post-checkout の hook が
 // 先に割り当てた worktree に worktree.sh add が続けて割り当てても、失敗にならない。
 export function planAssign(worktrees: readonly Worktree[], target: string): AssignPlan {
   const [main, ...others] = worktrees;
@@ -121,7 +123,7 @@ export function planAssign(worktrees: readonly Worktree[], target: string): Assi
   if (found === undefined)
     return { ok: false, status: 2, message: `${target} は git の worktree ではない` };
   const existing = slotOfWorktree(found);
-  if (existing !== undefined) return { ok: true, slot: existing, files: undefined };
+  if (existing !== undefined) return { ok: true, kind: "existing", slot: existing };
   if (found.api !== undefined || found.web !== undefined)
     return {
       ok: false,
@@ -138,7 +140,7 @@ export function planAssign(worktrees: readonly Worktree[], target: string): Assi
   ];
   const slot = lowestFreeSlot(used);
   if (slot === undefined) return { ok: false, status: 2, message: noFreeSlot };
-  return { ok: true, slot, files: envFiles(slot) };
+  return { ok: true, kind: "new", slot, files: envFiles(slot) };
 }
 
 export type ShowPlan =
@@ -147,8 +149,9 @@ export type ShowPlan =
 
 // post-checkout の第 1 引数 (前の HEAD) が null ref、つまりゼロだけの ID か。git worktree add と git clone が、
 // null ref を渡す。通常の checkout と switch は、前の HEAD を渡す (https://git-scm.com/docs/githooks)。
-// ID の長さは、リポジトリのハッシュで 40 桁 (SHA-1) か 64 桁 (SHA-256)。
-const isNullRef = (previousHead: string): boolean => /^(?:0{40}|0{64})$/.test(previousHead);
+// オブジェクトの名前は、SHA-1 なら 16 進数の 40 桁、SHA-256 なら 64 桁 (https://git-scm.com/docs/hash-function-transition。
+// 2026-11-12 に読んだ)。null ref はその長さのゼロだと判断して、どちらも受け付ける (SHA-256 のリポジトリでは確かめていない)。
+export const isNullRef = (previousHead: string): boolean => /^(?:0{40}|0{64})$/.test(previousHead);
 
 // post-checkout で、current (今の worktree の path) に slot を割り当てるか。null ref のときだけ割り当てる。
 // main の checkout は slot 0 で、割り当てない (git clone でも null ref が来る)。

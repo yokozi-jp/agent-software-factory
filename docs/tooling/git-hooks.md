@@ -20,7 +20,10 @@ hook は `lefthook.yml` で定義し、`pnpm install` の `prepare` で設定さ
 - `pre-commit` は 3 段で動き、各段の中は並列です。1 段目の `quick-checks` (secret-scan、jscpd、repo-policy。どれも数秒で、一番遅いもので約 7 秒) が失敗したら、2 段目の `checks` (`vp check`、docs-check、Knip など。2 分から 2.5 分) を始める前に止めます。`checks` が通ったら、3 段目の `nx-tasks` (`scripts-test`、`db-types`、`lint-effect`。数分かかることがある) を始めます。並列の 1 段だと、lefthook は最も遅い job を待ってから、数秒で出た失敗を報告していました (lefthook 2.2.2 の `parallel` に、最初の失敗で止める設定はありません)。jscpd の重複は、Knip の完了を待ってから報告されていたので、1 段目に移しました。
 - `pre-commit` は、staged ファイルに `vp check --fix` を実行して修正を stage してから、Markdown を lint します。`glob` を持つ job は、それに合うファイルを変えたときだけ実行します。repo-policy は `glob` を持たず、どの commit でも実行します ([ci.md](ci.md#検査を足すとき))。
 - `pre-push` の adr-check、test-weakening、OSV-Scanner は警告だけで、止めません。adr-number は `gh` が読めないとき、Semgrep はオフラインなど検査できないときは止めません。
-- `post-checkout` は、`git worktree add` で作った worktree に、開発サーバーのポートの slot を割り当てます ([並行作業と worktree](worktrees.md))。`git worktree add` が前の HEAD に null ref を渡すときだけ動き、通常の `checkout` と `switch` では何もしません。`dev-ports/cli.ts hook` は、割り当てに失敗しても終了コード 0 で終わります。git は、失敗した `post-checkout` を `git worktree add` の失敗にする (worktree は作られる) からです (git 2.x で確かめた、2026-11-12)。lefthook は hook を実行のたびに設定に合わせて同期しますが、`post-checkout` の job を持たない設定の worktree が実行しても、共有の `.git/hooks` の shim は消えません (lefthook 2.2.2 で確かめた、2026-11-12)。
+- `post-checkout` は、`git worktree add` で作った worktree に、開発サーバーのポートの slot を割り当てます ([並行作業と worktree](worktrees.md))。`git worktree add` は `post-checkout` を、前の HEAD を null ref にして動かします ([githooks](https://git-scm.com/docs/githooks)。2026-11-12 に読んだ)。通常の `checkout` と `switch` は前の HEAD を渡すので、job は node を起動せずに終わります。1 回あたり約 0.085 秒で、そのほとんどは lefthook の起動です (hook なしは約 0.003 秒。git 2.53.0、lefthook 2.2.2 で測った、2026-11-12)。
+  以下は一次情報にない挙動で、実験で確かめました (git 2.53.0、lefthook 2.2.2、2026-11-12)。
+  - 失敗した `post-checkout` は、worktree が作られたあとでも `git worktree add` の終了コードを 1 にします。そのため `dev-ports/cli.ts hook` は、動き出してからの失敗をすべて警告にして、終了コード 0 で終わります。node が起動しない、`cli.ts` がない、という失敗は、`lefthook.yml` の `|| true` が吸収します。
+  - lefthook は hook を実行のたびに設定に合わせて同期しますが、`post-checkout` の job を持たない設定の worktree が実行しても、共有の `.git/hooks` の shim は消えず、中身も変わりません。
 
 ## hook を一時的に飛ばす
 

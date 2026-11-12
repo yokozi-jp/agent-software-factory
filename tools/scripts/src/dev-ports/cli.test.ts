@@ -82,7 +82,6 @@ describe("dev-ports の hook", () => {
     const { main } = repo();
     const result = run(main, "hook", nullRef);
     expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
-    expect(existsSync(apiFile(main))).toBe(false);
   });
 
   // worktree.sh add が続けて assign しても、hook の結果が残る。
@@ -111,6 +110,40 @@ describe("dev-ports の hook", () => {
     const dir = add();
     expect(run(dir, "hook")).toMatchObject({ status: 0, stdout: "" });
     expect(existsSync(apiFile(dir))).toBe(false);
+  });
+
+  // 通常の checkout と switch のたびに動くので、前の HEAD が null ref でなければ、git も ロックも使わずに終わる。
+  // git の失敗が出ないことが、git を呼んでいない証拠になる: git の作業ツリーでない場所で動かす。
+  it("null ref でなければ、git の作業ツリーでない場所でも、何も出さず終了コード 0 で終わること", () => {
+    const outside = join(box.root, "not-a-repo");
+    mkdirSync(outside);
+    const result = run(outside, "hook", "14c74576e7421e12e79ab2546d7135e353a4a56f");
+    expect(result).toMatchObject({ status: 0, stdout: "", stderr: "" });
+  });
+
+  // 別の assign がロックを持つ間、git worktree add を何秒も止めない。待ちを短くして、取れなければ警告して終わる。
+  it("ロックを取れなくても、警告を出して終了コード 0 で終わり、何も書かないこと", () => {
+    const { main, add } = repo();
+    const dir = add();
+    mkdirSync(join(main, ".git", "dev-ports.lock"));
+    const started = Date.now();
+    const result = run(dir, "hook", nullRef);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("ロック");
+    expect(existsSync(apiFile(dir))).toBe(false);
+    // 既定の待ちは 2 秒。人が実行する assign の 10 秒より短い。
+    expect(Date.now() - started).toBeLessThan(8000);
+  });
+
+  // 失敗は git worktree add の失敗になるので、どの失敗でも 0 で終わる。ここでは git が失敗する場所 (作業ツリーでない) で、
+  // null ref を渡す。
+  it("null ref でも git が失敗する場所では、警告を出して終了コード 0 で終わること", () => {
+    const outside = join(box.root, "not-a-repo-either");
+    mkdirSync(outside);
+    const result = run(outside, "hook", nullRef);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("dev-ports");
   });
 });
 

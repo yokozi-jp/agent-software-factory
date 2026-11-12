@@ -241,10 +241,12 @@ pre-push:
 # and however: `git worktree add` by hand, a skill, tools/scripts/sh/worktree.sh. The hook runs in the new worktree, with the
 # lefthook.yml of the commit it was made from, so a worktree made from a commit without this job gets no ports from it;
 # worktree.sh add assigns them afterwards (docs/tooling/worktrees.md ("開発サーバーを動かす")).
-# The entry exits with 0 whatever happens: git makes a failing post-checkout fail `git worktree add` (the worktree is still
-# made), and a worktree without ports only means that a clash fails at startup (strictPort). `|| true` covers a failure
-# before the entry runs (no node).
+# It runs on every checkout and switch, so `case` skips node unless the argument is zeros only (about 0.06 s less per switch;
+# lefthook itself costs about 0.1 s, measured 2026-11-12). Only the shape is checked here; the entry checks the length
+# (isNullRef in dev-ports/rules.ts). The entry exits with 0 on any failure after it starts: git makes a failing post-checkout
+# fail `git worktree add` (the worktree is still made), and a worktree without ports only means that a clash fails at startup
+# (strictPort). `|| true` covers what the entry cannot: node does not start, or the file is missing.
 post-checkout:
   jobs:
     - name: dev-ports
-      run: node tools/scripts/src/dev-ports/cli.ts hook {1} || true
+      run: case "{1}" in *[!0]* | "") ;; *) node tools/scripts/src/dev-ports/cli.ts hook "{1}" ;; esac || true

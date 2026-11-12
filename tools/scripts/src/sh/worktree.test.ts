@@ -123,23 +123,31 @@ describe("worktree.sh add の採番 (Issue #184)", () => {
   });
 
   // post-checkout の hook が worktree add の最中に割り当てた後、worktree.sh add の assign が続く。警告にしない。
-  it("すでに割り当て済みの worktree でも、警告を出さず、同じ slot を出すこと", () => {
+  // hook が動いたことは、hook の出力に付けた目印で確かめる。目印がなければ、worktree.sh 自身が割り当てただけかもしれない。
+  it("hook が先に割り当てた worktree でも、警告を出さず、同じ slot を出すこと", () => {
     const own = makeMain("ports-hook", true);
-    // hook の代わりに、git worktree add の post-checkout が書いたのと同じ状態を、hook で作る。
-    const hooks = join(own, ".git", "hooks");
     writeFileSync(
-      join(hooks, "post-checkout"),
-      `#!/bin/sh\nnode ${JSON.stringify(cliPath)} hook "$1" >&2\nexit 0\n`,
+      join(own, ".git", "hooks", "post-checkout"),
+      `#!/bin/sh\necho "hook-ran" >&2\nnode ${JSON.stringify(cliPath)} hook "$1" >&2\nexit 0\n`,
       { mode: 0o755 },
     );
     const result = worktree(own, "add", "feat/by-hook", "--no-install");
     expect(result.status).toBe(0);
     expect(result.stdout).toBe(`${join(box.root, "ports-hook-worktrees")}/feat/by-hook\n`);
-    expect(result.stderr).toContain("slot 1");
+    // 目印は 1 回: hook が割り当てた。worktree.sh の assign は、すでにあるので slot を出力するだけ。
+    expect(result.stderr.match(/hook-ran/g)).toHaveLength(1);
+    expect(result.stderr.match(/^slot 1$/gm)).toHaveLength(2);
     expect(result.stderr).not.toContain("warning: dev-ports");
     expect(
       readFileSync(join(box.root, "ports-hook-worktrees/feat/by-hook/apps/api/.env.local"), "utf8"),
     ).toContain("PORT=3010");
+  });
+
+  it("hook がなければ、worktree.sh の assign だけが割り当てること (上のテストの対照)", () => {
+    const own = makeMain("ports-nohook", true);
+    const result = worktree(own, "add", "feat/no-hook", "--no-install");
+    expect(result.stderr).not.toContain("hook-ran");
+    expect(result.stderr.match(/^slot 1$/gm)).toHaveLength(1);
   });
 
   // 採番に失敗しても worktree は使える。strictPort が衝突を失敗にする。

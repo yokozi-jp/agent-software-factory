@@ -65,6 +65,7 @@ describe("planAssign", () => {
   it("まだ割り当てのない worktree に、使われていない最小の slot とそのファイルを返すこと", () => {
     expect(planAssign([main, fresh("/w/a"), assigned("/w/b", 1)], "/w/a")).toEqual({
       ok: true,
+      kind: "new",
       slot: 2,
       files: envFiles(2),
     });
@@ -97,8 +98,8 @@ describe("planAssign", () => {
   it("すでに slot の印がある worktree では、何も書かずに、その slot を返すこと", () => {
     expect(planAssign([main, assigned("/w/a", 3)], "/w/a")).toEqual({
       ok: true,
+      kind: "existing",
       slot: 3,
-      files: undefined,
     });
   });
 
@@ -111,8 +112,8 @@ describe("planAssign", () => {
     };
     expect(planAssign([main, onlyWebMarked], "/w/a")).toEqual({
       ok: true,
+      kind: "existing",
       slot: 4,
-      files: undefined,
     });
   });
 
