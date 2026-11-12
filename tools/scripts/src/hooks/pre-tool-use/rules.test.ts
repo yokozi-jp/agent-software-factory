@@ -174,7 +174,7 @@ describe("preToolUse: コミットしていない変更を捨てること", () =
   });
 
   const discardReason =
-    "ask-discard-changes: this git command discards uncommitted changes, which git cannot restore. The working tree may hold another session's edits or your own uncommitted ones. To undo your own edit, write the file back with the file tools, or keep the changes with `git stash` (docs/tooling/agent-permissions.md).";
+    "ask-discard-changes: this git command discards uncommitted changes, which git cannot restore. The working tree may hold another session's edits or your own uncommitted ones. To undo your own edit, write the file back with the file tools, or keep the changes with `git stash`. To change branch, use `git switch <branch>` (docs/tooling/agent-permissions.md).";
 
   it.each(["execute_bash", "shell"])(
     "%s のとき、終了コード 0 で尋ね、判断を stdout に出力すること",
