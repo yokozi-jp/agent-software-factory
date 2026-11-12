@@ -1,7 +1,7 @@
 ---
 type: Runbook
 title: 並行作業と worktree
-description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、worktree ごとの開発サーバーのポート、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いている、または main の作業ツリーが origin/main より古いと警告されたとき、並行して作業を始めるとき、worktree で開発サーバーを動かすとき、開発サーバーがポートの使用中で起動しないとき、worktree から PR を出すときに読む。
+description: 複数の Kiro セッションや人が同時に作業するときに、git worktree で作業ツリーを分ける手順、worktree ごとの開発サーバーのポート、PR を出す前後の確認、片付け方。別のセッションが同じ作業ツリーで動いている、または main の作業ツリーが origin/main より古いと警告されたとき、並行して作業を始めるとき、worktree で開発サーバーを動かすとき、開発サーバーがポートの使用中で起動しないとき、worktree から PR を出すとき、pre-commit や test が数分から十数分かかるときに読む。
 tags: [tooling, runbook, git, worktree, kiro]
 ---
 
@@ -73,6 +73,23 @@ worktree を作った後も、別の PR が main に入り続けます。番号�
    pre-push の `nx affected` の 3 つの job (`nx-affected-test`、`nx-affected-i18n-keys`、`nx-affected-test-tools`) は、出力を `tools/scripts/sh/tee-log.sh` でファイルにも残します。失敗したら、push をやり直さずに、worktree の git ディレクトリの `hook-logs/<job>.log` (`$(git rev-parse --git-path hook-logs)/<job>.log`) を読みます。同じ job の次の実行で上書きされます。
    push の後は、`git ls-remote origin refs/heads/<ブランチ名>` の commit が `git rev-parse HEAD` と同じであることを確かめます。commit の直後の `git push` が、直前の commit を含まない古い HEAD を送ったことが 3 回あります (2026-11-01、Kiro の shell の tool で、commit と push を別の呼び出しにしたとき)。1 回目は `Everything up-to-date` と出て何も送らず、pre-push の job も全て `no matching push files` で飛ばされました。2 回目は新しいブランチを commit の前の HEAD で作り、commit の出力を書いたファイルの更新時刻が push の終わりより後でした。3 回目は、push の直前の `git log -1` も古い commit を出しました。reflog には HEAD を戻した記録がなく、原因は分かっていません。違っていたら、少し待ってから `git push origin HEAD:<ブランチ名>` で送り直し、もう一度確かめます。
 3. PR を作った後、`gh pr checks` が `no checks reported` のままなら、`gh pr view --json mergeable,mergeStateStatus` を見ます。`CONFLICTING` の PR では、`pull_request` の workflow が始まりません。main を merge して衝突を直し、push します。PR は squash merge なので、rebase や force push は要りません。
+
+## テストが遅いとき
+
+pre-commit の `scripts-test` (`nx test scripts`) や pre-push が数分から十数分かかるときは、テストの量より、同じマシンで動く他のセッションとの CPU の取り合いを疑います。
+
+`nx test scripts --skip-nx-cache` (`tools/scripts` を変えた pre-commit の最悪ケース。78 ファイル) を、同じ 4 コアのマシンで測りました (2026-11-13, [Issue #282](https://github.com/yokozi-jp/agent-software-factory/issues/282))。
+
+| 状態                                  | load average | 所要時間              |
+| ------------------------------------- | ------------ | --------------------- |
+| 他の Kiro セッションが 3 つ動いている | 27 から 55   | 11 分 35 秒 (2159 件) |
+| 他のセッションを止めた                | 0.3 から 3.8 | 36.5 秒 (2301 件)     |
+
+約 19 倍の差です。`cli.test.ts` のように子プロセスを起動するテスト (`dev-ports` は 213 秒に対して 13.9 秒) ほど、競合の影響を受けます。同じ条件で、pre-commit に含まれない `nx test-tools scripts` は 1 分 5 秒でした。
+
+- 遅いと感じたら、先に `uptime` で load average を見ます。コア数 (`nproc`) を大きく超えているなら、テストを分けたり外したりせず、他のセッションが終わるのを待つか、止めてよいか利用者に聞きます。
+- Issue #282 の起票時には、無関係のテストが `Hook timed out in 10000ms` で落ち、再実行で通りました。同じ時に他のセッションが動いていましたが、原因が負荷だと確かめてはいません。再実行する前に load average を確かめます。
+- 作業の途中は、変えたファイルのテストだけを流します ([テストの流し方](commands.md#テストの流し方))。
 
 ## 片付ける
 
