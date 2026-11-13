@@ -47,13 +47,13 @@ url = "https://github.com/oasdiff/oasdiff/releases/download/v1.37.0/oasdiff_1.37
 url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/724875877"
 
 [[tools."http:kiro-cli"]]
-version = "3.2.1"
+version = "3.3.0"
 backend = "http:kiro-cli"
-specifiers = ["3.2.1"]
+specifiers = ["3.3.0"]
 
 [tools."http:kiro-cli"."platforms.linux-x64"]
-checksum = "sha256:8338ea19e7065333e25e6f722c8d96c942d426bbc5335b01158ea72b6c4b978a"
-url = "https://prod.download.cli.kiro.dev/stable/3.2.1/kirocli-x86_64-linux.zip"
+checksum = "sha256:018e7d19124ebf5088bc33b12dcafa5c7e8de745ae491df024afebcd19f36b62"
+url = "https://prod.download.cli.kiro.dev/stable/3.3.0/kirocli-x86_64-linux.zip"
 
 [[tools.osv-scanner]]
 version = "2.7.1"

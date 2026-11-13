@@ -20,7 +20,7 @@ zizmor = "1.32.0"
 # The version list and the sha256 of every package are in the official index.json; mise.lock records the sha256.
 # renovate.jsonc has a regex manager that reads the `version` line right under this table header, so keep them adjacent.
 [tools."http:kiro-cli"]
-version = "3.2.1"
+version = "3.3.0"
 bin_path = "kirocli/bin"
 checksum_url = "https://prod.download.cli.kiro.dev/stable/index.json"
 checksum_expr = '"sha256:" + filter(filter(fromJSON(body).versions, { #.version == version })[0].packages, { #.download == version + "/" + filename })[0].sha256'
