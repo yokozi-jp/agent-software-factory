@@ -238,7 +238,11 @@ jobs:
           kill "$docker_pid" "$ip_pid" || true
           echo "::group::Docker and network events during the run, in UTC (#523)"
           while read -r nano rest; do
-            printf '%s.%s docker %s\n' "$(date -u -d "@${nano:0:10}" +%T)" "${nano:10:3}" "$rest"
+            if [[ "$nano" =~ ^[0-9]{19}$ ]]; then
+              printf '%s.%s docker %s\n' "$(date -u -d "@${nano:0:10}" +%T)" "${nano:10:3}" "$rest"
+            else
+              printf 'docker (not an event) %s %s\n' "$nano" "$rest"
+            fi
           done <"$docker_events"
           cat "$network_events"
           echo "::endgroup::"

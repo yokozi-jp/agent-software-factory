@@ -6,7 +6,12 @@
 // 0 if the first run passed or the second did; the code of the first run if it is not the flaky failure;
 // 2 if there is no command. The rules are in rules.ts; this file runs the command and prints.
 import { spawn } from "node:child_process";
-import { retryNotice, retryReason, secondFailureNotice } from "./rules.ts";
+import {
+  retryNotice,
+  retryReason,
+  secondFailureNotice,
+  unreadableFailedTasksNotice,
+} from "./rules.ts";
 
 interface Run {
   readonly status: number;
@@ -47,7 +52,11 @@ async function main(): Promise<number> {
   const first = await run(command, args);
   if (first.status === 0) return 0;
   const reason = retryReason(first.output);
-  if (reason === undefined) return first.status;
+  if (reason === undefined) {
+    const unreadable = unreadableFailedTasksNotice(first.output, process.env);
+    if (unreadable !== undefined) process.stdout.write(unreadable);
+    return first.status;
+  }
 
   process.stdout.write(retryNotice(reason, process.env));
   const second = await run(command, args);

@@ -8,6 +8,7 @@ import {
   retryNotice,
   retryReason,
   secondFailureNotice,
+  unreadableFailedTasksNotice,
 } from "./rules.ts";
 
 const esc = String.fromCharCode(27);
@@ -163,5 +164,24 @@ describe("secondFailureNotice", () => {
     expect(secondFailureNotice(1)).toBe(
       "The second run failed too (exit 1). It is not run a third time.\n",
     );
+  });
+});
+
+describe("unreadableFailedTasksNotice", () => {
+  it("見出しがあるのに task を読めないとき、annotation を返すこと", () => {
+    const notice = unreadableFailedTasksNotice("Failed tasks:\n\n* web:test\n", {
+      GITHUB_ACTIONS: "true",
+    });
+    expect(notice).toMatch(/^::warning title=web-test-flaky::.*Failed tasks:/);
+    expect(notice?.endsWith("\n")).toBe(true);
+  });
+
+  it("GitHub Actions の外では warning: の行にすること", () => {
+    expect(unreadableFailedTasksNotice("Failed tasks:\n", {})).toMatch(/^warning: /);
+  });
+
+  it("task を読めたときと、見出しがないときは何も返さないこと", () => {
+    expect(unreadableFailedTasksNotice(nxFailure(["web:test"]), {})).toBeUndefined();
+    expect(unreadableFailedTasksNotice("some other failure\n", {})).toBeUndefined();
   });
 });

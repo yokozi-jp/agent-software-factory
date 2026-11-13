@@ -105,6 +105,7 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 - `node tools/scripts/src/checks/retry-web-test/cli.ts <コマンド>` (`nx` の job の「Check, test and build」): コマンド (CI では `pnpm exec nx affected -t check test build`) を流し、出力をそのまま流します。失敗したときだけ出力を読み、Nx の `Failed tasks:` が `web:test` だけで、`The iframe "…" did not become ready within …ms` か `Failed to fetch dynamically imported module` があれば、同じコマンドを 1 回流し直します ([ADR 0058](../adr/0058-retry-web-test-once-on-file-load-failure.md))。
   - 流し直すとき: `::warning title=web-test-flaky::` を出します (CI 以外では `warning:` の行)。成功した task は Nx の cache から返るので、動くのは失敗した `web:test` と、それに依存する task だけです。
   - 終了コード: 1 回目が成功、または 2 回目が成功なら 0。条件に合わない失敗は 1 回目の、2 回目も失敗したら 2 回目の終了コード。コマンドがなければ 2、起動できなければ 127。3 回目は流しません。
+  - 読めないとき: Nx の `Failed tasks:` の見出しがあるのに task を読めなければ (Nx の出力の形が変わった疑い)、流し直さずに `::warning title=web-test-flaky::` で `rules.ts` の `failedTasks` を直すよう知らせます。
 - `node tools/scripts/src/checks/merged-coverage/cli.ts` (`nx` の job の「Merged coverage of the projects」): `nx affected -t check test build` が affected な project に書いた `coverage/coverage-final.json` を 1 つに合わせ、`apps/*/src`、`packages/*/src`、`packages/*/events/src` のコードのファイルごとに、lines と branches が 90% あることを確かめます ([coverage の下限](#coverage-の下限)、[ADR 0053](../adr/0053-merged-coverage-check.md))。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 

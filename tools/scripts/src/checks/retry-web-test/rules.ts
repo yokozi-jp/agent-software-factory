@@ -46,6 +46,21 @@ export function retryReason(output: string): string | undefined {
   return loadFailure(output);
 }
 
+// "Failed tasks:" is printed but no task could be read under it: Nx changed its format, and no run is retried
+// until this file is fixed. Returns the warning, or undefined.
+export function unreadableFailedTasksNotice(output: string, env: Env): string | undefined {
+  const printed = stripVTControlCharacters(output)
+    .split("\n")
+    .some((line) => line.trim() === "Failed tasks:");
+  if (!printed || failedTasks(output).length > 0) return undefined;
+  const message =
+    'retry-web-test could not read the tasks under "Failed tasks:" of Nx, so it does not run again. ' +
+    "The format of Nx may have changed; fix failedTasks in tools/scripts/src/checks/retry-web-test/rules.ts.";
+  return env.GITHUB_ACTIONS === "true"
+    ? `::warning title=web-test-flaky::${annotationText(message)}\n`
+    : `warning: ${message}\n`;
+}
+
 // The notice that a run is run again. In GitHub Actions it is a ::warning:: annotation, which stays on the run
 // and can be counted afterwards (docs/tooling/ci.md ("web:test が不安定に落ちるとき")).
 export function retryNotice(reason: string, env: Env): string {
