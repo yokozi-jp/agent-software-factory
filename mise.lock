@@ -20,7 +20,6 @@ specifiers = ["6.17.1"]
 
 [tools."aqua:stoplightio/spectral"."platforms.linux-x64"]
 checksum = "sha256:0196c72234478e4e23df28b662afa7c9f80a47cfd31dc697e674151ad060bb35"
-checksum_source = "mise-versions"
 url = "https://github.com/stoplightio/spectral/releases/download/v6.17.1/spectral-linux-x64"
 url_api = "https://api.github.com/repos/stoplightio/spectral/releases/assets/716458952"
 
@@ -42,18 +41,17 @@ specifiers = ["v1.37.0"]
 
 [tools."github:oasdiff/oasdiff"."platforms.linux-x64"]
 checksum = "sha256:eac87307d31d08c36800c58a409c247f1c5db37fbb72e2544402f22a87cbca3c"
-checksum_source = "mise-versions"
 url = "https://github.com/oasdiff/oasdiff/releases/download/v1.37.0/oasdiff_1.37.0_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/724875877"
 
 [[tools."http:kiro-cli"]]
-version = "3.2.1"
+version = "3.3.0"
 backend = "http:kiro-cli"
-specifiers = ["3.2.1"]
+specifiers = ["3.3.0"]
 
 [tools."http:kiro-cli"."platforms.linux-x64"]
-checksum = "sha256:8338ea19e7065333e25e6f722c8d96c942d426bbc5335b01158ea72b6c4b978a"
-url = "https://prod.download.cli.kiro.dev/stable/3.2.1/kirocli-x86_64-linux.zip"
+checksum = "sha256:018e7d19124ebf5088bc33b12dcafa5c7e8de745ae491df024afebcd19f36b62"
+url = "https://prod.download.cli.kiro.dev/stable/3.3.0/kirocli-x86_64-linux.zip"
 
 [[tools.osv-scanner]]
 version = "2.7.1"
@@ -62,7 +60,6 @@ specifiers = ["2.7.1"]
 
 [tools.osv-scanner."platforms.linux-x64"]
 checksum = "sha256:fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
-checksum_source = "mise-versions"
 url = "https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64"
 url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/726165286"
 
