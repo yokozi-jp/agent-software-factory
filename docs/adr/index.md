@@ -57,3 +57,4 @@
 - [ADR 0055: Renovate の PR は、CI が通れば Renovate が merge する範囲を決めて自動にする](0055-renovate-automerge-by-ci.md)：Renovate の PR を自動で merge する範囲を広げる、狭める、止めるとき、人の確認なしに merge された更新で困ったとき
 - [ADR 0056: React Compiler は Rust 版 (oxc-transform-react) を @vitejs/plugin-react の compiler オプションで使い、テストでは止める](0056-react-compiler-via-oxc-transform-react.md)：React Compiler の設定や版を変えるとき、Babel 経由に替えたくなったとき、テストでもコンパイラを動かしたくなったとき、coverage の branches が下がったとき、`oxc-transform-react` の更新が止まっているとき
 - [ADR 0057: Kiro CLI は mise の http backend で入れ、公式の index.json の sha256 を mise.lock に記録する](0057-kiro-cli-through-mise-http-backend.md)：mise の http backend を使うとき、`mise.toml` の kiro-cli を変えるとき、CI で kiro-cli を動かすとき、Kiro CLI の版を固定する方法を変えたくなったとき
+- [ADR 0058: web:test がテストファイルを読み込めずに落ちたときだけ、CI で失敗した task を 1 回再実行する](0058-retry-web-test-once-on-file-load-failure.md)：web:test が CI で落ちたとき、CI の再実行の仕組みを変えたいとき、Issue #523 を閉じるか決めるとき

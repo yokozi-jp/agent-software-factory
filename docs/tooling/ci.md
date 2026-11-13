@@ -28,14 +28,14 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `ci.yml` は 6 つの job で、`checks`、`scripts`、`osv-scanner`、`nx`、`migration-compat` を並列に実行し、最後に `main` が結果をまとめます。`main` 以外は `setup-vp` か mise で道具を入れます。
 
-| job                | 内容                                                                                                                                                                                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`           | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                                                                                                                                |
-| `scripts`          | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、`nx affected -t test-tools`、API の契約の検査 (Spectral と oasdiff)                                                                                                                                |
-| `osv-scanner`      | `pnpm-lock.yaml` の既知の脆弱性を OSV-Scanner で警告する。`security-events: write` を持つのはこの job だけで、main への push のときだけ SARIF を Code scanning に送る ([ADR 0021](../adr/0021-sast-and-dependency-scan.md))                                                                       |
-| `nx`               | `nx affected -t check test build` (`tools/scripts` を含む)、`nx affected -t db-types-check` (DB の型と migration のずれ)、`nx affected -t i18n-keys` (文言のキーの欠落と未使用)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
-| `main`             | `checks`、`scripts`、`osv-scanner`、`nx`、`migration-compat` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                                                                                         |
-| `migration-compat` | PR の migration を適用した DB で、PR の base の版のアプリの結合テストを流す ([ADR 0037](../adr/0037-migration-compatibility-test-against-base.md))                                                                                                                                                |
+| job                | 内容                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`           | mise の道具を使わない検査: repo policy、Renovate の設定、skills-lock、adr-check、test-weakening、Markdown、docs、root、jscpd、Knip                                                                                                                                                                                                                                                             |
+| `scripts`          | mise で入れた道具を使う検査と、道具を動かすテスト: shellcheck、jactionlint と zizmor、Semgrep、`nx affected -t test-tools`、API の契約の検査 (Spectral と oasdiff)                                                                                                                                                                                                                             |
+| `osv-scanner`      | `pnpm-lock.yaml` の既知の脆弱性を OSV-Scanner で警告する。`security-events: write` を持つのはこの job だけで、main への push のときだけ SARIF を Code scanning に送る ([ADR 0021](../adr/0021-sast-and-dependency-scan.md))                                                                                                                                                                    |
+| `nx`               | `nx affected -t check test build` (`tools/scripts` を含む。`web:test` がテストファイルを読み込めずに落ちたときだけ、`retry-web-test` が 1 回再実行する)、`nx affected -t db-types-check` (DB の型と migration のずれ)、`nx affected -t i18n-keys` (文言のキーの欠落と未使用)、`nx affected -t lint-effect` ([Effect の検査](effect-lint.md))、build の後に生成ファイルが commit 済みであること |
+| `main`             | `checks`、`scripts`、`osv-scanner`、`nx`、`migration-compat` のどれかが成功しなかったら失敗する。ruleset の必須チェック (`protect-main`) はこの名前を指す                                                                                                                                                                                                                                      |
+| `migration-compat` | PR の migration を適用した DB で、PR の base の版のアプリの結合テストを流す ([ADR 0037](../adr/0037-migration-compatibility-test-against-base.md))                                                                                                                                                                                                                                             |
 
 `main` は、必須チェックの名前を `main` のまま残すための job です。job を足すときは、`main` の `needs` にも足します。足さないと、その job が失敗しても merge できます。
 `main` の `if: always()` は、`needs` の job が失敗したときも `main` を実行して失敗させるために要ります。`always()` がないと、`needs` の job が失敗または skip されたとき `main` も skip されます ([GitHub Docs の workflow syntax の `jobs.<job_id>.needs`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax))。必須チェックでは skip が成功として扱われます ([GitHub Docs の About status checks](https://docs.github.com/articles/about-status-checks))。
@@ -102,6 +102,10 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
   - 先に失敗させるもの: base にある migration の書き換えと削除は、DB の起動前に失敗させます。
   - 流し方: base を `git worktree` に出し、その版の結合テストを coverage なしで全部流します。base は `git worktree` (`$RUNNER_TEMP` か一時ディレクトリ) に出し、`pnpm install --frozen-lockfile` の後、`apps/api` で `vp test run --project integration` を流します。DB には、base の migration、seed、PR が足した migration の順に流します。PR が足した migration のファイルは、環境変数 `MIGRATION_COMPAT_FILES` (絶対 path の JSON の配列) で base の harness に渡します。終了コードは、通ったか対象がなければ 0、base の migration の変更と削除かテストの失敗が 1、base が見つからないなど実行できなかったときが 2 です。
   - 止まったとき: 前の版のアプリが新しいスキーマで動かないということです。互換を壊す変更を expand と contract に分け、contract は前の版のアプリが使わなくなってから出します ([PostgreSQL のスキーママイグレーション](../db/postgresql-migration.md#このリポジトリの-migration-の書き方))。例外のラベルはなく、緊急のときだけ ruleset の bypass で人が通します。
+- `node tools/scripts/src/checks/retry-web-test/cli.ts <コマンド>` (`nx` の job の「Check, test and build」): コマンド (CI では `pnpm exec nx affected -t check test build`) を流し、出力をそのまま流します。失敗したときだけ出力を読み、Nx の `Failed tasks:` が `web:test` だけで、`The iframe "…" did not become ready within …ms` か `Failed to fetch dynamically imported module` があれば、同じコマンドを 1 回流し直します ([ADR 0058](../adr/0058-retry-web-test-once-on-file-load-failure.md))。
+  - 流し直すとき: `::warning title=web-test-flaky::` を出します (CI 以外では `warning:` の行)。成功した task は Nx の cache から返るので、動くのは失敗した `web:test` と、それに依存する task だけです。
+  - 終了コード: 1 回目が成功、または 2 回目が成功なら 0。条件に合わない失敗は 1 回目の、2 回目も失敗したら 2 回目の終了コード。コマンドがなければ 2、起動できなければ 127。3 回目は流しません。
+  - 読めないとき: Nx の `Failed tasks:` の見出しがあるのに task を読めなければ (Nx の出力の形が変わった疑い)、流し直さずに `::warning title=web-test-flaky::` で `rules.ts` の `failedTasks` を直すよう知らせます。
 - `node tools/scripts/src/checks/merged-coverage/cli.ts` (`nx` の job の「Merged coverage of the projects」): `nx affected -t check test build` が affected な project に書いた `coverage/coverage-final.json` を 1 つに合わせ、`apps/*/src`、`packages/*/src`、`packages/*/events/src` のコードのファイルごとに、lines と branches が 90% あることを確かめます ([coverage の下限](#coverage-の下限)、[ADR 0053](../adr/0053-merged-coverage-check.md))。
 - build の後に `git status` が空であること (`nx` の job の「Generated files are committed」): `routeTree.gen.ts` などの生成ファイルを commit し忘れると失敗します。この step の `run:` は、`src/configs/ci-generated-files.tools.test.ts` が `ci.yml` から取り出して実行し、変更を残した build で止まることを確かめます。
 
@@ -125,9 +129,35 @@ CodeQL は workflow のファイルを持たない default setup で、GitHub �
 
 `parallelism: false` の後にも落ちました。11/12 11:47 UTC の push の run ([43212150110](https://github.com/yokozi-jp/agent-software-factory/actions/runs/43212150110)) で、storybook の `src/app.stories.tsx` だけが `Failed to fetch dynamically imported module` で読めませんでした。`worker:test` の完了は `web:test` の開始の約 5 秒前で、最適化は開始の 1 秒後までに終わっていました。原因は分かっていないので、CI の `DEBUG` に `vitest:browser:*` を足して、次に落ちたときの手がかりを残します。
 
-#### 手当ての後にも落ちたら
+`vitest:browser:*` のログを足した後の 11/12 17:12 UTC の run ([43266400536](https://github.com/yokozi-jp/agent-software-factory/actions/runs/43266400536)、`pnpm-lock.yaml` だけを変えた Renovate の PR #752) でも、`unit` の `use-idempotent-mutation.test.tsx` の iframe が 60 秒たっても用意できず、`web:test` の coverage の下限が割れました。ログから分かったことは次のとおりです。
 
-`parallelism: false` の後にも同じエラーが出たら、見立てが外れています。落ちたログの `DEBUG=vite:deps,vitest:browser:*` の行と、`web:test` の始まりの時刻、前後に終わった task の時刻を見直してください。それでも直らないときは、ログに上のエラーがあるときだけ `web:test` を 1 回再実行する step を考えます。Vitest の [`retry`](https://vitest.dev/config/retry) は個々のテストの再実行で、ファイルの読み込みの失敗は対象になりません (vitest 5.1.0、2026-11-12 に確かめた)。
+- `worker:test` の完了は 17:12:13、`web:test` の開始 (`Start at`) は 17:12:21 で、同時には流れていません。
+- 止まったのは `unit` の最初のセッションだけです。そのセッションは 17:12:22.1 に orchestrator へつながり、17:12:22.5 に `use-idempotent-mutation.test.tsx` を始めたまま、60 秒後の 17:13:22.5 まで進みませんでした。同じ Chromium と dev server が、17:12:35 に開いた `unit` の別の 2 つのセッションで、残りの `unit` のテストファイルを約 1 秒で流しました。ブラウザも dev server も、その間は動いていました。
+- `unit` の依存の最適化は 17:12:22.397 に終わり、`run test` (17:12:22.524) の前でした。再最適化は、この run でも原因ではありません。
+
+見立て (判断。確かめていません): Testcontainers は、テストのプロセスが終わった後に、コンテナとネットワークを別のコンテナ (Ryuk) が片付けると理解していますが、この動きは確かめていません。片付けが次の task の開始と重なるなら、`parallelism: false` では防げません。
+
+#### 1 回だけ再実行する
+
+`nx` の job の「Check, test and build」の step は、`retry-web-test` ([ADR 0058](../adr/0058-retry-web-test-once-on-file-load-failure.md)) 越しに `nx affected -t check test build` を流します。失敗した task が `web:test` だけで、出力に上の 2 つのエラー (`did not become ready`、`Failed to fetch dynamically imported module`) のどちらかがあるときだけ、同じコマンドを 1 回流し直します。成功した task は Nx の cache から返ります。再実行は失敗を直さないので、`::warning title=web-test-flaky::` の annotation を残して数えます。
+
+- **数え方**: 再実行した run のログには、`web:test failed to load a test file` の行があります。main の直近 100 run を数えるには、次を流します (run ごとにログを取るので、数分かかります)。PR の run も数えるなら、`--branch main` を `--event pull_request` に替えます。
+
+  ```sh
+  gh run list --workflow CI --branch main --limit 100 --json databaseId --jq '.[].databaseId' \
+    | while read -r id; do gh run view "$id" --log | grep -q 'web:test failed to load a test file' && echo "$id"; done
+  ```
+
+- **Issue #523 を閉じる条件**: 再実行の警告が、main の CI で 2 週間か 30 run のどちらか長いほうの間、出ないこと。再実行で通った run も失敗に数えます。
+- **2 回目も落ちたとき**: 失敗します。ログに `The second run failed too` が出ます。1 回目と 2 回目のエラーが同じなら、この文書の見立てが外れているので、下の「原因を絞る記録」を読みます。違うなら、2 回目のエラーが本当の失敗です。
+
+#### 原因を絞る記録
+
+同じ step は、`nx` の実行の間 `docker events` と `ip monitor address link` を記録し、実行の後に `Docker and network events during the run, in UTC (#523)` の折りたたんだ group で出します。時刻は UTC で、Vitest の `Start at` と同じ時計です。通った run にも出ます。
+
+- **読み方**: 落ちた run の `web:test` の `Start at` の前後 10 秒に、docker の `container die`、`container destroy`、`network destroy` や、`ip monitor` の `Timestamp:` の行 (アドレスやリンクの変化) があるかを見ます。ある run が続けば、片付けが重なるという見立てを支持します。ない run があれば、見立ては外れです。
+- **見立てを支持したら**: `web:test` を、コンテナを使う task より先に流す案 (判断) を試します。
+- **外す**: 原因が分かったら、step の `docker events` と `ip monitor` の記録を外します。`ip monitor` が見るのはホストのネットワークで、Docker の bridge の変化が出るかは CI で初めて確かめます (手元では、Docker のデーモンが別のネットワーク名前空間にあり、確かめられませんでした)。
 
 ## coverage の下限
 
