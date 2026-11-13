@@ -307,7 +307,7 @@ catalogs:
       version: 2.38.1
     effect:
       specifier: ^4.0.6
-      version: 4.1.2
+      version: 4.1.3
     eslint-plugin-react-you-might-not-need-an-effect:
       specifier: 1.2.0
       version: 1.2.0
@@ -515,7 +515,7 @@ importers:
         version: 1.7.19(@opentelemetry/api@1.10.0)(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vitest@5.1.0)
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       hono:
         specifier: 'catalog:'
         version: 4.13.17
@@ -676,7 +676,7 @@ importers:
         version: 3.1165.0
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       kysely:
         specifier: 'catalog:'
         version: 0.29.8
@@ -722,7 +722,7 @@ importers:
         version: link:../shared-kernel
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       kysely:
         specifier: 'catalog:'
         version: 0.29.8
@@ -766,7 +766,7 @@ importers:
         version: 1.6.3(hono@4.13.17)(zod@4.6.7)
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       kysely:
         specifier: 'catalog:'
         version: 0.29.8
@@ -807,7 +807,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       kysely:
         specifier: 'catalog:'
         version: 0.29.8
@@ -975,7 +975,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -997,7 +997,7 @@ importers:
         version: 1.10.0
       effect:
         specifier: 'catalog:'
-        version: 4.1.2
+        version: 4.1.3
       hono:
         specifier: 'catalog:'
         version: 4.13.17
@@ -5747,8 +5747,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.1.2:
-    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
+  effect@4.1.3:
+    resolution: {integrity: sha512-QWNEu35groH/78Ejq01lZGt8U0sF1P4nrhbcAZz5WffcS27bUUK9C/db+xWWUwNYUvFD5SrSLE0mFGtwyP0PCQ==}
 
   ejs@5.0.1:
     resolution: {integrity: sha512-COqBPFMxuPTPspXl2DkVYaDS3HtrD1GpzOGkNTJ1IYkifq/r9h8SVEFrjA3D9/VJGOEoMQcrlhpntcSUrM8k6A==}
@@ -12599,7 +12599,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.1.2: {}
+  effect@4.1.3: {}
 
   ejs@5.0.1: {}
 
