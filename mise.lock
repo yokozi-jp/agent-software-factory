@@ -36,15 +36,15 @@ url_api = "https://api.github.com/repos/betterleaks/betterleaks/releases/assets/
 provenance = "cosign"
 
 [[tools."github:oasdiff/oasdiff"]]
-version = "1.37.0"
+version = "1.38.0"
 backend = "github:oasdiff/oasdiff"
-specifiers = ["v1.37.0"]
+specifiers = ["v1.38.0"]
 
 [tools."github:oasdiff/oasdiff"."platforms.linux-x64"]
-checksum = "sha256:eac87307d31d08c36800c58a409c247f1c5db37fbb72e2544402f22a87cbca3c"
+checksum = "sha256:613037fd6a1d3362a1b742d6d86c338c0eb5ab3511f4942ce3948e78720ea2da"
 checksum_source = "mise-versions"
-url = "https://github.com/oasdiff/oasdiff/releases/download/v1.37.0/oasdiff_1.37.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/724875877"
+url = "https://github.com/oasdiff/oasdiff/releases/download/v1.38.0/oasdiff_1.38.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/oasdiff/oasdiff/releases/assets/747750952"
 
 [[tools."http:kiro-cli"]]
 version = "3.3.0"
