@@ -40,7 +40,7 @@ catalog:
   vite-plus: 1.5.1
   markdownlint-cli2: 0.24.0
   jscpd: 5.4.3
-  "@iwe-org/iwe": 0.32.0
+  "@iwe-org/iwe": 0.33.0
   knip: 6.44.2
   eslint-plugin-react-you-might-not-need-an-effect: 1.2.0
   better-auth: ^1.7.12

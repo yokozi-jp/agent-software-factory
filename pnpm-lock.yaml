@@ -207,8 +207,8 @@ catalogs:
       specifier: ^1.6.3
       version: 1.6.3
     '@iwe-org/iwe':
-      specifier: 0.32.0
-      version: 0.32.0
+      specifier: 0.33.0
+      version: 0.33.0
     '@nx/js':
       specifier: 24.0.6
       version: 24.0.6
@@ -446,7 +446,7 @@ importers:
         version: 0.67.7
       '@iwe-org/iwe':
         specifier: 'catalog:'
-        version: 0.32.0
+        version: 0.33.0
       '@nx/js':
         specifier: 'catalog:'
         version: 24.0.6(@babel/traverse@7.29.10(supports-color@7.2.0))(@swc/core@1.16.22)(nx@24.0.6(@swc/core@1.16.22))(supports-color@7.2.0)
@@ -2723,33 +2723,33 @@ packages:
   '@isaacs/nonrecursive-glob-match@1.1.0':
     resolution: {integrity: sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==}
 
-  '@iwe-org/cli-darwin-arm64@0.32.0':
-    resolution: {integrity: sha512-u0ovcZm4d75yMDXiUYvZPR5ylj+8dj2REzsY/VOJbCXQgoX73lT1s0k5tuI5PnwmRQ8fvMhQqbamMMD7Qhp17g==}
+  '@iwe-org/cli-darwin-arm64@0.33.0':
+    resolution: {integrity: sha512-D+3BDgHEKPYw2nNAxJhpinqdxYGsrUuJ6ZUZTpxRgbRmITss5ggZFxzPVrwOtOMtBWiVE0AW2W/Ky8ewPi6HUA==}
     cpu: [arm64]
     os: [darwin]
 
-  '@iwe-org/cli-darwin-x64@0.32.0':
-    resolution: {integrity: sha512-jOcNqb1cV/Go8mUPdRkkk6azjVohZy+FvC5bNYJHWLNNq5H6gneOvyzhRB6aKo8veXa1yc/57/sl1udyPfZZ+A==}
+  '@iwe-org/cli-darwin-x64@0.33.0':
+    resolution: {integrity: sha512-PZqSaHleX46Dux3N1qV9y9sg9U4uGgtBZpSMBTrUkOfS1sz0TC3APPWT61fTGDCIMqSRaC9CFzAn/yxELQ7JRg==}
     cpu: [x64]
     os: [darwin]
 
-  '@iwe-org/cli-linux-arm64@0.32.0':
-    resolution: {integrity: sha512-zhdDkLUfoTpkfDMl7/hYppgN22L3MczdGHyU40i7GB7gQQxi570ZXTTA60DUmD5TYOVCKa/D0IICSVMtSNkGjA==}
+  '@iwe-org/cli-linux-arm64@0.33.0':
+    resolution: {integrity: sha512-9mUfGt2XY3REPGMTvOHDoXmlC0S12tOUVZp1JBv3L0gFU68VpetgZaAkLyJzpxfmAusGkq7jJ8R/rW3Ntx3u+g==}
     cpu: [arm64]
     os: [linux]
 
-  '@iwe-org/cli-linux-x64@0.32.0':
-    resolution: {integrity: sha512-9aDYFoU+F0lULLOcWSna24z0G8YPmtSpQG5eNRgPxWsYPmFEKakWGMAD2e7Psqi0MOnM4EokPwiv+dnTiSsGyA==}
+  '@iwe-org/cli-linux-x64@0.33.0':
+    resolution: {integrity: sha512-KXtlynmrkJOPlLkKIUVQPwjseq90We52AgGc5SKB0nStPdSeZfnKPmdsQETUMKDbZafkNQowuRaUzBL8JoyoOA==}
     cpu: [x64]
     os: [linux]
 
-  '@iwe-org/cli-win32-x64@0.32.0':
-    resolution: {integrity: sha512-r+a0NvFGM5KvrGC3WYlxggrmOdz5KNgOHUUHc6/Mxy1Fu6FNkQkl8m5QAtrWSn+Mzv/XDMhC02ZM9RMNiaTDZg==}
+  '@iwe-org/cli-win32-x64@0.33.0':
+    resolution: {integrity: sha512-rgndmTsszGNKw2jb4CeffeSpkgPbDoOqIJi3Lotg1b0n2DMCeqx07VWg99Nk/XGxrPco9U6fxHLyhWfW7wbBNA==}
     cpu: [x64]
     os: [win32]
 
-  '@iwe-org/iwe@0.32.0':
-    resolution: {integrity: sha512-JNG4c8Eqb+xrXFcQrTb+r4tN7gN/vkeEbNwBrNHOw7XXhl5tuhhp+csyDqoHJoz6xZLJfPHtf2ltADSrwAcHpQ==}
+  '@iwe-org/iwe@0.33.0':
+    resolution: {integrity: sha512-+89l3uL31MDgnGzWgciVokWze7IgMwZYr1eAdD8i+CkPB9s5b1rFVT3Yrf/GL8qm3qFPWZYdCA4ChfT0iyQX6A==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -10021,28 +10021,28 @@ snapshots:
 
   '@isaacs/nonrecursive-glob-match@1.1.0': {}
 
-  '@iwe-org/cli-darwin-arm64@0.32.0':
+  '@iwe-org/cli-darwin-arm64@0.33.0':
     optional: true
 
-  '@iwe-org/cli-darwin-x64@0.32.0':
+  '@iwe-org/cli-darwin-x64@0.33.0':
     optional: true
 
-  '@iwe-org/cli-linux-arm64@0.32.0':
+  '@iwe-org/cli-linux-arm64@0.33.0':
     optional: true
 
-  '@iwe-org/cli-linux-x64@0.32.0':
+  '@iwe-org/cli-linux-x64@0.33.0':
     optional: true
 
-  '@iwe-org/cli-win32-x64@0.32.0':
+  '@iwe-org/cli-win32-x64@0.33.0':
     optional: true
 
-  '@iwe-org/iwe@0.32.0':
+  '@iwe-org/iwe@0.33.0':
     optionalDependencies:
-      '@iwe-org/cli-darwin-arm64': 0.32.0
-      '@iwe-org/cli-darwin-x64': 0.32.0
-      '@iwe-org/cli-linux-arm64': 0.32.0
-      '@iwe-org/cli-linux-x64': 0.32.0
-      '@iwe-org/cli-win32-x64': 0.32.0
+      '@iwe-org/cli-darwin-arm64': 0.33.0
+      '@iwe-org/cli-darwin-x64': 0.33.0
+      '@iwe-org/cli-linux-arm64': 0.33.0
+      '@iwe-org/cli-linux-x64': 0.33.0
+      '@iwe-org/cli-win32-x64': 0.33.0
 
   '@jest/diff-sequences@30.0.1': {}
 
