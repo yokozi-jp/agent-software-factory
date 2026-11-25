@@ -41,7 +41,7 @@ catalog:
   markdownlint-cli2: 0.24.1
   jscpd: 5.4.3
   "@iwe-org/iwe": 0.33.0
-  knip: 6.44.2
+  knip: 6.48.0
   eslint-plugin-react-you-might-not-need-an-effect: 1.2.0
   better-auth: ^1.7.12
   oidc-provider: ^9.13.3
