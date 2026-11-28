@@ -97,7 +97,7 @@ jobs:
 
       # Installs the tools in mise.lock (checksum verified). `mise exec` in the scripts picks the pinned ones,
       # not the runner image's. No cache: a restored cache is not checked against the lock.
-      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+      - uses: jdx/mise-action@3277a0f272901982804abc53abd93520db809be4 # v5.4.0
         with:
           version: 2026.11.8
           cache: false
@@ -160,7 +160,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+      - uses: jdx/mise-action@3277a0f272901982804abc53abd93520db809be4 # v5.4.0
         with:
           version: 2026.11.8
           cache: false
